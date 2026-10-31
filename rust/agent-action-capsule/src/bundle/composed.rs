@@ -1179,7 +1179,14 @@ fn binding_report(
         )
     };
     let Ok(octets) = canonical::jcs(&Value::Object(record.clone())) else {
-        return (None, false);
+        // The digest matched, so only sigs can be unserializable (a float or an
+        // integer beyond 2^53 where a sig-hex belongs): malformed under ed25519
+        // keys, which -02 holds to sig-hex, and merely not implemented under any
+        // other.
+        let shaped = record.get("key_types").is_none_or(
+            |t| matches!(t, Value::Array(l) if l.len() == 2 && l.iter().all(Value::is_string)),
+        );
+        return (None, shaped && !ed25519_keys(record));
     };
     let report = verify_at(&octets, times, statements);
     if let Some(types) = record.get("key_types") {
@@ -1232,16 +1239,6 @@ fn implemented(record: &Map<String, Value>) -> bool {
     record.get("method").and_then(Value::as_str) == Some(want) && ed25519_keys(record)
 }
 
-/// Derives the linkage of a `controller_binding` join between two root
-/// records: `(linked, derivable)`. Not derivable when no delivered binding
-/// record has the join's `identifier_digest`, or when every one that does
-/// names a method or key type this verifier does not implement. Otherwise
-/// linked when one such record applies: well formed, signed by both bound
-/// keys, its keys exactly the two values `pointer` selects, in effect at both
-/// root records' timestamps, and revoked by no delivered statement at or
-/// before either. A join without `pointer` or `identifier_digest` names no
-/// record: not derivable. The record checks are `controller_binding`'s; only
-/// the join's reading of its report is here.
 /// -02's binding digest: SHA-256 of the JCS of the record without `sigs`. A
 /// join names its record by it, so a record with another digest is skipped
 /// before any signature is checked.
@@ -1252,6 +1249,16 @@ fn binding_digest(record: &Map<String, Value>) -> Option<String> {
     Some(hex::encode(<sha2::Sha256 as sha2::Digest>::digest(octets)))
 }
 
+/// Derives the linkage of a `controller_binding` join between two root
+/// records: `(linked, derivable)`. Not derivable when no delivered binding
+/// record has the join's `identifier_digest`, or when every one that does
+/// names a method or key type this verifier does not implement. Otherwise
+/// linked when one such record applies: well formed, signed by both bound
+/// keys, its keys exactly the two values `pointer` selects, in effect at both
+/// root records' timestamps, and revoked by no delivered statement at or
+/// before either. A join without `pointer` or `identifier_digest` names no
+/// record: not derivable. The record checks are `controller_binding`'s; only
+/// the join's reading of its report is here.
 fn controller_binding_link(
     j: &Join,
     a: &BindingSide,
@@ -1279,9 +1286,7 @@ fn controller_binding_link(
         if binding_digest(record).as_deref() != Some(identifier.as_str()) {
             continue;
         }
-        let (Some(report), well_formed) = binding_report(record, &times, &statements) else {
-            continue;
-        };
+        let (report, well_formed) = binding_report(record, &times, &statements);
         if !well_formed {
             // A malformed record does not apply: the join derives, unjoined.
             derivable = true;
@@ -1291,7 +1296,7 @@ fn controller_binding_link(
             continue;
         }
         derivable = true;
-        if let (Some(x), Some(y)) = (&a.key, &b.key) {
+        if let (Some(report), Some(x), Some(y)) = (&report, &a.key, &b.key) {
             if report.applies_to(x, y) {
                 return (true, true);
             }

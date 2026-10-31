@@ -558,7 +558,15 @@ def _binding_report(record: Mapping[str, Any], times: list, statements: list):
     try:
         octets = jcs(record)
     except _DIGEST_ERRORS:
-        return cb.Report(), False
+        # The digest matched, so only sigs can be unserializable (a float or an
+        # integer beyond 2^53 where a sig-hex belongs): malformed under ed25519
+        # keys, which -02 holds to sig-hex, and merely not implemented under any
+        # other.
+        types = record.get("key_types")
+        shaped = "key_types" not in record or (
+            isinstance(types, list) and len(types) == 2 and all(isinstance(t, str) for t in types)
+        )
+        return cb.Report(), shaped and not _ed25519_keys(record)
     report = cb.verify(octets, times, cb.Options(revocations=statements))
     if "key_types" in record:
         types = record["key_types"]

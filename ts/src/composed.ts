@@ -652,7 +652,18 @@ async function bindingReport(
   try {
     octets = jcs(record);
   } catch {
-    return { wellFormed: false };
+    // The digest matched, so only sigs can be unserializable (a float or an
+    // integer beyond 2^53 where a sig-hex belongs): malformed under ed25519
+    // keys, which -02 holds to sig-hex, and merely not implemented under any
+    // other.
+    const types = record.key_types;
+    const shaped =
+      !Object.hasOwn(record, "key_types") ||
+      (Array.isArray(types) &&
+        types.length === 2 &&
+        isString(types[0]) &&
+        isString(types[1]));
+    return { wellFormed: shaped && !ed25519Keys(record) };
   }
   const report = await verifyBinding(octets, times, {
     revocations: statements,
@@ -696,16 +707,6 @@ async function bindingReport(
 }
 
 /**
- * The linkage of a controller_binding join between two sides. `derivable` is
- * false when no delivered binding record has the join's identifier_digest, or
- * when every one that does names a method or key type this verifier does not
- * implement. Otherwise `linked` is true when one such record applies: well
- * formed, signed by both bound keys, its keys exactly the two values
- * `pointer` selects, in effect at both timestamps, and revoked by no
- * delivered statement at or before either. The record checks are
- * `controller-binding.ts`'s; only the join's reading of its report is here.
- */
-/**
  * -02's binding digest: SHA-256 of the JCS of the record without `sigs`. A
  * join names its record by it, so a record with another digest is skipped
  * before any signature is checked.
@@ -721,6 +722,16 @@ async function bindingDigest(
   }
 }
 
+/**
+ * The linkage of a controller_binding join between two sides. `derivable` is
+ * false when no delivered binding record has the join's identifier_digest, or
+ * when every one that does names a method or key type this verifier does not
+ * implement. Otherwise `linked` is true when one such record applies: well
+ * formed, signed by both bound keys, its keys exactly the two values
+ * `pointer` selects, in effect at both timestamps, and revoked by no
+ * delivered statement at or before either. The record checks are
+ * `controller-binding.ts`'s; only the join's reading of its report is here.
+ */
 async function controllerBindingLink(
   j: Join,
   a: BindingSide,
@@ -745,7 +756,6 @@ async function controllerBindingLink(
       times,
       statements,
     );
-    if (report === undefined) continue;
     if (!wellFormed) {
       // A malformed record does not apply: the join derives, unjoined.
       derivable = true;
@@ -754,6 +764,7 @@ async function controllerBindingLink(
     if (!implemented(record)) continue;
     derivable = true;
     if (
+      report !== undefined &&
       a.key !== undefined &&
       b.key !== undefined &&
       bindingAppliesTo(report, a.key, b.key)

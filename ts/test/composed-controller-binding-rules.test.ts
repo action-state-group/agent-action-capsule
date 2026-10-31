@@ -227,4 +227,28 @@ describe("composed controller_binding join: -02's own rules", () => {
     const block = await derive(container, linked().controller_bindings);
     expect(block.joins[0]!.derived).toBe("unjoined");
   });
+
+  // A sig that cannot be serialized (a float where a sig-hex belongs) is
+  // malformed under ed25519 keys and merely not implemented under a key type
+  // -02 does not define; the digest leaves sigs out, so the record still
+  // matches its join.
+  it("an unserializable sig is malformed or unimplemented by key type", async () => {
+    const record = clone(linked().controller_bindings[0]!);
+    (record.sigs as Obj[])[0]!.sig = 1.5;
+    const sealed = async (r: Obj): Promise<Obj> => {
+      const container = clone(linked().container);
+      ((blockOf(container).joins as Obj[])[0] as Obj).identifier_digest =
+        createHash("sha256")
+          .update(jcs(withoutSigs(r)))
+          .digest("hex");
+      return seal(container);
+    };
+    expect(
+      (await derive(await sealed(record), [record])).joins[0]!.derived,
+    ).toBe("unjoined");
+    record.key_types = ["ed25519", "x-example-type"];
+    expect(
+      (await derive(await sealed(record), [record])).joins[0]!.result,
+    ).toBe("not_derivable");
+  });
 });

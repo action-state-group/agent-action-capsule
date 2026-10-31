@@ -36,6 +36,16 @@ func recordTime(value interface{}) (time.Time, bool) {
 	return parsed, err == nil
 }
 
+// keyTypesWellFormed reports whether key_types, when present, is two strings.
+func keyTypesWellFormed(record map[string]interface{}) bool {
+	raw, typed := record["key_types"]
+	if !typed {
+		return true
+	}
+	list, ok := raw.([]interface{})
+	return ok && len(list) == 2 && isString(list[0]) && isString(list[1])
+}
+
 // ed25519Keys reports whether both bound keys are Ed25519 keys: key_types
 // is absent, or names ed25519 twice. -02 defines no other key type, so a
 // record under one is skipped like a record under an unimplemented method.
@@ -68,7 +78,10 @@ func bindingReport(record map[string]interface{}, times []time.Time, statements 
 	}
 	octets, err := canonical.JCS(record)
 	if err != nil {
-		return controllerbinding.Report{}, false
+		// The digest above matched, so only sigs can be unserializable (a float or an
+		// integer beyond 2^53 where a sig-hex belongs): malformed under ed25519 keys,
+		// which -02 holds to sig-hex, and merely not implemented under any other.
+		return controllerbinding.Report{}, keyTypesWellFormed(record) && !ed25519Keys(record)
 	}
 	report = controllerbinding.Verify(octets, times, controllerbinding.Options{Revocations: statements})
 	if types, typed := record["key_types"]; typed {

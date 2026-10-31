@@ -10,6 +10,7 @@ joins and empty-history members) and is compared with each case's whole
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 
@@ -233,3 +234,23 @@ def test_a_delivered_record_that_is_not_an_object_is_skipped():
     result = verify_bundle(case["container"], composed_options=opts)
     joins = next(e.composed for e in result.extensions if e.composed is not None).joins
     assert [j.derived for j in joins] == ["agree"]
+
+
+def test_an_unserializable_sig_is_malformed_under_ed25519_and_unimplemented_otherwise():
+    # A float where a sig-hex belongs: the digest leaves sigs out, so the record
+    # still matches its join.
+    case = _linked()
+    record = copy.deepcopy(case["controller_bindings"][0])
+    record["sigs"][0]["sig"] = 1.5
+    assert _verify(case["container"], case, [record]).joins[0].derived == "unjoined"
+    record["key_types"] = ["ed25519", "x-example-type"]
+    container = copy.deepcopy(case["container"])
+    block = _block(container)
+    block["joins"][0]["identifier_digest"] = hashlib.sha256(
+        c.jcs({k: v for k, v in record.items() if k != "sigs"})
+    ).hexdigest()
+    for m in block["members"]:
+        if "bundle" in m:
+            m["digest"] = bundle_digest(m["bundle"])
+    block["composed_digest"] = c.composed_digest(block)
+    assert _verify(container, case, [record]).joins[0].result == "not_derivable"
