@@ -16,6 +16,8 @@ Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their o
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Go `evidencerequest.ParseRequestTime` refuses a time with more than nine fraction digits instead
+  of truncating it to nanoseconds, as the Python and Rust readers already do (AAC#492).
 - Inference-Service History is written against `evidence-interop/1` (AAC#484): a node serves a
   History under /0 or /1, whichever the request names, and under /1 sheds load with
   `capacity_exceeded` (`UNKNOWN`) instead of `policy_declined` (`WITHHELD`). Its definitions,

@@ -375,12 +375,13 @@ func ParseProfileTime(s string) (time.Time, bool) {
 	return t, err == nil
 }
 
-var rfc3339UTC = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?Z$`)
+var rfc3339UTC = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$`)
 
 // ParseRequestTime reads a time a request carries (deadline, min_freshness):
 // an RFC 3339 UTC time (ERV A3, A5). The §5.2 seconds form is what a
 // requester following the profile sends; a fraction from a requester
-// following the request draft alone is accepted.
+// following the request draft alone is accepted, up to nanoseconds. A longer
+// fraction is refused rather than truncated, as the Python and Rust readers do.
 func ParseRequestTime(s string) (time.Time, bool) {
 	if !rfc3339UTC.MatchString(s) {
 		return time.Time{}, false

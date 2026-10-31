@@ -201,6 +201,8 @@ func TestEncodeJCS(t *testing.T) {
 func TestTimes(t *testing.T) {
 	for s, ok := range map[string]bool{
 		"2026-01-01T00:00:00Z": true, "2026-01-01T00:00:00.123Z": true,
+		"2026-01-01T00:00:00.123456789Z": true, "2026-01-01T00:00:00.1234567891Z": false,
+		"2026-01-01T00:00:00.Z":     false,
 		"2026-01-01T00:00:00+00:00": false, "2026-01-01t00:00:00z": false, "2026-13-01T00:00:00Z": false,
 	} {
 		_, got := er.ParseRequestTime(s)
