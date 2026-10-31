@@ -53,8 +53,8 @@ same-commit files in CI.
   `python/scripts/generate_anchor_witness_v1_vectors.py` regenerates them.
 - `json-nesting/`: the nesting limit every implementation shares: JSON text
   nested 128 levels deep is read and canonicalized, 129 levels is refused as
-  malformed, and a value past the limit has no RFC 8785 form; no
-  specification states a limit (#498);
+  malformed, and a value past the limit has no RFC 8785 form; `spec/interop-profile-v1.md` §5.2
+  states the limit (#498);
   `python/scripts/generate_json_nesting_vectors.py` regenerates them.
 - `minimum-necessary/`: provisional registry entries held for ratification
   (`spec/REGISTRY.md` §10, §14, §16): SD-JWT (RFC 9901) presentations as a

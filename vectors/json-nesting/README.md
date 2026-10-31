@@ -3,8 +3,9 @@
 Every strict reader and canonicalizer that more than one implementation
 shares reads objects and arrays nested up to 128 levels deep (`[]` is one
 level, `[[]]` two) and refuses anything deeper, so one document never reads
-differently across Go, Python, TypeScript and Rust (#498). No specification
-states a limit; 128 is an implementation limit the four share. Go's
+differently across Go, Python, TypeScript and Rust (#498). The
+evidence-interop/1 profile states the limit (`spec/interop-profile-v1.md`
+§5.2); the capsule draft does not yet, and 128 is the limit the four share. Go's
 `evidenceresult` and `evidenceplan` text readers, which no other
 implementation has, keep `encoding/json`'s limit; a value they digest still
 meets the 128 limit of `canonical`.
