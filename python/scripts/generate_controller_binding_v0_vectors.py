@@ -21,7 +21,14 @@ credential. CB §10 lists the cases:
   is negative or text. None binds the pair;
 - ``key_types`` holding one token (form ``FAIL``) and naming an unlisted token (signatures
   ``NOT_CHECKED``, and a revocation by that key does not apply);
-- a valid binding that names neither half's key: it does not bind the pair.
+- a valid binding that names neither half's key: it does not bind the pair;
+- a revocation list a using profile declared complete (CB §5.1): ones that count (revocation
+  ``PASS``), including one under a ``max_age`` of 10^10 seconds and one that holds a statement by a
+  key the binding does not bind (ignored); ones that hold a statement that applies (``FAIL``), under
+  a declaration that counts and under a malformed one; and ones that do not count
+  (``NOT_CHECKED``): stale, past the freshness bound, dated after the evaluation time, for another
+  binding, with another digest, not a JSON array, and malformed declarations (an extra member, a
+  ``max_age`` that is negative, fractional or 2^53, and an ``as_of`` that names no calendar date).
 
 It states every expected status by hand from CB §6 and §7 and IP §6.7.4. Each case cites the
 sections it comes from. Nothing here imports or runs a verifier. The credential and its method are
@@ -211,6 +218,34 @@ def revocation(record: dict, by: str, revoked_at: str) -> dict:
                    "key_id": PUB[by], "revoked_at": revoked_at}, by)
 
 
+# CB §5.1: the declaration a using profile gives beside a revocation list.
+LIST_PROFILE = "controller-binding-v0 vectors (CB §10)"
+LIST_ASSERTED_BY = "the vectors' run that pins the revocation list"
+LIST_AS_OF = "2026-10-19T00:00:00Z"
+LIST_MAX_AGE = 86400
+
+
+def declared(record: dict, statements: list[dict] | None = None, *, as_of: str = LIST_AS_OF,
+             max_age: Any = LIST_MAX_AGE, binding: str | None = None, digest: str | None = None,
+             text: str | None = None, extra: dict | None = None) -> dict:
+    """A revocation list (a JSON array of statements, CB §5.1) and its declaration. ``binding``,
+    ``digest`` and ``text`` replace the binding digest, the list digest and the list's octets;
+    ``extra`` adds members."""
+    octets_text = text if text is not None else jcs(statements or [])
+    return {"declaration": {"profile": LIST_PROFILE, "asserted_by": LIST_ASSERTED_BY,
+                            "binding": binding or binding_digest(record),
+                            "list_digest": digest or shx(octets_text.encode()),
+                            "as_of": as_of, "max_age": max_age, **(extra or {})},
+            "media_type": J, "octets_text": octets_text}
+
+
+def list_report(rl: dict, counts: bool) -> dict:
+    """CB §6.1: a declaration's method, as a verifier reports it."""
+    d = rl["declaration"]
+    return {"profile": d["profile"], "asserted_by": d["asserted_by"],
+            "list_digest": shx(rl["octets_text"].encode()), "as_of": d["as_of"], "counts": counts}
+
+
 def credential(holders: tuple[str, str], signer: str) -> dict:
     """CB §10's credential: issued by the credential issuer key, signed by ``signer``."""
     return signed({"issued_at": ISSUED, "issuer": PUB["credential-issuer"], "keys": sorted(PUB[h] for h in holders),
@@ -241,7 +276,8 @@ def pins() -> dict:
 
 def case(cid: str, title: str, cites: list[str], record: dict, props: dict, *, binds_pair: bool, applies: bool,
          independence: str, reason: str | None, second: str = "producer-b",
-         revocations: list[dict] | None = None, cred: dict | None = None, fails: list[str]) -> dict:
+         revocations: list[dict] | None = None, cred: dict | None = None, fails: list[str],
+         revocation_list: dict | None = None, list_counts: bool | None = None) -> dict:
     halves = [half(CLAIM, HALF_TIMES[0], "producer-a"), half(CLAIM, HALF_TIMES[1], second)]
     proves: list[str] = []
     if props.get("controller_binding_form") == "PASS" and props.get("controller_binding_signatures") == "PASS":
@@ -253,10 +289,14 @@ def case(cid: str, title: str, cites: list[str], record: dict, props: dict, *, b
         inputs["revocations"] = [octets(r) for r in revocations]
     if cred is not None:
         inputs["credential"] = cred
+    if revocation_list is not None:
+        inputs["revocation_list"] = revocation_list
     expected = {
         "halves": {"signatures": ["PASS", "PASS"], "agree": True},
         "binding": {"claim": record["claim"], "binding_digest": binding_digest(record), "properties": props,
-                    "binds_pair": binds_pair, "applies": applies, "proves": proves},
+                    "binds_pair": binds_pair, "applies": applies, "proves": proves,
+                    **({"revocation_list": list_report(revocation_list, bool(list_counts))}
+                       if revocation_list is not None and props.get("controller_binding_form") == "PASS" else {})},
         "issuer_independence": {"status": independence, "shown_as": SHOWN[independence], "reason": reason,
                                 "satisfied_becomes": {"r-corroborated": BECOMES[independence]}},
         "fails": fails,
@@ -447,6 +487,67 @@ def cases() -> list[dict]:
     out.append(case("no-half-key-bound", "A valid binding of a third key to the bip340 key: it names neither half's key",
                     ["CB §6.2", "IP §6.7.4"], r, ok(),
                     binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None, fails=[]))
+
+    # CB §5.1: a revocation list a using profile declared complete.
+    def listed(cid: str, title: str, record: dict, rl: dict, counts: bool, status: str) -> None:
+        applies = status != "FAIL"
+        out.append(case(cid, title, ["CB §5", "CB §5.1", "CB §6.1", "CB §6.2", "IP §6.7.4"], record,
+                        ok(controller_binding_revocation=status), binds_pair=True, applies=applies,
+                        independence="FAIL" if applies else "NOT_CHECKED",
+                        reason=by_binding(record) if applies else None,
+                        revocation_list=rl, list_counts=counts,
+                        fails=[] if applies else ["controller_binding_revocation"]))
+
+    r = binding("same_controller_asserted", ab)
+    listed("complete-list", "A revocation list declared complete after both halves, with no statement in it",
+           r, declared(r), True, "PASS")
+
+    listed("complete-list-statement-by-other-key",
+           "A list declared complete that holds a statement by a key the binding does not bind: it is ignored",
+           r, declared(r, [revocation(r, "producer-c", "2026-10-12T00:00:00Z")]), True, "PASS")
+
+    listed("complete-list-revoked", "A list declared complete that holds a statement by a bound key before the halves",
+           r, declared(r, [revocation(r, "producer-b", "2026-10-12T00:00:00Z")]), True, "FAIL")
+
+    listed("complete-list-stale", "A list declared complete as of the first half's time, before the second half",
+           r, declared(r, as_of=HALF_TIMES[0], max_age=7 * 86400), False, "NOT_CHECKED")
+
+    listed("complete-list-past-max-age", "A list declared complete after the halves, but older than the freshness bound",
+           r, declared(r, as_of="2026-10-16T00:00:00Z"), False, "NOT_CHECKED")
+
+    listed("complete-list-as-of-future", "A list declared complete as of a time after the evaluation time",
+           r, declared(r, as_of="2026-10-20T00:00:00Z"), False, "NOT_CHECKED")
+
+    other = binding("same_controller_asserted", ab, nonce="ceremony-2")
+    listed("complete-list-other-binding", "A list declared complete for another binding of the same keys",
+           r, declared(r, binding=binding_digest(other)), False, "NOT_CHECKED")
+
+    listed("complete-list-digest-mismatch", "A declaration whose list digest is not that of the list delivered",
+           r, declared(r, digest=shx(b"[]\n")), False, "NOT_CHECKED")
+
+    listed("complete-list-not-an-array", "A declared list whose octets are a JSON object, not an array",
+           r, declared(r, text=jcs({"statements": []})), False, "NOT_CHECKED")
+
+    listed("complete-list-large-max-age",
+           "A list declared complete three days before E under a max_age of 10^10 seconds",
+           r, declared(r, as_of="2026-10-16T00:00:00Z", max_age=10**10), True, "PASS")
+
+    # CB §5.1: a declaration not in its form does not count; the list's entries are still read.
+    sig = {"sig": "00" * 64}
+    listed("complete-list-extra-member", "A declaration with a seventh member, sig",
+           r, declared(r, extra=sig), False, "NOT_CHECKED")
+
+    for cid, value, what in [("complete-list-max-age-negative", -1, "negative"),
+                             ("complete-list-max-age-fractional", 86400.5, "fractional"),
+                             ("complete-list-max-age-too-large", 2**53, "2^53, above 2^53 - 1")]:
+        listed(cid, f"A declaration whose max_age is {what}", r, declared(r, max_age=value), False, "NOT_CHECKED")
+
+    listed("complete-list-as-of-malformed", "A declaration whose as_of names no calendar date (30 February)",
+           r, declared(r, as_of="2026-02-30T00:00:00Z"), False, "NOT_CHECKED")
+
+    listed("complete-list-malformed-revoked",
+           "A malformed declaration beside a list that holds a statement by a bound key before the halves",
+           r, declared(r, [revocation(r, "producer-b", "2026-10-12T00:00:00Z")], extra=sig), False, "FAIL")
     return out
 
 

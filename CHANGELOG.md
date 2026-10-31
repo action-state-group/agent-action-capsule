@@ -75,6 +75,35 @@ has not yet.
   `ajv` 8.20.0, used only by the test that checks the fixtures against the schemas.
 - Go `evidencerequest.ParseRequestTime` refuses a time with more than nine fraction digits instead
   of truncating it to nanoseconds, as the Python and Rust readers already do (AAC#492).
+- Controller Binding v0: a using profile may declare a revocation list complete (AAC#482,
+  `spec/controller-binding-v0.md` §5.1, §6.1, §9.4, §12; CB-1 narrowed). Additive: with no
+  declaration every result is as before.
+  - The list is a JSON array of revocation statements. The declaration beside it names the
+    `profile`, the party that asserts completeness (`asserted_by`), the `binding`, the list's
+    SHA-256 (`list_digest`), `as_of` and the profile's freshness bound `max_age` in seconds.
+  - `controller_binding_revocation` is `PASS` when the declaration counts: it names this binding
+    and these octets, `as_of` is at or after every T and at or before the evaluation time E, and
+    E is at most `max_age` after `as_of`. The `PASS` is reported as the asserting party's statement
+    about that list, never as proof that no statement exists. Otherwise it is `NOT_CHECKED`, never
+    `FAIL`; a statement in the list that applies is `FAIL` whether or not the declaration counts.
+  - A malformed declaration does not count, and the list's entries are still received statements.
+    With no T, no declaration counts. E is the evaluation time, which a using profile may pin.
+    `max_age` is compared in whole seconds. The declaration is unsigned, so a verifier takes it only
+    through the using profile's own channel and reports `asserted_by` as delivered.
+  - `vectors/controller-binding-v0/`: sixteen new cases (`complete-list`,
+    `complete-list-statement-by-other-key`, `complete-list-revoked`, `complete-list-stale`,
+    `complete-list-past-max-age`, `complete-list-as-of-future`, `complete-list-other-binding`,
+    `complete-list-digest-mismatch`, `complete-list-not-an-array`, `complete-list-large-max-age`,
+    `complete-list-extra-member`, `complete-list-max-age-negative`,
+    `complete-list-max-age-fractional`, `complete-list-max-age-too-large`,
+    `complete-list-as-of-malformed`, `complete-list-malformed-revoked`), 42 in all; the first 26
+    are unchanged.
+  - Go: `controllerbinding` gains `Declaration`, `ParseDeclaration`, `RevocationList`
+    (`Options.RevocationList`, carrying the declaration's JSON object as received) and `ListReport`
+    (`Report.RevocationList`, with a diagnostic `reason` when the declaration does not count).
+    `cross_language binding` reads an optional `revocation_list` member (`declaration`, `list`,
+    `evaluated_at`); its exit codes are unchanged, and only a declaration that is not a JSON object
+    is exit 2.
 - Inference-Service History is written against `evidence-interop/1` (AAC#484): a node serves a
   History under /0 or /1, whichever the request names, and under /1 sheds load with
   `capacity_exceeded` (`UNKNOWN`) instead of `policy_declined` (`WITHHELD`). Its definitions,

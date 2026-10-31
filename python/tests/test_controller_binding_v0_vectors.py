@@ -7,6 +7,8 @@ Every case is run from its inputs alone, by an evaluator written here from
 - the halves' signatures and agreement;
 - the binding properties of CB §6.1, with each key signing as its type says (CB §3.3, §4.1): an
   ``ed25519`` key with Ed25519, a ``bip340`` key with a Nostr event checked here under BIP-340;
+- a revocation list a using profile declared complete, and whether its declaration counts
+  (CB §5.1);
 - whether the binding binds the pair and applies to it (CB §6.2);
 - what it proves (CB §7 item 2);
 - the pair's ``issuer_independence`` (CB §7 item 4).
@@ -27,6 +29,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, replace
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +64,9 @@ HEX128 = re.compile(r"[0-9a-f]{128}")
 NONCE = re.compile(r"[0-9a-f]{32,}")
 TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 
+# CB §5.1: a declaration's members.
+DECLARATION_MEMBERS = {"profile", "asserted_by", "binding", "list_digest", "as_of", "max_age"}
+
 # CB §7 items 2 and 4; IP §6.7.4.
 PROVES = "control of both keys at the ceremony"
 STATES = {"same_controller_asserted": "both key holders state that one controller holds both keys",
@@ -81,7 +87,14 @@ def is_hex64(v: Any) -> bool:
 
 
 def is_time(v: Any) -> bool:
-    return isinstance(v, str) and TIME.fullmatch(v) is not None
+    """IP §5.2: a time in the form, naming a real calendar instant."""
+    if not (isinstance(v, str) and TIME.fullmatch(v)):
+        return False
+    try:
+        datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return False
+    return True
 
 
 def ed25519_ok(key_hex: Any, sig_hex: Any, data: bytes) -> bool:
@@ -228,6 +241,16 @@ class Rules:
     event_kind: bool = True                 # §4.1: the signing event is of kind 3374
     created_at_form: bool = True            # §4.1: created_at is an integer in 0..2^53-1
     bip340_nonce: bool = True               # §3.1, §9.3: a bip340 binding's nonce is 32+ hex
+    list_declared: bool = True              # §5.1: PASS only under a declaration that counts
+    list_covers_t: bool = True              # §5.1: as_of is not earlier than any T
+    list_max_age: bool = True               # §5.1: E is at most max_age seconds after as_of
+    list_not_future: bool = True            # §5.1: as_of is not later than E
+    list_names_binding: bool = True         # §5.1: the declaration names this binding
+    list_digest: bool = True                # §5.1: list_digest is the list's octets' digest
+    list_entries_read: bool = True          # §5.1: the list's entries are received statements
+    list_unreadable_fails: bool = False     # §9.4: a list that cannot be read gives NOT_CHECKED, never FAIL
+    list_max_age_overflows: bool = False    # §5.1: max_age up to 2^53 - 1 seconds, as a 64-bit nanosecond Duration overflows
+    list_form_drops_entries: bool = False   # §5.1: a malformed declaration's list entries are still received
 
 
 SPEC = Rules()
@@ -301,15 +324,79 @@ def revocation_applies(statement: dict, r: dict, rules: Rules) -> bool:
                        "controller-binding-revocation/0", jcs(without(statement, "sig")), rules))
 
 
+def instant(t: str) -> datetime:
+    return datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ")
+
+
+def list_entries(case: dict) -> list | None:
+    """CB §5.1: the declared list's entries, or None when its octets are not a JSON array."""
+    rl = case["inputs"].get("revocation_list")
+    if rl is None:
+        return None
+    try:
+        value = parse(rl["octets_text"])
+    except ValueError:
+        return None
+    return value if isinstance(value, list) else None
+
+
+def declaration_form_ok(d: Any) -> bool:
+    """CB §5.1: exactly the six members, each in its form."""
+    return (isinstance(d, dict) and set(d) == DECLARATION_MEMBERS and isinstance(d["profile"], str)
+            and isinstance(d["asserted_by"], str) and is_hex64(d["binding"]) and is_hex64(d["list_digest"])
+            and is_time(d["as_of"]) and type(d["max_age"]) is int and 0 <= d["max_age"] <= MAX_CREATED_AT)
+
+
+def declaration_counts(r: dict, case: dict, times: list[str], rules: Rules) -> bool:
+    """CB §5.1: whether the declaration beside the list counts for this binding, at T and E. With
+    no T it does not."""
+    rl = case["inputs"].get("revocation_list")
+    if rl is None or not times:
+        return False
+    d = rl["declaration"]
+    if not declaration_form_ok(d):
+        return False
+    if list_entries(case) is None:
+        return False
+    if rules.list_max_age_overflows and d["max_age"] * 10**9 > 2**63 - 1:
+        return False
+    evaluated = case["pins"]["evaluation_time"]
+    return ((d["binding"] == digest_of(r) or not rules.list_names_binding)
+            and (d["list_digest"] == sha(rl["octets_text"].encode()) or not rules.list_digest)
+            and (all(d["as_of"] >= t for t in times) or not rules.list_covers_t)
+            and (d["as_of"] <= evaluated or not rules.list_not_future)
+            and ((instant(evaluated) - instant(d["as_of"])).total_seconds() <= d["max_age"]
+                 or not rules.list_max_age))
+
+
 def revocation_status(r: dict, case: dict, times: list[str], rules: Rules) -> str:
     if not rules.revocation:
         return "NOT_CHECKED"
-    for o in case["inputs"].get("revocations", []):
-        s = parse(o["octets_text"])
+    statements = [parse(o["octets_text"]) for o in case["inputs"].get("revocations", [])]
+    rl = case["inputs"].get("revocation_list")
+    if rules.list_entries_read and not (rules.list_form_drops_entries and rl is not None
+                                        and not declaration_form_ok(rl["declaration"])):
+        statements += [e for e in list_entries(case) or [] if isinstance(e, dict)]
+    for s in statements:
         if revocation_applies(s, r, rules) and (not rules.revocation_from_revoked_at
                                          or any(s["revoked_at"] <= t for t in times)):
             return "FAIL"
+    if "revocation_list" in case["inputs"] and rules.list_unreadable_fails and list_entries(case) is None:
+        return "FAIL"
+    if declaration_counts(r, case, times, rules) or (not rules.list_declared and "revocation_list" not in case["inputs"]):
+        return "PASS"
     return "NOT_CHECKED"
+
+
+def list_report(r: dict, case: dict, times: list[str], rules: Rules) -> dict:
+    """CB §6.1: the declaration, reported as the method of a PASS."""
+    rl = case["inputs"]["revocation_list"]
+    d = rl["declaration"]
+    def text(name: str) -> str:  # as delivered; empty when not a text string
+        return d.get(name) if isinstance(d.get(name), str) else ""
+    return {"profile": text("profile"), "asserted_by": text("asserted_by"),
+            "list_digest": sha(rl["octets_text"].encode()), "as_of": text("as_of"),
+            "counts": declaration_counts(r, case, times, rules)}
 
 
 def credential_status(r: dict, case: dict, rules: Rules) -> str:
@@ -369,6 +456,10 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
         proves = [PROVES, STATES[r["claim"]]] + ([CREDENTIALED] if props.get("controller_binding_credential")
                                                   == "PASS" else [])
     digest = digest_of(r)
+    binding_out = {"claim": r.get("claim"), "binding_digest": digest, "properties": props,
+                   "binds_pair": binds, "applies": applies, "proves": proves}
+    if "revocation_list" in case["inputs"] and props["controller_binding_form"] == "PASS":
+        binding_out["revocation_list"] = list_report(r, case, times, rules)
     if pair[0] == pair[1]:
         status, reason = "FAIL", "same key"
     elif applies:
@@ -377,8 +468,7 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
         status, reason = "NOT_CHECKED", None
     shown, becomes = SHOWN[status]
     return {"halves": {"signatures": sigs, "agree": halves[0]["claim"] == halves[1]["claim"]},
-            "binding": {"claim": r.get("claim"), "binding_digest": digest, "properties": props,
-                        "binds_pair": binds, "applies": applies, "proves": proves},
+            "binding": binding_out,
             "issuer_independence": {"status": status, "shown_as": shown, "reason": reason,
                                     "satisfied_becomes": {"r-corroborated": becomes}}}
 
@@ -395,7 +485,7 @@ def comparable(expected: dict) -> dict:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 26
+    assert DATA["count"] == len(CASES) == 42
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     for case in CASES:
         assert case["pins"]["contract_digest"] == DATA["contract"]["contract_digest"]
@@ -500,6 +590,16 @@ DEFECTS = {
     "a Nostr event of any kind signs": replace(SPEC, event_kind=False),
     "any nonce with a bip340 key": replace(SPEC, bip340_nonce=False),
     "any created_at": replace(SPEC, created_at_form=False),
+    "no declaration needed: PASS when nothing received applies": replace(SPEC, list_declared=False),
+    "a list counts whatever T": replace(SPEC, list_covers_t=False),
+    "no freshness bound": replace(SPEC, list_max_age=False),
+    "a list may be dated after E": replace(SPEC, list_not_future=False),
+    "a list counts for any binding": replace(SPEC, list_names_binding=False),
+    "the list digest is not checked": replace(SPEC, list_digest=False),
+    "a declared list's statements are not read": replace(SPEC, list_entries_read=False),
+    "an unreadable list gives FAIL": replace(SPEC, list_unreadable_fails=True),
+    "max_age as nanoseconds in 64 bits": replace(SPEC, list_max_age_overflows=True),
+    "a malformed declaration drops the list's entries": replace(SPEC, list_form_drops_entries=True),
 }
 
 
@@ -515,6 +615,41 @@ def test_a_binding_naming_neither_half_is_the_case_that_catches_membership_agree
     rules = DEFECTS["a pair is bound when the record names both or neither"]
     caught = [c["id"] for c in CASES if evaluate(c, rules) != comparable(c["expected"])]
     assert caught == ["no-half-key-bound"]
+
+
+def test_revocation_is_pass_only_under_a_declaration_that_counts():
+    """CB §6.1: with no declared list, revocation is never PASS (CB-1); with one, PASS needs it to
+    count, and FAIL comes only from a statement that applies (§9.4)."""
+    for case in CASES:
+        status = case["expected"]["binding"]["properties"].get("controller_binding_revocation")
+        listed = case["expected"]["binding"].get("revocation_list")
+        if listed is None:
+            assert status != "PASS", case["id"]
+        elif status == "PASS":
+            assert listed["counts"], case["id"]
+        elif not listed["counts"]:
+            assert status == "NOT_CHECKED" or list_entries(case), case["id"]  # FAIL only by an entry
+
+
+def test_no_time_no_declaration_counts():
+    """CB §5.1: with no T asked about, a declaration does not count."""
+    case = next(c for c in CASES if c["id"] == "complete-list")
+    r = parse(case["inputs"]["binding"]["octets_text"])
+    assert declaration_counts(r, case, [], SPEC) is False
+    assert declaration_counts(r, case, [h for h in (parse(o["octets_text"])["issued_at"]
+                                                    for o in case["inputs"]["halves"])], SPEC) is True
+
+
+def test_is_time_needs_a_calendar_date():
+    assert is_time("2026-02-28T00:00:00Z") and not is_time("2026-02-30T00:00:00Z")
+
+
+def test_a_declared_list_never_changes_whether_a_binding_applies_unless_a_statement_does():
+    """CB §9.4: PASS and NOT_CHECKED both leave the binding applying."""
+    for case in CASES:
+        b = case["expected"]["binding"]
+        if "revocation_list" in b and b["properties"]["controller_binding_revocation"] != "FAIL":
+            assert b["applies"], case["id"]
 
 
 def test_ignoring_the_binding_is_the_unbound_keys_rule():

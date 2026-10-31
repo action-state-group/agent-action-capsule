@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **`controller-binding` feature: Controller Binding v0** (`controller_binding`;
+  `spec/controller-binding-v0.md`), the Rust sibling of Go's `controllerbinding`. `verify` reports
+  a binding record's §6.1 properties (form, signatures, window, revocation, and the credential
+  through a `CredentialVerifier` the caller passes) and what it proves (§7 item 2);
+  `Report::applies_to` says whether it applies to a pair (§6.2), and `pair_independence` gives the
+  `issuer_independence` (§7 item 4, IP §6.7.4). An `ed25519` key verifies with `verify_strict`; a
+  `bip340` (Nostr) key verifies the BIP-340 signature over its NIP-01 signing event (§4.1), with
+  k256 0.13 (new optional dependency). A revocation list a using profile declared complete
+  (§5.1): `Options::revocation_list` carries the declaration's JSON object as received, the
+  list's octets and the evaluation time E, and `Report::revocation_list` reports the declaration
+  as delivered, whether it `counts`, and a diagnostic `reason` when it does not. A malformed
+  declaration does not count, and the list's entries are still received statements, so an
+  applying one is still `FAIL`. With no time T, no declaration counts; `max_age` is compared in
+  whole seconds. Under a declaration that counts, `controller_binding_revocation` is `PASS`.
+  `parse_declaration` checks a declaration's form. Every case of
+  `vectors/controller-binding-v0/` (42) gives its whole expected block.
+
 ## 0.3.0
 
 - **`evidence-interop/1`** (`spec/interop-profile-v1.md`, ER -02): `envelope::PROFILE_V1` and

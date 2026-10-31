@@ -75,9 +75,16 @@ entries. Both are at parity with the Python reference
 
 `controllerbinding.Verify(record, times, opts)` checks one binding record
 (spec `controller-binding-v0.md`, CB) as received, at the times asked about:
-its form, both signatures over the one signing input, its window, and the
-revocation statements in `opts.Revocations`. It reports the CB section 6.1
-properties, the claim type, the two keys and what the binding proves.
+its form, both signatures over the one signing input, its window, the
+revocation statements in `opts.Revocations`, and a revocation list a using
+profile declared complete in `opts.RevocationList` (CB section 5.1). The
+declaration goes in as the JSON object received; one that is not in its form
+does not count, and the list's entries are still read. Take it only through
+the using profile's own channel, never from the party presenting the evidence:
+it is unsigned. It reports the CB section 6.1 properties, the claim type, the
+two keys, what the binding proves and, with a list, `Report.RevocationList`: the
+declaration's profile, asserting party and `as_of` as delivered, the list's
+digest, whether the declaration counts and, when it does not, a `reason`.
 `Report.AppliesTo(a, b)` says whether it applies to a pair (CB section 6.2),
 and `controllerbinding.PairIndependence` gives the pair's
 `issuer_independence` (CB section 7 item 4): `FAIL`, redundant, when a
@@ -90,8 +97,14 @@ policy. It runs `../vectors/controller-binding-v0/`.
 `cross_language binding` is the same check on stdin and stdout. Stdin is one
 JSON object: `binding` (the record's text as received), `at` (the times, in
 the form `YYYY-MM-DDTHH:MM:SSZ`), and optionally `revocations` (statements'
-text), `credential` (its text) and `key` (a key the binding must name, such as
-a node's evidence key). Stdout is the report as JSON with `applies`.
+text), `credential` (its text), `key` (a key the binding must name, such as
+a node's evidence key) and `revocation_list`. That is an object with
+`declaration` (the CB section 5.1 declaration, a JSON object), `list` (the
+list's text as received) and optionally `evaluated_at` (the evaluation time;
+the current time when absent). A declaration that is a JSON object but not in
+its form is reported with `counts` false and a `reason`; only one that is not a
+JSON object, or stdin that is not well formed (such as a duplicate member), is
+exit 2. Stdout is the report as JSON with `applies`.
 
 | Exit | Meaning |
 |---|---|
@@ -103,8 +116,11 @@ a node's evidence key). Stdout is the report as JSON with `applies`.
 Exit 0 is not a trust verdict. It says that whoever held each key signed the
 record. It does not say who controls either key. A binding that applies to a
 pair makes the pair redundant, not corroborating.
-Revocation is `NOT_CHECKED` unless a received statement revokes the binding
-(CB-1), and the credential never decides the exit code.
+Revocation is `FAIL` when a received statement revokes the binding, `PASS`
+when a declared revocation list counts (CB section 5.1), and otherwise
+`NOT_CHECKED` (CB-1). A `PASS` is the asserting party's statement that the list
+was complete as of `as_of`, not the verifier's finding. Neither `PASS` nor a
+declared list changes the exit code, and the credential never decides it.
 
 ## Evidence Result v0
 

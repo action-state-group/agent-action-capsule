@@ -14,9 +14,17 @@ import (
 // bindingMembers are the members of the binding mode's stdin, one JSON
 // object, each with whether it is required. binding is the
 // binding record as transmitted, as text; revocations and credential are
-// what was received beside it; at is the times T; key is the key the binding
-// must name, such as a node's advertised evidence key.
-var bindingMembers = map[string]bool{"binding": true, "revocations": false, "credential": false, "at": true, "key": false}
+// what was received beside it; revocation_list is a revocation list a using
+// profile declared complete (CB §5.1); at is the times T; key is the key the
+// binding must name, such as a node's advertised evidence key.
+var bindingMembers = map[string]bool{"binding": true, "revocations": false, "revocation_list": false,
+	"credential": false, "at": true, "key": false}
+
+// revocationListMembers are the members of revocation_list, each with whether
+// it is required: declaration is the declaration's JSON object (CB §5.1), list
+// is the list's octets as transmitted, as text, and evaluated_at is the
+// evaluation time E, the current time when absent.
+var revocationListMembers = map[string]bool{"declaration": true, "list": true, "evaluated_at": false}
 
 // bindingOutput is the binding mode's stdout: the controllerbinding report,
 // the key asked about, and whether the binding applies.
@@ -36,7 +44,9 @@ type bindingOutput struct {
 // it does not apply because its method is not implemented (signatures
 // NOT_CHECKED); 2 is bad input, or a report that could not be written. The
 // credential never decides the code (CB §6.2), and with no credential verifier here it is NOT_CHECKED, or
-// NOT_PRESENT when none was given.
+// NOT_PRESENT when none was given. A declared revocation list
+// never changes the code unless a statement in it applies: revocation PASS
+// and NOT_CHECKED both leave the binding applying (CB §9.4).
 func binding(in io.Reader, out, errOut io.Writer) int {
 	raw, err := io.ReadAll(in)
 	if err != nil {
@@ -113,6 +123,13 @@ func readBindingInput(raw []byte) ([]byte, []time.Time, string, controllerbindin
 			opts.Revocations = append(opts.Revocations, []byte(text))
 		}
 	}
+	if rl, present := input["revocation_list"]; present {
+		list, err := readRevocationList(rl)
+		if err != nil {
+			return nil, nil, "", opts, err
+		}
+		opts.RevocationList = list
+	}
 	if credential, present := input["credential"]; present {
 		text, ok := credential.(string)
 		if !ok {
@@ -141,4 +158,67 @@ func readBindingInput(raw []byte) ([]byte, []time.Time, string, controllerbindin
 		}
 	}
 	return []byte(record), ts, key, opts, nil
+}
+
+// readRevocationList reads the revocation_list member. A declaration that is
+// a JSON object but not in its form is passed on: it does not count, and the
+// report says why (CB §5.1). Only one that is not a JSON object is bad input.
+func readRevocationList(value any) (*controllerbinding.RevocationList, error) {
+	m, ok := value.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("revocation_list is not a JSON object")
+	}
+	for name := range m {
+		if _, known := revocationListMembers[name]; !known {
+			return nil, fmt.Errorf("unknown revocation_list member %q", name)
+		}
+	}
+	for name, required := range revocationListMembers {
+		if _, present := m[name]; required && !present {
+			return nil, fmt.Errorf("missing revocation_list member %q", name)
+		}
+	}
+	if _, ok := m["declaration"].(map[string]any); !ok {
+		return nil, fmt.Errorf("declaration is not a JSON object")
+	}
+	// encoding/json, not JCS: a malformed declaration may hold a float, which
+	// has no JCS form here. Number tokens are written as received.
+	declaration, err := json.Marshal(numbersAsTokens(m["declaration"]))
+	if err != nil {
+		return nil, fmt.Errorf("declaration: %w", err)
+	}
+	text, ok := m["list"].(string)
+	if !ok {
+		return nil, fmt.Errorf("list is not the revocation list's text")
+	}
+	evaluated := time.Now().UTC().Truncate(time.Second)
+	if at, present := m["evaluated_at"]; present {
+		s, _ := at.(string)
+		if evaluated, ok = evidencerequest.ParseProfileTime(s); !ok {
+			return nil, fmt.Errorf("evaluated_at holds %v, not a time YYYY-MM-DDTHH:MM:SSZ", at)
+		}
+	}
+	return &controllerbinding.RevocationList{Declaration: declaration, List: []byte(text), EvaluatedAt: evaluated}, nil
+}
+
+// numbersAsTokens turns the strict reader's number tokens into json.Number,
+// so encoding/json writes each as received.
+func numbersAsTokens(v any) any {
+	switch x := v.(type) {
+	case evidencerequest.JSONNumber:
+		return json.Number(x)
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, item := range x {
+			out[k] = numbersAsTokens(item)
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, item := range x {
+			out[i] = numbersAsTokens(item)
+		}
+		return out
+	}
+	return v
 }

@@ -82,7 +82,7 @@
     "controller_binding_revocation",
     "controller_binding_credential"
   ],
-  "count": 26,
+  "count": 42,
   "cases": [
     {
       "id": "valid-same-controller",
@@ -2425,6 +2425,1772 @@
           }
         },
         "fails": []
+      }
+    },
+    {
+      "id": "complete-list",
+      "title": "A revocation list declared complete after both halves, with no statement in it",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 86400
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "PASS"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": true
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-statement-by-other-key",
+      "title": "A list declared complete that holds a statement by a key the binding does not bind: it is ignored",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "394cb3ebd158e9ddf3131e9c942f210fdfeecfe69346db5bb52014d47ac1f170",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 86400
+          },
+          "media_type": "application/json",
+          "octets_text": "[{\"binding\":\"7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d\",\"key_id\":\"c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a\",\"revocation_version\":\"controller-binding-revocation/0\",\"revoked_at\":\"2026-10-12T00:00:00Z\",\"sig\":\"8117555519e76d31a48001b9163567c6c6ede40f79571d656bf9eca8fd022bc30833b96f62d0cef20daee77950fd82d7c9360840b0510538e39a70d40d94960c\"}]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "PASS"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "394cb3ebd158e9ddf3131e9c942f210fdfeecfe69346db5bb52014d47ac1f170",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": true
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-revoked",
+      "title": "A list declared complete that holds a statement by a bound key before the halves",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "56ee45bde72fedf49196f9e02f78c574a112dc92bf05b74f74c49ed470791a59",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 86400
+          },
+          "media_type": "application/json",
+          "octets_text": "[{\"binding\":\"7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d\",\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"revocation_version\":\"controller-binding-revocation/0\",\"revoked_at\":\"2026-10-12T00:00:00Z\",\"sig\":\"8b3a6fc4d5a404ba4cf12fe9e6635dcb8532a56bf3c94e1c7c7423a0ef7d9f7406524649f60d467984c7abf6e9a3953d07e25e7db062910f6961451d4e17b70f\"}]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "FAIL"
+          },
+          "binds_pair": true,
+          "applies": false,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "56ee45bde72fedf49196f9e02f78c574a112dc92bf05b74f74c49ed470791a59",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": true
+          }
+        },
+        "issuer_independence": {
+          "status": "NOT_CHECKED",
+          "shown_as": "not corroborating",
+          "reason": null,
+          "satisfied_becomes": {
+            "r-corroborated": "UNKNOWN"
+          }
+        },
+        "fails": [
+          "controller_binding_revocation"
+        ]
+      }
+    },
+    {
+      "id": "complete-list-stale",
+      "title": "A list declared complete as of the first half's time, before the second half",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-15T00:00:20Z",
+            "max_age": 604800
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-15T00:00:20Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-past-max-age",
+      "title": "A list declared complete after the halves, but older than the freshness bound",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-16T00:00:00Z",
+            "max_age": 86400
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-16T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-as-of-future",
+      "title": "A list declared complete as of a time after the evaluation time",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-20T00:00:00Z",
+            "max_age": 86400
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-20T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-other-binding",
+      "title": "A list declared complete for another binding of the same keys",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "99638d8faccf8be1c8e8d0ea67176ef49964c1ab970f498ebefd2945b6d855ec",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 86400
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-digest-mismatch",
+      "title": "A declaration whose list digest is not that of the list delivered",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 86400
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-not-an-array",
+      "title": "A declared list whose octets are a JSON object, not an array",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "00ff6f8f85177c9eea82cc033ba1aea2ec68a8f4e6a4f42fb60aa98ab5fe40de",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 86400
+          },
+          "media_type": "application/json",
+          "octets_text": "{\"statements\":[]}"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "00ff6f8f85177c9eea82cc033ba1aea2ec68a8f4e6a4f42fb60aa98ab5fe40de",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-large-max-age",
+      "title": "A list declared complete three days before E under a max_age of 10^10 seconds",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-16T00:00:00Z",
+            "max_age": 10000000000
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "PASS"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-16T00:00:00Z",
+            "counts": true
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-extra-member",
+      "title": "A declaration with a seventh member, sig",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 86400,
+            "sig": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-max-age-negative",
+      "title": "A declaration whose max_age is negative",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": -1
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-max-age-fractional",
+      "title": "A declaration whose max_age is fractional",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 86400.5
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-max-age-too-large",
+      "title": "A declaration whose max_age is 2^53, above 2^53 - 1",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 9007199254740992
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-as-of-malformed",
+      "title": "A declaration whose as_of names no calendar date (30 February)",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-02-30T00:00:00Z",
+            "max_age": 86400
+          },
+          "media_type": "application/json",
+          "octets_text": "[]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "NOT_CHECKED"
+          },
+          "binds_pair": true,
+          "applies": true,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+            "as_of": "2026-02-30T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "FAIL",
+          "shown_as": "redundant, not corroborating",
+          "reason": "controller binding same_controller_asserted 7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "satisfied_becomes": {
+            "r-corroborated": "INSUFFICIENT"
+          }
+        },
+        "fails": []
+      }
+    },
+    {
+      "id": "complete-list-malformed-revoked",
+      "title": "A malformed declaration beside a list that holds a statement by a bound key before the halves",
+      "cites": [
+        "CB §5",
+        "CB §5.1",
+        "CB §6.1",
+        "CB §6.2",
+        "IP §6.7.4"
+      ],
+      "source": "derived: two producer records (IP §11.5) and a binding record (CB §3)",
+      "mode": "presented",
+      "pins": {
+        "trust_policy": {
+          "foreign_keys": [
+            "8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f",
+            "c335e5ce206c20bd0b1bc029673f37690823b4e4d7539f817dacbe6635ea429a",
+            "f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c"
+          ],
+          "credential_issuers": [
+            "41dd7d76a30e6dd180077fdc3af17b819942a5e26b00cebdcd764c683520d99d"
+          ]
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "binding_methods_implemented": [
+            "dual_signature/0",
+            "dual_signature_credential/0"
+          ],
+          "credential_methods_implemented": [
+            "Ed25519 over UTF-8 of JCS of the credential's other members (controller-binding-v0 §10, vectors only)"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "d47423f0a358f62b9904cc6331188bbd6e0aaf6a0daaecb8b577ad3bfc0a2ae3",
+        "evaluation_time": "2026-10-19T01:00:00Z"
+      },
+      "inputs": {
+        "halves": [
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:20Z\",\"producer\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"f4a36b07365197e386ecd0f86481ffed4475f7544964389bc73b978d0d559a4bb46138f852b646ce64bd711bb97a639a2a44fe6b2aed84b53c7d5cc662b0910f\"}"
+          },
+          {
+            "media_type": "application/json",
+            "octets_text": "{\"claim\":\"the deal's step was completed\",\"issued_at\":\"2026-10-15T00:00:21Z\",\"producer\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"ae0e5d303da94b884f4dff1be4f07a3b3478ef88b6f92f4cddcae4d851bdd805a00c0a8469a981c8e663ad06fa8d801b77ef8b157bc1bef8520989e3e24a7e0b\"}"
+          }
+        ],
+        "binding": {
+          "media_type": "application/json",
+          "octets_text": "{\"binding_version\":\"controller-binding/0\",\"claim\":\"same_controller_asserted\",\"issued_at\":\"2026-10-01T00:00:00Z\",\"keys\":[\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\"],\"method\":\"dual_signature/0\",\"nonce\":\"ceremony-1\",\"not_after\":\"2027-10-01T00:00:00Z\",\"not_before\":\"2026-10-01T00:00:00Z\",\"revocation\":\"revocation_statement/0\",\"sigs\":[{\"key_id\":\"8934da1869ca4dd634e362e4959e029bf4175f5dc9ea28f573a5e4f1835cfc0f\",\"sig\":\"97c55701487873ee125a548b8b745406ca2757858e80ccd5394166521e442fab0cf04e0fc9fa460f2de8bc2d1926b319d52316c0b04dbaf64ff16864bcd8040f\"},{\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"sig\":\"5734793e2d6624fb893b0d1a01aeff23ad3a861b99fe6082e088f483c4ee9c5c2f533be102777c7051ebb5a2fe8c0b244eae066ec12856ec5f6c2fbe7bd10604\"}]}"
+        },
+        "revocation_list": {
+          "declaration": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "binding": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+            "list_digest": "56ee45bde72fedf49196f9e02f78c574a112dc92bf05b74f74c49ed470791a59",
+            "as_of": "2026-10-19T00:00:00Z",
+            "max_age": 86400,
+            "sig": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "media_type": "application/json",
+          "octets_text": "[{\"binding\":\"7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d\",\"key_id\":\"f0e8b3356ce3f2a41a4c5583c3a6c30dfa24f0a09a24d166422d09341e391f0c\",\"revocation_version\":\"controller-binding-revocation/0\",\"revoked_at\":\"2026-10-12T00:00:00Z\",\"sig\":\"8b3a6fc4d5a404ba4cf12fe9e6635dcb8532a56bf3c94e1c7c7423a0ef7d9f7406524649f60d467984c7abf6e9a3953d07e25e7db062910f6961451d4e17b70f\"}]"
+        }
+      },
+      "expected": {
+        "halves": {
+          "signatures": [
+            "PASS",
+            "PASS"
+          ],
+          "agree": true
+        },
+        "binding": {
+          "claim": "same_controller_asserted",
+          "binding_digest": "7c32632350a8bdf8793dffa50726967520afcf55007af3aa194dac7c8973474d",
+          "properties": {
+            "controller_binding_form": "PASS",
+            "controller_binding_signatures": "PASS",
+            "controller_binding_window": "PASS",
+            "controller_binding_revocation": "FAIL"
+          },
+          "binds_pair": true,
+          "applies": false,
+          "proves": [
+            "control of both keys at the ceremony",
+            "both key holders state that one controller holds both keys"
+          ],
+          "revocation_list": {
+            "profile": "controller-binding-v0 vectors (CB §10)",
+            "asserted_by": "the vectors' run that pins the revocation list",
+            "list_digest": "56ee45bde72fedf49196f9e02f78c574a112dc92bf05b74f74c49ed470791a59",
+            "as_of": "2026-10-19T00:00:00Z",
+            "counts": false
+          }
+        },
+        "issuer_independence": {
+          "status": "NOT_CHECKED",
+          "shown_as": "not corroborating",
+          "reason": null,
+          "satisfied_becomes": {
+            "r-corroborated": "UNKNOWN"
+          }
+        },
+        "fails": [
+          "controller_binding_revocation"
+        ]
       }
     }
   ]

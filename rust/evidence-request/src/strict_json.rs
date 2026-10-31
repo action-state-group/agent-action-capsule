@@ -14,18 +14,49 @@
 //! nesting deeper than 128, input that is not UTF-8, and anything after the
 //! value but whitespace. The profile's Python verifier refuses the same,
 //! except that it bounds nesting only by its recursion limit.
+//!
+//! [`decode_json_numbers`] is the same decoder with every RFC 8259 number
+//! accepted, as Go's `evidencerequest.DecodeJSON` reads one. A controller
+//! binding needs it: a `bip340` signature whose `created_at` is `-1` is a
+//! well-formed record whose signature fails (CB §4.1), not a record that
+//! cannot be read. An integer that fits `i64` or `u64` is kept exactly; any
+//! other number is kept as an `f64`, which has no RFC 8785 form in this
+//! crate (`jcs`). A number beyond f64's range, such as `1e400`, is kept as
+//! `±f64::MAX`, so it too is a non-integer and the document stays readable,
+//! as it is to Go and Python.
 
-use serde_json::{Map, Value};
+use serde_json::{Map, Number, Value};
 
 const MAX_DEPTH: usize = 128;
 const MAX_INTEGER: u64 = (1 << 53) - 1;
 
+/// Which numbers the decoder accepts.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Numbers {
+    /// Digits alone, 0 to 2^53 − 1 (the profile's integers, §5.2).
+    Profile,
+    /// Any RFC 8259 number.
+    Json,
+}
+
 /// The value the octets hold, or `None` when they are refused.
+#[cfg_attr(not(feature = "acceptance"), allow(dead_code))]
 pub(crate) fn decode(octets: &[u8]) -> Option<Value> {
+    decode_with(octets, Numbers::Profile)
+}
+
+/// [`decode`], with any RFC 8259 number accepted.
+#[cfg_attr(not(feature = "controller-binding"), allow(dead_code))]
+pub(crate) fn decode_json_numbers(octets: &[u8]) -> Option<Value> {
+    decode_with(octets, Numbers::Json)
+}
+
+fn decode_with(octets: &[u8], numbers: Numbers) -> Option<Value> {
     let text = std::str::from_utf8(octets).ok()?;
     let mut p = Parser {
         s: text.as_bytes(),
         i: 0,
+        numbers,
     };
     p.ws();
     let value = p.value(0)?;
@@ -36,6 +67,7 @@ pub(crate) fn decode(octets: &[u8]) -> Option<Value> {
 struct Parser<'a> {
     s: &'a [u8],
     i: usize,
+    numbers: Numbers,
 }
 
 impl Parser<'_> {
@@ -68,6 +100,7 @@ impl Parser<'_> {
             b't' => self.literal(b"true", Value::Bool(true)),
             b'f' => self.literal(b"false", Value::Bool(false)),
             b'n' => self.literal(b"null", Value::Null),
+            b'0'..=b'9' | b'-' if self.numbers == Numbers::Json => self.json_number(),
             b'0'..=b'9' => self.integer(),
             // A sign, a leading `.` or anything else is not a profile integer.
             _ => None,
@@ -141,6 +174,62 @@ impl Parser<'_> {
         }
         let n: u64 = std::str::from_utf8(digits).ok()?.parse().ok()?;
         (n <= MAX_INTEGER).then(|| Value::from(n))
+    }
+
+    /// An RFC 8259 number: `-? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)?`.
+    fn json_number(&mut self) -> Option<Value> {
+        let start = self.i;
+        self.eat(b'-');
+        let int_start = self.i;
+        let digits = |p: &mut Self| {
+            let from = p.i;
+            while matches!(p.peek(), Some(b'0'..=b'9')) {
+                p.i += 1;
+            }
+            p.i - from
+        };
+        let int_digits = digits(self);
+        if int_digits == 0 || (int_digits > 1 && self.s[int_start] == b'0') {
+            return None;
+        }
+        let mut integer = true;
+        if self.eat(b'.').is_some() {
+            integer = false;
+            if digits(self) == 0 {
+                return None;
+            }
+        }
+        if matches!(self.peek(), Some(b'e' | b'E')) {
+            self.i += 1;
+            integer = false;
+            if matches!(self.peek(), Some(b'+' | b'-')) {
+                self.i += 1;
+            }
+            if digits(self) == 0 {
+                return None;
+            }
+        }
+        let text = std::str::from_utf8(&self.s[start..self.i]).ok()?;
+        if integer {
+            if let Ok(n) = text.parse::<i64>() {
+                return Some(Value::from(n));
+            }
+            if let Ok(n) = text.parse::<u64>() {
+                return Some(Value::from(n));
+            }
+        }
+        // A token beyond f64's range (`1e400`) is still a number, as Go's
+        // UseNumber and Python read it. It parses to an infinity, which
+        // serde_json cannot hold, so it is kept as the largest finite f64 of
+        // the same sign: still not an integer, and still with no RFC 8785
+        // form here.
+        let n: f64 = text.parse().ok()?;
+        let n = if n.is_finite() {
+            n
+        } else {
+            f64::MAX.copysign(n)
+        };
+        Number::from_f64(n).map(Value::Number)
     }
 
     fn string(&mut self) -> Option<String> {
@@ -263,6 +352,39 @@ mod tests {
             assert_eq!(decode(text.as_bytes()), None, "{text:?}");
         }
         assert_eq!(decode(&[0x22, 0xff, 0x22]), None, "not UTF-8");
+    }
+
+    #[test]
+    fn json_numbers_reads_every_rfc_8259_number_and_refuses_other_tokens() {
+        use super::decode_json_numbers;
+        assert_eq!(decode_json_numbers(b"-1"), Some(json!(-1)));
+        assert_eq!(
+            decode_json_numbers(b"[0,-0,18446744073709551615]"),
+            Some(json!([0, 0, 18446744073709551615u64]))
+        );
+        for text in [
+            "1.5",
+            "-2e3",
+            "1E+2",
+            "18446744073709551616",
+            "1e400",
+            "-1e400",
+            "1e-400",
+        ] {
+            let value = decode_json_numbers(text.as_bytes()).expect(text);
+            assert!(
+                value.is_number() && value.as_i64().is_none() && value.as_u64().is_none(),
+                "{text}"
+            );
+        }
+        // Beyond f64's range: the largest finite f64 of the same sign.
+        assert_eq!(
+            decode_json_numbers(b"[1e400,-1e400]"),
+            Some(json!([f64::MAX, -f64::MAX]))
+        );
+        for text in ["01", "-", "1.", ".5", "1e", "+1", "--1", r#"{"a":1,"a":2}"#] {
+            assert_eq!(decode_json_numbers(text.as_bytes()), None, "{text:?}");
+        }
     }
 
     #[test]

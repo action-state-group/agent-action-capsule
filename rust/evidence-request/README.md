@@ -18,12 +18,15 @@ refusal, or the requester's own record that nothing arrived.
 | `envelope` (0.2.0) | the interop profile's artifact envelope (`evidence-interop/0` §6.2): sign it, encode it in either binding, read a reply as carried, and accept it as a responder's answer to your request |
 | `cll_material` (0.2.0, feature `cll`) | check the Checkpointed Local Log verification material an envelope carries (profile §6.2.1, `anchor_inclusion`) |
 | `acceptance` (unreleased, feature `acceptance`) | the interop profile's acceptance records and receipts (§11.1): sign them, read them as both parties must, and evaluate the §11.1.7 properties and the §11.1.8 finding. The profile's, not the request protocol's; it lives beside the profile's envelope |
+| `controller_binding` (unreleased, feature `controller-binding`) | Controller Binding v0 (`spec/controller-binding-v0.md`), which the profile's issuer independence uses (§6.7.4): a binding record's properties, with `ed25519` and `bip340` (Nostr) keys, revocation statements and a revocation list declared complete, whether the binding applies to a pair, and the `issuer_independence` it gives |
 
 **Features.** None is on by default: with no features the crate is the
-protocol core (every module above except `receipt`, `cll_material` and
-`acceptance`) and does not depend on checkpointed-local-log. `cll` enables
-`cll_material` and the checkpointed-local-log dependency; `receipt` enables
-`receipt`; `acceptance` enables `acceptance`, with no new dependency.
+protocol core (every module above except `receipt`, `cll_material`,
+`acceptance` and `controller_binding`) and does not depend on
+checkpointed-local-log. `cll` enables `cll_material` and the
+checkpointed-local-log dependency; `receipt` enables `receipt`; `acceptance`
+enables `acceptance`, with no new dependency; `controller-binding` enables
+`controller_binding` and the k256 dependency, for BIP-340.
 
 ```toml
 evidence-request = "0.2"                                     # protocol core
@@ -77,7 +80,8 @@ malformed proof classification. See `tests/vectors/SOURCES.md`. The
 envelope, the CLL material checks and `acceptance` run against the interop
 profile's corpus, `vectors/interop-profile-v0/`; `acceptance` is also compared
 with session-scoped cases frozen from the profile's Python verifier
-(`tests/vectors/acceptance-session.json`).
+(`tests/vectors/acceptance-session.json`). `controller_binding` runs every case
+of `vectors/controller-binding-v0/`.
 
 ## License
 
