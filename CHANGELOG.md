@@ -23,6 +23,11 @@ has not yet.
   less for its depth alone, with `vectors/json-nesting/` as its conformance set.
   `spec/interop-profile-v1.md` §5.2, `VECTORS.md` and the vector README and manifest cite it.
   Nothing is posted until the -06 cut; the wire value stays `draft-mih-scitt-agent-action-capsule-05`.
+- Go `witness.VerifyCOSEReceipt` refuses a COSE Receipt whose payload is CBOR undefined (`0xf7`)
+  (AAC#519). fxamacker decodes undefined and null alike, so such a receipt was read as detached and
+  accepted, while scitt-cose, Python and TypeScript refuse it; only null (`0xf6`) is detached. The
+  Rust crate had the same gap and is fixed too. New strict vector `neg-witness-cll-undefined-payload`
+  (`vectors/bundle/strict/`, now 74 cases).
 
 ## go 0.18.0 — 2026-10-31
 

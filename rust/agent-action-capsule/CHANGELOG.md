@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The strict receipt check refuses a COSE Receipt whose payload is CBOR undefined (`0xf7`)
+  (AAC#519): `coset` reads it as an absent payload, so it was taken as detached. Only null
+  (`0xf6`) is detached, as scitt-cose's Python verifier has it. Passes the new strict vector
+  `neg-witness-cll-undefined-payload`.
+
 ## 0.6.0 — 2026-10-31
 
 Tag `crates/agent-action-capsule-v0.6.0`.

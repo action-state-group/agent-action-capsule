@@ -247,7 +247,8 @@ A receipt verifies over a leaf when all of these hold:
 - it is a CBOR tag-18 COSE_Sign1 whose payload is detached (`nil`), so the
   signature covers the rebuilt Merkle root. An attached payload is refused
   even when its signature verifies: it binds nothing
-  (`neg-witness-cll-attached-payload`);
+  (`neg-witness-cll-attached-payload`). Only CBOR null (`0xf6`) is detached;
+  undefined (`0xf7`) is refused (`neg-witness-cll-undefined-payload`);
 - its protected header has `vds` (395) equal to the integer 1
   (RFC9162_SHA256) and an `alg` (1) of the integer -8 (EdDSA) or -7 (ES256).
   No other `vds` or `alg` is accepted, nor `true` or a float. The `alg`
