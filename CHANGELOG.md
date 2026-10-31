@@ -23,8 +23,8 @@ has not yet.
   `spec/interop-profile-v1.md` §5.2 requires it of every signature the profile checks (P-68), and
   `vectors/interop-profile-v1/` gains four `FAIL` cases (58 to 62): `envelope-small-order-key`,
   `envelope-identity-r`, `forged-refusal-small-order-key` and `forged-refusal-identity-r`.
-  `vectors/settlement/` gains `pos-wrapped-jws-identity-r-not-resigned` (24 to 25), read as strict
-  Ed25519 by the settlement `wrapped_resigned` check. `evidence-interop/0` stays frozen.
+  `evidence-interop/0` stays frozen. The settlement identity-R case (#494) waits on a ruling on
+  what the `wrapped_resigned` check should count.
 - The capsule draft states the JSON nesting limit (AAC#498): the in-tree working revision
   `spec/draft-mih-scitt-agent-action-capsule-06.md` (cut from the posted -05, `spec/Makefile` now
   gates it) says in Conventions that a JSON text or value nests at most 128 levels, a verifier

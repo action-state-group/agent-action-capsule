@@ -980,11 +980,7 @@ leg, and therefore the digest of the wrapped object; it says that the
 sealer holds an object with that digest, not that the sealer issued it.
 A wrapped object whose signature verifies under the sealer's own leg key,
 where the wrapped type's issuer is a different party, is
-<tt>wrapped_resigned</tt>. "Verifies" means strict Ed25519 verification as the
-Capsule profile defines it (<xref target="I-D.mih-scitt-agent-action-capsule"/>,
-Conventions and Definitions): a signature that a lenient verifier
-accepts only because the signature's R is a point of small order is not
-a signature by the leg key, and is not <tt>wrapped_resigned</tt>.</t>
+<tt>wrapped_resigned</tt>.</t>
         </li>
         <li>
           <t><strong>Verification of the wrapped object is the wrapped protocol's.</strong> A
@@ -2247,7 +2243,7 @@ been incorporated into this document. This document obsoletes RFC
         </reference>
       </references>
     </references>
-    <?line 1317?>
+    <?line 1313?>
 
 <section numbered="false" anchor="vectors">
       <name>Conformance Vectors</name>
@@ -2319,11 +2315,6 @@ before publication.</t>
 record before any check in this document (<xref target="conventions"/>). The
 Capsule profile reference is updated to
 draft-mih-scitt-agent-action-capsule-06, which states the limit.</t>
-        </li>
-        <li>
-          <t>Strict Ed25519: the <tt>wrapped_resigned</tt> check reads "verifies under the
-sealer's own leg key" as strict Ed25519 verification, as the Capsule
-profile defines it (<xref target="wrap"/>).</t>
         </li>
         <li>
           <t>Wire unchanged: the <tt>settlement</tt> member's <tt>version</tt> is still <tt>"0"</tt>

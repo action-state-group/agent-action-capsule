@@ -788,11 +788,7 @@ The rules:
    sealer holds an object with that digest, not that the sealer issued it.
    A wrapped object whose signature verifies under the sealer's own leg key,
    where the wrapped type's issuer is a different party, is
-   `wrapped_resigned`. "Verifies" means strict Ed25519 verification as the
-   Capsule profile defines it ({{I-D.mih-scitt-agent-action-capsule}},
-   Conventions and Definitions): a signature that a lenient verifier
-   accepts only because the signature's R is a point of small order is not
-   a signature by the leg key, and is not `wrapped_resigned`.
+   `wrapped_resigned`.
 4. **Verification of the wrapped object is the wrapped protocol's.** A
    verifier MAY verify the wrapped object under its own protocol's rules
    (for example an AP2 receipt under the processor's key). This document
@@ -1371,9 +1367,6 @@ before publication.
   record before any check in this document ({{conventions}}). The
   Capsule profile reference is updated to
   draft-mih-scitt-agent-action-capsule-06, which states the limit.
-* Strict Ed25519: the `wrapped_resigned` check reads "verifies under the
-  sealer's own leg key" as strict Ed25519 verification, as the Capsule
-  profile defines it ({{wrap}}).
 * Wire unchanged: the `settlement` member's `version` is still `"0"`
   ({{settlement-member}}).
 

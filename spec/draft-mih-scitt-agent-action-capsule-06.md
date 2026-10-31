@@ -229,11 +229,13 @@ Section 5.1.3: the y coordinate is below the field prime, and an x of zero
 does not carry the sign bit) and of neither small order (the eight points
 whose order divides 8), if the scalar S is below the group order L, and if
 the cofactorless equation `[S]B = R + [k]A` of {{RFC8032}}, Section 5.1.7,
-holds. It rejects the signature if any condition fails. {{RFC8032}} permits
-verifiers to differ on these inputs, and a small-order A or R lets a key
-holder produce a signature that a lenient verifier accepts as the key's own.
-This section fixes the cofactorless equation, so a key of mixed order is
-read the same way by every strict verifier. A conformance vector set is
+holds. It rejects the signature if any condition fails. {{RFC8032}} fixes
+the decoding rules and the bound on S, and leaves open which of its two
+verification equations a verifier uses and so how it treats points of small
+order. A lenient verifier accepts, for a small-order A, a signature over any
+message that anyone can produce, and, for a small-order R, a signature that
+other verifiers refuse. This section fixes the cofactorless equation, so a
+key of mixed order is read the same way by every strict verifier. A conformance vector set is
 maintained at `vectors/cross-language/cll-ed25519-vectors.json` in this
 document's source repository. This section does not by itself make any
 signature in this document strict: the Producer Envelope check
@@ -1954,8 +1956,9 @@ before publication.
   {{verification}}).
 * Strict Ed25519: the conditions of a strict verification are defined once
   (A and R canonical and not of small order, S below L, the cofactorless
-  equation) for documents that require it; the Producer Envelope check is
-  not yet changed ({{conventions}}).
+  equation) for documents that require it. The Producer Envelope check
+  ({{verification}}) is not yet strict; a later revision makes it so, and
+  the definition does not apply to it until then ({{conventions}}).
 * Producer Envelope encoding: every CBOR data item of a Producer Envelope,
   including those inside the protected-header byte string, has a definite
   length and preferred serialization, map keys are unique, the outermost

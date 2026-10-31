@@ -135,7 +135,7 @@ func TestSettlementVectors(t *testing.T) {
 	}
 	decode(t, filepath.Join(vectorDir(), "cases.json"), &file)
 	require.Equal(t, file.Count, len(file.Cases))
-	require.Equal(t, 25, len(file.Cases))
+	require.Equal(t, 24, len(file.Cases))
 	for _, c := range file.Cases {
 		t.Run(c.ID, func(t *testing.T) {
 			var expect map[string]interface{}

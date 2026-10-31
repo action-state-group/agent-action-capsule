@@ -321,12 +321,12 @@ order, and the cofactorless equation must hold, as the capsule draft defines in 
 section of its unposted working revision (`spec/draft-mih-scitt-agent-action-capsule-06.md`).
 That revision is not pinned here either; the rule is this profile's own. A signature that fails
 it is a failed signature: for a response, the verifier reports the signature property for that
-object (`envelope_signature`, `refusal_signature`) as `FAIL`, and a signature by a key of small order
-under a trust policy that accepts the key is still `FAIL`. `vectors/interop-profile-v1/` holds four
+object (for example `envelope_signature` or `refusal_signature`) as `FAIL`, and a signature by a key
+of small order under a trust policy that accepts the key is still `FAIL`. `vectors/interop-profile-v1/` holds four
 cases of it: `envelope-small-order-key`, `envelope-identity-r`, `forged-refusal-small-order-key`
-and `forged-refusal-identity-r`. The rule applies to every Ed25519 signature this profile has a
-verifier check for; a signature that the profile only carries, such as the envelope of a foreign
-object, is checked by that object's own check (§5.1).
+and `forged-refusal-identity-r`. The rule applies to every Ed25519 signature that a check of §6,
+§7.2 or §11 verifies, the Checkpointed Local Log checkpoint signature included; a signature inside a
+foreign object, which the profile only carries, is checked by that object's own check (§5.1).
 
 ## 6. Messages, and what binds them
 
@@ -3376,15 +3376,15 @@ it defers, and P-68 the strict Ed25519 rule.
   and the envelope it signs; a witness countersignature [CLL §3.3 item 2]; a way for a Receipt to
   say that its witness checked continuity [CLL §3.2 item 2]; and any other Receipt profile than
   RFC9162_SHA256.
-- **P-68** Strict Ed25519 verification (§5.2). RFC 8032 lets verifiers differ on a public key or an R
-  of small order, on a non-canonical encoding, and on S at or above the group order. With a key of
-  small order that a trust policy accepts, a signature exists that a lenient verifier accepts and a
+- **P-68** Strict Ed25519 verification (§5.2). RFC 8032 leaves open which verification equation a verifier uses, and so how it treats a public key
+  or an R of small order. With a key of small order that a trust policy accepts, a signature exists that a lenient verifier accepts and a
   strict one rejects, so two conforming verifiers could report the same exchange differently. The
   profile therefore fixes one condition for every verifier. The rule is the capsule draft -06
-  Conventions rule, cited and not pinned, as for the nesting limit (P-12). It applies to the
-  signatures this profile's verifier checks: the envelope, the refusal, the request's optional
-  signature, the acceptance record and the lifecycle statement; the witness Receipt already says it
-  (P-67). `evidence-interop/0` is frozen and states no rule. Left open: a signature inside a
+  Conventions rule, cited and not pinned, as for the nesting limit (P-12). It applies to every
+  signature that a check of §6, §7.2 or §11 verifies: the envelope and the refusal, the optional
+  requester signature of an absence record, the checkpoint signature behind `anchor_inclusion`, the
+  acceptance record and its receipt, the execution and producer records of §11.1 and §11.2, and the
+  lifecycle statement; the witness Receipt already says it (P-67). `evidence-interop/0` is frozen and states no rule. Left open: a signature inside a
   foreign object, which that object's own check decides, and the Producer Envelope of a Capsule,
   which the capsule draft does not yet make strict (#322).
 

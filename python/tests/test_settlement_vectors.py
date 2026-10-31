@@ -25,7 +25,6 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from agent_action_capsule import compute_capsule_id
-from agent_action_capsule._ed25519_strict import strict_encoding
 from agent_action_capsule.verify import verify
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -253,16 +252,12 @@ def _structure_failures(s: Any) -> list[str]:  # §4.2, §3 item 4, §5.4, §6
 
 
 def _jws_verifies(octets: bytes, public_hex: str) -> bool:
-    """Strict Ed25519: the library's strict-encoding check (A and R canonical and not of small
-    order, S < L), then ``cryptography``'s equation."""
     parts = octets.split(b"~", 1)[0].split(b".")
     if len(parts) != 3:
         return False
     try:
-        key, signature = bytes.fromhex(public_hex), _b64u_decode(parts[2].decode("ascii"))
-        if not strict_encoding(key, signature):
-            return False
-        Ed25519PublicKey.from_public_bytes(key).verify(signature, parts[0] + b"." + parts[1])
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_hex)).verify(
+            _b64u_decode(parts[2].decode("ascii")), parts[0] + b"." + parts[1])
         return True
     except (InvalidSignature, ValueError):
         return False
