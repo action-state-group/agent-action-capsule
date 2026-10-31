@@ -108,6 +108,7 @@ already. No case reaches it, as in `vectors/coverage-declaration-v0/`.
 | `nostr-created-at-text` | the same over `created_at` written as text | `controller_binding_signatures` | `NOT_CHECKED` |
 | `key-types-malformed` | `key_types` holds one token | `controller_binding_form` | `NOT_CHECKED` |
 | `key-types-unknown` | `key_types` names an unlisted token: signatures `NOT_CHECKED`; a revocation by that key, signed with Ed25519, does not apply | nothing | `NOT_CHECKED` |
+| `no-half-key-bound` | valid, but binds the third key to the `bip340` key, so it names neither half's key | nothing; it does not bind the pair | `NOT_CHECKED` |
 
 No case shows `issuer_independence` `PASS`. A binding never gives it (CB §7), and this revision
 registers no evidence that does (IP P-60).

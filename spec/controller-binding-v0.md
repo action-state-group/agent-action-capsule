@@ -426,6 +426,7 @@ These formats are fixed for the vectors only and are not registered:
 | `nostr-created-at-text` | the same over a `created_at` written as text: signatures `FAIL` |
 | `key-types-malformed` | `key_types` names one type for two keys: form `FAIL` |
 | `key-types-unknown` | `key_types` names a token §3.3 does not list: signatures `NOT_CHECKED`, the binding does not apply; a revocation by that key signed with Ed25519 does not apply either, so revocation is `NOT_CHECKED` |
+| `no-half-key-bound` | a valid binding of a third key to the `bip340` key, naming neither half's key: form, signatures and window `PASS`, it does not bind the pair, `NOT_CHECKED` |
 
 No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it (IP P-60).
 

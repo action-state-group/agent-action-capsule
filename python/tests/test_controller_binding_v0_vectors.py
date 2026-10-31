@@ -221,6 +221,7 @@ class Rules:
     credential: bool = True                 # §6.1
     credential_decides: bool = False        # §6.2: the credential never decides application
     binds_pair: bool = True                 # §6.2
+    binds_by_both_keys: bool = True         # §6.2: the record's two keys are the pair's, not merely alike in it
     not_checked_revocation_applies: bool = True  # §6.2: only a FAIL revocation blocks
     binding_gives: str = "FAIL"             # §7 item 4
     key_types_read: bool = True             # §3.3: key_types gives each key's type
@@ -350,7 +351,13 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
 
     r = parse(case["inputs"]["binding"]["octets_text"])
     props = binding_properties(r, case, times, rules)
-    binds = (not rules.binds_pair) or (isinstance(r.get("keys"), list) and sorted(r["keys"]) == pair)
+    keys = r.get("keys") if isinstance(r.get("keys"), list) else []
+    if not rules.binds_pair:
+        binds = True
+    elif rules.binds_by_both_keys:
+        binds = sorted(keys) == pair
+    else:  # the defect: the halves' keys are "bound" when the record names both or neither of them
+        binds = (pair[0] in keys) == (pair[1] in keys)
     blocking = {"FAIL"} if rules.not_checked_revocation_applies else {"FAIL", "NOT_CHECKED"}
     applies = (binds and all(props.get(p) == "PASS" for p in ("controller_binding_form",
                                                                "controller_binding_signatures",
@@ -388,7 +395,7 @@ def comparable(expected: dict) -> dict:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 25
+    assert DATA["count"] == len(CASES) == 26
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     for case in CASES:
         assert case["pins"]["contract_digest"] == DATA["contract"]["contract_digest"]
@@ -485,6 +492,7 @@ DEFECTS = {
     "credential not checked": replace(SPEC, credential=False),
     "a failed credential discards the signatures": replace(SPEC, credential_decides=True),
     "binding applies to any pair": replace(SPEC, binds_pair=False),
+    "a pair is bound when the record names both or neither": replace(SPEC, binds_by_both_keys=False),
     "NOT_CHECKED revocation blocks a binding": replace(SPEC, not_checked_revocation_applies=False),
     "a binding gives PASS": replace(SPEC, binding_gives="PASS"),
     "a binding is ignored": replace(SPEC, binding_gives="NOT_CHECKED"),
@@ -499,6 +507,14 @@ DEFECTS = {
 def test_every_defective_evaluator_is_caught(name):
     rules = DEFECTS[name]
     assert any(evaluate(c, rules) != comparable(c["expected"]) for c in CASES), name
+
+
+def test_a_binding_naming_neither_half_is_the_case_that_catches_membership_agreement():
+    """no-half-key-bound is the case a port deciding binds_pair by whether the record names both halves' keys
+    alike fails on (agent-action-capsule#468): other-keys names one of them, so it does not tell."""
+    rules = DEFECTS["a pair is bound when the record names both or neither"]
+    caught = [c["id"] for c in CASES if evaluate(c, rules) != comparable(c["expected"])]
+    assert caught == ["no-half-key-bound"]
 
 
 def test_ignoring_the_binding_is_the_unbound_keys_rule():
