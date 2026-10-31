@@ -50,13 +50,20 @@
 //!   must, and evaluate the §11.1.7 properties and the §11.1.8 finding.
 //!   This is the profile's, not the request protocol's; it lives here
 //!   beside the profile's envelope.
+//! - `controller_binding` (feature `controller-binding`): Controller
+//!   Binding v0 (`spec/controller-binding-v0.md`), the binding record the
+//!   profile's issuer independence uses (§6.7.4): its properties, a declared
+//!   revocation list, whether it applies to a pair, and the
+//!   `issuer_independence` it gives. Like `acceptance`, it is the profile's,
+//!   and lives here beside the profile's statuses, times and JCS.
 //!
 //! Building an artifact from a store or a log is the responder's business:
 //! a Checkpointed Local Log responder is the `evidencebook` crate.
 //!
 //! Features: `cll` enables `cll_material` and depends on
 //! checkpointed-local-log; `receipt` enables `receipt`; `acceptance` enables
-//! `acceptance`, with no new dependency. With no features the
+//! `acceptance`, with no new dependency; `controller-binding` enables
+//! `controller_binding` and depends on k256 for BIP-340. With no features the
 //! crate is the protocol core above, with no checkpointed-local-log
 //! dependency.
 //!
@@ -67,6 +74,8 @@
 pub mod acceptance;
 #[cfg(feature = "cll")]
 pub mod cll_material;
+#[cfg(feature = "controller-binding")]
+pub mod controller_binding;
 mod det_cbor;
 pub mod digest;
 pub mod envelope;
@@ -81,7 +90,7 @@ pub mod request;
 pub mod resolve;
 pub mod retention;
 pub mod status;
-#[cfg(feature = "acceptance")]
+#[cfg(any(feature = "acceptance", feature = "controller-binding"))]
 mod strict_json;
 pub mod time;
 mod value;
