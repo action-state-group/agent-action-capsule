@@ -162,7 +162,8 @@ def test_carried_join_order_does_not_change_the_composed_digest():
     block["joins"].reverse()
     assert _jcs(_composed_input(block)) == preimage
     joins = json.loads(preimage)["joins"]
-    assert [("pointer" in j, j.get("pointer")) for j in joins[1:]] == [(False, None), (True, "")]
+    # issued_receipt < pre_agreed_identifier < same_interval; pointers by UTF-8 octets.
+    assert [j.get("pointer") for j in joins[:2] + joins[3:]] == ["/\ue000", "/\U00010000", None, ""]
 
 
 # ---------------------------------------------------------------------------

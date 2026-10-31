@@ -43,7 +43,8 @@ Cases:
   ``one_sided``.
 * ``join-order-pointer-absent-first``: two ``same_interval`` joins on one
   pair, one with ``pointer`` ``""`` and one without, carried in that order;
-  the digest input lists the join without ``pointer`` first (-02).
+  the digest input lists the join without ``pointer`` first (-02); two
+  ``issued_receipt`` pointers carried in UTF-16 order sort by UTF-8 octets.
 
 Output: ``vectors/bundle/composed/`` (or ``--out DIR``). The run is a pure
 function of this file: no clock, no randomness (Ed25519 is deterministic).
@@ -721,11 +722,15 @@ def case_join_order_pointer_absent_first() -> dict:
     members, observers = two_responders()
     pair = ["responder-a", "responder-b"]
     # Carried with pointer "" first: the digest input puts the join without
-    # pointer first, so the carried order does not reach the digest.
+    # pointer first, so the carried order does not reach the digest. The two
+    # issued_receipt pointers order one way by UTF-8 octets (U+E000 first) and
+    # the other way by UTF-16 code units; they are carried in the latter.
     joins = [
         join("responder-a", "responder-b", "agree"),
         {"members": pair, "basis": "same_interval", "pointer": "", "state": "agree"},
         {"members": pair, "basis": "same_interval", "state": "unjoined"},
+        {"members": pair, "basis": "issued_receipt", "pointer": "/\U00010000", "state": "unjoined"},
+        {"members": pair, "basis": "issued_receipt", "pointer": "/\ue000", "state": "unjoined"},
     ]
     comp = block(members, observers, joins)
     digest, preimage = composed_digest(comp)
@@ -738,7 +743,10 @@ def case_join_order_pointer_absent_first() -> dict:
                        "are distinct joins. In the digest input (draft-mih-zhang-agent-disclosure-bundle-02) a "
                        "join without pointer sorts before every join with one, so the canonical preimage lists "
                        "the join without pointer first and the carried order does not change the composed "
-                       "digest. same_interval is a reserved basis, so both joins are not_derivable.",
+                       "digest. Two issued_receipt joins whose pointers are /U+10000 and /U+E000 sort by UTF-8 "
+                       "octets (U+E000 first), the reverse of UTF-16 code-unit order, in which they are "
+                       "carried. same_interval and issued_receipt are reserved bases, so those four joins are "
+                       "not_derivable.",
         "container": container(comp),
         "expect": {
             "composed_digest": digest,
@@ -753,10 +761,11 @@ def case_join_order_pointer_absent_first() -> dict:
             "composition_closure": {"status": "pass", "missing": []},
             "joins": [{"members": pair, "declared": "agree", "derived": "agree", "result": "derived_matches"},
                       {**not_derivable, "declared": "agree"},
+                      {**not_derivable, "declared": "unjoined"},
+                      {**not_derivable, "declared": "unjoined"},
                       {**not_derivable, "declared": "unjoined"}],
-            "corroboration": [{"members": pair, "result": "corroborating", "qualifier": "custody_declared"},
-                              {"members": pair, "result": "not_applicable"},
-                              {"members": pair, "result": "not_applicable"}],
+            "corroboration": [{"members": pair, "result": "corroborating", "qualifier": "custody_declared"}]
+                             + [{"members": pair, "result": "not_applicable"}] * 4,
         },
     }
 

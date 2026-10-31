@@ -1314,8 +1314,10 @@ when it has none.</t>
                 </li>
               </ul>
               <t>
-Identifiers are ASCII (<tt>label-id</tt>), so ascending order is octet order. The
-order in which arrays are carried does not affect the digest.</t>
+Identifiers are ASCII (<tt>label-id</tt>), so ascending order is octet order.
+<tt>pointer</tt> values, which may hold any character, compare by the octets of
+their UTF-8 encoding. The order in which arrays are carried does not affect
+the digest.</t>
             </li>
             <li>
               <t><tt>composed_digest</tt> is the lowercase hexadecimal SHA-256 of the UTF-8 octets
@@ -2028,7 +2030,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 1625?>
+    <?line 1627?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
@@ -2097,7 +2099,8 @@ checkpoint is signed by the cleared stream's key.</t>
         <li>
           <t><tt>composed/v1</tt> composed digest: a join without <tt>pointer</tt> sorts before every
 join with one, including a <tt>pointer</tt> that is the empty string. -01 sorted
-the two alike, so their carried order changed the digest.</t>
+the two alike, so their carried order changed the digest. <tt>pointer</tt> values
+compare by their UTF-8 octets.</t>
         </li>
         <li>
           <t>Cites Evidence Request -01 and, informatively, Evidence Layer -00 and the

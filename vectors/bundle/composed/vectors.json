@@ -1812,7 +1812,7 @@
         "composed/v1: Composed Digest",
         "composed/v1: Joins"
       ],
-      "description": "The agree composition with two more joins on one pair and one basis: one with pointer \"\" (the whole-document JSON Pointer), one without pointer, carried in that order. They are distinct joins. In the digest input (draft-mih-zhang-agent-disclosure-bundle-02) a join without pointer sorts before every join with one, so the canonical preimage lists the join without pointer first and the carried order does not change the composed digest. same_interval is a reserved basis, so both joins are not_derivable.",
+      "description": "The agree composition with two more joins on one pair and one basis: one with pointer \"\" (the whole-document JSON Pointer), one without pointer, carried in that order. They are distinct joins. In the digest input (draft-mih-zhang-agent-disclosure-bundle-02) a join without pointer sorts before every join with one, so the canonical preimage lists the join without pointer first and the carried order does not change the composed digest. Two issued_receipt joins whose pointers are /U+10000 and /U+E000 sort by UTF-8 octets (U+E000 first), the reverse of UTF-16 code-unit order, in which they are carried. same_interval and issued_receipt are reserved bases, so those four joins are not_derivable.",
       "container": {
         "bundle_version": "2",
         "bundle_kind": "evidence-bundle/v2",
@@ -1982,15 +1982,33 @@
                 ],
                 "basis": "same_interval",
                 "state": "unjoined"
+              },
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "issued_receipt",
+                "pointer": "/𐀀",
+                "state": "unjoined"
+              },
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "issued_receipt",
+                "pointer": "/",
+                "state": "unjoined"
               }
             ],
-            "composed_digest": "e8d25b09cc2a6c56b41ac799e18f03560cc78be488d93ab09f479ab65ef26206"
+            "composed_digest": "259d91a981271e99c03bf2da6b93f5e5e128debf50e6832171ba8ba5022b68b7"
           }
         }
       },
       "expect": {
-        "composed_digest": "e8d25b09cc2a6c56b41ac799e18f03560cc78be488d93ab09f479ab65ef26206",
-        "canonical_preimage": "{\"joins\":[{\"basis\":\"pre_agreed_identifier\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"e006d2f0045534fa35912ea3c7e3210c50a8cba21bb17b64360fa3d697a629a9\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/model_attestation/compute_attestation/x-example-exchange-v1/exchange_id\",\"state\":\"agree\"},{\"basis\":\"same_interval\",\"members\":[\"responder-a\",\"responder-b\"],\"state\":\"unjoined\"},{\"basis\":\"same_interval\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"\",\"state\":\"agree\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"690c028cc5dc1a859a592f41e78291cfebcbfa4e999c181afde11e96542e4c08\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
+        "composed_digest": "259d91a981271e99c03bf2da6b93f5e5e128debf50e6832171ba8ba5022b68b7",
+        "canonical_preimage": "{\"joins\":[{\"basis\":\"issued_receipt\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/\",\"state\":\"unjoined\"},{\"basis\":\"issued_receipt\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/𐀀\",\"state\":\"unjoined\"},{\"basis\":\"pre_agreed_identifier\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"e006d2f0045534fa35912ea3c7e3210c50a8cba21bb17b64360fa3d697a629a9\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/model_attestation/compute_attestation/x-example-exchange-v1/exchange_id\",\"state\":\"agree\"},{\"basis\":\"same_interval\",\"members\":[\"responder-a\",\"responder-b\"],\"state\":\"unjoined\"},{\"basis\":\"same_interval\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"\",\"state\":\"agree\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"690c028cc5dc1a859a592f41e78291cfebcbfa4e999c181afde11e96542e4c08\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
         "status": "withheld",
         "members": {
           "responder-a": {
@@ -2045,6 +2063,24 @@
             "derived": null,
             "result": "not_derivable",
             "declared": "unjoined"
+          },
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "derived": null,
+            "result": "not_derivable",
+            "declared": "unjoined"
+          },
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "derived": null,
+            "result": "not_derivable",
+            "declared": "unjoined"
           }
         ],
         "corroboration": [
@@ -2055,6 +2091,20 @@
             ],
             "result": "corroborating",
             "qualifier": "custody_declared"
+          },
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "result": "not_applicable"
+          },
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "result": "not_applicable"
           },
           {
             "members": [
