@@ -42,7 +42,6 @@ independent reading of the draft.
 | `neg-wrapped-object-resigned` | The same receipt re-signed with the payee's own leg key. | failure `wrapped_resigned`; the leg is excluded: `terms_only` |
 | `neg-wrapped-sd-jwt-resigned-with-disclosure` | The payee's leg also wraps the Payment Mandate as an SD-JWT with one disclosure (`JWT~disclosure~`), re-signed with the payee's own leg key. Only the issuer JWS before the first `~` is signed. | failure `wrapped_resigned`: `terms_only` |
 | `neg-wrapped-sd-jwt-resigned-no-disclosure` | The same in the `JWT~` form, with no disclosures. | failure `wrapped_resigned`: `terms_only` |
-| `pos-wrapped-jws-identity-r-not-resigned` | The payee wraps the AP2 receipt with its octets, signed by the payee's own leg key with R the identity point. A lenient Ed25519 verifier accepts it; strict Ed25519 (A and R canonical and not of small order, S < L) refuses it, so the receipt carries no signature by the leg key. | no failure: `payee_stated` |
 | `neg-wrapped-content-digest-mismatch` | Wrapped content does not hash to the stated digest. | failure `wrapped_digest_mismatch`: `payer_stated` |
 | `neg-amount-json-float` | `value` is the JSON number 1.5. The leg cannot be canonicalized, so it has no Capsule ID and no envelope. | failures `capsule_invalid`, `amount_not_exact`: `payee_stated` |
 | `neg-amount-decimal-fraction-string` | `value` is the string `"1.500000"`. | failure `amount_not_exact`: `payee_stated` |

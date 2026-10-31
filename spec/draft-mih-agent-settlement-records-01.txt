@@ -1087,12 +1087,7 @@ Internet-Draft          Agent Settlement Records            October 2026
        object; it says that the sealer holds an object with that digest,
        not that the sealer issued it.  A wrapped object whose signature
        verifies under the sealer's own leg key, where the wrapped type's
-       issuer is a different party, is wrapped_resigned.  "Verifies"
-       means strict Ed25519 verification as the Capsule profile defines
-       it ([I-D.mih-scitt-agent-action-capsule], Conventions and
-       Definitions): a signature that a lenient verifier accepts only
-       because the signature's R is a point of small order is not a
-       signature by the leg key, and is not wrapped_resigned.
+       issuer is a different party, is wrapped_resigned.
 
    4.  *Verification of the wrapped object is the wrapped protocol's.* A
        verifier MAY verify the wrapped object under its own protocol's
@@ -1111,6 +1106,11 @@ Internet-Draft          Agent Settlement Records            October 2026
    defines no byte sequence to select.
 
 9.  Derived Settlement States
+
+
+
+
+
 
 
 
@@ -2288,8 +2288,8 @@ Changes from draft-mih-agent-settlement-records-00
       profile reference is updated to draft-mih-scitt-agent-action-
       capsule-06, which states the limit.
 
-
-
+   *  Wire unchanged: the settlement member's version is still "0"
+      (Section 4.2).
 
 
 
@@ -2297,13 +2297,6 @@ Mih                        Expires 4 May 2027                  [Page 41]
 
 Internet-Draft          Agent Settlement Records            October 2026
 
-
-   *  Strict Ed25519: the wrapped_resigned check reads "verifies under
-      the sealer's own leg key" as strict Ed25519 verification, as the
-      Capsule profile defines it (Section 8).
-
-   *  Wire unchanged: the settlement member's version is still "0"
-      (Section 4.2).
 
 Acknowledgments
 
@@ -2317,6 +2310,13 @@ Author's Address
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
+
+
+
+
+
+
+
 
 
 

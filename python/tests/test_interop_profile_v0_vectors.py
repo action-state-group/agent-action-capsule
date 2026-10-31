@@ -89,8 +89,9 @@ def d64(text: str) -> bytes:
     return base64.b64decode(text, validate=True)
 
 
-def verifies(key_hex: str, sig_hex: str, message: bytes) -> bool:
-    if VERSION >= 1 and not strict_encoding(bytes.fromhex(key_hex), bytes.fromhex(sig_hex)):
+def verifies(key_hex: str, sig_hex: str, message: bytes, *, strict: bool = True) -> bool:
+    """Ed25519; at /1 strict (§5.2) unless ``strict`` is False, for a foreign object's own check (§5.1)."""
+    if strict and VERSION >= 1 and not strict_encoding(bytes.fromhex(key_hex), bytes.fromhex(sig_hex)):
         return False  # §5.2: strict Ed25519, P-68
     try:
         Ed25519PublicKey.from_public_bytes(bytes.fromhex(key_hex)).verify(bytes.fromhex(sig_hex), message)
@@ -415,7 +416,8 @@ class Verifier:
         header = strict_json(d64u(h).decode("utf-8"))
         if header.get("alg") != "EdDSA" or header.get("kid") not in self.policy["foreign_keys"]:
             return "FAIL"
-        return "PASS" if verifies(header["kid"], d64u(s).hex(), f"{h}.{p}".encode("ascii")) else "FAIL"
+        ok = verifies(header["kid"], d64u(s).hex(), f"{h}.{p}".encode("ascii"), strict=False)
+        return "PASS" if ok else "FAIL"
 
     def envelope_rows(self, props: dict, invariance_fail: bool, native: str | None) -> dict:
         req = self.required_ok(props)
