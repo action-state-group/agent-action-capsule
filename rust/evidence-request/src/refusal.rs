@@ -331,6 +331,17 @@ mod tests {
         let frame = |n: usize| [vec![0xa1u8, 0x61, 0x78], vec![0x81u8; n], vec![0x80]].concat();
         assert!(decode_cbor_object(&frame(126)).is_some());
         assert!(decode_cbor_object(&frame(127)).is_none());
+        // A bignum tag is a level too, though ciborium reads it as an integer.
+        let bignum = |n: usize| {
+            [
+                vec![0xa1u8, 0x61, 0x78],
+                vec![0x81u8; n],
+                vec![0xc2, 0x41, 0x01],
+            ]
+            .concat()
+        };
+        assert!(decode_cbor_object(&bignum(126)).is_some());
+        assert!(decode_cbor_object(&bignum(127)).is_none());
     }
 
     use super::*;

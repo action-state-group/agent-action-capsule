@@ -50,8 +50,12 @@ func TestCBORNestingVectors(t *testing.T) {
 			}
 
 			if c.Tag {
-				// Readers of a request differ on a tag in a member they ignore;
-				// the generic decoders above count tag levels.
+				// Readers of a request differ on a tag in a member they ignore
+				// (a follow-up); past the limit every reader refuses it.
+				if !c.Accept {
+					_, err := DecodeCBOR(octets)
+					assert.ErrorIs(t, err, errNotWellFormed)
+				}
 				return
 			}
 			check := ParseRequest(Message{Octets: octets, MediaType: MediaTypeCBOR})
@@ -64,4 +68,48 @@ func TestCBORNestingVectors(t *testing.T) {
 			}
 		})
 	}
+}
+
+// cborNestsTooDeep counts exactly where fxamacker's limit does not: a tag
+// around a scalar or an array, a bignum tag, an indefinite-length container
+// and an indefinite string.
+func TestCBORNestsTooDeepCountsEveryLevel(t *testing.T) {
+	repeat := func(unit []byte, n int, tail ...byte) []byte {
+		var out []byte
+		for i := 0; i < n; i++ {
+			out = append(out, unit...)
+		}
+		return append(out, tail...)
+	}
+	limit := canonical.MaxNestingDepth
+	for name, unit := range map[string][]byte{
+		"tag":        {0xd9, 0x03, 0xe8},
+		"array":      {0x81},
+		"indefinite": {0x9f},
+	} {
+		inner := []byte{0xf6}
+		if name == "indefinite" {
+			inner = []byte{0xff}
+		}
+		closing := func(n int) []byte {
+			if name != "indefinite" {
+				return inner
+			}
+			out := []byte{}
+			for i := 0; i < n; i++ {
+				out = append(out, 0xff)
+			}
+			return out
+		}
+		assert.False(t, cborNestsTooDeep(repeat(unit, limit, closing(limit)...)), name)
+		assert.True(t, cborNestsTooDeep(repeat(unit, limit+1, closing(limit+1)...)), name)
+	}
+	// Bignum tags around a byte string: 128 levels read, 129 refused.
+	bignum := []byte{0xc2}
+	assert.False(t, cborNestsTooDeep(repeat(bignum, limit, 0x41, 0x01)))
+	assert.True(t, cborNestsTooDeep(repeat(bignum, limit+1, 0x41, 0x01)))
+	// An indefinite string is not a level; a malformed head is left to the decoder.
+	assert.False(t, cborNestsTooDeep([]byte{0x7f, 0x61, 0x61, 0xff}))
+	assert.False(t, cborNestsTooDeep([]byte{0x81}))
+	assert.False(t, cborNestsTooDeep(nil))
 }
