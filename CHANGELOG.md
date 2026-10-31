@@ -16,12 +16,13 @@ Not in any tag yet: the changes after `python/v0.13.0`. The Rust crates keep the
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
-- Spec: a verifier may draw a `standard_history/1` card's `outcomes` tally as one bar, and say the
-  card's snapshot was witnessed only when it ran `anchor_inclusion` and it passed (AAC#507, AAC#506).
-  HF §4.6 gains an opt-in "count bar" (no figure of its own, no ranking, none when `of` is 0) that
-  only SH §6 allows; SH §6 says what a verifier may say about a witness receipt that came with the
-  card, and SH §9 notes the exception. No card member, vector or wire form changes. SH-4, checking
-  the receipt against a card, stays open.
+- Spec: a verifier may draw a `standard_history/1` card's `outcomes` tally as one bar (AAC#507,
+  AAC#506). HF §4.6 gains an opt-in "count bar" that only SH §6 allows: it draws the counts and is not
+  a ratio, carries no figure, scale or marker, is never aligned or ordered across subjects, and is
+  none when `of` is 0; no other proportional graphic is allowed. SH §6 also says what a verifier may
+  say about a witness receipt that came with a card: that one came with it, not checked against it,
+  and never that a witness saw or checked the snapshot until SH-4 is closed. No card member, vector
+  or wire form changes.
 - Evidence Request -02 §4.7 unavailable-window statements are read in Go, Python and Rust (AAC#477).
   Go `evidencerequest.RecognizeUnavailableWindow` and Python
   `evidence_request.recognize_unavailable_window` say whether a reader recognizes a statement (a

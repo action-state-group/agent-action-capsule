@@ -173,13 +173,15 @@ No instance defines a score, a grade, a ratio, a rate, a share, a mean or an ord
 deals, exchanges or counterparties, and a verifier that follows an instance shows and outputs
 none, except a count bar as below. A History stays the subject key's statement, never a requester's conclusion about it.
 
-**A count bar.** An instance may allow a verifier to draw the parts of one of its tallies as one
-bar, the lengths of its segments the parts' counts out of the tally's `of`. The bar adds no figure:
-each part is shown with its count and the tally's `of` as above, and the bar is not labelled, worded
-or coloured as a rate, a share, a score or a grade, is not ordered to rank, and is never drawn
-across two tallies. A segment's colour identifies which part it is; the colours carry no ranking and
-no label of good or bad. A tally whose `of` is 0 is drawn as no bar. An instance that does not allow
-a bar shows none.
+**A count bar.** An instance MAY allow a verifier to draw the parts of one of its tallies as one
+bar, the lengths of its segments the parts' counts out of the tally's `of`. The bar draws the
+counts; it is not a ratio, a rate, a share, a score or a grade and carries no figure of its own.
+Each part is shown with its count and the tally's `of` as above. A verifier MUST NOT put a scale, a
+tick, a marker or a label on the bar that states a proportion, MUST NOT draw the bars of two
+subjects aligned, side by side or in an order, and MUST NOT draw the bar across two tallies. A
+segment's colour identifies which part it is; the colours carry no ranking and no label of good or
+bad. A tally whose `of` is 0 is drawn as no bar. An instance that does not allow a bar shows none;
+no other proportional graphic of a count, a pie, a ring or a gauge, is allowed to any instance.
 
 ### 4.7 Composition only by an evidence-backed key link
 

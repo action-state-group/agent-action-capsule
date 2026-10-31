@@ -324,19 +324,21 @@ including `anchor_inclusion` `NOT_CHECKED` and, without their inputs, `window_fr
 `as_of` and `counts_recompute` `NOT_CHECKED`. It shows the bands grouped by `currency`, each
 band with its own currency, and never merges bands of two currencies into one row or shows a band
 in another currency: amounts in different assets are never equal or converted [SR "Amounts"
-rule 4]. It shows no ratio of two counts as a figure, and it never ranks or grades the holder.
+rule 4]. It shows no ratio of two counts, in figures, words or a graphic, but for the outcome bar below, which draws the counts and is not itself a ratio; and it never ranks or grades the holder.
 
-**The outcome bar.** A verifier may draw the `outcomes` tally's `held`, `did_not_hold` and
+**The outcome bar.** A verifier MAY draw the `outcomes` tally's `held`, `did_not_hold` and
 `undecided` counts as one bar (HF §4.6 "A count bar"): three segments, in that order, the lengths
-of the three counts out of `of`, drawn with the three counts and their `of` on the same line as §6
-requires. `undecided` is drawn in a tone that is neither the colour of `held` nor of
-`did_not_hold`. No other tally of the card is drawn as a bar, and the bar never replaces the counts.
+of the three counts out of `of`, drawn with the three counts and each count's `of` shown beside
+the bar as the rule above requires. `undecided` is drawn in a tone that is neither the colour of
+`held` nor of `did_not_hold`. No other tally of the card is drawn as a bar, the bar never replaces
+the counts, and a card whose `outcomes.of` is 0 has none. This display rule has no vector: a vector
+checks a card's properties (§6), not how a verifier draws it.
 
-**The witness line.** A verifier that holds the anchor's witness receipt beside the card may say
-that the card's snapshot was witnessed, with the receipt's time, only when it ran `anchor_inclusion`
-and the property is `PASS`. While `anchor_inclusion` is `NOT_CHECKED` (§10 SH-4) it may say that a
-witness receipt came with the card, not checked against it, or say nothing about a witness. It never
-says that a witness saw or checked the snapshot on a check it did not run.
+**The witness line.** `anchor_inclusion` is `NOT_CHECKED` for a card (§3, §10 SH-4), and a witness
+receipt covers the anchor's checkpoint, not the card's counts. A verifier that holds a witness
+receipt that came with the card MAY say that one came with it and that it was not checked against
+the card, or say nothing about a witness. It MUST NOT say that a witness saw, checked or witnessed
+the snapshot or the card until SH-4 is closed and the verifier has run that check.
 
 **Vectors.** `vectors/standard-history-v0/` holds positive cards, among them a window across a
 year end, a sub-unit deal with a negative decade and a zero amount, and negatives each failing the
@@ -427,8 +429,8 @@ its correlation identifier is the deal reference. Its payload has exactly these 
   cannot recompute them (§6). A valid signature never shows that the counts are right, only that
   the holder stated them.
 - **No grading.** As HF §4.6: this document defines no score, grade, ratio or ordering, and a
-  verifier that follows it shows none, but for the outcome bar §6 allows: the same three counts,
-  drawn, never a rate.
+  verifier that follows it shows none. The outcome bar §6 allows draws the same three counts; it is
+  not a ratio and never a rate.
 
 ## 10. Open points
 
