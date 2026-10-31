@@ -19,8 +19,8 @@ has not yet.
 - Security, strict Ed25519 on trusted-key paths: each Ed25519 check under a pinned, registered or
   trusted key now uses the strict rule of #447 (A and R canonical and not of small order, S < L,
   then the cofactorless check), so a small-order key no longer verifies a forgery over any message,
-  except the record-key paths left for #322 (Go `evidencerequest.VerifySignature` in `reply.go` and
-  `envelope.go`, Rust `envelope.rs`, and the TypeScript and Python producer envelope). Go: the
+  except the record-key paths left for #322 (Go `evidencerequest.VerifySignature` in `reply.go`, and
+  the Go, Rust, TypeScript and Python producer envelopes). Go: the
   interop profile's envelope, refusal and acceptance signatures, the CLL checkpoint
   (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`), controller-binding and
   revocation signatures by an `ed25519` key, and the settlement `wrapped_resigned` check; the
