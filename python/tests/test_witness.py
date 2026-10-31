@@ -260,6 +260,7 @@ def test_strict_ed25519_matches_the_cll_vectors():
 
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
+    from agent_action_capsule._ed25519_strict import verify_strict
     from agent_action_capsule.witness import _strict_ed25519
 
     path = Path(__file__).resolve().parents[2] / "vectors" / "cross-language" / "cll-ed25519-vectors.json"
@@ -274,6 +275,9 @@ def test_strict_ed25519_matches_the_cll_vectors():
             except Exception:  # noqa: BLE001 -- any refusal is "does not verify"
                 verifies = False
         assert verifies is case["valid"], case["name"]
+        # The shared helper the evidence-request reader uses agrees.
+        message = bytes.fromhex(case["message_hex"])
+        assert verify_strict(key, message, signature) is case["valid"], case["name"]
 
 
 def test_a_small_order_key_receipt_is_refused():

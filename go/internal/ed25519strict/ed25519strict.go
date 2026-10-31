@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
-package witness
+
+// Package ed25519strict is Ed25519 verification as checkpointed-local-log's
+// ed25519-vectors.json pins it, shared by the packages that verify a
+// signature whose key could be of small order.
+package ed25519strict
 
 import (
 	"bytes"
@@ -57,12 +61,12 @@ func belowL(s []byte) bool {
 	return false
 }
 
-// verifyEd25519Strict is Ed25519 verification as checkpointed-local-log's
+// Verify is Ed25519 verification as checkpointed-local-log's
 // ed25519-vectors.json pins it: A and R canonical (y < p) and not of small
 // order, S < L, then the cofactorless equation. ed25519.Verify alone accepts
 // a small-order A, and a small-order A verifies a forged signature over any
 // message.
-func verifyEd25519Strict(public ed25519.PublicKey, message, signature []byte) bool {
+func Verify(public ed25519.PublicKey, message, signature []byte) bool {
 	if len(public) != ed25519.PublicKeySize || len(signature) != ed25519.SignatureSize {
 		return false
 	}

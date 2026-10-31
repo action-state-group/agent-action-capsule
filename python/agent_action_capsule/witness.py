@@ -41,6 +41,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from ._ed25519_strict import strict_encoding as _strict_ed25519
+
 __all__ = [
     "BINDING_CLL",
     "BINDING_REKOR",
@@ -296,30 +298,6 @@ def _receipt_shape_error(receipt: bytes, key_pem: bytes | str | None = None) -> 
             if not isinstance(value[3], bytes) or not _strict_ed25519(raw, value[3]):
                 return "receipt EdDSA signature is not strict Ed25519: a non-canonical or small-order key or R, or S >= L"
     return None
-
-
-# The y coordinates (mod p) of the eight small-order points of edwards25519:
-# order 4 (0), the identity (1), order 2 (p - 1) and order 8 (Y8, p - Y8).
-# Either sign of x gives the same set.
-_P25519 = (1 << 255) - 19
-_Y8 = int.from_bytes(bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"), "little")
-_SMALL_ORDER_Y = frozenset({0, 1, _P25519 - 1, _Y8, _P25519 - _Y8})
-_ED25519_L = (1 << 252) + 27742317777372353535851937790883648493
-
-
-def _strict_ed25519(public_key: bytes, signature: bytes) -> bool:
-    """The strict Ed25519 conditions of checkpointed-local-log's
-    ``ed25519-vectors.json`` that do not need the message: A and R canonical
-    (y < p) and not of small order, and S < L. ``cryptography`` checks the
-    cofactorless equation but accepts a small-order A, and a small-order A
-    verifies a forged signature over any message."""
-    if len(public_key) != 32 or len(signature) != 64:
-        return False
-    for point in (public_key, signature[:32]):
-        y = int.from_bytes(point, "little") & ((1 << 255) - 1)
-        if y >= _P25519 or y in _SMALL_ORDER_Y:
-            return False
-    return int.from_bytes(signature[32:], "little") < _ED25519_L
 
 
 def _grade(result: Any) -> str | None:
