@@ -338,6 +338,12 @@ def test_refusal_02_vector(case):
         assert er.classify_refusal(facts["commitment"], facts["refusal_reason"]) == expect["classification"]
 
 
+def test_refusal_02_cases_are_all_read():
+    # The parametrized test above checks the cases it recognizes; a renamed key would skip one.
+    cases = _cases("refusal-02")
+    assert sum("refusal" in c or "commitment" in c.get("facts", {}) for c in cases) == 7
+
+
 # --- retention.json -----------------------------------------------------------------------------
 
 

@@ -79,7 +79,10 @@ func (r Refusal) Verify() error {
 // VerifyFor authenticates the refusal as the answer of the responder whose
 // key is responderKey (lowercase hex) to the request whose digest is
 // requestDigest: the key and the digest must be those, the signature must
-// verify, and the refusal must conform.
+// verify, and the refusal must conform. Conforming is the profile's check, so
+// a refusal with one of the two -02 reasons is ErrInvalid here until the
+// profile re-pins (AAC#479); a caller that reads ER -02 alone uses
+// CheckRefusal.
 func (r Refusal) VerifyFor(responderKey, requestDigest string) error {
 	if r.KeyID != responderKey || r.RequestDigest != requestDigest {
 		return fmt.Errorf("%w: refusal is not for this request under the pinned responder key", ErrInvalid)
