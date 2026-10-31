@@ -147,6 +147,23 @@ export interface BundleVerificationResult {
    * Filled in both modes.
    */
   readonly categoryCoverage: CategoryCoverageResult | null;
+  /**
+   * Set only for a well-formed empty-history Bundle (draft -02,
+   * "Empty-History Bundles"): the member shows no history. `since` is the
+   * timestamp of its signed checkpoint, or null when it carries none that
+   * verifies.
+   */
+  readonly history?: { readonly state: "none"; readonly since: string | null };
+  /**
+   * Set for a Bundle of the empty-history shape (an empty `records` list and
+   * no `root`), well formed or not, whose `checkpoint.cose` verifies: the key
+   * that signed it and its timestamp. A `controller_binding` join with such a
+   * member is derived from this side (`composed.ts`).
+   */
+  readonly emptyHistoryCheckpoint?: {
+    readonly keyId: string;
+    readonly timestamp: string;
+  };
   /** Only with `strict`. */
   readonly strict?: StrictBundleResult;
 }
@@ -157,6 +174,14 @@ export interface BundleVerificationResult {
  * signature or consistency makes the verdict `INVALID`.
  */
 export interface VerifyBundleOptions extends CategoryCoverageInputs {
+  /**
+   * The Controller Binding records and revocation statements delivered beside
+   * the Bundle, from which a `composed/v1` `controller_binding` join is
+   * derived (draft -02, "Controller Binding Records"). Without the record a
+   * join names, it is not derivable.
+   */
+  readonly controllerBindings?: readonly Record<string, unknown>[];
+  readonly bindingRevocations?: readonly Record<string, unknown>[];
   /**
    * Add the checks a verifier handing a verdict to a person needs
    * (vectors/bundle/strict/README.md): each record's producer signature, the
@@ -433,20 +458,52 @@ async function verifyPlain(
     /* claims remain independently reportable */
   }
   const collected = await collectRecords(bundle.records);
-  const [intervalCoverage, perRecordMembership] = await completeness(
-    bundle,
-    collected.records,
-  );
+  let graphClosure: ClaimResult;
+  let intervalCoverage: ClaimResult;
+  let perRecordMembership: ClaimResult;
+  let history: BundleVerificationResult["history"];
+  let emptyHistoryCheckpoint: BundleVerificationResult["emptyHistoryCheckpoint"];
+  if (emptyHistory(bundle)) {
+    graphClosure = emptyHistoryForm(bundle);
+    const noRecords: ClaimResult = {
+      status: "withheld",
+      findings: ["no_records"],
+    };
+    [intervalCoverage, perRecordMembership] = [noRecords, noRecords];
+    const signed = (
+      await strictCheckpoint(
+        object(bundle.checkpoint) ? bundle.checkpoint : {},
+        object(bundle.completeness_certificate)
+          ? bundle.completeness_certificate
+          : {},
+      )
+    ).signed;
+    if (signed !== undefined)
+      emptyHistoryCheckpoint = {
+        keyId: signed.key_id,
+        timestamp: signed.timestamp,
+      };
+    if (graphClosure.status === "pass")
+      history = { state: "none", since: signed?.timestamp ?? null };
+  } else {
+    graphClosure = graph(bundle, collected.records, collected.findings);
+    [intervalCoverage, perRecordMembership] = await completeness(
+      bundle,
+      collected.records,
+    );
+  }
   return {
     ...(digest === undefined ? {} : { bundleDigest: digest }),
-    graphClosure: graph(bundle, collected.records, collected.findings),
+    graphClosure,
     intervalCoverage,
     perRecordMembership,
+    ...(history === undefined ? {} : { history }),
+    ...(emptyHistoryCheckpoint === undefined ? {} : { emptyHistoryCheckpoint }),
     disclosures: await disclosures(
       Object.hasOwn(bundle, "disclosures") ? bundle.disclosures : {},
       collected.records,
     ),
-    extensions: await extensions(bundle, digest !== undefined),
+    extensions: await extensions(bundle, digest !== undefined, options),
     countersignatures: Array.isArray(bundle.countersignatures)
       ? bundle.countersignatures.map((value) => ({
           value,
@@ -672,6 +729,52 @@ async function strict(
           : null,
     },
   };
+}
+
+/**
+ * Whether a Bundle has the shape of an empty-history Bundle: an empty
+ * `records` list and no `root` member. Whether it is well formed is
+ * {@link emptyHistoryForm}'s question.
+ */
+function emptyHistory(bundle: Bundle): boolean {
+  return (
+    Array.isArray(bundle.records) &&
+    bundle.records.length === 0 &&
+    !Object.hasOwn(bundle, "root")
+  );
+}
+
+/**
+ * Graph closure for an empty-history Bundle: nothing to close, so it passes
+ * when the Bundle is well formed. `records_mode` is `complete`,
+ * `payloads_mode` `none`, and no certificate, disclosures or disclosure record
+ * is carried.
+ */
+function emptyHistoryForm(bundle: Bundle): ClaimResult {
+  const findings: string[] = [];
+  if (
+    bundle.bundle_version !== "2" ||
+    bundle.bundle_kind !== "evidence-bundle/v2"
+  )
+    findings.push("bundle_version_or_kind_invalid");
+  const complete = object(bundle.completeness) ? bundle.completeness : {};
+  const missing = complete.missing;
+  if (
+    !object(bundle.completeness) ||
+    complete.records_mode !== "complete" ||
+    complete.payloads_mode !== "none" ||
+    (Object.hasOwn(complete, "missing") &&
+      (!Array.isArray(missing) || missing.length !== 0))
+  )
+    findings.push("empty_history_completeness_invalid");
+  for (const name of [
+    "completeness_certificate",
+    "disclosures",
+    "disclosure_record",
+  ])
+    if (Object.hasOwn(bundle, name))
+      findings.push(`empty_history_carries:${name}`);
+  return findings.length > 0 ? fail(...findings) : pass();
 }
 
 /** A record's `capsule_id`, or "" when it is not a string. */
@@ -1570,6 +1673,7 @@ async function disclosures(
 async function extensions(
   bundle: Bundle,
   covered: boolean,
+  options: VerifyBundleOptions,
 ): Promise<ExtensionResult[]> {
   const raw = bundle.extensions;
   if (!object(raw)) return [];
@@ -1580,7 +1684,16 @@ async function extensions(
     // same verifier (go/bundle/bundle.go extensions -> VerifyComposed).
     const composed =
       kind === COMPOSED_KIND
-        ? { composed: await verifyComposed(raw[kind], verifyBundle) }
+        ? {
+            composed: await verifyComposed(
+              raw[kind],
+              (member) => verifyBundle(member),
+              {
+                controllerBindings: options.controllerBindings ?? [],
+                bindingRevocations: options.bindingRevocations ?? [],
+              },
+            ),
+          }
         : {};
     results.push(
       interpreter === undefined
