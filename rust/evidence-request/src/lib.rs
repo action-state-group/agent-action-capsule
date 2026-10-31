@@ -24,6 +24,8 @@
 //!   under the three-state discipline (a refusal is never an absence).
 //! - [`invariance`]: caller invariance of artifacts.
 //! - [`retention`]: retention commitments and the breach table.
+//! - [`unavailable_window`]: -02 §4.7 unavailable-window statements: which
+//!   ones a reader recognizes, and how it shows an absence one covers.
 //!
 //! The conformance vectors of the draft (the repository's `vectors/evidence-request/`) are the
 //! test suite. Where -00 leaves a wire shape open, this crate follows the
@@ -93,4 +95,5 @@ pub mod status;
 #[cfg(any(feature = "acceptance", feature = "controller-binding"))]
 mod strict_json;
 pub mod time;
+pub mod unavailable_window;
 mod value;

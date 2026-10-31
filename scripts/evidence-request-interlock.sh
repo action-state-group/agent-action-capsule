@@ -22,6 +22,9 @@
 #    real material, rejects a signed envelope whose inclusion or consistency
 #    proof is altered in a path node for that proof, and rejects an envelope
 #    whose material was altered after signing for that item's digest.
+# 6. unavailable: every language reads every case of
+#    vectors/evidence-request/unavailable-window.json (-02 §4.7) and reports
+#    exactly the corpus's expectation, byte-identical.
 set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -417,9 +420,42 @@ EOF
   done
 done
 
+# Unavailable-window statements (-02 §4.7): every language reads every case of
+# unavailable-window.json and reports exactly what the corpus expects, byte
+# for byte: which statements it recognizes, why not, and the registration
+# time; and how it shows each absence, refusal or pending request beside the
+# statements held.
+uw_corpus="$repo/vectors/evidence-request/unavailable-window.json"
+"$python_bin" - "$uw_corpus" "$work/uw-in.json" "$work/uw-expected.json" <<'EOF'
+import json, sys
+cases = json.load(open(sys.argv[1]))["cases"]
+json.dump(cases, open(sys.argv[2], "w"))
+expected = []
+for case in cases:
+    want = case["expect"]
+    if case["kind"] == "statement":
+        expected.append({"id": case["id"], "recognized": want["recognized"], "why": want.get("why"),
+                         "registration_time": want.get("registration_time")})
+    else:
+        expected.append({"id": case["id"], **{k: want[k] for k in ("state", "shown_as", "covered_by", "labels")}})
+with open(sys.argv[3], "w") as out:
+    json.dump(expected, out, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    out.write("\n")
+EOF
+for lang in "${languages[@]}"; do
+  "er_$lang" unavailable < "$work/uw-in.json" > "$work/uw-$lang.json"
+  if ! cmp -s "$work/uw-expected.json" "$work/uw-$lang.json"; then
+    echo "evidence request: $lang reads unavailable-window statements differently from the corpus" >&2
+    diff <("$python_bin" -m json.tool "$work/uw-expected.json") \
+         <("$python_bin" -m json.tool "$work/uw-$lang.json") >&2 || true
+    exit 1
+  fi
+done
+uw_count=$("$python_bin" -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$work/uw-expected.json")
+
 count=$("$python_bin" -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$work/classify-rust.json")
 if [ "$count" -eq 0 ]; then
   echo "evidence request: no requests were classified" >&2
   exit 1
 fi
-echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python, go and rust build identical artifact envelopes, each verifies all three and rejects an altered verification item in either binding; each signs the worked example's CLL material identically, accepts every producer's, and rejects an altered inclusion or consistency proof for the proof and material altered after signing for its digest."
+echo "Evidence Request: ${languages[*]} agree on $count requests, sign identical refusals, verify all of each other's, accept a fractional-second issued_at, and reject a tampered signature, a misspelled member, a foreign key and a wrong request digest; python, go and rust build identical artifact envelopes, each verifies all three and rejects an altered verification item in either binding; each signs the worked example's CLL material identically, accepts every producer's, and rejects an altered inclusion or consistency proof for the proof and material altered after signing for its digest; and all three read the $uw_count unavailable-window cases exactly as the corpus expects."

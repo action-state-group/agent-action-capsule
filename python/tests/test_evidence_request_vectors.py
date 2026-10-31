@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 import cbor2
@@ -23,6 +24,8 @@ import pytest
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+from agent_action_capsule import evidence_request as er
 
 ROOT = Path(__file__).resolve().parents[2]
 VECTORS = ROOT / "vectors" / "evidence-request"
@@ -421,56 +424,35 @@ UW_CLASSES = ("flood", "maintenance", "outage", "other_declared")
 UW_SHOWN = "no answer; holder states unavailability"
 
 
-def _uw_signed(statement: dict, responder_key: str) -> bool:
-    if statement.get("key_id") != responder_key:
-        return False
-    body = {k: statement[k] for k in ("end", "reason_class", "start") if k in statement}
-    signing_body = json.dumps(body, separators=(",", ":"), sort_keys=True, ensure_ascii=False).encode("utf-8")
-    try:
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(statement["key_id"])).verify(
-            bytes.fromhex(statement["sig"]), signing_body)
-    except (InvalidSignature, ValueError):
-        return False
-    return True
-
-
-def _uw_time(text):
-    from datetime import datetime
-    if not isinstance(text, str) or not re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", text):
-        return None
-    return datetime.fromisoformat(text.replace("Z", "+00:00"))
-
-
-def _uw_recognize(statement: dict, receipts: list, responder_key: str):
-    """-02 §4.7: (recognized, why, registration time), read from the text."""
-    start, end = _uw_time(statement.get("start")), _uw_time(statement.get("end"))
-    if statement.get("reason_class") not in UW_CLASSES or start is None or end is None or end < start:
-        return False, "malformed", None
-    if not _uw_signed(statement, responder_key):
-        return False, "not_signed_by_responder", None
-    accepted = [r["time"] for r in receipts if r["accepted"]]
-    if not accepted:
-        return False, "not_registered", None
-    return True, None, min(accepted, key=_uw_time)
+def _uw_receipts(receipts: list) -> list:
+    # The corpus's accepted flag stands for the reader's policy on which
+    # transparency services are independent of the responder.
+    return [er.RegistrationReceipt(r["time"], r["accepted"]) for r in receipts]
 
 
 def test_unavailable_window_expectations_follow_from_the_text():
+    """-02 §4.7, through the library's reader: every statement and display
+    case, against every member of its expectation."""
     corpus = _load("unavailable-window")
-    assert corpus["reason_classes"] == list(UW_CLASSES)
-    assert corpus["shown_as"] == UW_SHOWN
-    kinds = set()
+    assert corpus["reason_classes"] == list(UW_CLASSES) == list(er.UNAVAILABLE_REASON_CLASSES)
+    assert corpus["shown_as"] == UW_SHOWN == er.UNAVAILABLE_SHOWN_AS
+    assert corpus["signature_profile"]["signed_members"] == list(er.UNAVAILABLE_SIGNED_MEMBERS)
+    assert corpus["count"] == len(corpus["cases"]) == 35
+    kinds = Counter()
     for case in corpus["cases"]:
-        kinds.add(case["kind"])
+        kinds[case["kind"]] += 1
         expect = case["expect"]
         if case["kind"] == "statement":
-            ok, why, registered = _uw_recognize(case["statement"], case["receipts"],
-                                                case["responder_key"])
-            assert ok is expect["recognized"], case["id"]
-            if ok:
-                assert registered == expect["registration_time"], case["id"]
+            reading = er.recognize_unavailable_window(case["statement"], _uw_receipts(case["receipts"]),
+                                                      case["responder_key"])
+            assert reading.recognized is expect["recognized"], case["id"]
+            if reading.recognized:
+                assert reading.why is None, case["id"]
+                assert reading.registration_time == expect["registration_time"], case["id"]
                 assert expect["shown_reason"] == case["statement"]["reason_class"], case["id"]
             else:
-                assert why == expect["why"], case["id"]
+                assert reading.why == expect["why"], case["id"]
+                assert reading.registration_time is None, case["id"]
             continue
         assert case["kind"] == "display", case["id"]
         absence = case["absence"]
@@ -478,32 +460,34 @@ def test_unavailable_window_expectations_follow_from_the_text():
         want_retention = ("attributable_absence" if absence.get("retention_commitment") == "in_force"
                           and absence["received"] == "nothing" and absence["closed_at"] else None)
         assert expect.get("retention_classification") == want_retention, case["id"]
+        if want_retention is not None:
+            assert er.classify_absence(absence["retention_commitment"]) == want_retention, case["id"]
+        state = er.record_outcome(absence["received"], window_open=absence["closed_at"] is None,
+                                  refusal=er.RefusalCheck(True, True, True))
+        shown = er.display_absence(
+            state, [(e["id"], e["statement"], _uw_receipts(e["receipts"])) for e in case["statements"]],
+            responder_key=case["responder_key"], sent_at=absence["sent_at"], closed_at=absence["closed_at"])
+        assert shown.state == expect["state"], case["id"]
+        assert shown.shown_as == expect["shown_as"], case["id"]
+        assert list(shown.covered_by) == expect["covered_by"], case["id"]
+        labels = {sid: {"reason_class": label.reason_class, "registration_time": label.registration_time,
+                        "stated_afterwards": label.stated_afterwards, "stated_period": list(label.stated_period)}
+                  for sid, label in shown.labels.items()}
+        assert labels == expect["labels"], case["id"]
+        assert shown.shown_as not in expect["must_not_show_as"], case["id"]
         if absence["received"] != "nothing" or absence["closed_at"] is None:
             # A refusal or a pending request has no absence for a statement to cover (§4.3, §4.5).
-            state = "refusal" if absence["received"] == "refusal" else "pending"
-            assert expect["state"] == state and expect["shown_as"] == state, case["id"]
+            want = "refusal" if absence["received"] == "refusal" else "pending"
+            assert expect["state"] == want and expect["shown_as"] == want, case["id"]
             assert expect["covered_by"] == [] and expect["labels"] == {}, case["id"]
             assert {UW_SHOWN, "recorded_absence"} <= set(expect["must_not_show_as"]), case["id"]
             continue
-        opened, closed = _uw_time(absence["sent_at"]), _uw_time(absence["closed_at"])
-        covering, labels = [], {}
-        for entry in case["statements"]:
-            ok, _, registered = _uw_recognize(entry["statement"], entry["receipts"],
-                                              case["responder_key"])
-            st = entry["statement"]
-            if ok and _uw_time(st["start"]) <= closed and _uw_time(st["end"]) >= opened:
-                covering.append(entry["id"])
-                labels[entry["id"]] = {"reason_class": st["reason_class"], "registration_time": registered,
-                                       "stated_afterwards": _uw_time(registered) > closed,
-                                       "stated_period": [st["start"], st["end"]]}
-        assert expect["covered_by"] == covering, case["id"]
-        assert expect["labels"] == labels, case["id"]
         assert expect["state"] == "recorded_absence", case["id"]
-        assert expect["shown_as"] == (UW_SHOWN if covering else "recorded_absence"), case["id"]
+        assert expect["shown_as"] == (UW_SHOWN if expect["covered_by"] else "recorded_absence"), case["id"]
         assert {"refusal", "proof_of_attack"} <= set(expect["must_not_show_as"]), case["id"]
-        if covering:
+        if expect["covered_by"]:
             assert "absence_without_statement" in expect["must_not_show_as"], case["id"]
-    assert kinds == {"statement", "display"}
+    assert kinds == {"statement": 19, "display": 16}
     ids = {c["id"] for c in corpus["cases"]}
     for cls in UW_CLASSES:
         assert f"uw-class-{cls}" in ids

@@ -1,20 +1,23 @@
 //! The draft-mih-agent-evidence-request-00 conformance vectors, read in place
 //! from this repository's `vectors/evidence-request/`: every case of every
-//! -00 corpus. The -01 corpora (`carries.json`, `categories.json`,
-//! `carriage.json`) and the -02 corpus `unavailable-window.json` no test
-//! here reads yet; of -02, `refusal-02.json` is read. The files are checked against that directory's
-//! `SHA256SUMS` before any case is read.
+//! -00 corpus, and both -02 corpora, `refusal-02.json` and
+//! `unavailable-window.json`. The -01 corpora (`carries.json`,
+//! `categories.json`, `carriage.json`) no test here reads yet. The files are
+//! checked against that directory's `SHA256SUMS` before any case is read.
 
-use ed25519_dalek::SigningKey;
+use ed25519_dalek::{SigningKey, VerifyingKey};
 use evidence_request::digest::{identifies_request, request_digest};
 use evidence_request::invariance::{compare, Observation};
-use evidence_request::outcome::{record, Received, Window};
+use evidence_request::outcome::{record, Received, State, Window};
 use evidence_request::refusal::{check, check_cbor, sign_with_detail, verify_for, VerifyError};
 use evidence_request::registry::{Reason, SubjectForm, SUBPROTOCOL};
 use evidence_request::request::{parse_cbor, parse_json, Derivation};
 use evidence_request::resolve::{resolve, Anchor, Resolution, Responder};
 use evidence_request::retention::{
     classify_absence, classify_refusal, commitment_well_formed, Commitment,
+};
+use evidence_request::unavailable_window::{
+    display, recognize, ReasonClass, RegistrationReceipt, WindowStatement, SHOWN_AS, SIGNED_MEMBERS,
 };
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -541,4 +544,157 @@ fn refusal_02_corpus() {
         // them.
     }
     assert_eq!(read, 7);
+}
+
+/// The corpus's receipts as the reader's: `accepted` stands for the
+/// reader's policy on which transparency services are independent of the
+/// responder.
+fn registration_receipts(receipts: &Value) -> Vec<RegistrationReceipt> {
+    receipts
+        .as_array()
+        .expect("receipts")
+        .iter()
+        .map(|r| RegistrationReceipt {
+            time: s(r, "time").to_string(),
+            accepted: r["accepted"].as_bool().expect("accepted"),
+        })
+        .collect()
+}
+
+fn verifying_key(hex_key: &str) -> VerifyingKey {
+    let bytes: [u8; 32] = hex::decode(hex_key).unwrap().try_into().unwrap();
+    VerifyingKey::from_bytes(&bytes).unwrap()
+}
+
+/// -02 §4.7: every statement and display case of `unavailable-window.json`,
+/// against every member of its expectation.
+#[test]
+fn unavailable_window_corpus() {
+    let corpus = load("unavailable-window.json");
+    let classes: Vec<&str> = corpus["reason_classes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert_eq!(classes, ReasonClass::ALL.map(ReasonClass::token));
+    assert_eq!(s(&corpus, "shown_as"), SHOWN_AS);
+    let signed: Vec<&str> = corpus["signature_profile"]["signed_members"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert_eq!(signed, SIGNED_MEMBERS);
+    let (mut statements, mut displays) = (0, 0);
+    for case in cases(&corpus) {
+        let id = s(case, "id");
+        let expect = &case["expect"];
+        let key = verifying_key(s(case, "responder_key"));
+        if s(case, "kind") == "statement" {
+            statements += 1;
+            let got = recognize(
+                &case["statement"],
+                &registration_receipts(&case["receipts"]),
+                &key,
+            );
+            assert_eq!(got.is_ok(), expect["recognized"].as_bool().unwrap(), "{id}");
+            match got {
+                Ok(r) => {
+                    assert_eq!(r.registration_time, s(expect, "registration_time"), "{id}");
+                    // The token alone is the reason, never another member.
+                    assert_eq!(r.reason_class.token(), s(expect, "shown_reason"), "{id}");
+                    assert_eq!(r.start, s(&case["statement"], "start"), "{id}");
+                    assert_eq!(r.end, s(&case["statement"], "end"), "{id}");
+                }
+                Err(why) => assert_eq!(why.token(), s(expect, "why"), "{id}"),
+            }
+            continue;
+        }
+        assert_eq!(s(case, "kind"), "display", "{id}");
+        displays += 1;
+        let absence = &case["absence"];
+        let closed_at = absence["closed_at"].as_str();
+        let received = match s(absence, "received") {
+            "nothing" => Received::Nothing,
+            "refusal" => Received::Refusal {
+                signature_valid: true,
+                reason: s(absence, "refusal_reason").to_string(),
+            },
+            other => panic!("{id}: received {other}"),
+        };
+        let window = if closed_at.is_some() {
+            Window::Closed
+        } else {
+            Window::Open
+        };
+        let held: Vec<WindowStatement> = case["statements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|e| WindowStatement {
+                id: s(e, "id").to_string(),
+                statement: e["statement"].clone(),
+                receipts: registration_receipts(&e["receipts"]),
+            })
+            .collect();
+        let shown = display(
+            record(&received, window),
+            s(absence, "sent_at"),
+            closed_at,
+            &held,
+            &key,
+        )
+        .unwrap_or_else(|e| panic!("{id}: {e}"));
+        assert_eq!(shown.state.token(), s(expect, "state"), "{id}");
+        assert_eq!(shown.shown_as, s(expect, "shown_as"), "{id}");
+        let covered_by: Vec<&str> = expect["covered_by"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert_eq!(shown.covered_by, covered_by, "{id}");
+        let labels: serde_json::Map<String, Value> = shown
+            .labels
+            .iter()
+            .map(|(sid, l)| {
+                (
+                    sid.clone(),
+                    serde_json::json!({
+                        "reason_class": l.reason_class.token(),
+                        "registration_time": l.registration_time,
+                        "stated_afterwards": l.stated_afterwards,
+                        "stated_period": [l.stated_period.0, l.stated_period.1],
+                    }),
+                )
+            })
+            .collect();
+        assert_eq!(Value::Object(labels), expect["labels"], "{id}");
+        let must_not: Vec<&str> = expect["must_not_show_as"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(!must_not.contains(&shown.shown_as), "{id}");
+        if shown.state != State::RecordedAbsence {
+            // A refusal or a pending request has no absence to cover.
+            assert!(must_not.contains(&SHOWN_AS), "{id}");
+            assert!(must_not.contains(&"recorded_absence"), "{id}");
+            assert!(expect.get("retention_classification").is_none(), "{id}");
+            continue;
+        }
+        assert!(must_not.contains(&"refusal"), "{id}");
+        assert!(must_not.contains(&"proof_of_attack"), "{id}");
+        if !shown.covered_by.is_empty() {
+            assert!(must_not.contains(&"absence_without_statement"), "{id}");
+        }
+        // The retention classification is unchanged by any statement.
+        if let Some(want) = expect["retention_classification"].as_str() {
+            assert_eq!(s(absence, "retention_commitment"), "in_force", "{id}");
+            assert_eq!(classify_absence(Commitment::InForce).token(), want, "{id}");
+        }
+    }
+    assert_eq!((statements, displays), (19, 16));
 }
