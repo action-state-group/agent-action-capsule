@@ -317,7 +317,7 @@ it("a claim that fails Result-root verification (or is unsupported) never lets i
   expect(conversation.verdict).toBe("not_met");
 });
 
-it("held/added are read only from calibration-summary/v1 samples, never from the claims' own verdicts -- zero when none are cited", async () => {
+it("held/added are read only from cited human-rating/v1 records, never from the claims' own verdicts -- zero when none are cited", async () => {
   const { bundle } = await sealEvidenceBundle(
     fixture("outcome-report-bundle.json"),
   );
@@ -331,13 +331,45 @@ it("held/added are read only from calibration-summary/v1 samples, never from the
   expect(model.addedCount).toBe(0);
 });
 
-it("held/added are recomputed from an injected calibration sample, never from the claims' own verdicts", async () => {
+type CalibrationRecords = { summary: Obj; ratings: Obj[] };
+
+/**
+ * outcome-report-bundle.json plus one `calibration` claim citing the
+ * schema-valid calibration-summary/v1 record and human-rating/v1 records in
+ * test/testdata/calibration-records.json (after `edit`), each disclosed. The
+ * ratings cite three no_invented_policy reports by digest: task-13 (judge
+ * met, rater met), task-11 (judge not_met, rater met) and task-17 (judge met,
+ * rater not_met), so agreement is 1 of 3, one held and one added.
+ * `extraSummary` makes the claim cite a second summary record too.
+ */
+async function calibrationModel(
+  edit?: (records: CalibrationRecords) => void,
+  extraSummary?: Obj,
+): Promise<ReturnType<typeof buildOutcomeReportModel>> {
   const source = fixture("outcome-report-bundle.json");
+  const records = fixture("calibration-records.json") as CalibrationRecords;
+  edit?.(records);
   const resultDoc = ((source.disclosures as Obj).result as Obj)
     .agent_input as Obj;
   const claims = resultDoc.claims as Obj[];
-  const conversationId = (claims[0]!.id as string).split("::")[0]!;
-  (source.records as Obj[]).push({ capsule_id: "cal-2026-W39" });
+  const cited: [string, Obj][] = [
+    ["cal-summary-2026-W39", records.summary],
+    ...(extraSummary === undefined
+      ? []
+      : [["cal-summary-extra", extraSummary] as [string, Obj]]),
+    ...records.ratings.map((rating, i): [string, Obj] => [
+      `cal-rating-2026-W39-${i + 1}`,
+      rating,
+    ]),
+  ];
+  for (const [alias, payload] of cited) {
+    (source.records as Obj[]).push({ capsule_id: alias });
+    (source.disclosures as Obj)[alias] = { agent_input: payload };
+  }
+  const evidence = cited.map(([alias]) => ({
+    digest_alg: "SHA-256",
+    digest: alias,
+  }));
   const calClaim = {
     id: "cal::2026-W39",
     type: "calibration",
@@ -347,13 +379,9 @@ it("held/added are recomputed from an injected calibration sample, never from th
     grade: "self-attested",
     sufficiency: "SATISFIED",
     verdict: "not_met",
-    evidence: [{ digest_alg: "SHA-256", digest: "cal-2026-W39" }],
+    evidence,
     proofs: [],
-    presentation: {
-      kind: "disclosure",
-      status: "SATISFIED",
-      evidence: [{ digest_alg: "SHA-256", digest: "cal-2026-W39" }],
-    },
+    presentation: { kind: "disclosure", status: "SATISFIED", evidence },
   };
   const allClaims = [...claims, calClaim];
   (source.disclosures as Obj).result = {
@@ -366,36 +394,173 @@ it("held/added are recomputed from an injected calibration sample, never from th
       },
     },
   };
-  (source.disclosures as Obj)["cal-2026-W39"] = {
-    agent_input: {
-      spec_version: "calibration-summary/v1",
-      week: "2026-W39",
-      sample: [
-        {
-          conversation_id: conversationId,
-          ai_verdict: "met",
-          human_verdict: "not_met",
-        },
-        {
-          conversation_id: "unrelated",
-          ai_verdict: "not_met",
-          human_verdict: "met",
-        },
-        {
-          conversation_id: "unrelated-2",
-          ai_verdict: "met",
-          human_verdict: "met",
-        },
-      ],
-    },
-  };
   const { bundle } = await sealEvidenceBundle(source);
   const result = await buildResultRoot(bundle);
-  const model = buildOutcomeReportModel(result, { percentages: false });
+  return buildOutcomeReportModel(result, { percentages: false });
+}
+
+const CLAUSE = "grounded_communication.no_invented_policy";
+
+it("reads the cited calibration-summary/v1 record and its human ratings, and the recomputed agreement matches the stated one", async () => {
+  const model = await calibrationModel();
   expect(model.calibration).toHaveLength(1);
+  const reading = model.calibration[0]!;
+  expect(reading.state).toBe("read");
+  expect(reading.summary?.recordId).toBe("cal-example-org-2026-W39");
+  expect(reading.summary?.judgePin.digest).toBe(
+    "90b5b2951e3aaf6f864f3dd6d8e13ccef113569ff0c14000f47bce9249c6a935",
+  );
+  expect(reading.clauses).toEqual([
+    {
+      clauseRef: CLAUSE,
+      agreement: { k: 1, n: 3 },
+      drift: { k: 0, n: 3 },
+      recomputedAgreement: { k: 1, n: 3 },
+      agreementCheck: "matches",
+    },
+  ]);
+  expect(reading.ratingsNotMatching).toBe(0);
+  expect(
+    reading.ratings.map((entry) => [
+      entry.rating.label,
+      entry.judged?.verdict,
+      entry.judged?.requirementRef,
+      entry.agrees,
+    ]),
+  ).toEqual([
+    ["met", "met", CLAUSE, true],
+    ["met", "not_met", CLAUSE, false],
+    ["not_met", "met", CLAUSE, false],
+  ]);
+  expect(reading.ratings[0]!.judged?.claimId).toBe(
+    `tau2:airline:task-13:trial-0::${CLAUSE}`,
+  );
   expect(model.heldCount).toBe(1);
   expect(model.addedCount).toBe(1);
+  // No reader computes or stores a rate: every figure is an integer k of n.
+  expect(JSON.stringify(model.calibration)).not.toMatch(/\d\.\d|%/u);
 });
+
+it("reads a claim that cites two calibration summaries as ambiguous, and counts nothing from it", async () => {
+  const records = fixture("calibration-records.json") as CalibrationRecords;
+  const model = await calibrationModel(undefined, {
+    ...records.summary,
+    record_id: "cal-example-org-2026-W39-other",
+  });
+  expect(model.calibration).toHaveLength(1);
+  const reading = model.calibration[0]!;
+  expect(reading.state).toBe("ambiguous");
+  expect(reading.summary).toBeUndefined();
+  expect(reading.clauses).toEqual([]);
+  expect(model.heldCount).toBe(0);
+  expect(model.addedCount).toBe(0);
+});
+
+it("flags a stated agreement the cited ratings do not recompute to, and keeps the stated count", async () => {
+  const model = await calibrationModel((records) => {
+    const clauses = records.summary.clauses as Obj[];
+    // Claim perfect agreement no matter what the ratings show, and state a
+    // second clause no cited rating is bound to.
+    clauses[0]!.agreement = { k: 3, n: 3 };
+    clauses.push({
+      clause_ref: "task_resolution.done_in_full",
+      agreement: { k: 2, n: 2 },
+      drift: { k: 0, n: 2 },
+    });
+  });
+  const reading = model.calibration[0]!;
+  expect(reading.state).toBe("read");
+  expect(reading.clauses).toEqual([
+    {
+      clauseRef: CLAUSE,
+      agreement: { k: 3, n: 3 },
+      drift: { k: 0, n: 3 },
+      recomputedAgreement: { k: 1, n: 3 },
+      agreementCheck: "mismatch",
+    },
+    {
+      clauseRef: "task_resolution.done_in_full",
+      agreement: { k: 2, n: 2 },
+      drift: { k: 0, n: 2 },
+      recomputedAgreement: { k: 0, n: 0 },
+      agreementCheck: "mismatch",
+    },
+  ]);
+});
+
+it.each([
+  [
+    "a cited rating that does not match human-rating/v1",
+    (records: CalibrationRecords) => {
+      records.ratings[1]!.blind = false;
+    },
+    2,
+    1,
+  ],
+  [
+    "a cited rating whose case no requirement claim cites",
+    (records: CalibrationRecords) => {
+      (records.ratings[1]!.case as Obj).digest = "e".repeat(64);
+    },
+    3,
+    0,
+  ],
+])(
+  "reads the agreement as not recomputable with %s, never as a match or a mismatch",
+  async (_name, edit, ratings, notMatching) => {
+    const reading = (await calibrationModel(edit)).calibration[0]!;
+    expect(reading.state).toBe("read");
+    expect(reading.ratings).toHaveLength(ratings);
+    expect(reading.ratingsNotMatching).toBe(notMatching);
+    expect(reading.clauses).toEqual([
+      {
+        clauseRef: CLAUSE,
+        agreement: { k: 1, n: 3 },
+        drift: { k: 0, n: 3 },
+        agreementCheck: "not_recomputable",
+      },
+    ]);
+  },
+);
+
+it.each([
+  [
+    "a stored rate member",
+    (records: CalibrationRecords) => {
+      records.summary.corrected_rate = { k: 4, n: 5 };
+    },
+  ],
+  [
+    "agreement k greater than n",
+    (records: CalibrationRecords) => {
+      (records.summary.clauses as Obj[])[0]!.agreement = { k: 4, n: 3 };
+    },
+  ],
+  [
+    "drift k greater than n",
+    (records: CalibrationRecords) => {
+      (records.summary.clauses as Obj[])[0]!.drift = { k: 4, n: 3 };
+    },
+  ],
+  [
+    "the retired week and sample members",
+    (records: CalibrationRecords) => {
+      records.summary.week = "2026-W39";
+      records.summary.sample = [];
+    },
+  ],
+])(
+  "reads a cited calibration-summary/v1 record with %s as not matching, and counts nothing from it",
+  async (_name, edit) => {
+    const model = await calibrationModel(edit);
+    const reading = model.calibration[0]!;
+    expect(reading.state).toBe("not_matching");
+    expect(reading.summary).toBeUndefined();
+    expect(reading.clauses).toEqual([]);
+    expect(model.heldCount).toBe(0);
+    expect(model.addedCount).toBe(0);
+  },
+);
 
 it("attributes a not_evaluable-only miss to the actual not_evaluable criterion, never to an arbitrary met one", async () => {
   const source = fixture("outcome-report-bundle.json");
@@ -436,65 +601,6 @@ it("attributes a not_evaluable-only miss to the actual not_evaluable criterion, 
   )!;
   expect(group).toBeDefined();
   expect(group.key).toBe(targetRef);
-});
-
-it("recomputes calibration k/n from the enumerable sample, never trusting the record's own stated agreement field", async () => {
-  const source = fixture("outcome-report-bundle.json");
-  const resultDoc = ((source.disclosures as Obj).result as Obj)
-    .agent_input as Obj;
-  const claims = resultDoc.claims as Obj[];
-  (source.records as Obj[]).push({ capsule_id: "cal-2026-W39" });
-  const calClaim = {
-    id: "cal::2026-W39",
-    type: "calibration",
-    contract_ref: (claims[0] as Obj).contract_ref,
-    requirement_ref: "human-spot-check",
-    tier: "recomputed",
-    grade: "self-attested",
-    sufficiency: "SATISFIED",
-    verdict: "not_met",
-    evidence: [{ digest_alg: "SHA-256", digest: "cal-2026-W39" }],
-    proofs: [],
-    presentation: {
-      kind: "disclosure",
-      status: "SATISFIED",
-      evidence: [{ digest_alg: "SHA-256", digest: "cal-2026-W39" }],
-    },
-  };
-  const allClaims = [...claims, calClaim];
-  (source.disclosures as Obj).result = {
-    agent_input: {
-      ...resultDoc,
-      claims: allClaims,
-      aggregate: {
-        ...(resultDoc.aggregate as Obj),
-        buckets: rebuildBuckets(allClaims),
-      },
-    },
-  };
-  const sample = [
-    { conversation_id: "a", ai_verdict: "met", human_verdict: "met" },
-    { conversation_id: "b", ai_verdict: "met", human_verdict: "not_met" },
-    { conversation_id: "c", ai_verdict: "not_met", human_verdict: "not_met" },
-  ];
-  const trueK = sample.filter((s) => s.ai_verdict === s.human_verdict).length;
-  (source.disclosures as Obj)["cal-2026-W39"] = {
-    agent_input: {
-      spec_version: "calibration-summary/v1",
-      week: "2026-W39",
-      // Lie in the stated aggregate: claim perfect agreement no matter what
-      // the sample actually shows.
-      agreement: { k: sample.length, n: sample.length },
-      sample,
-    },
-  };
-  const { bundle } = await sealEvidenceBundle(source);
-  const result = await buildResultRoot(bundle);
-  const model = buildOutcomeReportModel(result, { percentages: false });
-  const week = model.calibration.find((w) => w.n === sample.length)!;
-  expect(week).toBeDefined();
-  expect(week.k).toBe(trueK);
-  expect(week.k).not.toBe(sample.length);
 });
 
 it("groups missed conversations by criterion when no claim carries a reason_code (the real pipeline's own shape today)", async () => {

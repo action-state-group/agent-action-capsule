@@ -16,6 +16,22 @@ Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their o
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- **Breaking**, TypeScript (the next ts minor, 0.11.0): the two calibration readers read
+  `calibration-summary/v1` as `schemas/judge/calibration-summary-v1.json` defines it, and the cited
+  per-case ratings as `schemas/judge/human-rating-v1.json` does (AAC#446). New module
+  `calibration-summary` (`readCalibrationSummary`, `readHumanRating`) returns a record only when it
+  matches its schema exactly and every count has `k <= n`; a record with a stored rate or any other
+  member the schema lacks reads as not matching. The outcome-report model's `calibration` is now
+  `CalibrationReading[]`: one per `calibration` claim, with the summary it cites, its clauses' stated
+  agreement and drift, and the `human-rating/v1` records it cites, each bound to the requirement
+  claim that cites the same rated case. Each clause's agreement is recomputed from those ratings and
+  compared with the stated count (`agreementCheck`: `matches`, `mismatch` or `not_recomputable`); the
+  stated count is never replaced. `heldCount` and `addedCount` are read from the bound ratings.
+  `CalibrationWeek` and `CalibrationSample` are removed. The evidence graph's `calibration` node is
+  `{capsuleId, matchesSchema, summary}`, matched on `record_version`; `CalibrationCount`,
+  `calibrationCount`, `confusion`, `correctedRate` and `periodWindow` are removed. No reader computes
+  or stores a rate or percentage. capsule-viewer#121 adopts the new shapes. New devDependency
+  `ajv` 8.20.0, used only by the test that checks the fixtures against the schemas.
 - Go `evidencerequest.ParseRequestTime` refuses a time with more than nine fraction digits instead
   of truncating it to nanoseconds, as the Python and Rust readers already do (AAC#492).
 - Inference-Service History is written against `evidence-interop/1` (AAC#484): a node serves a

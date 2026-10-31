@@ -21,17 +21,30 @@
         }
       ]
     },
-    { "capsule_id": "act" },
-    { "capsule_id": "calibration" }
+    {
+      "capsule_id": "act"
+    },
+    {
+      "capsule_id": "calibration"
+    }
   ],
   "disclosures": {
-    "root": { "agent_input": { "spec_version": "evaluation-summary/v1" } },
+    "root": {
+      "agent_input": {
+        "spec_version": "evaluation-summary/v1"
+      }
+    },
     "report": {
       "agent_input": {
         "spec_version": "evaluation-report/v1",
         "date": "2026-09-14",
         "day": 1,
-        "cases": [{ "task_id": "task", "trial": 0 }],
+        "cases": [
+          {
+            "task_id": "task",
+            "trial": 0
+          }
+        ],
         "outcomes": []
       }
     },
@@ -47,11 +60,29 @@
     },
     "calibration": {
       "agent_input": {
-        "spec_version": "calibration-summary/v1",
-        "confusion": { "pass_pass": 2, "fail_fail": 1, "pass_fail": 1 },
-        "agreement": { "k": 3, "n": 4 },
-        "corrected_rate": { "k": 4, "n": 5 },
-        "period_window": { "start": "2026-09-14", "end": "2026-09-20" }
+        "record_version": "calibration-summary/v1",
+        "record_id": "cal-example-org-2026-W38",
+        "epistemic_type": "derived_metric",
+        "computed_at": "2026-09-21T00:00:00Z",
+        "judge_pin": {
+          "type": "judge-pin",
+          "digest_alg": "SHA-256",
+          "digest": "90b5b2951e3aaf6f864f3dd6d8e13ccef113569ff0c14000f47bce9249c6a935",
+          "citation_purpose": "calibrates"
+        },
+        "clauses": [
+          {
+            "clause_ref": "task.resolved",
+            "agreement": {
+              "k": 3,
+              "n": 4
+            },
+            "drift": {
+              "k": 0,
+              "n": 4
+            }
+          }
+        ]
       }
     }
   }

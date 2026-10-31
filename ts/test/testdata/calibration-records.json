@@ -1,0 +1,74 @@
+{
+  "summary": {
+    "record_version": "calibration-summary/v1",
+    "record_id": "cal-example-org-2026-W39",
+    "epistemic_type": "derived_metric",
+    "computed_at": "2026-09-28T00:00:00Z",
+    "judge_pin": {
+      "type": "judge-pin",
+      "digest_alg": "SHA-256",
+      "digest": "90b5b2951e3aaf6f864f3dd6d8e13ccef113569ff0c14000f47bce9249c6a935",
+      "citation_purpose": "calibrates"
+    },
+    "clauses": [
+      {
+        "clause_ref": "grounded_communication.no_invented_policy",
+        "agreement": {
+          "k": 1,
+          "n": 3
+        },
+        "drift": {
+          "k": 0,
+          "n": 3
+        }
+      }
+    ]
+  },
+  "ratings": [
+    {
+      "record_version": "human-rating/v1",
+      "record_id": "hr-example-org-2026-W39-1",
+      "epistemic_type": "human_report",
+      "rated_at": "2026-09-27T00:00:00Z",
+      "blind": true,
+      "rater_ref": "principal:example-org-rater-7f3c",
+      "case": {
+        "type": "evaluation-report/v1",
+        "digest_alg": "SHA-256",
+        "digest": "9f42ea08eab9ea918198c350d11c59b9967967d5c81eb8a7c92ca000e155229a",
+        "citation_purpose": "rated_case"
+      },
+      "label": "met"
+    },
+    {
+      "record_version": "human-rating/v1",
+      "record_id": "hr-example-org-2026-W39-2",
+      "epistemic_type": "human_report",
+      "rated_at": "2026-09-27T00:00:00Z",
+      "blind": true,
+      "rater_ref": "principal:example-org-rater-7f3c",
+      "case": {
+        "type": "evaluation-report/v1",
+        "digest_alg": "SHA-256",
+        "digest": "84aaf1eaf912e88798f3016da636f151a565c233ca1e4e0a7d6549fca2e3c94b",
+        "citation_purpose": "rated_case"
+      },
+      "label": "met"
+    },
+    {
+      "record_version": "human-rating/v1",
+      "record_id": "hr-example-org-2026-W39-3",
+      "epistemic_type": "human_report",
+      "rated_at": "2026-09-27T00:00:00Z",
+      "blind": true,
+      "rater_ref": "principal:example-org-rater-7f3c",
+      "case": {
+        "type": "evaluation-report/v1",
+        "digest_alg": "SHA-256",
+        "digest": "c87acace4c9c01fd2a1b4cecb5c2b54c9af981603989efc8f3fa7a90a03e01b8",
+        "citation_purpose": "rated_case"
+      },
+      "label": "not_met"
+    }
+  ]
+}

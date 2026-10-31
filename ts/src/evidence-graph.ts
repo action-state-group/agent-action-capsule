@@ -1,4 +1,9 @@
 import {
+  CALIBRATION_SUMMARY_V1,
+  readCalibrationSummary,
+  type CalibrationSummaryRecord,
+} from "./calibration-summary.js";
+import {
   disclosureOf,
   verifiedBundleContext,
   verifiedPayload,
@@ -115,40 +120,22 @@ export interface SummaryNode {
   cohort?: unknown;
 }
 /**
- * A calibration figure carried as the integer count it is made of -- `k`
- * of `n` -- never as a rate. The integer-only JCS profile cannot digest a
- * float, so a rate could never be a verified disclosure; and a count is the
- * evidence, a rate is arithmetic on it. A payload that states only a rate
- * (as a string or however written) is kept as `{ rate }` and rendered as
- * "rate given, k and n not stated"; it is never converted.
+ * The bundle's disclosed `calibration-summary/v1` record (identified by its
+ * `record_version`), read as schemas/judge/calibration-summary-v1.json defines
+ * it. `matchesSchema` is false when the record names that version but does not
+ * match the schema: a member the schema lacks (a stored rate such as
+ * `corrected_rate`, a confusion matrix, a period window), a missing member, or
+ * a count with `k > n`. Such a record is never read in part. No count is ever
+ * turned into a rate here.
  */
-export type CalibrationCount =
-  | { readonly k: number; readonly n: number }
-  | { readonly rate: unknown };
+export type CalibrationNode =
+  | {
+      readonly capsuleId: string;
+      readonly matchesSchema: true;
+      readonly summary: CalibrationSummaryRecord;
+    }
+  | { readonly capsuleId: string; readonly matchesSchema: false };
 
-export interface CalibrationNode {
-  capsuleId: string;
-  periodWindow?: unknown;
-  confusion?: unknown;
-  agreement?: CalibrationCount;
-  correctedRate?: CalibrationCount;
-}
-
-const isCount = (value: unknown): value is { k: number; n: number } =>
-  isObject(value) &&
-  Number.isSafeInteger(value.k) &&
-  Number.isSafeInteger(value.n) &&
-  (value.k as number) >= 0 &&
-  (value.n as number) >= (value.k as number);
-
-export const calibrationCount = (
-  value: unknown,
-): CalibrationCount | undefined =>
-  value === undefined
-    ? undefined
-    : isCount(value)
-      ? { k: value.k, n: value.n }
-      : { rate: value };
 export interface EvidenceGraph {
   aggregate: SummaryNode;
   reports: ReportNode[];
@@ -596,23 +583,13 @@ export async function buildEvidenceGraph(
   let calibration: CalibrationNode | undefined;
   for (const record of records) {
     const payload = payloadOf(record);
-    if (!isObject(payload) || payload.spec_version !== "calibration-summary/v1")
+    if (!isObject(payload) || payload.record_version !== CALIBRATION_SUMMARY_V1)
       continue;
-    calibration = {
-      capsuleId: record.capsule_id,
-      ...(Object.hasOwn(payload, "period_window")
-        ? { periodWindow: payload.period_window }
-        : {}),
-      ...(Object.hasOwn(payload, "confusion")
-        ? { confusion: payload.confusion }
-        : {}),
-      ...(Object.hasOwn(payload, "agreement")
-        ? { agreement: calibrationCount(payload.agreement)! }
-        : {}),
-      ...(Object.hasOwn(payload, "corrected_rate")
-        ? { correctedRate: calibrationCount(payload.corrected_rate)! }
-        : {}),
-    };
+    const summary = readCalibrationSummary(payload);
+    calibration =
+      summary === undefined
+        ? { capsuleId: record.capsule_id, matchesSchema: false }
+        : { capsuleId: record.capsule_id, matchesSchema: true, summary };
     break;
   }
   return {
