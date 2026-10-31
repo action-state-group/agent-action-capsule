@@ -38,10 +38,16 @@ type Case = {
 };
 type CoseCase = { name: string; cose_hex: string; valid: boolean };
 type Runtime = {
-  /** The banner's checkpoint word and the strict result, if any. */
-  read(
-    bundle: unknown,
-  ): Promise<{ checkpoint: string; verified: boolean; strict?: Strict }>;
+  /**
+   * The banner's checkpoint word, the page's gate (bundleVerified), the
+   * membership claim the page read and the strict result, if any.
+   */
+  read(bundle: unknown): Promise<{
+    checkpoint: string;
+    verified: boolean;
+    membership: string;
+    strict?: Strict;
+  }>;
   strict(bundle: unknown, options: Obj): Promise<Strict>;
   /** The function bundle.ts loads from CLL, as the page bundle resolved it. */
   checkpointMetadata(cose: Uint8Array): Promise<unknown>;
@@ -105,6 +111,7 @@ function runtime(withCrypto: boolean): Runtime {
         return {
           checkpoint: Page.verificationBanner(context, []).checkpoint,
           verified: Page.bundleVerified(context.verification),
+          membership: context.verification.perRecordMembership.status,
           strict: context.strict,
         };
       },
@@ -233,15 +240,21 @@ describe("a page's producer-selected Bundle", () => {
   )!.bundle;
 
   it("renders as incomplete with WebCrypto", async () => {
-    const { checkpoint, verified, strict } = await runtime(true).read(selected);
+    const { checkpoint, verified, membership, strict } =
+      await runtime(true).read(selected);
     expect(verified).toBe(true);
+    expect(membership).toBe("pass");
     expect(checkpoint).toBe("verified");
     expect(strict?.verdict).toBe("INCOMPLETE");
   });
 
   it("is refused without a crypto global", async () => {
-    const { verified, strict } = await runtime(false).read(selected);
+    const { verified, membership, strict } =
+      await runtime(false).read(selected);
     expect(strict).toBeUndefined();
+    // Refused because the plain checks read the selection as an interval,
+    // so its records fail membership, not for any other reason.
+    expect(membership).toBe("fail");
     expect(verified).toBe(false);
   });
 });
