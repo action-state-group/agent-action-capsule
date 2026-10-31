@@ -5,8 +5,8 @@
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
 Intended status: Standards Track                                Y. Zhang
-Expires: 2 May 2027                                          Independent
-                                                         29 October 2026
+Expires: 4 May 2027                                          Independent
+                                                         31 October 2026
 
 
                           AAC Evidence Bundle
@@ -44,7 +44,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 2 May 2027.
+   This Internet-Draft will expire on 4 May 2027.
 
 Copyright Notice
 
@@ -53,7 +53,7 @@ Copyright Notice
 
 
 
-Mih & Zhang                Expires 2 May 2027                   [Page 1]
+Mih & Zhang                Expires 4 May 2027                   [Page 1]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -72,53 +72,54 @@ Table of Contents
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
    2.  Conventions and Definitions . . . . . . . . . . . . . . . . .   3
    3.  Evidence Bundle Object  . . . . . . . . . . . . . . . . . . .   4
+     3.1.  Empty-History Bundles . . . . . . . . . . . . . . . . . .   6
    4.  Citation Closure  . . . . . . . . . . . . . . . . . . . . . .   6
-   5.  Bundle-Level Disclosures  . . . . . . . . . . . . . . . . . .   6
-   6.  Completeness Claims and Log Membership  . . . . . . . . . . .   7
-     6.1.  Certificate Modes . . . . . . . . . . . . . . . . . . . .   8
-     6.2.  Producer-Selected Certificates  . . . . . . . . . . . . .   9
-     6.3.  Non-Record Leaves . . . . . . . . . . . . . . . . . . . .  10
-   7.  Category Coverage . . . . . . . . . . . . . . . . . . . . . .  12
-     7.1.  Statuses  . . . . . . . . . . . . . . . . . . . . . . . .  13
-     7.2.  Signature . . . . . . . . . . . . . . . . . . . . . . . .  14
-     7.3.  Verifier Properties . . . . . . . . . . . . . . . . . . .  14
-   8.  Typed Extensions  . . . . . . . . . . . . . . . . . . . . . .  16
-     8.1.  The producer-key/v1 Extension . . . . . . . . . . . . . .  16
-     8.2.  The composed/v1 Extension . . . . . . . . . . . . . . . .  17
-       8.2.1.  Block . . . . . . . . . . . . . . . . . . . . . . . .  18
-       8.2.2.  Members and Outcomes  . . . . . . . . . . . . . . . .  20
-       8.2.3.  Composition Closure . . . . . . . . . . . . . . . . .  21
-       8.2.4.  Controller Binding Records  . . . . . . . . . . . . .  22
-       8.2.5.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  25
-       8.2.6.  Observers and Redundancy  . . . . . . . . . . . . . .  27
-       8.2.7.  Composed Digest . . . . . . . . . . . . . . . . . . .  28
-       8.2.8.  Verifying composed/v1 . . . . . . . . . . . . . . . .  29
-     8.3.  Provisional Extension Kinds . . . . . . . . . . . . . . .  29
-   9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  30
-     9.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  30
-     9.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  32
-     9.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  33
-   10. Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  33
-   11. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  33
-   12. Security Considerations . . . . . . . . . . . . . . . . . . .  34
-     12.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  35
-     12.2.  Category Coverage  . . . . . . . . . . . . . . . . . . .  36
-   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  36
-   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  37
-   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  37
+   5.  Bundle-Level Disclosures  . . . . . . . . . . . . . . . . . .   7
+   6.  Completeness Claims and Log Membership  . . . . . . . . . . .   8
+     6.1.  Certificate Modes . . . . . . . . . . . . . . . . . . . .   9
+     6.2.  Producer-Selected Certificates  . . . . . . . . . . . . .  10
+     6.3.  Non-Record Leaves . . . . . . . . . . . . . . . . . . . .  11
+   7.  Category Coverage . . . . . . . . . . . . . . . . . . . . . .  13
+     7.1.  Statuses  . . . . . . . . . . . . . . . . . . . . . . . .  14
+     7.2.  Signature . . . . . . . . . . . . . . . . . . . . . . . .  15
+     7.3.  Verifier Properties . . . . . . . . . . . . . . . . . . .  15
+   8.  Typed Extensions  . . . . . . . . . . . . . . . . . . . . . .  17
+     8.1.  The producer-key/v1 Extension . . . . . . . . . . . . . .  17
+     8.2.  The composed/v1 Extension . . . . . . . . . . . . . . . .  18
+       8.2.1.  Block . . . . . . . . . . . . . . . . . . . . . . . .  19
+       8.2.2.  Members and Outcomes  . . . . . . . . . . . . . . . .  21
+       8.2.3.  Composition Closure . . . . . . . . . . . . . . . . .  22
+       8.2.4.  Controller Binding Records  . . . . . . . . . . . . .  23
+       8.2.5.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  26
+       8.2.6.  Observers and Redundancy  . . . . . . . . . . . . . .  28
+       8.2.7.  Composed Digest . . . . . . . . . . . . . . . . . . .  29
+       8.2.8.  Verifying composed/v1 . . . . . . . . . . . . . . . .  30
+     8.3.  Provisional Extension Kinds . . . . . . . . . . . . . . .  31
+   9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  31
+     9.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  32
+     9.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  34
+     9.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  34
+   10. Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  35
+   11. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  35
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  35
+     12.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  36
+     12.2.  Category Coverage  . . . . . . . . . . . . . . . . . . .  37
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  37
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  38
 
 
 
-Mih & Zhang                Expires 2 May 2027                   [Page 2]
+Mih & Zhang                Expires 4 May 2027                   [Page 2]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
 
-     15.1.  Normative References . . . . . . . . . . . . . . . . . .  37
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  39
-   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  40
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  41
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  41
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  39
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  39
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  41
+   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  41
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  43
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  43
 
 1.  Introduction
 
@@ -164,8 +165,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-
-Mih & Zhang                Expires 2 May 2027                   [Page 3]
+Mih & Zhang                Expires 4 May 2027                   [Page 3]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -221,7 +221,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                   [Page 4]
+Mih & Zhang                Expires 4 May 2027                   [Page 4]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -253,14 +253,15 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    bundle_version and bundle_kind are REQUIRED and MUST be respectively
    "2" and "evidence-bundle/v2". root, records, and completeness are
-   REQUIRED. root is the lowercase-hex capsule_id of one record in
-   records.  Every records element MUST be an unmodified Capsule object
-   conforming to [I-D.mih-scitt-agent-action-capsule]; duplicate
-   capsule_id values are not permitted.  All other members shown are
-   OPTIONAL unless a claim in this document requires them.  A receiver
-   MUST reject an object with an unknown bundle_version or bundle_kind
-   as an AAC Evidence Bundle, rather than silently applying version-2
-   verification rules.
+   REQUIRED, except that an empty-history Bundle (Section 3.1) has no
+   root. root is the lowercase-hex capsule_id of one record in records.
+   Every records element MUST be an unmodified Capsule object conforming
+   to [I-D.mih-scitt-agent-action-capsule]; duplicate capsule_id values
+   are not permitted.  All other members shown are OPTIONAL unless a
+   claim in this document requires them.  A receiver MUST reject an
+   object with an unknown bundle_version or bundle_kind as an AAC
+   Evidence Bundle, rather than silently applying version-2 verification
+   rules.
 
    payloads_mode states whether the producer included all payload
    material it chose to carry (all), only a selected subset (selected),
@@ -276,11 +277,48 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-
-Mih & Zhang                Expires 2 May 2027                   [Page 5]
+Mih & Zhang                Expires 4 May 2027                   [Page 5]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+3.1.  Empty-History Bundles
+
+   An _empty-history Bundle_ shows that a log stream has no history to
+   disclose.  A stream that was never started and a history that was
+   cleared read the same.  Clearing a history starts a new stream, with
+   a new log_id, under the same key.  It never rewrites or truncates the
+   old stream's log, and a checkpoint that does so is inconsistent with
+   that log's earlier checkpoints.
+
+   An empty-history Bundle has an empty records array and no root
+   member. root MUST be absent exactly when records is empty.  In an
+   empty-history Bundle:
+
+   *  completeness.records_mode MUST be complete, completeness.missing
+      MUST be absent or empty, and completeness.payloads_mode MUST be
+      none;
+
+   *  completeness_certificate, disclosures and disclosure_record MUST
+      be absent;
+
+   *  checkpoint, with checkpoint.cose, SHOULD be present when the
+      stream has a checkpoint: its first checkpoint, or its latest one
+      while it still holds no record.  A stream that was never started
+      has none.
+
+   A Bundle with no root that is not a well-formed empty-history Bundle
+   is malformed.
+
+   A verifier reports a well-formed empty-history Bundle as _no
+   history_. It is well formed: a verifier MUST NOT report it as failed,
+   and MUST NOT report it as an absence (Section 8.2.2).  Of its claims
+   (Section 6), graph closure passes, since there is nothing to close,
+   and interval coverage and per-record membership are not established,
+   with the finding no_records.  When checkpoint.cose verifies, the
+   verifier reports the checkpoint's signed timestamp with the result,
+   as no history since that time.  Otherwise it reports no history
+   without a date.
 
 4.  Citation Closure
 
@@ -290,6 +328,15 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    edges.  The default depth is 2 when the member is absent: report to
    judgments or adjudications, then to turns.  A producer using a
    different depth MUST state that non-negative JSON integer explicitly.
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                   [Page 6]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    For each target reached within that depth, the Bundle MUST either
    supply the cited Capsule in records with a matching identity or list
@@ -328,16 +375,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    disclosed content.  A member absent from this overlay is WITHHELD,
    never blank and never failed.
 
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                   [Page 6]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    The overlay is carried once per Bundle rather than by wrapping each
    Capsule in {capsule, disclosures}. It MUST NOT alter an enclosed
    Capsule or its capsule_id.  An overlay key not naming a supplied
@@ -347,6 +384,15 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the Capsule that records the act of sealing or issuing these
    disclosures; it is evidence about that act and does not replace the
    DE-3 check.
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                   [Page 7]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
 6.  Completeness Claims and Log Membership
 
@@ -386,14 +432,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    record membership as independently verified.  Otherwise it MUST
    explicitly label those claims checkpoint_unverified and describe them
    as relative to a producer-asserted checkpoint.  The portable
-
-
-
-Mih & Zhang                Expires 2 May 2027                   [Page 7]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    checkpoint signature member is checkpoint.cose, an unpadded base64url
    CLL COSE checkpoint.  A verifier that implements this member MUST
    verify it and require its log identifier, MMR size, and root to equal
@@ -404,6 +442,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    in completeness.missing.  A membership entry or record whose seq is
    outside the interval MUST be rejected.  Each membership entry MUST
    carry log_coordinates stating its claimed position and an inclusion
+
+
+
+Mih & Zhang                Expires 4 May 2027                   [Page 8]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    proof to the certificate's range root.  The base profile's terms
    apply exactly: seq is the 1-based log position and leaf_index = seq -
    1 is the zero-based MMR index. log_coordinates states which index is
@@ -442,18 +488,23 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    established, never as failed.  A Bundle in a mode the verifier lacks
    is unverified in that respect; it is not evidence of tampering, and
    reporting it as invalid would make an honest Bundle indistinguishable
-
-
-
-Mih & Zhang                Expires 2 May 2027                   [Page 8]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    from an altered one.  The selection member is the producer's to
    write, and so is any edit to a Bundle after it is made: setting an
    unknown mode can turn a failing claim into one that is not
    established, but never into one that is established (Section 12).
+
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                   [Page 9]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
 6.2.  Producer-Selected Certificates
 
@@ -501,7 +552,12 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                   [Page 9]
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 10]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -557,7 +613,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 10]
+Mih & Zhang                Expires 4 May 2027                  [Page 11]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -613,7 +669,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 11]
+Mih & Zhang                Expires 4 May 2027                  [Page 12]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -669,7 +725,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 12]
+Mih & Zhang                Expires 4 May 2027                  [Page 13]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -725,7 +781,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 13]
+Mih & Zhang                Expires 4 May 2027                  [Page 14]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -781,7 +837,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 14]
+Mih & Zhang                Expires 4 May 2027                  [Page 15]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -837,7 +893,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 15]
+Mih & Zhang                Expires 4 May 2027                  [Page 16]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -893,7 +949,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 16]
+Mih & Zhang                Expires 4 May 2027                  [Page 17]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -949,7 +1005,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 17]
+Mih & Zhang                Expires 4 May 2027                  [Page 18]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1005,7 +1061,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 18]
+Mih & Zhang                Expires 4 May 2027                  [Page 19]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1061,7 +1117,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 19]
+Mih & Zhang                Expires 4 May 2027                  [Page 20]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1117,7 +1173,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 20]
+Mih & Zhang                Expires 4 May 2027                  [Page 21]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1149,6 +1205,11 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    verifier reports the failure on that member.  It is not a fourth
    outcome, and the verifier MUST NOT report it as a successful grant.
 
+   An empty-history Bundle (Section 3.1) is an artifact member that
+   shows no history.  It is neither a failure nor an absence.  A
+   responder whose history was cleared, or never started, can answer
+   with one.
+
    *Each member keeps its own claims.* A verifier MUST verify every
    carried member bundle as an Evidence Bundle under this document.  It
    MUST report that bundle's graph closure, interval coverage and per-
@@ -1165,18 +1226,18 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    A composed/v1 block makes a fourth completeness claim, _composition
    closure_. It holds when every member is either:
 
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 22]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    *  present, meaning its body is carried and reproduces its digest; or
 
    *  declared missing, meaning its id is listed in missing and it
       carries no body.
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 21]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    The claim has three results:
 
@@ -1210,12 +1271,11 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 8.2.4.  Controller Binding Records
 
    A _controller binding record_ is a JSON object in which the holders
-   of two Ed25519 [RFC8032] signing keys both sign one statement about
-   how the two keys are related.  It is the linkage evidence of the
-   controller_binding join basis (Section 8.2.5).  Its signatures show
-   only that whoever held each private key signed the record.  They do
-   not show who holds either key, and this document never states who a
-   key holder is.
+   of two signing keys both sign one statement about how the two keys
+   are related.  It is the linkage evidence of the controller_binding
+   join basis (Section 8.2.5).  Its signatures show only that whoever
+   held each private key signed the record.  They do not show who holds
+   either key, and this document never states who a key holder is.
 
    A binding record is not a member of the composed/v1 block.  It is
    delivered beside the containing Bundle, with any revocation
@@ -1225,17 +1285,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 22]
+Mih & Zhang                Expires 4 May 2027                  [Page 23]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
 
-   In this section a _key identifier_ is a raw 32-byte Ed25519 public
-   key as 64 lowercase hexadecimal characters, and a _time_ is an
+   In this section a _key identifier_ is 64 lowercase hexadecimal
+   characters; for an Ed25519 [RFC8032] key, the one key type this
+   document defines, it is the raw 32-byte public key.  A _time_ is an
    [RFC3339] date-time in UTC with a "Z" suffix and seconds precision.
    A root record's timestamp, against which a binding is checked, can
    also carry fractional seconds.  Times compare as instants.
@@ -1251,6 +1308,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
      revocation: "revocation_statement/0",
      nonce: tstr,                   ; non-empty, chosen per ceremony
      sigs: [* binding-sig],
+     ? key_types: [tstr, tstr],     ; one per entry of keys, in order
      ? delegator: key-id,           ; delegated_by only: one of keys
      ? credential: binding-credential,
                                     ; same_organization_credentialed
@@ -1258,7 +1316,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    binding-claim = "same_controller_asserted" / "delegated_by" /
                    "same_organization_credentialed"
-   binding-sig = { key_id: key-id, sig: sig-hex }
+   binding-sig = { key_id: key-id, sig: any }   ; sig-hex for ed25519
    binding-credential = {
      issuer: key-id,
      method: tstr,
@@ -1283,9 +1341,7 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
 
 
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 23]
+Mih & Zhang                Expires 4 May 2027                  [Page 24]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
@@ -1307,11 +1363,20 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    member its claim adds; when its two keys are equal or not in
    ascending order; when not_before is later than issued_at or not_after
    is not later than it; when nonce is empty; when delegator is not one
-   of keys; or when its method is one this document defines for another
-   claim type.  A method token this document does not define is well
-   formed.  A binding record or revocation statement that is not a JSON
-   object is malformed. delegated_by states a relation, not a scope: a
-   verifier reads no authority from it.
+   of keys; when both keys are ed25519 keys and a sig is not a sig-hex;
+   or when its method is one this document defines for another claim
+   type.  A method token this document does not define is well formed.
+   A binding record or revocation statement that is not a JSON object is
+   malformed. delegated_by states a relation, not a scope: a verifier
+   reads no authority from it.
+
+   *Key types.* key_types, when present, names the type of each key in
+   keys, in its order.  When it is absent, both keys are ed25519 keys.
+   This document defines one key type, ed25519: the key identifier is
+   the raw Ed25519 public key, and the key signs with Ed25519.  A record
+   whose key_types names any other token is well formed.  Its sig values
+   are not held to sig-hex, and a verifier that does not implement that
+   key type treats the record as under a method it does not implement.
 
    *Signing input and binding digest.* The signing input is the UTF-8
    octets of the JCS [RFC8785] serialization of the record without sigs.
@@ -1322,30 +1387,31 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    *Methods.* Under dual_signature/0, sigs has exactly two entries:
    sigs[0].key_id is keys[0], sigs[1].key_id is keys[1], and each sig is
-   that key's Ed25519 signature over the signing input, in lowercase
-   hexadecimal.  A record with one signature, a third entry, or a
-   signature that does not verify is not signed by both keys.  One key
-   cannot bind another key to itself, because each key signs the other
-   key's identifier. dual_signature_credential/0 requires the same two
-   signatures.  Its credential names a signed object from the key
-   credential.issuer, delivered beside the record, whose SHA-256 is
-   credential.digest and which is verified by its native method
-   credential.method.  This document registers no credential format.  A
-   credential never decides whether a binding applies, and a verifier
-   MUST NOT present the organization it names as an identity.
+   that key's signature over the signing input; for an ed25519 key, its
+   Ed25519 signature in lowercase hexadecimal.  A record with one
+   signature, a third entry, or a signature that does not verify is not
+   signed by both keys.  One key cannot bind another key to itself,
+   because each key signs the other key's identifier.
+   dual_signature_credential/0 requires the same two signatures.  Its
+   credential names a signed object from the key credential.issuer,
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 25]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
+   delivered beside the record, whose SHA-256 is credential.digest and
+   which is verified by its native method credential.method.  This
+   document registers no credential format.  A credential never decides
+   whether a binding applies, and a verifier MUST NOT present the
+   organization it names as an identity.
 
    *Revocation.* Either key holder can withdraw a binding with a
    revocation statement (binding-revocation).  A statement _applies_ to
    a binding when it is well formed, binding is the binding digest,
    key_id is one of the binding's keys, and sig is that key's Ed25519
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 24]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    signature over the UTF-8 JCS serialization of the statement without
    sig.  A statement names a binding by digest, so it reaches every copy
    of the record.  From revoked_at on, the binding is not in effect.
@@ -1358,8 +1424,8 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    1.  it is well formed;
 
-   2.  the verifier implements its method, and both bound keys signed it
-       under that method;
+   2.  the verifier implements its method and the type of both keys, and
+       both bound keys signed it under that method;
 
    3.  its keys are exactly the two key identifiers, in either order;
 
@@ -1384,32 +1450,36 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    that does not match the derivation is a failed composed/v1 check
    (finding join_state_mismatch).  It is never a pass.
 
-   The states derive as follows:
-
-   *  *one_sided*: exactly one of the two members has outcome artifact.
-
-   *  *unjoined*: neither member has outcome artifact; or both do, but
-      the linkage basis does not establish that their records are about
-      the same thing.
 
 
 
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 25]
+Mih & Zhang                Expires 4 May 2027                  [Page 26]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
 
-   *  *agree*: both members are artifacts and are linked, and every
-      compare pointer resolves in both root records to values with
-      identical JCS serializations.  A join with no compare and a link
-      is agree.
+   The states derive as follows:
 
-   *  *mismatch*: both members are artifacts and are linked, and at
-      least one compare pointer resolves to different values, or does
-      not resolve on one side.
+   *  *one_sided*: exactly one of the two members has outcome artifact
+      with records, and the other has none: it is not an artifact, or it
+      is an empty-history Bundle (Section 3.1).  Under
+      controller_binding, a join with an empty-history member is
+      one_sided only when the two are linked (below).
+
+   *  *unjoined*: neither member has outcome artifact with records; or
+      one has records, the other is an empty-history Bundle, and the
+      controller_binding linkage does not link them; or both have
+      records, but the linkage basis does not establish that their
+      records are about the same thing.
+
+   *  *agree*: both members are artifacts with records and are linked,
+      and every compare pointer resolves in both root records to values
+      with identical JCS serializations.  A join with no compare and a
+      link is agree.
+
+   *  *mismatch*: both members are artifacts with records and are
+      linked, and at least one compare pointer resolves to different
+      values, or does not resolve on one side.
 
    Linkage is evaluated on each artifact member's root record (its
    bundle's root).  This document defines the derivation for three
@@ -1432,14 +1502,32 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       timestamp of each root record
       ([I-D.mih-scitt-agent-action-capsule]).  A verifier that received
       no record with that digest, or only well-formed records with that
-      digest whose method it does not implement, reports the join as
-      not_derivable; so does a join without pointer or
+      digest whose method or key types it does not implement, reports
+      the join as not_derivable; so does a join without pointer or
       identifier_digest.  Any other record with that digest that does
       not apply (malformed, not signed by both keys, other keys, outside
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 27]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
       its window, or revoked) leaves the members unjoined.  A join on
       this basis states that the two root records are under keys whose
       holders bound them, as both of them stated it; it says nothing
       about who those holders are.
+
+      When one member is an empty-history Bundle (Section 3.1), the
+      derivation still runs.  That member's key identifier is the key
+      that signed its checkpoint.cose, as that signature authenticates
+      it, and its T is that checkpoint's timestamp; pointer selects the
+      key identifier in the other member's root record only.  Linked
+      gives one_sided, never agree, because nothing was compared; not
+      linked gives unjoined.  An empty-history member without a
+      checkpoint.cose that verifies has no key, and the join is
+      not_derivable.
 
    The bases issued_receipt (the two records cite one Receipt) and
    same_interval (the two records fall in one declared interval) are
@@ -1448,15 +1536,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    verifier that does not implement a derivation for the basis reports
    such a join as not_derivable.  It MUST NOT report the join as a
    derived agreement, and MUST NOT count it as corroboration.
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 26]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    A join one of whose artifact members is declared missing is also
    not_derivable.
@@ -1483,6 +1562,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    *  the two observers have the same custody_domain;
 
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 28]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    *  the two members' root records carry the same key_id;
 
    *  the join's basis is controller_binding: the holders of the two
@@ -1503,16 +1590,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    Corroboration is derived; it is never declared, and it is not part of
    the block.  A verifier lists results per pair.  It MUST NOT combine
    them into a count or score.
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 27]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
 8.2.7.  Composed Digest
 
@@ -1541,6 +1618,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
           absent). compare keeps its carried order.  Use [] when the
           block has no joins.
 
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 29]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
        *  not_requested: the block's not_requested sorted ascending, or
           [] when it has none.
 
@@ -1560,15 +1645,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    A verifier MUST recompute composed_digest and report a mismatch as a
    failed composed/v1 check.  It MUST NOT report the recomputed value as
    the digest of any member, nor as the containing Bundle's digest.
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 28]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    The containing Bundle's own digest (Section 9) still covers the whole
    block, bodies included.  A countersignature over the containing
@@ -1591,10 +1667,20 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    2.  per member: outcome, body carried or declared missing, digest
        reproduced, and, for a carried member bundle, its own three
-       completeness claims and, when it carries response, whether the
+       completeness claims, no history for an empty-history Bundle
+       (Section 3.1), and, when it carries response, whether the
        response's digests match and its signature state;
 
    3.  composition closure;
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 30]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    4.  per join: the declared state, the derived state (or
        not_derivable), and whether they match;
@@ -1618,14 +1704,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    kind it does not implement (Section 8): digest-covered and
    uninterpreted.
 
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 29]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
 9.  Bundle Digest and Countersignatures
 
    The bundle digest is SHA-256(UTF8(JCS(canonical bundle form))),
@@ -1641,6 +1719,24 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    producer is a countersignature (Section 2).  This document does not
    define who populates the slot or whether a relying party should rely
    on a given signer.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 31]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    The registered types are cose-sign1 and countersign/v1.  A cose-sign1
    object is {type: "cose-sign1", signature: "<base64url tagged
@@ -1674,14 +1770,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
      "receipt": { ... }
    }
 
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 30]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    type, signer, over, statement, and signature are REQUIRED; receipt is
    OPTIONAL.
 
@@ -1696,6 +1784,15 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    statement says what the countersigner recomputed and with what
    result.
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 32]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    *  checks is a non-empty array.  Each element names one check in
       name, a short phrase for what was recomputed, and gives its
@@ -1730,14 +1827,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
                                   Table 2
 
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 31]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    Each result stands alone.  A statement MUST NOT carry an aggregate
    result, a score, a rating, or a claim of compliance, and a verifier
    MUST NOT derive one from the checks.  Capture coverage, meaning
@@ -1753,6 +1842,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the Bundle, the signer's identity and what the countersigner says
    about it; signer is the entry's signer object exactly as it appears
    on the wire.
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 33]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    receipt, when present, is a Receipt [RFC9942] showing the statement
    was registered with a Transparency Service, in that service's receipt
@@ -1786,14 +1882,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the signer's statement, and MUST NOT present them as its own
    findings.
 
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 32]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
 9.3.  Self-Countersignature
 
    A countersignature is a self-countersignature when signer.key_id
@@ -1808,6 +1896,15 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    the producer.  The verifier computes independence itself for each
    entry; no entry member and no directory entry can change that result,
    and a producer key declaration can only change it to not independent.
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 34]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
 10.  Fragment Codec
 
@@ -1843,13 +1940,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    Bundle, so that a certificate mode it does not implement is reported
    as not established, never as failed.
 
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 33]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
 12.  Security Considerations
 
    The Bundle does not make omitted evidence disappear.  Its explicit
@@ -1862,6 +1952,15 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    link, so every received Bundle requires independent verification.
    Unknown extension kinds are integrity-covered but semantically
    untrusted.
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 35]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    A producer-selected certificate proves that each carried record is in
    the log; it says nothing about the records the producer left out, so
@@ -1880,31 +1979,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    could be the identifier of a Capsule the producer chose not to show;
    recomputing the value from padding content, whose only free member is
    a random nonce, rules that out (Section 6.3).
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 34]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
    A countersignature's statement and signer are what a relying party
    reads, so both are inside the signing input (Section 9.1); a
@@ -1937,6 +2011,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       sealed topology.  A verifier MUST NOT describe composition closure
       as completeness of participation.
 
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 36]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    *  *Declarations versus derivations.* Declared join states are re-
       derived; a mismatch fails.  Declared custody can only downgrade
       (Section 8.2.6).  Nothing a producer declares can make two
@@ -1953,14 +2034,15 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       revocation the producer did not account for derives unjoined and
       fails a declared agree (join_state_mismatch).
 
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 35]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
+   *  *No history.* An empty-history Bundle (Section 3.1) is its
+      producer's statement that its stream holds no record.  Its signed
+      checkpoint shows that the stream exists, under which key, and the
+      size of its log at that time.  It carries no certificate, so
+      nothing shows that no leaf of that log is a record.  A verifier
+      MUST NOT present no history as evidence that no action took place.
+      Because it is an artifact, never an absence, a cleared or
+      unstarted history cannot be read as a responder that did not
+      answer.
 
    *  *Outcomes.* Keeping refusal and absence distinct is evidentiary:
       synthesizing either one from the other forges the stronger record
@@ -1984,6 +2066,14 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    A Bundle reveals a preimage only through its disclosure overlay
    (Section 5); a member absent from the overlay stays WITHHELD.
 
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 37]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
    A range that carries padding leaves (Section 6.3) shows where padding
    runs begin and end, and padding is appended before a checkpoint is
    cut.  Such a range therefore reveals some of the log's earlier
@@ -1991,6 +2081,10 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    [I-D.mih-agent-evidence-layer]).  A producer that does not want to
    show them uses a producer-selected certificate (Section 6.2), which
    carries no positions other than those of the records it carries.
+
+   A cleared history's empty-history Bundle (Section 3.1) carries a
+   checkpoint signed by the same key as the cleared stream.  Clearing a
+   history therefore does not unlink that key from it.
 
    For the composed/v1 extension (Section 8.2):
 
@@ -2007,16 +2101,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    *  Withholding a member's body (missing) keeps the composed digest
       stable.  A judgment can therefore be checked against a composition
       presented to an audience that may not see every member.
-
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 36]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
 14.  IANA Considerations
 
@@ -2035,6 +2119,16 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    3.  "Evidence Bundle countersignature type", initial values cose-
        sign1 (Section 9) and countersign/v1 (Section 9.1).
+
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 38]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    4.  "Evidence Bundle category set", with no initial values.  Each
        entry registers a category set identifier for category_coverage
@@ -2066,14 +2160,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
               evidence-request-01>.
 
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 37]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
@@ -2088,6 +2174,17 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
               <https://www.rfc-editor.org/rfc/rfc3339>.
+
+
+
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 39]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    [RFC3986]  Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
               Resource Identifier (URI): Generic Syntax", STD 66,
@@ -2122,14 +2219,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               DOI 10.17487/RFC8259, December 2017,
               <https://www.rfc-editor.org/rfc/rfc8259>.
 
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 38]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
-
    [RFC8610]  Birkholz, H., Vigano, C., and C. Bormann, "Concise Data
               Definition Language (CDDL): A Notational Convention to
               Express Concise Binary Object Representation (CBOR) and
@@ -2145,6 +2234,13 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               Fournet, "CBOR Object Signing and Encryption (COSE)
               Receipts", RFC 9942, DOI 10.17487/RFC9942, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9942>.
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 40]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
 
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
@@ -2163,9 +2259,9 @@ Internet-Draft             AAC Evidence Bundle              October 2026
    [I-D.mih-sokolov-scitt-payload-binding]
               Mih, S. and A. Sokolov, "Canonicalization Declaration for
               SCITT Signed Statements", Work in Progress, Internet-
-              Draft, draft-mih-sokolov-scitt-payload-binding-05, 13
-              September 2026, <https://datatracker.ietf.org/doc/html/
-              draft-mih-sokolov-scitt-payload-binding-05>.
+              Draft, draft-mih-sokolov-scitt-payload-binding-06, 26
+              October 2026, <https://datatracker.ietf.org/doc/html/
+              draft-mih-sokolov-scitt-payload-binding-06>.
 
    [RFC9338]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
               Countersignatures", STD 96, RFC 9338,
@@ -2176,15 +2272,6 @@ Internet-Draft             AAC Evidence Bundle              October 2026
               Disclosure for JSON Web Tokens", RFC 9901,
               DOI 10.17487/RFC9901, November 2025,
               <https://www.rfc-editor.org/rfc/rfc9901>.
-
-
-
-
-
-Mih & Zhang                Expires 2 May 2027                  [Page 39]
-
-Internet-Draft             AAC Evidence Bundle              October 2026
-
 
 Change Log
 
@@ -2203,6 +2290,14 @@ Change Log
    *  Non-record leaves (Section 6.3): a range covers padding leaves in
       completeness_certificate.non_record_leaves, each carried in full;
       stated the padding leaf's serialization and identifier, the per-
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 41]
+
+Internet-Draft             AAC Evidence Bundle              October 2026
+
+
       position accounting rule for per-record membership, and that a
       leaf of an undefined type leaves the claim not established, never
       established.  Stated that per-record membership is the claim, and
@@ -2232,19 +2327,32 @@ Change Log
       that implements only -01 reads a block that carries a
       controller_binding join as malformed, since -01's join-basis does
       not list it.  Security and Privacy Considerations: controller
-      bindings.
+      bindings.  A binding record MAY carry key_types; this document
+      defines the ed25519 key type, and a record under any other is
+      treated as under a method a verifier does not implement.
+
+   *  Empty-history Bundles (Section 3.1): a Bundle with no records and
+      no root shows that a stream has no history to disclose, whether it
+      was never started or its history was cleared (a new stream, with a
+      new log_id).  It is well formed and reported as no history, never
+      as failed and never as an absence.  In composed/v1 it is an
+      artifact member, and a join with it derives one_sided; a
+      controller_binding join derives from the key that signed its
+      checkpoint, and is not_derivable without one.  Security
+      Considerations: no history.  Privacy Considerations: a cleared
+      history's checkpoint is signed by the cleared stream's key.
+
+   *  Cites Evidence Request -01 and, informatively, Evidence Layer -00
+      and the Canonicalization Declaration -06.
+
+   Since -00:
 
 
 
-
-Mih & Zhang                Expires 2 May 2027                  [Page 40]
+Mih & Zhang                Expires 4 May 2027                  [Page 42]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
-
-   *  Cites Evidence Request -01 and, informatively, Evidence Layer -00.
-
-   Since -00:
 
    *  Countersignatures: defined the countersign/v1 countersignature
       entry, its statement, and its five check results; defined
@@ -2293,4 +2401,8 @@ Authors' Addresses
 
 
 
-Mih & Zhang                Expires 2 May 2027                  [Page 41]
+
+
+
+
+Mih & Zhang                Expires 4 May 2027                  [Page 43]

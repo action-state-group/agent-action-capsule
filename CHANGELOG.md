@@ -90,6 +90,60 @@ has not yet.
   the -02 reading against the stated checkpoint applies only when no signed
   checkpoint is carried.
 
+- Evidence Bundle -02 (`spec/draft-mih-zhang-agent-disclosure-bundle-02.md`, Python reference;
+  Go, TypeScript and Rust follow). Certificate modes: `verify_bundle` reads
+  `completeness.selection` as the certificate's mode; a producer-selected Bundle is no longer a
+  failure in plain mode, and any other value withholds interval coverage and per-record
+  membership with `certificate_mode_unsupported`, never a failure. Non-record leaves: a range
+  covers padding leaves carried in full in `completeness_certificate.non_record_leaves`; each
+  position of the interval is a record's membership, a recomputed padding leaf, or missing; a leaf
+  of an undefined `record_type` makes the Bundle INCOMPLETE. `build_evidence_bundle` carries them
+  only with `carry_non_record_leaves=True` and a source with the optional `leaf_content`
+  capability; a source without it builds exactly as before. Category coverage: the
+  `category_coverage` member is reported as five properties
+  (`agent_action_capsule.category_coverage`, `BundleVerificationResult.category_coverage`), with
+  `verify_bundle` inputs `category_sets`, `category_request` and `record_categories`; in strict
+  mode a `FAIL` of its form, signature or consistency is INVALID. Vectors:
+  `vectors/bundle/non-record-leaves/`, `vectors/bundle/certificate-mode/` and
+  `vectors/bundle/category-coverage/` (`python/scripts/generate_bundle_02_vectors.py`).
+
+- Evidence Bundle -02, `controller_binding` join basis: the draft defines the controller binding
+  record (members, claim types, signing input and binding digest, `dual_signature/0` and
+  `dual_signature_credential/0`, revocation statements, when a binding applies) and the join's
+  derivation in its `composed/v1` section; a `controller_binding` agreement is always redundant,
+  never corroborating. Go: `bundle.Options` gains `ControllerBindings` and `BindingRevocations`,
+  the binding records and revocation statements delivered beside the Bundle; `VerifyComposed`
+  derives the join from them (`not_derivable` when no record with the join's digest was
+  delivered, or none under a method it implements) and reports a derived `agree` as `redundant`
+  with reason `controller_binding`. A block carrying the basis is no longer malformed in Go;
+  TypeScript and Rust still read it as malformed, as -01 does. A record whose `key_types` names
+  a key type other than `ed25519` is skipped like one under an unimplemented method. Vectors:
+  `vectors/bundle/composed-controller-binding/` (14 cases,
+  `python/scripts/generate_bundle_composed_cb_vectors.py`), rederived by
+  `python/tests/test_bundle_composed_cb_vectors.py` and run by Go. Spec:
+  `spec/controller-binding-v0.md` §8 and `spec/REGISTRY.md` "composed/v1 join basis values" now
+  record the basis as registered by -02; a producer emits it once -02 is posted.
+- Python, strict: a producer-selected Bundle whose signed checkpoint is contradicted by a stated
+  copy (#380) keeps per-record membership withheld (`checkpoint_unverified`), as Go, Rust and
+  TypeScript report; the -02 reading against the stated checkpoint applies only when no signed
+  checkpoint is carried.
+- Evidence Bundle -02, empty-history Bundles (Go and Python): a Bundle with an empty `records`
+  array and no `root` shows that a stream has no history to disclose, whether never started or
+  cleared (a new stream, new `log_id`). When well formed (`records_mode` `complete`,
+  `payloads_mode` `none`, no certificate, disclosures or disclosure record), graph closure passes,
+  interval coverage and per-record membership are withheld with `no_records`, and the result
+  carries `history` (Go `VerificationResult.History`, Python `BundleVerificationResult.history`):
+  no history, since the signed checkpoint's `timestamp` when `checkpoint.cose` verifies. Otherwise
+  the Bundle fails graph closure. Go `bundle.EmptyHistory` and Python
+  `bundle.is_empty_history` test the shape. In `composed/v1` (Go), a join with an empty-history
+  member derives `one_sided`; under `controller_binding` only when the key that signed its
+  checkpoint is bound, `unjoined` when not, and `not_derivable` without a verified checkpoint.
+  Strict mode is unchanged: a standalone empty-history Bundle is still INVALID there
+  (`no_records`). TypeScript and Rust read an empty-history Bundle as malformed (no `root`).
+- Python: the Evidence Request octets of `category_coverage` are read under the one JSON nesting
+  limit (`loads_bounded`, #503): octets nested more than 128 levels deep leave the request property
+  NOT_CHECKED.
+
 ## go 0.18.0 — 2026-10-31
 
 Tag `go/v0.18.0`.

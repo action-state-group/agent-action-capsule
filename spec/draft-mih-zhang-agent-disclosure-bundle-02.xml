@@ -24,7 +24,7 @@
         <email>zhangyiqun9164@gmail.com</email>
       </address>
     </author>
-    <date year="2026" month="October" day="29"/>
+    <date year="2026" month="October" day="31"/>
     <area>Security</area>
     <workgroup>SCITT</workgroup>
     <keyword>SCITT</keyword>
@@ -164,7 +164,8 @@ untyped replacement formats.</t>
 ]]></artwork>
       <t><tt>bundle_version</tt> and <tt>bundle_kind</tt> are REQUIRED and MUST be respectively
 <tt>"2"</tt> and <tt>"evidence-bundle/v2"</tt>. <tt>root</tt>, <tt>records</tt>, and <tt>completeness</tt> are
-REQUIRED. <tt>root</tt> is the lowercase-hex <tt>capsule_id</tt> of one record in <tt>records</tt>.
+REQUIRED, except that an empty-history Bundle (<xref target="empty-history"/>) has no
+<tt>root</tt>. <tt>root</tt> is the lowercase-hex <tt>capsule_id</tt> of one record in <tt>records</tt>.
 Every <tt>records</tt> element MUST be an unmodified Capsule object conforming to
 <xref target="I-D.mih-scitt-agent-action-capsule"/>; duplicate <tt>capsule_id</tt> values are
 not permitted. All other members shown are OPTIONAL unless a claim in this
@@ -178,6 +179,42 @@ member. <tt>selection</tt>, when present, names the certificate mode of
 <tt>completeness_certificate</tt> (<xref target="certificate-modes"/>).
 <tt>suppressed_fields</tt> names fields intentionally not carried by the Bundle; it
 does not turn an absent disclosure into an empty value or a failure.</t>
+      <section anchor="empty-history">
+        <name>Empty-History Bundles</name>
+        <t>An <em>empty-history Bundle</em> shows that a log stream has no history to disclose.
+A stream that was never started and a history that was cleared read the same.
+Clearing a history starts a new stream, with a new <tt>log_id</tt>, under the same
+key. It never rewrites or truncates the old stream's log, and a checkpoint
+that does so is inconsistent with that log's earlier checkpoints.</t>
+        <t>An empty-history Bundle has an empty <tt>records</tt> array and no <tt>root</tt> member.
+<tt>root</tt> MUST be absent exactly when <tt>records</tt> is empty. In an empty-history
+Bundle:</t>
+        <ul spacing="normal">
+          <li>
+            <t><tt>completeness.records_mode</tt> MUST be <tt>complete</tt>, <tt>completeness.missing</tt> MUST
+be absent or empty, and <tt>completeness.payloads_mode</tt> MUST be <tt>none</tt>;</t>
+          </li>
+          <li>
+            <t><tt>completeness_certificate</tt>, <tt>disclosures</tt> and <tt>disclosure_record</tt> MUST be
+absent;</t>
+          </li>
+          <li>
+            <t><tt>checkpoint</tt>, with <tt>checkpoint.cose</tt>, SHOULD be present when the stream has
+a checkpoint: its first checkpoint, or its latest one while it still holds
+no record. A stream that was never started has none.</t>
+          </li>
+        </ul>
+        <t>A Bundle with no <tt>root</tt> that is not a well-formed empty-history Bundle is
+malformed.</t>
+        <t>A verifier reports a well-formed empty-history Bundle as <em>no history</em>. It is
+well formed: a verifier MUST NOT report it as failed, and MUST NOT report it
+as an absence (<xref target="composed-members"/>). Of its claims (<xref target="completeness"/>), graph
+closure passes, since there is nothing to close, and interval coverage and
+per-record membership are not established, with the finding <tt>no_records</tt>.
+When <tt>checkpoint.cose</tt> verifies, the verifier reports the checkpoint's signed
+<tt>timestamp</tt> with the result, as no history since that time. Otherwise it
+reports no history without a date.</t>
+      </section>
     </section>
     <section anchor="closure">
       <name>Citation Closure</name>
@@ -900,6 +937,9 @@ part of the composed digest (<xref target="composed-digest"/>).</t>
           <t>An artifact that fails verification is still an <tt>artifact</tt> member. The
 verifier reports the failure on that member. It is not a fourth outcome, and
 the verifier MUST NOT report it as a successful grant.</t>
+          <t>An empty-history Bundle (<xref target="empty-history"/>) is an <tt>artifact</tt> member that
+shows no history. It is neither a failure nor an <tt>absence</tt>. A responder whose
+history was cleared, or never started, can answer with one.</t>
           <t><strong>Each member keeps its own claims.</strong> A verifier MUST verify every carried
 member bundle as an Evidence Bundle under this document. It MUST report that
 bundle's graph closure, interval coverage and per-record membership
@@ -963,8 +1003,7 @@ block (<xref target="composed-security"/>).</t>
         <section anchor="composed-binding">
           <name>Controller Binding Records</name>
           <t>A <em>controller binding record</em> is a JSON object in which the holders of two
-Ed25519 <xref target="RFC8032"/> signing keys both sign one statement about how the two
-keys are related. It is the linkage evidence of the <tt>controller_binding</tt> join
+signing keys both sign one statement about how the two keys are related. It is the linkage evidence of the <tt>controller_binding</tt> join
 basis (<xref target="composed-joins"/>). Its signatures show only that whoever held each
 private key signed the record. They do not show who holds either key, and
 this document never states who a key holder is.</t>
@@ -972,8 +1011,9 @@ this document never states who a key holder is.</t>
 beside the containing Bundle, with any revocation statements that withdraw it;
 how they are delivered is outside this document. The block binds a record
 only through a join's <tt>identifier_digest</tt>.</t>
-          <t>In this section a <em>key identifier</em> is a raw 32-byte Ed25519 public key as 64
-lowercase hexadecimal characters, and a <em>time</em> is an <xref target="RFC3339"/> date-time in
+          <t>In this section a <em>key identifier</em> is 64 lowercase hexadecimal characters;
+for an Ed25519 <xref target="RFC8032"/> key, the one key type this document defines, it is
+the raw 32-byte public key. A <em>time</em> is an <xref target="RFC3339"/> date-time in
 UTC with a "Z" suffix and seconds precision. A root record's <tt>timestamp</tt>,
 against which a binding is checked, can also carry fractional seconds. Times
 compare as instants.</t>
@@ -989,6 +1029,7 @@ controller-binding = {
   revocation: "revocation_statement/0",
   nonce: tstr,                   ; non-empty, chosen per ceremony
   sigs: [* binding-sig],
+  ? key_types: [tstr, tstr],     ; one per entry of keys, in order
   ? delegator: key-id,           ; delegated_by only: one of keys
   ? credential: binding-credential,
                                  ; same_organization_credentialed
@@ -996,7 +1037,7 @@ controller-binding = {
 
 binding-claim = "same_controller_asserted" / "delegated_by" /
                 "same_organization_credentialed"
-binding-sig = { key_id: key-id, sig: sig-hex }
+binding-sig = { key_id: key-id, sig: any }   ; sig-hex for ed25519
 binding-credential = {
   issuer: key-id,
   method: tstr,
@@ -1037,14 +1078,21 @@ as a credential from a third key states.</t>
 CDDL does not list, or has a value outside its form; when it carries
 <tt>delegator</tt> and its <tt>claim</tt> is not <tt>delegated_by</tt>, or <tt>credential</tt> and its
 <tt>claim</tt> is not <tt>same_organization_credentialed</tt>, or lacks the member its
-<tt>claim</tt> adds; when its
-two <tt>keys</tt> are equal or not in ascending order; when <tt>not_before</tt> is later
-than <tt>issued_at</tt> or <tt>not_after</tt> is not later than it; when <tt>nonce</tt> is empty; when <tt>delegator</tt> is not
-one of <tt>keys</tt>; or when its <tt>method</tt> is one this document defines for another
-claim type. A <tt>method</tt> token this document does not define is well formed. A
+<tt>claim</tt> adds; when its two <tt>keys</tt> are equal or not in ascending order; when
+<tt>not_before</tt> is later than <tt>issued_at</tt> or <tt>not_after</tt> is not later than it;
+when <tt>nonce</tt> is empty; when <tt>delegator</tt> is not one of <tt>keys</tt>; when both keys
+are <tt>ed25519</tt> keys and a <tt>sig</tt> is not a <tt>sig-hex</tt>; or when its <tt>method</tt> is one
+this document defines for another claim type. A <tt>method</tt> token this document does not define is well formed. A
 binding record or revocation statement that is not a JSON object is
 malformed. <tt>delegated_by</tt> states a relation, not a scope: a verifier reads no
 authority from it.</t>
+          <t><strong>Key types.</strong> <tt>key_types</tt>, when present, names the type of each key in
+<tt>keys</tt>, in its order. When it is absent, both keys are <tt>ed25519</tt> keys. This
+document defines one key type, <tt>ed25519</tt>: the key identifier is the raw
+Ed25519 public key, and the key signs with Ed25519. A record whose
+<tt>key_types</tt> names any other token is well formed. Its <tt>sig</tt> values are not
+held to <tt>sig-hex</tt>, and a verifier that does not implement that key type
+treats the record as under a method it does not implement.</t>
           <t><strong>Signing input and binding digest.</strong> The signing input is the UTF-8 octets of
 the JCS <xref target="RFC8785"/> serialization of the record without <tt>sigs</tt>. Every other
 member is covered. The <em>binding digest</em> is the lowercase hexadecimal SHA-256
@@ -1053,8 +1101,8 @@ if a key signs it again. Two ceremonies over the same keys differ in <tt>nonce</
 and so have two digests.</t>
           <t><strong>Methods.</strong> Under <tt>dual_signature/0</tt>, <tt>sigs</tt> has exactly two entries:
 <tt>sigs[0].key_id</tt> is <tt>keys[0]</tt>, <tt>sigs[1].key_id</tt> is <tt>keys[1]</tt>, and each <tt>sig</tt>
-is that key's Ed25519 signature over the signing input, in lowercase
-hexadecimal. A record with one signature, a third entry, or a signature that
+is that key's signature over the signing input; for an <tt>ed25519</tt> key, its
+Ed25519 signature in lowercase hexadecimal. A record with one signature, a third entry, or a signature that
 does not verify is not signed by both keys. One key cannot bind another key
 to itself, because each key signs the other key's identifier.
 <tt>dual_signature_credential/0</tt> requires the same two signatures. Its
@@ -1078,8 +1126,8 @@ at a set of times T when all of these hold:</t>
               <t>it is well formed;</t>
             </li>
             <li>
-              <t>the verifier implements its <tt>method</tt>, and both bound keys signed it under
-that method;</t>
+              <t>the verifier implements its <tt>method</tt> and the type of both keys, and both
+bound keys signed it under that method;</t>
             </li>
             <li>
               <t>its <tt>keys</tt> are exactly the two key identifiers, in either order;</t>
@@ -1110,22 +1158,29 @@ is never a pass.</t>
           <t>The states derive as follows:</t>
           <ul spacing="normal">
             <li>
-              <t><strong><tt>one_sided</tt></strong>: exactly one of the two members has outcome <tt>artifact</tt>.</t>
+              <t><strong><tt>one_sided</tt></strong>: exactly one of the two members has outcome <tt>artifact</tt>
+with records, and the other has none: it is not an artifact, or it is an
+empty-history Bundle (<xref target="empty-history"/>). Under <tt>controller_binding</tt>, a
+join with an empty-history member is <tt>one_sided</tt> only when the two are
+linked (below).</t>
             </li>
             <li>
-              <t><strong><tt>unjoined</tt></strong>: neither member has outcome <tt>artifact</tt>; or both do, but the
-linkage basis does not establish that their records are about the same
+              <t><strong><tt>unjoined</tt></strong>: neither member has outcome <tt>artifact</tt> with records; or one
+has records, the other is an empty-history Bundle, and the
+<tt>controller_binding</tt> linkage does not link them; or both have records, but
+the linkage basis does not establish that their records are about the same
 thing.</t>
             </li>
             <li>
-              <t><strong><tt>agree</tt></strong>: both members are artifacts and are linked, and every <tt>compare</tt>
-pointer resolves in both root records to values with identical JCS
-serializations. A join with no <tt>compare</tt> and a link is <tt>agree</tt>.</t>
+              <t><strong><tt>agree</tt></strong>: both members are artifacts with records and are linked, and
+every <tt>compare</tt> pointer resolves in both root records to values with
+identical JCS serializations. A join with no <tt>compare</tt> and a link is
+<tt>agree</tt>.</t>
             </li>
             <li>
-              <t><strong><tt>mismatch</tt></strong>: both members are artifacts and are linked, and at least one
-<tt>compare</tt> pointer resolves to different values, or does not resolve on one
-side.</t>
+              <t><strong><tt>mismatch</tt></strong>: both members are artifacts with records and are linked, and
+at least one <tt>compare</tt> pointer resolves to different values, or does not
+resolve on one side.</t>
             </li>
           </ul>
           <t>Linkage is evaluated on each artifact member's root record (its bundle's
@@ -1149,12 +1204,21 @@ binding record whose binding digest equals <tt>identifier_digest</tt> applies to
 the two selected values, with T the <tt>timestamp</tt> of each root record
 (<xref target="I-D.mih-scitt-agent-action-capsule"/>). A verifier that received no
 record with that digest, or only well-formed records with that digest whose
-<tt>method</tt> it does not implement, reports the join as <tt>not_derivable</tt>; so
-does a join without <tt>pointer</tt> or <tt>identifier_digest</tt>. Any other record with
+<tt>method</tt> or key types it does not implement, reports the join as
+<tt>not_derivable</tt>; so does a join without <tt>pointer</tt> or <tt>identifier_digest</tt>. Any other record with
 that digest that does not apply (malformed, not signed by both keys, other
 keys, outside its window, or revoked) leaves the members unjoined. A join on this basis states that the
 two root records are under keys whose holders bound them, as both of them
-stated it; it says nothing about who those holders are.</t>
+stated it; it says nothing about who those holders are.  </t>
+              <t>
+When one member is an empty-history Bundle (<xref target="empty-history"/>), the
+derivation still runs. That member's key identifier is the key that signed
+its <tt>checkpoint.cose</tt>, as that signature authenticates it, and its T is
+that checkpoint's <tt>timestamp</tt>; <tt>pointer</tt> selects the key identifier in the
+other member's root record only. Linked gives <tt>one_sided</tt>, never <tt>agree</tt>,
+because nothing was compared; not linked gives <tt>unjoined</tt>. An empty-history
+member without a <tt>checkpoint.cose</tt> that verifies has no key, and the join is
+<tt>not_derivable</tt>.</t>
             </li>
           </ul>
           <t>The bases <tt>issued_receipt</tt> (the two records cite one Receipt) and
@@ -1280,8 +1344,9 @@ separately:</t>
             </li>
             <li>
               <t>per member: outcome, body carried or declared missing, digest reproduced,
-and, for a carried member bundle, its own three completeness claims and,
-when it carries <tt>response</tt>, whether the response's digests match and its
+and, for a carried member bundle, its own three completeness claims, no
+history for an empty-history Bundle (<xref target="empty-history"/>), and, when it
+carries <tt>response</tt>, whether the response's digests match and its
 signature state;</t>
             </li>
             <li>
@@ -1580,6 +1645,16 @@ never more. A revocation the producer did not account for derives
 <tt>unjoined</tt> and fails a declared <tt>agree</tt> (<tt>join_state_mismatch</tt>).</t>
           </li>
           <li>
+            <t><strong>No history.</strong> An empty-history Bundle (<xref target="empty-history"/>) is its
+producer's statement that its stream holds no record. Its signed checkpoint
+shows that the stream exists, under which key, and the size of its log at
+that time. It carries no certificate, so nothing shows that no leaf of that
+log is a record. A verifier MUST NOT present no history as
+evidence that no action took place. Because it is an <tt>artifact</tt>, never an
+<tt>absence</tt>, a cleared or unstarted history cannot be read as a responder
+that did not answer.</t>
+          </li>
+          <li>
             <t><strong>Outcomes.</strong> Keeping refusal and absence distinct is evidentiary:
 synthesizing either one from the other forges the stronger record from the
 weaker.</t>
@@ -1611,6 +1686,9 @@ padding exists to blur (Section 12.1 of <xref target="I-D.mih-agent-evidence-lay
 A producer that does not want to show them uses a producer-selected
 certificate (<xref target="producer-selected"/>), which carries no positions other than
 those of the records it carries.</t>
+      <t>A cleared history's empty-history Bundle (<xref target="empty-history"/>) carries a
+checkpoint signed by the same key as the cleared stream. Clearing a history
+therefore does not unlink that key from it.</t>
       <t>For the <tt>composed/v1</tt> extension (<xref target="composed"/>):</t>
       <ul spacing="normal">
         <li>
@@ -1908,9 +1986,9 @@ the same values and policy.</t>
             <author initials="A." surname="Sokolov" fullname="Anton Sokolov">
               <organization>Tyche Institute</organization>
             </author>
-            <date year="2026" month="September" day="13"/>
+            <date year="2026" month="October" day="26"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-sokolov-scitt-payload-binding-05"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-sokolov-scitt-payload-binding-06"/>
         </reference>
         <reference anchor="RFC9338">
           <front>
@@ -1944,7 +2022,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 1543?>
+    <?line 1618?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
@@ -1994,10 +2072,25 @@ applies; and the <tt>controller_binding</tt> join basis with its derivation
 never corroborating (<xref target="composed-observers"/>). A verifier that implements
 only -01 reads a block that carries a <tt>controller_binding</tt> join as
 malformed, since -01's <tt>join-basis</tt> does not list it. Security and Privacy
-Considerations: controller bindings.</t>
+Considerations: controller bindings. A binding record MAY carry
+<tt>key_types</tt>; this document defines the <tt>ed25519</tt> key type, and a record
+under any other is treated as under a method a verifier does not
+implement.</t>
         </li>
         <li>
-          <t>Cites Evidence Request -01 and, informatively, Evidence Layer -00.</t>
+          <t>Empty-history Bundles (<xref target="empty-history"/>): a Bundle with no records and no
+<tt>root</tt> shows that a stream has no history to disclose, whether it was never
+started or its history was cleared (a new stream, with a new <tt>log_id</tt>).
+It is well formed and reported as no history, never as failed and never as
+an absence. In <tt>composed/v1</tt> it is an <tt>artifact</tt> member, and a join with it
+derives <tt>one_sided</tt>; a <tt>controller_binding</tt> join derives from the key that
+signed its checkpoint, and is <tt>not_derivable</tt> without one. Security
+Considerations: no history. Privacy Considerations: a cleared history's
+checkpoint is signed by the cleared stream's key.</t>
+        </li>
+        <li>
+          <t>Cites Evidence Request -01 and, informatively, Evidence Layer -00 and the
+Canonicalization Declaration -06.</t>
         </li>
       </ul>
       <t>Since -00:</t>
