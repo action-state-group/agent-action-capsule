@@ -38,14 +38,41 @@ var statusProjection = map[string]string{
 	"CONTRADICTED": "GAP", "INSUFFICIENT": "INSUFFICIENT", "UNKNOWN": "UNKNOWN",
 }
 
-// profileRefusalReasons are the eight tokens §9.1 lists: the -00 and -01
-// registry. The profile pins ER -01, so the two -02 additions
-// (capacity_exceeded, request_unauthenticated) are not registered under it
-// and no §8.1 row maps them, until it re-pins to -02 (AAC#479). Conforming
-// and the Verifier's reason_registered read it.
+// profileRefusalReasons are the eight tokens evidence-interop/0 §9.1 lists:
+// the -00 and -01 registry. /0 pins ER -01, so the two -02 additions
+// (capacity_exceeded, request_unauthenticated) are not registered under it.
+// Conforming reads it.
 var profileRefusalReasons = []string{
 	ReasonNotAuthorized, ReasonNoSuchSubject, ReasonCoverageUnsatisfiable, ReasonDerivationUnsupported,
 	ReasonPolicyDeclined, ReasonDeadlineUnmet, ReasonRequestMalformed, ReasonRetentionExpired,
+}
+
+// refusalReasonsByProfile are the §9.1 tokens of each revision: v1 pins ER
+// -02 and lists all ten.
+var refusalReasonsByProfile = map[string][]string{
+	ProfileID:   profileRefusalReasons,
+	ProfileIDv1: RefusalReasons,
+}
+
+// refusalReasonsFor is v1 §6.3: a refusal carries no profile, so its reason
+// is checked against the tokens of the identifier its request asks for, or,
+// when the verifier does not implement that one, against every token of
+// those it does.
+func refusalReasonsFor(asked any, implemented []string) []string {
+	if s, ok := asked.(string); ok && slices.Contains(implemented, s) {
+		if reasons, known := refusalReasonsByProfile[s]; known {
+			return reasons
+		}
+	}
+	var out []string
+	for _, p := range implemented {
+		for _, r := range refusalReasonsByProfile[p] {
+			if !slices.Contains(out, r) {
+				out = append(out, r)
+			}
+		}
+	}
+	return out
 }
 
 // The §8.1 rows, by the label the conformance vectors give them, and the
@@ -57,11 +84,14 @@ var rowStatus = map[string]string{
 	"refusal-coverage_unsatisfiable": "UNKNOWN", "refusal-withheld": "WITHHELD",
 	"refusal-deadline_or_malformed": "UNKNOWN", "refusal-failed": "UNKNOWN", "received-and-failed": "UNKNOWN",
 	"absence": "UNKNOWN",
+	// v1 only: the reasons ER -02 adds are registered under evidence-interop/1 alone (§9.1).
+	"refusal-capacity_exceeded": "UNKNOWN", "refusal-request_unauthenticated": "UNKNOWN",
 }
 
 // The rows a contract's uncertainty.on_missing applies to (§8).
 var missingRows = []string{"envelope-3", "envelope-4", "refusal-no_such_subject", "refusal-retention_expired",
-	"refusal-coverage_unsatisfiable", "refusal-deadline_or_malformed", "absence"}
+	"refusal-coverage_unsatisfiable", "refusal-deadline_or_malformed", "absence",
+	"refusal-capacity_exceeded", "refusal-request_unauthenticated"}
 
 const row7Note = "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, " +
 	"where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. " +
@@ -212,7 +242,8 @@ type VerifyOptions struct {
 	Content ContentEvaluator
 }
 
-// Verifier checks evidence-interop/0 exchanges (profile §7.3) and maps them
+// Verifier checks evidence-interop/0 and evidence-interop/1 exchanges, each
+// under the identifier it names, (profile §7.3) and maps them
 // to Evidence Result claims (§8). It mirrors the profile's Python reference
 // verifier (agent_action_capsule.interop_profile.InteropVerifier), and the
 // vectors of vectors/interop-profile-v0 and
@@ -303,14 +334,15 @@ func (v *Verifier) envelopeProperties(env map[string]any, received receivedValue
 		asked = request["profile"]
 	}
 	method := "§3.3 step 5: the envelope's profile against the identifier requested"
-	implemented := slices.Contains(v.Policy.ProfilesImplemented, ProfileID)
+	named, _ := env["profile"].(string)
+	implemented := slices.Contains(v.Policy.ProfilesImplemented, named) && slices.Contains(Profiles, named)
 	var pv PropertyReport
 	switch {
 	case !present(env, "profile"):
 		pv = report("profile_version", StatusNotPresent, method, "no profile member: ER alone (§3.3)")
 	case !strictEqual(env["profile"], asked):
 		pv = report("profile_version", StatusFail, method, fmt.Sprintf("requested %v, got %v", asked, env["profile"]))
-	case !implemented || env["profile"] != ProfileID:
+	case !implemented:
 		pv = report("profile_version", StatusNotChecked, method, fmt.Sprintf("%v is not implemented; not checked under any other version", env["profile"]))
 	default:
 		pv = report("profile_version", StatusPass, method, "")
@@ -524,7 +556,7 @@ func required(env map[string]any, props map[string]PropertyReport) map[string]st
 	return out
 }
 
-func (v *Verifier) refusalProperties(ref map[string]any, received receivedValue, requestOctets []byte) map[string]PropertyReport {
+func (v *Verifier) refusalProperties(ref map[string]any, received receivedValue, requestOctets []byte, request map[string]any) map[string]PropertyReport {
 	props := map[string]PropertyReport{}
 	keyID, issuedAt := ref["key_id"], ref["issued_at"]
 	method := "Ed25519 over JCS of {issued_at, reason, request_digest} (§6.3, ERV A7)"
@@ -553,8 +585,23 @@ func (v *Verifier) refusalProperties(ref map[string]any, received receivedValue,
 		props["request_binding"] = report("request_binding", passIf(ref["request_digest"] == Digest(requestOctets)), method, "")
 	}
 	reason, _ := ref["reason"].(string)
-	props["reason_registered"] = report("reason_registered", passIf(isText(ref["reason"]) && slices.Contains(profileRefusalReasons, reason)),
-		"exactly one token of the ER §13 registry, exact case (§9.1, ERV A13)", "")
+	asked := any(ProfileID)
+	if present(request, "profile") {
+		asked = request["profile"]
+	}
+	var implemented []string
+	for _, p := range v.Policy.ProfilesImplemented {
+		if slices.Contains(Profiles, p) {
+			implemented = append(implemented, p)
+		}
+	}
+	reasons := refusalReasonsFor(asked, implemented)
+	detail := ""
+	if s, ok := asked.(string); !ok || !slices.Contains(implemented, s) {
+		detail = fmt.Sprintf("the request asks for %v; checked against every identifier implemented", asked)
+	}
+	props["reason_registered"] = report("reason_registered", passIf(isText(ref["reason"]) && slices.Contains(reasons, reason)),
+		"exactly one token of the ER §13 registry the requested identifier pins, exact case (§6.3, §9.1, ERV A13)", detail)
 	method = "§5.2 time form"
 	if !present(ref, "issued_at") {
 		props["issued_at_form"] = report("issued_at_form", StatusNotPresent, method, "")
@@ -635,7 +682,7 @@ func (v *Verifier) reply(m Message, requestOctets []byte, request map[string]any
 		return &ReplyResult{MessageType: "envelope", Properties: ordered(props, EnvelopeProperties), Evidence: digestClaim(digest),
 			Proofs: proofs, Detail: detail, Envelope: env, Artifact: artifact, props: props}
 	case hasRef:
-		props := v.refusalProperties(obj, received, requestOctets)
+		props := v.refusalProperties(obj, received, requestOctets, request)
 		return &ReplyResult{MessageType: "refusal", Properties: ordered(props, RefusalProperties), Evidence: digestClaim(Digest(m.Octets)),
 			Reason: obj["reason"], props: props, row: refusalRow(props, obj["reason"])}
 	}

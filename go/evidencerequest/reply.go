@@ -96,15 +96,24 @@ func (r Refusal) VerifyFor(responderKey, requestDigest string) error {
 	return nil
 }
 
-// Conforming reports whether a verified refusal is a conforming one: exactly
-// one registered reason, exact case, and well-formed members (profile §7.2
-// reason_registered, issued_at_form). issued_at is the profile's seconds
-// form (§5.2); CheckRefusal reads it as the request draft alone does. The
-// reasons are the profile's eight (§9.1), not the ten of ER -02, until the
-// profile re-pins (AAC#479).
+// Conforming reports whether a verified refusal is a conforming one under
+// evidence-interop/0: exactly one registered reason, exact case, and
+// well-formed members (profile §7.2 reason_registered, issued_at_form).
+// issued_at is the profile's seconds form (§5.2); CheckRefusal reads it as
+// the request draft alone does. The reasons are /0's eight (§9.1), not the
+// ten of ER -02; ConformingUnder checks a refusal to a request under another
+// identifier.
 func (r Refusal) Conforming() bool {
+	return r.ConformingUnder(ProfileID)
+}
+
+// ConformingUnder is Conforming for a refusal answering a request that asks
+// for profile (v1 §6.3): its reason is checked against that identifier's
+// §9.1 tokens, or, for an identifier this package does not implement,
+// against every token of those it does.
+func (r Refusal) ConformingUnder(profile string) bool {
 	_, timeOK := ParseProfileTime(r.IssuedAt)
-	return slices.Contains(profileRefusalReasons, r.Reason) && timeOK && IsDigest(r.RequestDigest)
+	return slices.Contains(refusalReasonsFor(profile, Profiles), r.Reason) && timeOK && IsDigest(r.RequestDigest)
 }
 
 // Value is the refusal's wire value.

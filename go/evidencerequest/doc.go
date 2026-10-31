@@ -3,7 +3,8 @@
 // Package evidencerequest implements the protocol logic of the evidence
 // request interaction, draft-mih-agent-evidence-request-00 (ER), and the
 // request, reply and verification-material forms of the Minimum Evidence
-// Interoperability Profile (evidence-interop/0) that carries it.
+// Interoperability Profile (evidence-interop/0, and evidence-interop/1, which
+// pins ER -02 and its two refusal reasons) that carries it.
 //
 // It holds what needs no evidence store: reading and encoding the request
 // map in JSON (RFC 8785) and deterministic CBOR (RFC 8949 §4.2.1), the

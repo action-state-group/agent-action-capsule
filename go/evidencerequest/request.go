@@ -6,12 +6,22 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 	"time"
 )
 
-// ProfileID identifies the revision of the Minimum Evidence
-// Interoperability Profile this package implements (profile §3.1).
+// ProfileID identifies the first revision of the Minimum Evidence
+// Interoperability Profile (spec/interop-profile-v0.md §3.1, frozen). A
+// request without a profile asks for it, under both revisions (§3.3 step 2).
 const ProfileID = "evidence-interop/0"
+
+// ProfileIDv1 identifies the revision that pins ER -02 and registers its two
+// refusal reasons (spec/interop-profile-v1.md §3.1, P-65).
+const ProfileIDv1 = "evidence-interop/1"
+
+// Profiles are the profile identifiers this package implements, each
+// checked under its own rules.
+var Profiles = []string{ProfileID, ProfileIDv1}
 
 // RequestDraft is the Internet-Draft this package implements. Its request map
 // is also a valid -01 map, so a manifest's `drafts` (profile §11.4.2) may list
@@ -351,7 +361,7 @@ func ParseRequest(m Message) RequestCheck {
 	}
 	// Step 5: a profile this responder does not implement (§3.3 step 4).
 	if out.Request.Profile != "" && !slices.Contains(supportedProfiles, out.Request.Profile) {
-		return RequestCheck{Reason: ReasonRequestMalformed, Why: "profile is not supported", Detail: "profiles supported: " + ProfileID}
+		return RequestCheck{Reason: ReasonRequestMalformed, Why: "profile is not supported", Detail: "profiles supported: " + strings.Join(supportedProfiles, ", ")}
 	}
 	if out.Request.Profile == "" {
 		out.Request.Profile = ProfileID
@@ -359,7 +369,7 @@ func ParseRequest(m Message) RequestCheck {
 	return out
 }
 
-var supportedProfiles = []string{ProfileID}
+var supportedProfiles = Profiles
 
 // floorTime is a time-valued min_freshness as a time.
 func (r Request) floorTime() (time.Time, bool) {
