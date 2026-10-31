@@ -11,6 +11,8 @@
 
 import {
   CborMap,
+  CborTag,
+  decodeStrictCbor,
   HDR_CWT_CLAIMS,
   HDR_GRADE,
   spkiKeyType,
@@ -754,5 +756,191 @@ export async function verifyWitnessReceipts(
           : "withheld",
     findings,
     receipts: results,
+  };
+}
+
+/**
+ * The verification-material kind of a witness Receipt over a Checkpointed
+ * Local Log anchor, and the check over it (spec/interop-profile-v1.md
+ * §6.2.2). `anchor_witnessed` is not an envelope property and never enters
+ * the profile's §8 mapping: it says when a witness the relying party accepts
+ * registered the anchor, and nothing about any artifact under it.
+ */
+export const ANCHOR_WITNESS_KIND = "cll-witness-receipt";
+export const ANCHOR_WITNESS_PROPERTY = "anchor_witnessed";
+
+export type AnchorWitnessStatus =
+  | "PASS"
+  | "FAIL"
+  | "NOT_PRESENT"
+  | "NOT_CHECKED";
+
+/**
+ * The relying party's witness list: each witness's name and the hex DER
+ * SubjectPublicKeyInfo keys it signs Receipts under (Ed25519 for EdDSA,
+ * ECDSA P-256 for ES256). An entry of any other shape lists no key.
+ */
+export interface AnchorWitnessPolicy {
+  readonly witnesses: readonly {
+    readonly name: string;
+    readonly keys: readonly string[];
+  }[];
+}
+
+/** One Receipt's status, its witness when it passed, and its registration
+ * time (a NumericDate) when it passed with a protected `iat`. */
+export interface AnchorReceiptReport {
+  readonly status: Exclude<AnchorWitnessStatus, "NOT_PRESENT">;
+  readonly witness: string | null;
+  readonly registration_time: number | null;
+}
+
+/** `anchor_witnessed` over every Receipt for one anchor. `witness` and
+ * `witnessed_time` always come from the same Receipt. */
+export interface AnchorWitnessReport {
+  readonly status: AnchorWitnessStatus;
+  readonly receipts: readonly AnchorReceiptReport[];
+  readonly witness: string | null;
+  readonly witnessed_time: number | null;
+}
+
+const ANCHOR_DIGEST = /^[0-9a-f]{64}$/u;
+const HEX = /^(?:[0-9a-f]{2})*$/iu;
+
+/** Step 1 of §6.2.2: a tag-18 COSE_Sign1 with a detached payload, `vds` 1,
+ * `alg` EdDSA or ES256 and no `crit`. Returns the key type that `alg` needs,
+ * or null. */
+function anchorReceiptKeyType(receipt: Uint8Array): "ed25519" | "p256" | null {
+  try {
+    const outer = decodeStrictCbor(receipt);
+    if (
+      !(outer instanceof CborTag) ||
+      outer.tag !== 18n ||
+      !Array.isArray(outer.value) ||
+      outer.value.length !== 4
+    )
+      return null;
+    const [protectedBytes, , payload] = outer.value as readonly unknown[];
+    if (!(protectedBytes instanceof Uint8Array) || payload !== null)
+      return null;
+    if (protectedBytes.length === 0) return null;
+    const headers = decodeStrictCbor(protectedBytes);
+    if (
+      !(headers instanceof CborMap) ||
+      headers.get(395n) !== 1n ||
+      headers.has(2n)
+    )
+      return null;
+    const alg = headers.get(1n);
+    return alg === -8n ? "ed25519" : alg === -7n ? "p256" : null;
+  } catch {
+    return null;
+  }
+}
+
+function anchorPolicyKeys(
+  policy: unknown,
+): { readonly name: string; readonly spki: Uint8Array }[] {
+  const rows =
+    typeof policy === "object" && policy !== null
+      ? (policy as { witnesses?: unknown }).witnesses
+      : undefined;
+  const out: { name: string; spki: Uint8Array }[] = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (typeof row !== "object" || row === null) continue;
+    const { name, keys } = row as { name?: unknown; keys?: unknown };
+    if (typeof name !== "string" || !Array.isArray(keys)) continue;
+    for (const key of keys)
+      if (typeof key === "string" && HEX.test(key))
+        out.push({ name, spki: hexToBytes(key) });
+  }
+  return out;
+}
+
+/**
+ * Steps 1 to 5 of profile v1 §6.2.2 for one Receipt over the anchor whose
+ * digest is `anchorDigest` (64 lowercase hex characters). The Receipt is
+ * checked as {@link verifyCoseReceipt} checks one, with the anchor digest's 32
+ * octets as the leaf entry. A runtime that cannot verify the Receipt's
+ * algorithm reports it `NOT_CHECKED`. Never throws.
+ */
+export async function checkAnchorReceipt(
+  anchorDigest: string,
+  receipt: Uint8Array,
+  policy: AnchorWitnessPolicy | unknown,
+): Promise<AnchorReceiptReport> {
+  const report = (
+    status: AnchorReceiptReport["status"],
+    witness: string | null = null,
+    time: number | null = null,
+  ): AnchorReceiptReport => ({
+    status,
+    witness,
+    registration_time: time,
+  });
+  if (!ANCHOR_DIGEST.test(anchorDigest) || !(receipt instanceof Uint8Array))
+    return report("FAIL");
+  const wanted = anchorReceiptKeyType(receipt);
+  if (wanted === null) return report("FAIL");
+  const keys = anchorPolicyKeys(policy).filter(
+    ({ spki }) => spkiKeyType(spki) === wanted,
+  );
+  if (keys.length === 0) return report("NOT_CHECKED");
+  const leaf = hexToBytes(anchorDigest);
+  let unavailable = false;
+  for (const { name, spki } of keys) {
+    const result = await verifyCoseReceipt(receipt, leaf, spki);
+    if (result.ok)
+      return report(
+        "PASS",
+        name,
+        registrationTimeOf(result.protectedHeaders).registrationTime,
+      );
+    if (result.unavailable) unavailable = true;
+  }
+  return report(unavailable ? "NOT_CHECKED" : "FAIL");
+}
+
+/**
+ * `anchor_witnessed` over `receipts`, in the order received, for the anchor
+ * `anchorDigest` under the relying party's witness `policy` (profile v1
+ * §6.2.2). The anchor's witnessed time is the earliest registration time of a
+ * passing Receipt, with that Receipt's witness; the first received wins a
+ * tie. With no timed passing Receipt, the first passing one names the
+ * witness. A failing Receipt takes nothing from a passing one. Never throws.
+ */
+export async function checkAnchorWitnessed(
+  anchorDigest: string,
+  receipts: readonly Uint8Array[],
+  policy: AnchorWitnessPolicy | unknown,
+): Promise<AnchorWitnessReport> {
+  const reports: AnchorReceiptReport[] = [];
+  for (const receipt of receipts)
+    reports.push(await checkAnchorReceipt(anchorDigest, receipt, policy));
+  const statuses = new Set(reports.map((r) => r.status));
+  const status: AnchorWitnessStatus =
+    reports.length === 0
+      ? "NOT_PRESENT"
+      : statuses.has("PASS")
+        ? "PASS"
+        : statuses.has("FAIL")
+          ? "FAIL"
+          : "NOT_CHECKED";
+  let chosen: AnchorReceiptReport | undefined;
+  for (const r of reports) {
+    if (r.status !== "PASS") continue;
+    if (
+      chosen === undefined ||
+      (r.registration_time !== null &&
+        (chosen.registration_time === null ||
+          r.registration_time < chosen.registration_time))
+    )
+      chosen = r;
+  }
+  return {
+    status,
+    receipts: reports,
+    witness: chosen?.witness ?? null,
+    witnessed_time: chosen?.registration_time ?? null,
   };
 }

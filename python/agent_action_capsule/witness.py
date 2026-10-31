@@ -37,13 +37,17 @@ import binascii
 import hashlib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from ._ed25519_strict import strict_encoding as _strict_ed25519
 
 __all__ = [
+    "ANCHOR_WITNESS_KIND",
+    "ANCHOR_WITNESS_PROPERTY",
+    "AnchorReceiptReport",
+    "AnchorWitnessReport",
     "BINDING_CLL",
     "BINDING_REKOR",
     "BINDING_SCRAPI",
@@ -52,6 +56,8 @@ __all__ = [
     "REGISTRATION_TIME_REASONS",
     "WitnessReceiptResult",
     "binding_of",
+    "check_anchor_receipt",
+    "check_anchor_witnessed",
     "checkpoint_digest",
     "endpoint_of",
     "row_for",
@@ -581,3 +587,161 @@ def verify_witness_receipts(
     else:
         overall = "withheld"
     return overall, tuple(findings), tuple(results)
+
+
+#: The verification-material kind of a witness Receipt over a Checkpointed Local
+#: Log anchor, and the check over it (``spec/interop-profile-v1.md`` §6.2.2).
+#: ``anchor_witnessed`` is not an envelope property and never enters the
+#: profile's §8 mapping: it says when a witness the relying party accepts
+#: registered the anchor, and nothing about any artifact under it. Statuses
+#: are the profile's §7.1 values.
+ANCHOR_WITNESS_KIND = "cll-witness-receipt"
+ANCHOR_WITNESS_PROPERTY = "anchor_witnessed"
+_PASS, _FAIL, _NOT_PRESENT, _NOT_CHECKED = "PASS", "FAIL", "NOT_PRESENT", "NOT_CHECKED"
+_ANCHOR_DIGEST = re.compile(r"[0-9a-f]{64}")
+
+_ALG_EDDSA, _ALG_ES256 = -8, -7
+_METHOD = "RFC 9942 Receipt (RFC9162_SHA256) over the CLL-01 anchor digest (§6.2.2)"
+# DER AlgorithmIdentifiers: id-Ed25519, and id-ecPublicKey with prime256v1.
+_SPKI_ED25519 = bytes.fromhex("302a300506032b6570032100")
+_ALG_P256 = bytes.fromhex("301306072a8648ce3d020106082a8648ce3d030107")
+
+
+@dataclass(frozen=True)
+class AnchorReceiptReport:
+    """One Receipt's status, its witness's name when it passed, and its registration time
+    (a NumericDate) when it passed with a protected ``iat``."""
+
+    status: str
+    witness: str | None = None
+    registration_time: int | None = None
+    detail: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"status": self.status, "witness": self.witness, "registration_time": self.registration_time}
+
+
+@dataclass(frozen=True)
+class AnchorWitnessReport:
+    """``anchor_witnessed`` over every Receipt for one anchor (§6.2.2). ``witness`` and
+    ``witnessed_time`` always come from the same Receipt."""
+
+    status: str
+    method: str
+    receipts: tuple[AnchorReceiptReport, ...]
+    witness: str | None
+    witnessed_time: int | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "property": ANCHOR_WITNESS_PROPERTY,
+            "status": self.status,
+            "receipts": [r.to_dict() for r in self.receipts],
+            "witness": self.witness,
+            "witnessed_time": self.witnessed_time,
+        }
+
+
+def _anchor_key_type(spki: bytes) -> str:
+    """``ed25519``, ``p256`` or ``other``, by the SubjectPublicKeyInfo's AlgorithmIdentifier."""
+    if len(spki) == 44 and spki.startswith(_SPKI_ED25519):
+        return "ed25519"
+    if len(spki) == 91 and spki[:2] == b"\x30\x59" and spki[2:2 + len(_ALG_P256)] == _ALG_P256:
+        return "p256"
+    return "other"
+
+
+def _anchor_policy_keys(policy: Any) -> list[tuple[str, bytes]]:
+    """``(name, spki)`` in policy order. Rows or keys that are not of the documented shape are
+    skipped: they list no key."""
+    rows = policy.get("witnesses") if isinstance(policy, Mapping) else None
+    out: list[tuple[str, bytes]] = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, Mapping) or not isinstance(row.get("name"), str):
+            continue
+        for key in row.get("keys") if isinstance(row.get("keys"), list) else []:
+            try:
+                out.append((row["name"], bytes.fromhex(key)))
+            except (TypeError, ValueError):
+                continue
+    return out
+
+
+def _anchor_pem(spki: bytes) -> bytes:
+    body = base64.encodebytes(spki).decode().replace("\n", "")
+    lines = [body[i:i + 64] for i in range(0, len(body), 64)]
+    return ("-----BEGIN PUBLIC KEY-----\n" + "\n".join(lines) + "\n-----END PUBLIC KEY-----\n").encode()
+
+
+def _anchor_protected(octets: bytes) -> dict:
+    """The protected header of a Receipt the shape check accepted."""
+    import cbor2
+
+    return cbor2.loads(cbor2.loads(octets).value[0])
+
+
+def check_anchor_receipt(anchor_digest: str, octets: bytes, policy: Any) -> AnchorReceiptReport:
+    """Steps 1 to 5 of §6.2.2 for one Receipt over the anchor whose digest is ``anchor_digest``
+    (64 lowercase hex characters). The form, the tree and the signature are checked as the
+    ``scrapi`` binding checks a Receipt, with the
+    anchor digest as the leaf entry. Needs ``agent-action-capsule[bundle,envelope]``; without it
+    the Receipt is ``_NOT_CHECKED``."""
+    if not isinstance(anchor_digest, str) or not _ANCHOR_DIGEST.fullmatch(anchor_digest):
+        return AnchorReceiptReport(_FAIL, detail="the anchor digest is not 64 lowercase hex characters")
+    if not isinstance(octets, (bytes, bytearray)) or not octets:
+        return AnchorReceiptReport(_FAIL, detail="the Receipt is not a non-empty octet string")
+    octets = bytes(octets)
+    try:
+        from scitt_cose import verify_receipt
+    except ImportError:
+        return AnchorReceiptReport(_NOT_CHECKED, detail="scitt-cose is not installed (agent-action-capsule[envelope])")
+    shape = _receipt_shape_error(octets)
+    if shape is not None:
+        return AnchorReceiptReport(_FAIL, detail=shape)
+    protected = _anchor_protected(octets)
+    if any(type(label) is int and label == 2 for label in protected):
+        return AnchorReceiptReport(_FAIL, detail="the protected header carries crit")
+    wanted = "ed25519" if protected.get(1) == _ALG_EDDSA else "p256"
+    keys = [(name, spki) for name, spki in _anchor_policy_keys(policy) if _anchor_key_type(spki) == wanted]
+    if not keys:
+        return AnchorReceiptReport(_NOT_CHECKED, detail=f"the witness policy lists no {wanted} key")
+    for name, spki in keys:
+        pem = _anchor_pem(spki)
+        if _receipt_shape_error(octets, pem) is not None:
+            continue  # not a strict Ed25519 signature under this key, or not a usable key
+        try:
+            result = verify_receipt(octets, leaf_entry_hex=anchor_digest, log_public_key_pem=pem)
+        except Exception as exc:  # noqa: BLE001 -- a Receipt that cannot be evaluated fails
+            return AnchorReceiptReport(_FAIL, detail=f"unreadable receipt: {exc}")
+        if result.ok:
+            time, _ = _registration_time(octets)
+            return AnchorReceiptReport(_PASS, witness=name, registration_time=time)
+    return AnchorReceiptReport(_FAIL, detail="no accepted witness key verifies the Receipt over this anchor")
+
+
+def check_anchor_witnessed(anchor_digest: str, receipts: Sequence[bytes] | None, policy: Any) -> AnchorWitnessReport:
+    """``anchor_witnessed`` over ``receipts`` (each the octets of a ``cll-witness-receipt``, in the
+    order received) for the anchor ``anchor_digest``, under the relying party's witness
+    ``policy`` (§6.2.2)."""
+    method = _METHOD
+    reports = tuple(check_anchor_receipt(anchor_digest, octets, policy) for octets in receipts or ())
+    statuses = {r.status for r in reports}
+    if not reports:
+        status = _NOT_PRESENT
+    elif _PASS in statuses:
+        status = _PASS
+    elif _FAIL in statuses:
+        status = _FAIL
+    else:
+        status = _NOT_CHECKED
+    passed = [r for r in reports if r.status == _PASS]
+    timed = [r for r in passed if r.registration_time is not None]
+    # min keeps the first of equal times; with no time, the first passing Receipt names the witness.
+    chosen = min(timed, key=lambda r: r.registration_time) if timed else (passed[0] if passed else None)
+    return AnchorWitnessReport(
+        status=status,
+        method=method,
+        receipts=reports,
+        witness=chosen.witness if chosen else None,
+        witnessed_time=chosen.registration_time if chosen else None,
+    )

@@ -16,6 +16,18 @@ Not in any tag yet: the changes after `python/v0.13.0`. The Rust crates keep the
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Witness Receipts over an anchor (SH-4, AAC#508). Spec: IP v1 §6.2.2 registers the kind
+  `cll-witness-receipt`, an RFC 9942 COSE Receipt (RFC9162_SHA256) whose leaf entry is the anchor
+  digest and which travels beside an answer, never in `verification`, and the check
+  `anchor_witnessed`, outside the envelope properties and the §8 mapping: a Receipt passes when it
+  verifies over the anchor under a witness key the relying party's policy lists, and the anchor's
+  witnessed time is the earliest protected `iat` of a passing Receipt, always with that Receipt's
+  witness (P-67). SH §6 "The witness line" now lets a verifier say a standard card's snapshot was
+  witnessed, at that time and by that witness, only when `anchor_witnessed` is `PASS`, and never
+  that a witness checked the counts; `anchor_inclusion` stays `NOT_CHECKED` for a card. No card
+  member, counting table, wording pack or envelope check changes. Go `witness.CheckAnchorWitnessed`,
+  Python `witness.check_anchor_witnessed` and TypeScript `checkAnchorWitnessed` (the `witness`
+  entry point) run the new `vectors/anchor-witness-v1/` (43 cases, positive and MUST-reject).
 - Spec: a verifier may draw a `standard_history/1` card's `outcomes` tally as one bar (AAC#507,
   AAC#506). HF §4.6 gains an opt-in "count bar" that only SH §6 allows: it draws the counts and is not
   a ratio, carries no figure, scale or marker, is never aligned or ordered across subjects, and is

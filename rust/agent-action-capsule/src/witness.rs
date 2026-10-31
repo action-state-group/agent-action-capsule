@@ -1615,3 +1615,142 @@ mod tests {
         );
     }
 }
+
+/// The verification-material kind of a witness Receipt over a Checkpointed
+/// Local Log anchor (`spec/interop-profile-v1.md` §6.2.2).
+pub const ANCHOR_WITNESS_KIND: &str = "cll-witness-receipt";
+/// The check §6.2.2 defines. It is not an envelope property and never enters
+/// the profile's §8 mapping.
+pub const ANCHOR_WITNESS_PROPERTY: &str = "anchor_witnessed";
+
+/// One Receipt's `anchor_witnessed` result: its status (`PASS`, `FAIL` or
+/// `NOT_CHECKED`), its witness's name when it passed, and its registration
+/// time (a NumericDate) when it passed with a protected `iat`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnchorReceiptReport {
+    pub status: &'static str,
+    pub witness: Option<String>,
+    pub registration_time: Option<u64>,
+}
+
+/// `anchor_witnessed` over every Receipt for one anchor. `witness` and
+/// `witnessed_time` always come from the same Receipt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnchorWitnessReport {
+    pub status: &'static str,
+    pub receipts: Vec<AnchorReceiptReport>,
+    pub witness: Option<String>,
+    pub witnessed_time: Option<u64>,
+}
+
+/// The policy's keys in order, as `(name, DER SubjectPublicKeyInfo)`: the
+/// policy is `{"witnesses": [{"name": ..., "keys": [<hex DER SPKI>, ...]}]}`,
+/// and an entry of any other shape lists no key.
+fn anchor_policy_keys(policy: &Value) -> Vec<(String, Vec<u8>)> {
+    let rows = policy.get("witnesses").and_then(Value::as_array);
+    let mut out = Vec::new();
+    for row in rows.into_iter().flatten() {
+        let (Some(name), Some(keys)) = (
+            row.get("name").and_then(Value::as_str),
+            row.get("keys").and_then(Value::as_array),
+        ) else {
+            continue;
+        };
+        for key in keys {
+            if let Some(der) = key.as_str().and_then(|text| hex::decode(text).ok()) {
+                out.push((name.to_string(), der));
+            }
+        }
+    }
+    out
+}
+
+/// Whether a Receipt's protected header carries `crit` (label 2), which a
+/// `cll-witness-receipt` never does (§6.2.2 step 1).
+fn carries_crit(receipt: &[u8]) -> bool {
+    CoseSign1::from_tagged_slice(receipt).map_or(true, |sign1| {
+        let header = &sign1.protected.header;
+        !header.crit.is_empty() || header.rest.iter().any(|(label, _)| *label == Label::Int(2))
+    })
+}
+
+/// Steps 1 to 5 of profile v1 §6.2.2 for one Receipt over the anchor whose
+/// digest is `anchor` (64 lowercase hex characters), under the relying
+/// party's witness `policy`. The Receipt is checked as a `scrapi` Receipt
+/// is, with the anchor digest's 32 octets as the leaf entry.
+pub fn check_anchor_receipt(anchor: &str, receipt: &[u8], policy: &Value) -> AnchorReceiptReport {
+    let report = |status, witness, registration_time| AnchorReceiptReport {
+        status,
+        witness,
+        registration_time,
+    };
+    let leaf = match hex::decode(anchor) {
+        Ok(leaf) if leaf.len() == 32 && !anchor.bytes().any(|b| b.is_ascii_uppercase()) => leaf,
+        _ => return report("FAIL", None, None),
+    };
+    let Ok((alg, _)) = receipt_shape(receipt) else {
+        return report("FAIL", None, None);
+    };
+    if carries_crit(receipt) {
+        return report("FAIL", None, None);
+    }
+    let keys: Vec<_> = anchor_policy_keys(policy)
+        .into_iter()
+        .filter(|(_, der)| key_fits_alg(alg, der))
+        .collect();
+    if keys.is_empty() {
+        return report("NOT_CHECKED", None, None);
+    }
+    for (name, der) in keys {
+        if cose_receipt(receipt, &leaf, &der).is_ok() {
+            return report("PASS", Some(name), registration_time(receipt).ok());
+        }
+    }
+    report("FAIL", None, None)
+}
+
+/// `anchor_witnessed` over `receipts`, in the order received, for the anchor
+/// `anchor` under `policy` (profile v1 §6.2.2). The anchor's witnessed time
+/// is the earliest registration time of a passing Receipt, with that
+/// Receipt's witness; the first received wins a tie. With no timed passing
+/// Receipt, the first passing one names the witness.
+pub fn check_anchor_witnessed(
+    anchor: &str,
+    receipts: &[Vec<u8>],
+    policy: &Value,
+) -> AnchorWitnessReport {
+    let reports: Vec<_> = receipts
+        .iter()
+        .map(|receipt| check_anchor_receipt(anchor, receipt, policy))
+        .collect();
+    let has = |status| reports.iter().any(|r| r.status == status);
+    let status = if reports.is_empty() {
+        "NOT_PRESENT"
+    } else if has("PASS") {
+        "PASS"
+    } else if has("FAIL") {
+        "FAIL"
+    } else {
+        "NOT_CHECKED"
+    };
+    let mut chosen: Option<&AnchorReceiptReport> = None;
+    for r in reports.iter().filter(|r| r.status == "PASS") {
+        let earlier = match (
+            r.registration_time,
+            chosen.and_then(|c| c.registration_time),
+        ) {
+            (Some(time), Some(best)) => time < best,
+            (Some(_), None) => true,
+            (None, _) => false,
+        };
+        if chosen.is_none() || earlier {
+            chosen = Some(r);
+        }
+    }
+    AnchorWitnessReport {
+        status,
+        witness: chosen.and_then(|c| c.witness.clone()),
+        witnessed_time: chosen.and_then(|c| c.registration_time),
+        receipts: reports,
+    }
+}

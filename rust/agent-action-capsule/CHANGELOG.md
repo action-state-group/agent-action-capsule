@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Witness Receipts over an anchor (feature `strict`, AAC#508):
+  `witness::check_anchor_witnessed` runs `anchor_witnessed` of
+  `spec/interop-profile-v1.md` §6.2.2 over `cll-witness-receipt` Receipts
+  (RFC 9942, RFC9162_SHA256, leaf entry the anchor digest) under a witness
+  policy, and passes `vectors/anchor-witness-v1/`.
 - Security, settlement: the `wrapped_resigned` check verifies a wrapped JWS
   under the leg key with dalek's `verify_strict`, not `verify`, so a
   small-order key (such as the identity key's forgery, R the identity and

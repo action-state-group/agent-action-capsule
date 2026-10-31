@@ -32,6 +32,7 @@ the deal entry and the counting rules (§5), the card and its members (§4), the
 |---|---|---|
 | ER | `draft-mih-agent-evidence-request` -00 | the `full_history` subject [ER §3.1], a derivation named by a registered token and its declared field set [ER "Derivation", "Derivation-Scoped Disclosure"] |
 | IP | `spec/interop-profile-v0.md` (`evidence-interop/0`) | the request and envelope (§6.1, §6.2), `anchor_inclusion` for a derivation (§6.2), the value conventions (§5.2), lifecycle statements and their issuers (§11.2), the per-property vocabulary (§7.1) |
+| IP1 | `spec/interop-profile-v1.md` (`evidence-interop/1`) | only the witness Receipt over an anchor, `cll-witness-receipt`, and its check `anchor_witnessed` (§6.2.2). The request and envelope stay `evidence-interop/0`'s |
 | PH | `spec/personal-agent-history-profile-v0.md` | the holder, the holder key and the deal (§1, §2) |
 | EL | `draft-mih-agent-evidence-layer` -00 | the record header, its `record_type` and its correlation identifier, the epistemic types |
 | SR | `draft-mih-agent-settlement-records` -00 | the amount triple (`value`, `assetCode`, `assetScale`) ("Amounts"), the counterparty half citation ("Citations Between Legs") |
@@ -43,7 +44,10 @@ the deal entry and the counting rules (§5), the card and its members (§4), the
 frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). The IP sections it cites (§5.2,
 §6.1, §6.2, §7.1, §11.2) are the same in `evidence-interop/1`, which changes only the ER pin, the
 refusal reasons and their mapping (IP v1 P-65), and its requests name `evidence-interop/0`.
-Re-pinning to `evidence-interop/1` is a revision of this profile.
+Re-pinning to `evidence-interop/1` is a revision of this profile. The one exception is the
+witness Receipt beside a card (§3 "Inclusion"), which this profile takes from
+`spec/interop-profile-v1.md` §6.2.2 (cited as IP1): it is checked over the anchor, outside any
+request or envelope, so it changes neither.
 
 **Does not define:** any record format of a deal, any disclosure policy format (it reads two
 members of one, §5.1), who may receive a card, any trust policy, any ordering, score or grade of
@@ -137,8 +141,11 @@ The responder answers with an IP envelope [IP §6.2] whose `artifact` is UTF-8 o
   and no record digest [ER "Derivation-Scoped Disclosure"].
 - **Inclusion.** IP registers no verification-material kind for a derivation's artifact, so
   `anchor_inclusion` is `NOT_CHECKED` for a card [IP §6.2, P-13], as for PH §6.1. A card answer
-  carries no `verification` member. The anchor's witness receipt travels beside the card as it
-  does for `history_card/1`; checking it against the card is SH-4.
+  carries no `verification` member. The anchor's witness Receipts travel beside the card, as for
+  `history_card/1`, each a `cll-witness-receipt` [IP1 §6.2.2]. How they travel is the host's, as
+  for the policy (SH-9). A verifier that holds them runs `anchor_witnessed` [IP1 §6.2.2] over the
+  card's `anchor`. A Receipt covers the anchor, not the card, so `anchor_inclusion` stays
+  `NOT_CHECKED` whatever it reports.
 
 ## 4. The card
 
@@ -320,10 +327,10 @@ claim for a requirement to meet, and a requirement is never `SATISFIED` from a c
 **What a verifier shows** for a standard card, in this order: that the counts cover counted deals
 in the stated window, how many deals in it were not counted, and how many counted deals are
 `undecided`; each count with its `of` on the same line; which checks ran and which did not,
-including `anchor_inclusion` `NOT_CHECKED` and, without their inputs, `window_from_policy`,
-`as_of` and `counts_recompute` `NOT_CHECKED`. It shows the bands grouped by `currency`, each
-band with its own currency, and never merges bands of two currencies into one row or shows a band
-in another currency: amounts in different assets are never equal or converted [SR "Amounts"
+including `anchor_inclusion` `NOT_CHECKED`, `anchor_witnessed` with its status, and, without
+their inputs, `window_from_policy`, `as_of` and `counts_recompute` `NOT_CHECKED`. It shows the
+bands grouped by `currency`, each band with its own currency, and never merges bands of two
+currencies into one row or shows a band in another currency: amounts in different assets are never equal or converted [SR "Amounts"
 rule 4]. It shows no ratio of two counts, in figures, words or a graphic, but for the outcome bar
 below, which draws the counts and is not itself a ratio; and it never ranks or grades the holder.
 
@@ -335,11 +342,17 @@ the bar, as above. `undecided` is drawn in a tone that is neither the colour of
 the counts, and a card whose `outcomes.of` is 0 has none. This display rule has no vector: a vector
 checks a card's properties (§6), not how a verifier draws it.
 
-**The witness line.** `anchor_inclusion` is `NOT_CHECKED` for a card (§3, §10 SH-4), and a witness
-receipt covers the anchor's checkpoint, not the card's counts. A verifier that holds a witness
-receipt that came with the card MAY say that one came with it and that it was not checked against
-the card, or say nothing about a witness. It MUST NOT say that a witness saw, checked or witnessed
-the snapshot or the card until SH-4 is closed and the verifier has run that check.
+**The witness line.** A witness Receipt covers the anchor, the snapshot the card is as of, and
+not the card's counts (§3). A verifier that ran `anchor_witnessed` [IP1 §6.2.2] over the card's
+`anchor`, with a witness policy the relying party set, and got `PASS` MAY say that the snapshot
+was witnessed: at the anchor's witnessed time, by the witness of the Receipt that gives that time,
+named as the relying party's policy names it, or by the witness of a passing Receipt and with no
+time when no passing Receipt has one. It says so only of a standard card. It MUST NOT pair one
+Receipt's time with another Receipt's witness, and it MUST NOT say or imply that the witness
+checked, saw or confirmed the counts, the deals or the card: those stay the holder's statement
+under the holder key. Otherwise, with a Receipt that came with the card, the verifier
+MAY say that one came with it and that it was not checked, or say nothing about a witness; it
+MUST NOT say that a witness saw, checked or witnessed the snapshot or the card.
 
 **Vectors.** `vectors/standard-history-v0/` holds positive cards, among them a window across a
 year end, a sub-unit deal with a negative decade and a zero amount, and negatives each failing the
@@ -440,7 +453,7 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-1 | The card properties (§6) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping, as PH's PA-10. The History frame states this for every instance (HF §4.4). |
 | SH-2 | Filling the deal entry (§5.2) from a host's records: which record gives `agreed_at`, `role` and `amount`, and which claim is a deal's outcome claim. A host profile states its mapping, as `spec/deal-reconcile-contract-v0.md` §4.2 does for a half. |
 | SH-3 | Handing a recipient what `counts_recompute` needs: the Results and records the deal entries are read from, without disclosing more than the recipient may see. Until a carriage is defined, a recipient's verifier reports `counts_recompute` `NOT_CHECKED`. ER asks a derivation's result to be re-derivable by the requester; this revision meets that only with that material. |
-| SH-4 | Checking the anchor's witness receipt against a card: needs a verification-material kind for a derivation's artifact (IP P-13), as PH's PA-13. |
+| SH-4 | Closed for the anchor: a card's page checks the anchor's witness Receipts with `anchor_witnessed` (IP1 §6.2.2, §6 "The witness line"). Still open: a verification-material kind that proves a derivation's artifact against the anchor (IP P-13), as PH's PA-13, without which `anchor_inclusion` stays `NOT_CHECKED` and no Receipt says anything about a card's counts; and carrying the Receipts in the envelope's `verification` instead of beside the card. |
 | SH-5 | Finer `controller_class` values for a node's declaration, and the node's further counts, such as counts per tier of paired answers and of referee findings. This revision defines a `node` card with the same members as a `person` card. The further counts belong in a separate derivation token for nodes, so that `/1` stays the same for every holder. |
 | SH-6 | A disclosure wider than the policy's window, sent to one requester at the holder's choice. It declares the IP §6.7 coverage kind `holder_selected` and is never a `standard_history/1` card. |
 | SH-7 | Reading a dispute's `outcome` and `forum` (§5.4) from the resolving process's statement: IP §11.2.6's statuses (`open`, `upheld`, `dismissed`, `conflicting`) do not say for whom a resolution found, and IP names no forum. |
