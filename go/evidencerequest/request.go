@@ -41,7 +41,8 @@ const (
 var SubjectForms = []SubjectKind{SubjectCheckpoints, SubjectCorrelation, SubjectExchange, SubjectFullHistory, SubjectRange, SubjectRecord}
 
 // Refusal reason tokens: the request draft's registry, verbatim (ER §13,
-// profile §9.1). No other token is ever emitted.
+// profile §9.1): the eight of -00, then the two -02 adds. No other token is
+// ever emitted.
 const (
 	ReasonNotAuthorized         = "not_authorized"
 	ReasonNoSuchSubject         = "no_such_subject"
@@ -51,12 +52,19 @@ const (
 	ReasonDeadlineUnmet         = "deadline_unmet"
 	ReasonRequestMalformed      = "request_malformed"
 	ReasonRetentionExpired      = "retention_expired"
+	// ReasonCapacityExceeded (-02): a limit of the responder's own (load,
+	// size, a transient fault).
+	ReasonCapacityExceeded = "capacity_exceeded"
+	// ReasonRequestUnauthenticated (-02): a requester authentication a
+	// deployment profile defines does not verify.
+	ReasonRequestUnauthenticated = "request_unauthenticated"
 )
 
 // RefusalReasons is the registry, in the draft's order.
 var RefusalReasons = []string{
 	ReasonNotAuthorized, ReasonNoSuchSubject, ReasonCoverageUnsatisfiable, ReasonDerivationUnsupported,
 	ReasonPolicyDeclined, ReasonDeadlineUnmet, ReasonRequestMalformed, ReasonRetentionExpired,
+	ReasonCapacityExceeded, ReasonRequestUnauthenticated,
 }
 
 // Subject names what is asked for, in one of the six forms. Digest serves

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `registry::Reason` gains the two -02 refusal reasons, `CapacityExceeded` (`capacity_exceeded`)
+  and `RequestUnauthenticated` (`request_unauthenticated`); `Reason::ALL` has ten.
+  `retention::classify_refusal` reads both as `NoBreach` inside and after `until`
+  (`capacity_exceeded` is never a breach). `tests/vectors.rs` reads `refusal-02.json`. A refusal
+  with either token is now `reason_registered`. **Breaking** for an exhaustive `match` on `Reason`.
 - `acceptance`: §11.1.5 rule 2 is `FAIL` only for an `issued_at` later than a time held for the
   action; an equal time no longer is (the profile's change; corpus cases
   `acceptance-equal-time-H` and `acceptance-after-action-by-a-second-I`).

@@ -1,8 +1,9 @@
 //! Retention commitments (§9).
 //!
 //! A commitment promises that a subject stays answerable until a time.
-//! Inside `until`, only the four reasons about the request or the
-//! responder's capability are consistent with the promise; any other
+//! Inside `until`, only the reasons about the request or the responder's
+//! capability are consistent with the promise, and `capacity_exceeded` is
+//! never a breach (-02: flooding must not manufacture one); any other
 //! refusal breaches it (A9). After `until`, `retention_expired` is the
 //! correct token, and `no_such_subject` is the wrong one: a lapsed promise
 //! must not read as "never held" (A10). A commitment names one subject a
@@ -48,16 +49,18 @@ impl RefusalClass {
 
 /// Classify a refusal with `reason` against `commitment`.
 pub fn classify_refusal(commitment: Commitment, reason: Reason) -> RefusalClass {
-    let about_the_request = matches!(
+    let consistent_with_the_promise = matches!(
         reason,
         Reason::NotAuthorized
             | Reason::CoverageUnsatisfiable
             | Reason::DerivationUnsupported
             | Reason::RequestMalformed
+            | Reason::RequestUnauthenticated
+            | Reason::CapacityExceeded
     );
     match commitment {
         Commitment::None => RefusalClass::NoCommitment,
-        Commitment::InForce if about_the_request => RefusalClass::NoBreach,
+        Commitment::InForce if consistent_with_the_promise => RefusalClass::NoBreach,
         Commitment::InForce => RefusalClass::Breach,
         Commitment::Lapsed => match reason {
             Reason::RetentionExpired => RefusalClass::Correct,

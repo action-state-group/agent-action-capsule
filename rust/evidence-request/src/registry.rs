@@ -48,7 +48,8 @@ impl SubjectForm {
     }
 }
 
-/// The eight registered refusal reasons (§4.2, §13).
+/// The registered refusal reasons: the eight of -00 and the two -02 adds
+/// (§4.2, §13).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Reason {
     NotAuthorized,
@@ -59,10 +60,15 @@ pub enum Reason {
     DeadlineUnmet,
     RequestMalformed,
     RetentionExpired,
+    /// -02: a limit of the responder's own (load, size, a transient fault).
+    CapacityExceeded,
+    /// -02: a requester authentication a deployment profile defines does not
+    /// verify.
+    RequestUnauthenticated,
 }
 
 impl Reason {
-    pub const ALL: [Reason; 8] = [
+    pub const ALL: [Reason; 10] = [
         Reason::NotAuthorized,
         Reason::NoSuchSubject,
         Reason::CoverageUnsatisfiable,
@@ -71,6 +77,8 @@ impl Reason {
         Reason::DeadlineUnmet,
         Reason::RequestMalformed,
         Reason::RetentionExpired,
+        Reason::CapacityExceeded,
+        Reason::RequestUnauthenticated,
     ];
 
     /// The registered token.
@@ -84,6 +92,8 @@ impl Reason {
             Reason::DeadlineUnmet => "deadline_unmet",
             Reason::RequestMalformed => "request_malformed",
             Reason::RetentionExpired => "retention_expired",
+            Reason::CapacityExceeded => "capacity_exceeded",
+            Reason::RequestUnauthenticated => "request_unauthenticated",
         }
     }
 

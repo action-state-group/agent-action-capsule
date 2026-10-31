@@ -36,7 +36,7 @@ func vectorDir(t *testing.T) string {
 // corpusCounts is the case count of each corpus, as manifest.json states it.
 var corpusCounts = map[string]int{
 	"request.json": 33, "resolution.json": 19, "digest.json": 7, "refusal.json": 22,
-	"outcomes.json": 13, "invariance.json": 6, "retention.json": 25,
+	"outcomes.json": 13, "invariance.json": 6, "retention.json": 25, "refusal-02.json": 11,
 }
 
 func readVector(t *testing.T, name string) []byte {
@@ -100,8 +100,8 @@ func TestVectorChecksums(t *testing.T) {
 			assert.Equal(t, 1, entry.Count)
 		}
 	}
-	require.Len(t, corpusCounts, 7)
-	assert.Equal(t, 125, total)
+	require.Len(t, corpusCounts, 8)
+	assert.Equal(t, 136, total)
 }
 
 // TestRegistryVector: the strings the draft fixes are this package's.
@@ -115,7 +115,13 @@ func TestRegistryVector(t *testing.T) {
 		Coverage       []string       `json:"coverage_members"`
 	}
 	require.NoError(t, json.Unmarshal(readVector(t, "registry.json"), &registry))
-	assert.Equal(t, registry.RefusalReasons, er.RefusalReasons)
+	// registry.json is the -00 registry; refusal-02.json adds two.
+	var refusal02 struct {
+		RefusalReasons []string `json:"refusal_reasons"`
+	}
+	require.NoError(t, json.Unmarshal(readVector(t, "refusal-02.json"), &refusal02))
+	assert.Equal(t, registry.RefusalReasons, refusal02.RefusalReasons[:len(registry.RefusalReasons)])
+	assert.Equal(t, refusal02.RefusalReasons, er.RefusalReasons)
 	forms := make([]string, len(er.SubjectForms))
 	for i, f := range er.SubjectForms {
 		forms[i] = string(f)
@@ -528,4 +534,43 @@ func TestInvarianceVectors(t *testing.T) {
 			assert.Equal(t, c.Expect.Invariance, er.CompareAnswers(answers))
 		})
 	}
+}
+
+// TestRefusal02Vectors reads refusal-02.json: the two -02 reasons signed and
+// registered, an unregistered one, and their retention classification. The
+// load-shedding and status-mapping cases state what the text requires of a
+// responder or a deployment; no function here decides them.
+func TestRefusal02Vectors(t *testing.T) {
+	type refusal02Vector struct {
+		ID      string          `json:"id"`
+		Refusal json.RawMessage `json:"refusal"`
+		Facts   map[string]any  `json:"facts"`
+		Expect  struct {
+			Signature      string `json:"signature"`
+			Registered     bool   `json:"reason_registered"`
+			Conformant     bool   `json:"conformant"`
+			Classification string `json:"classification"`
+		} `json:"expect"`
+	}
+	commitments := map[string]er.CommitmentState{"in_force": er.CommitmentInForce, "lapsed": er.CommitmentLapsed}
+	read := 0
+	for _, c := range loadCases[refusal02Vector](t, "refusal-02.json") {
+		t.Run(c.ID, func(t *testing.T) {
+			if c.Refusal != nil {
+				check := er.CheckRefusal(er.Message{Octets: c.Refusal, MediaType: er.MediaTypeJSON})
+				assert.Equal(t, c.Expect.Signature == "valid", check.SignatureValid)
+				assert.Equal(t, c.Expect.Registered, check.ReasonRegistered)
+				assert.Equal(t, c.Expect.Conformant, check.Conformant)
+				read++
+				return
+			}
+			if state, ok := c.Facts["commitment"].(string); ok {
+				commitment, known := commitments[state]
+				require.True(t, known)
+				assert.Equal(t, c.Expect.Classification, er.ClassifyRefusal(commitment, c.Facts["refusal_reason"].(string)))
+				read++
+			}
+		})
+	}
+	assert.Equal(t, 7, read)
 }
