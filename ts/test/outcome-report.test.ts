@@ -343,13 +343,15 @@ type CalibrationRecords = { summary: Obj; ratings: Obj[] };
  * `extraSummary` makes the claim cite a second summary record too;
  * `citeTwice` makes it cite every record twice. `secondClaimSummary` adds a
  * second `calibration` claim, after the first, citing that summary and the
- * same ratings.
+ * same ratings. `editClaims` edits the Result's claims before the
+ * calibration claim is added.
  */
 async function calibrationModel(
   edit?: (records: CalibrationRecords) => void,
   extraSummary?: Obj,
   citeTwice = false,
   secondClaimSummary?: Obj,
+  editClaims?: (claims: Obj[]) => void,
 ): Promise<ReturnType<typeof buildOutcomeReportModel>> {
   const source = fixture("outcome-report-bundle.json");
   const records = fixture("calibration-records.json") as CalibrationRecords;
@@ -357,6 +359,7 @@ async function calibrationModel(
   const resultDoc = ((source.disclosures as Obj).result as Obj)
     .agent_input as Obj;
   const claims = resultDoc.claims as Obj[];
+  editClaims?.(claims);
   const cited: [string, Obj][] = [
     ["cal-summary-2026-W39", records.summary],
     ...(extraSummary === undefined
@@ -425,7 +428,18 @@ async function calibrationModel(
       claims: allClaims,
       aggregate: {
         ...(resultDoc.aggregate as Obj),
-        buckets: rebuildBuckets(allClaims),
+        buckets: {
+          ...rebuildBuckets(
+            allClaims.filter((claim) => claim.verdict !== "out_of_scope"),
+          ),
+          ...(claims.some((claim) => claim.out_of_scope_allowed === true)
+            ? {
+                out_of_scope: allClaims
+                  .filter((claim) => claim.verdict === "out_of_scope")
+                  .map((claim) => claim.id as string),
+              }
+            : {}),
+        },
       },
     },
   };
@@ -493,6 +507,55 @@ it.each(["not_evaluable", "out_of_scope", "unsure"])(
     expect(reading.clauses[0]!.agreementCheck).toBe("matches");
     expect(model.heldCount).toBe(0);
     expect(model.addedCount).toBe(1);
+  },
+);
+
+it.each([
+  [
+    "not_evaluable",
+    (claim: Obj) => {
+      claim.verdict = "not_evaluable";
+      claim.sufficiency = "GAP";
+      (claim.presentation as Obj).status = "INSUFFICIENT";
+    },
+  ],
+  [
+    "out_of_scope",
+    (claim: Obj) => {
+      claim.verdict = "out_of_scope";
+    },
+  ],
+] as const)(
+  "leaves a rating out of k, n, held and added when the judge's verdict is %s",
+  async (verdict, setVerdict) => {
+    const model = await calibrationModel(
+      (records) => {
+        // With the met rating on task-11 counted as a disagreement, 1 of 3
+        // would contradict the stated 1 of 2.
+        (records.summary.clauses as Obj[])[0]!.agreement = { k: 1, n: 2 };
+      },
+      undefined,
+      false,
+      undefined,
+      (claims) => {
+        for (const claim of claims)
+          if (claim.requirement_ref === CLAUSE)
+            claim.out_of_scope_allowed = true;
+        setVerdict(
+          claims.find(
+            (claim) => claim.id === `tau2:airline:task-11:trial-0::${CLAUSE}`,
+          )!,
+        );
+      },
+    );
+    const reading = model.calibration[0]!;
+    expect(reading.ratings[1]!.rating.label).toBe("met");
+    expect(reading.ratings[1]!.judged?.verdict).toBe(verdict);
+    expect(reading.ratings[1]!.agrees).toBeUndefined();
+    expect(reading.clauses[0]!.recomputedAgreement).toEqual({ k: 1, n: 2 });
+    expect(reading.clauses[0]!.agreementCheck).toBe("matches");
+    expect(model.heldCount).toBe(1);
+    expect(model.addedCount).toBe(0);
   },
 );
 

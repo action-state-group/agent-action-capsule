@@ -424,11 +424,12 @@ export interface OutcomeReportRunInfo {
  * - Clause: a summary clause's `clause_ref` is read as that claim's
  *   `requirement_ref`. Section 8 does not say what `clause_ref` cites.
  * - Counting (pending evidencebook-skills#74; settled with Sherlock2 for
- *   this reader): only a rating labelled `met` or `not_met` counts, in both
- *   k and n, and it agrees when its `label` equals the judge's verdict.
- *   `not_evaluable` (the live form of the sampling spec's `unsure`, which
- *   that spec drops from numerator and denominator), `out_of_scope` and any
- *   other label are left out. The schema leaves `label` open.
+ *   this reader): a rating counts, in both k and n, only when its `label`
+ *   AND its bound claim's verdict are each `met` or `not_met`; it agrees
+ *   when the two are equal. `not_evaluable` (the live form of the sampling
+ *   spec's `unsure`, which that spec drops from numerator and denominator),
+ *   `out_of_scope` and any other label or verdict, on either side, leave
+ *   the rating out. The schema leaves `label` open.
  * - Population: the cited ratings are read as a sample of the cases behind
  *   a clause's counts, not the whole population. Section 8 does not say they
  *   are all of them, so fewer ratings than the stated n is never a mismatch.
@@ -450,7 +451,7 @@ export interface CalibrationRating {
     readonly requirementRef: string;
     readonly verdict: string;
   };
-  /** The rating's `label` equals the judge's verdict; present only with `judged` and a counted label (`met` or `not_met`, the counting convention above). */
+  /** The rating's `label` equals the judge's verdict; present only with `judged` when the label and the judge's verdict are both `met` or `not_met` (the counting convention above). */
   readonly agrees?: boolean;
 }
 
@@ -477,7 +478,7 @@ export type CalibrationAgreementCheck =
   | "not_recomputable";
 
 export interface CalibrationClause extends CalibrationClauseTally {
-  /** The bound ratings with a counted label whose requirement_ref is this clause_ref (the clause and counting conventions above): n of them, k agreeing. Present whenever at least one such rating exists and every cited rating is bound; even then it is not a replacement for the stated count. */
+  /** The bound ratings whose label and judge verdict both count and whose requirement_ref is this clause_ref (the clause and counting conventions above): n of them, k agreeing. Present whenever at least one such rating exists and every cited rating is bound; even then it is not a replacement for the stated count. */
   readonly recomputedAgreement?: KOfN;
   readonly agreementCheck: CalibrationAgreementCheck;
 }
@@ -1545,7 +1546,8 @@ function buildCalibration(result: ResultRoot): CalibrationReading[] {
             ? {}
             : {
                 judged,
-                ...(COUNTED_LABELS.has(rating.label)
+                ...(COUNTED_LABELS.has(rating.label) &&
+                COUNTED_LABELS.has(judged.verdict)
                   ? { agrees: rating.label === judged.verdict }
                   : {}),
               }),
@@ -1584,7 +1586,7 @@ function buildCalibration(result: ResultRoot): CalibrationReading[] {
         ? ratings.filter(
             (entry) =>
               entry.judged!.requirementRef === tally.clauseRef &&
-              COUNTED_LABELS.has(entry.rating.label),
+              entry.agrees !== undefined,
           )
         : [];
       if (bound.length === 0)
@@ -1635,8 +1637,9 @@ function buildCalibration(result: ResultRoot): CalibrationReading[] {
  * From the cited human ratings bound to a judged claim, in readings whose
  * summary matches its schema -- never from the claims' own verdicts alone,
  * which is where "resolved" is recomputed from above. held: the judge said
- * met and the rater said not_met; added: the rater said met and the judge did
- * not. A rating cited by more than one claim counts once (by its digest).
+ * met and the rater said not_met; added: the judge said not_met and the rater
+ * said met. Any other label or verdict counts as neither. A rating cited by
+ * more than one claim counts once (by its digest).
  */
 function heldAndAdded(readings: readonly CalibrationReading[]): {
   held: number;
@@ -1651,7 +1654,8 @@ function heldAndAdded(readings: readonly CalibrationReading[]): {
       if (judged === undefined || seen.has(digest)) continue;
       seen.add(digest);
       if (judged.verdict === "met" && rating.label === "not_met") held += 1;
-      else if (judged.verdict !== "met" && rating.label === "met") added += 1;
+      else if (judged.verdict === "not_met" && rating.label === "met")
+        added += 1;
     }
   }
   return { held, added };

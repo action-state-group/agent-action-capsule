@@ -30,11 +30,12 @@ has not yet.
   ratings no clause counts. The recompute rests on reader conventions that neither the schemas nor
   the judge record family spec state, pending evidencebook-skills#73 and #74: a rating is bound
   to the requirement claim that cites its rated case, a `clause_ref` is read as that claim's
-  `requirement_ref`, only a rating labelled `met` or `not_met` counts in k and n (agreeing when its
-  `label` equals the judge's verdict; `not_evaluable`, `out_of_scope` and other labels are left
-  out, as settled with Sherlock2), and the cited ratings are a sample of a clause's cases, not all
-  of them. `heldCount` (judge `met`, rater `not_met`) and `addedCount` (rater `met`, judge not)
-  are read from the bound ratings, each rating digest counted once across claims.
+  `requirement_ref`, a rating counts in k and n only when both its `label` and the judge's verdict
+  are `met` or `not_met` (agreeing when they are equal; `not_evaluable`, `out_of_scope` and any
+  other value on either side leave it out, as settled with Sherlock2), and the cited ratings are a
+  sample of a clause's cases, not all of them. `heldCount` (judge `met`, rater `not_met`) and
+  `addedCount` (judge `not_met`, rater `met`) are read from the bound ratings, each rating digest
+  counted once across claims.
   `CalibrationWeek` and `CalibrationSample` are removed. The evidence graph's `calibration` node is
   `{capsuleId, matchesSchema, summary}`, matched on `record_version`; `CalibrationCount`,
   `calibrationCount`, `confusion`, `correctedRate` and `periodWindow` are removed. No reader computes
