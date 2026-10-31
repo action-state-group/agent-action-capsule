@@ -449,6 +449,11 @@ func TestVerifyCOSEReceipt(t *testing.T) {
 	_, err = VerifyCOSEReceipt(buildReceipt(t, leaf, base), leaf, &ecKey.PublicKey)
 	require.ErrorContains(t, err, "EdDSA needs")
 
+	// Only null is a detached payload; undefined is refused before the
+	// signature, which would otherwise verify.
+	_, err = VerifyCOSEReceipt(undefinedPayload(t, buildReceipt(t, leaf, base)), leaf, public)
+	require.ErrorContains(t, err, "must be CBOR null")
+
 	refused := map[string]struct {
 		receipt []byte
 		leaf    []byte
@@ -472,6 +477,24 @@ func TestVerifyCOSEReceipt(t *testing.T) {
 		_, err := VerifyCOSEReceipt(c.receipt, c.leaf, c.key)
 		require.Error(t, err, name)
 	}
+}
+
+// undefinedPayload rewrites the receipt's null (0xf6) payload to undefined
+// (0xf7). The signature covers the rebuilt root, not the payload item, so it
+// still verifies; fxamacker decodes both to nil.
+func undefinedPayload(t *testing.T, receipt []byte) []byte {
+	var parts []cbor.RawMessage
+	var tag cbor.RawTag
+	require.NoError(t, cbor.Unmarshal(receipt, &tag))
+	require.NoError(t, cbor.Unmarshal(tag.Content, &parts))
+	require.Equal(t, cbor.RawMessage{0xf6}, parts[2])
+	parts[2] = cbor.RawMessage{0xf7}
+	content, err := cbor.Marshal(parts)
+	require.NoError(t, err)
+	tag.Content = content
+	out, err := cbor.Marshal(tag)
+	require.NoError(t, err)
+	return out
 }
 
 // nonMinimal re-encodes the receipt's outer array head in a two-byte form.

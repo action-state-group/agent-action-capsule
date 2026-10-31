@@ -405,6 +405,79 @@ pub fn checkpoint_digest(signed: &SignedCheckpoint) -> String {
     .digest()
 }
 
+/// Whether the third item of a COSE_Sign1 `coset` has already decoded is
+/// CBOR null (`0xf6`). `coset` reads undefined (`0xf7`) as an absent
+/// payload too, but only null is detached, as scitt-cose has it.
+fn payload_is_null(receipt: &[u8]) -> bool {
+    let mut offset = 0;
+    // The tag-18 head, then the four-item array head.
+    for _ in 0..2 {
+        match cbor_head(receipt, offset) {
+            Some((_, _, end)) => offset = end,
+            None => return false,
+        }
+    }
+    for _ in 0..2 {
+        match cbor_item_end(receipt, offset, 0) {
+            Some(end) => offset = end,
+            None => return false,
+        }
+    }
+    receipt.get(offset) == Some(&0xf6)
+}
+
+/// One CBOR head at `offset`: its major type, its argument (`None` for an
+/// indefinite length) and the offset after it.
+fn cbor_head(data: &[u8], offset: usize) -> Option<(u8, Option<u64>, usize)> {
+    let first = *data.get(offset)?;
+    let (major, info) = (first >> 5, first & 31);
+    let width = match info {
+        0..=23 => return Some((major, Some(u64::from(info)), offset + 1)),
+        24..=27 => 1usize << (info - 24),
+        31 => return Some((major, None, offset + 1)),
+        _ => return None,
+    };
+    let arg = data
+        .get(offset + 1..offset + 1 + width)?
+        .iter()
+        .fold(0u64, |arg, byte| arg << 8 | u64::from(*byte));
+    Some((major, Some(arg), offset + 1 + width))
+}
+
+/// The offset after the CBOR item at `offset`. Nesting is bounded because
+/// `coset` already decoded these bytes.
+fn cbor_item_end(data: &[u8], offset: usize, depth: usize) -> Option<usize> {
+    if depth > 256 {
+        return None;
+    }
+    let (major, arg, mut end) = cbor_head(data, offset)?;
+    let Some(arg) = arg else {
+        // An indefinite length: items (or chunks) until the 0xff break.
+        if !(2..=5).contains(&major) {
+            return None;
+        }
+        while *data.get(end)? != 0xff {
+            end = cbor_item_end(data, end, depth + 1)?;
+        }
+        return Some(end + 1);
+    };
+    let items = match major {
+        0 | 1 | 7 => 0,
+        2 | 3 => {
+            return end
+                .checked_add(usize::try_from(arg).ok()?)
+                .filter(|e| *e <= data.len())
+        }
+        4 => arg,
+        5 => arg.checked_mul(2)?,
+        _ => 1,
+    };
+    for _ in 0..items {
+        end = cbor_item_end(data, end, depth + 1)?;
+    }
+    Some(end)
+}
+
 /// Refuses what the receipt verifier would read differently from this
 /// profile: a receipt must be a tag-18 COSE_Sign1 with a detached (`nil`)
 /// payload, so its signature covers the rebuilt Merkle root, its protected
@@ -415,6 +488,9 @@ fn receipt_shape(receipt: &[u8]) -> Result<(Algorithm, Vec<u8>), String> {
         .map_err(|e| format!("receipt could not be decoded: {e:?}"))?;
     if sign1.payload.is_some() {
         return Err("receipt payload is attached; a receipt's payload must be detached".into());
+    }
+    if !payload_is_null(receipt) {
+        return Err("receipt payload is not null; a detached payload must be CBOR null".into());
     }
     let header = &sign1.protected.header;
     let vds = header
@@ -1014,6 +1090,15 @@ mod tests {
             Cbor::Bytes(vec![1]),
         );
         assert!(receipt_shape(&attached).unwrap_err().contains("attached"));
+        let mut undefined = receipt(vec![(int(1), int(-8)), (int(395), int(1))], Cbor::Null);
+        let at = undefined
+            .iter()
+            .rposition(|b| *b == 0xf6)
+            .expect("null payload");
+        undefined[at] = 0xf7;
+        assert!(receipt_shape(&undefined)
+            .unwrap_err()
+            .contains("must be CBOR null"));
         assert!(receipt_shape(b"junk").is_err());
     }
 
