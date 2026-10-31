@@ -83,13 +83,13 @@ of any positive vector's `input.json`, run the language's command, then
 | `provenance-mode-vectors/` | `draft-mih-scitt-agent-action-capsule-05` (provenance mode) | record, verify | 27 |
 | `vectors/producer-envelope/` | `draft-mih-scitt-agent-action-capsule-04#producer-envelope` | record, verify | 47 |
 | `vectors/disclosure-envelope/` | `draft-mih-agent-disclosure-envelope-00` | record, verify | 9 |
-| `vectors/cross-language/` | Class-1 and Evidence Bundle inputs shared by every implementation | record, pack, verify | 72 |
+| `vectors/cross-language/` | Class-1 and Evidence Bundle inputs shared by every implementation | record, pack, verify | 73 |
 | `vectors/bundle/vectors.json` | `draft-mih-zhang-agent-disclosure-bundle-00` | pack, verify | 14 |
 | `vectors/bundle/composed/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`composed/v1`) | pack, verify | 6 |
 | `vectors/bundle/composed-controller-binding/` | `draft-mih-zhang-agent-disclosure-bundle-02` (`composed/v1` `controller_binding`, empty-history members) | verify | 14 |
 | `vectors/bundle/non-record-leaves/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Non-Record Leaves) | verify | 26 |
-| `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 8 |
-| `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 32 |
+| `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 9 |
+| `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 34 |
 | `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`) | pack, verify | 8 |
 | `vectors/bundle/report-single-record.json` | `draft-mih-zhang-agent-disclosure-bundle-00` (report of one record) | report | 3 |
 | `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 83 |
@@ -102,7 +102,7 @@ of any positive vector's `input.json`, run the language's command, then
 
 Counts that are not a set's own case list: `vectors/cross-language/` is the 54
 Ed25519 and 14 COSE cases of `cll-ed25519-vectors.json` plus one case for each
-of its four other input files; `vectors/bundle/strict/` is its 74 `cases` plus
+of its five other input files; `vectors/bundle/strict/` is its 74 `cases` plus
 its 9 `record_signatures`.
 
 ## Request, respond and the interop profile
