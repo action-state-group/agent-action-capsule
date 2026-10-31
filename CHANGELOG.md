@@ -12,9 +12,103 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: the changes after `python/v0.13.0`. The Rust crates keep their own Unreleased
-sections. An entry that touches several packages is listed under each package that shipped it, or
+Not in any tag yet: nothing after `go/v0.18.0`, `python/v0.14.0` and `ts/v0.12.0`. The Rust crates keep their own
+Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
+
+## go 0.18.0 — 2026-10-31
+
+Tag `go/v0.18.0`.
+
+- Witness Receipts over an anchor (SH-4, AAC#508). Spec: IP v1 §6.2.2 registers the kind
+  `cll-witness-receipt`, an RFC 9942 COSE Receipt (RFC9162_SHA256) whose leaf entry is the anchor
+  digest and which travels beside an answer, never in `verification`, and the check
+  `anchor_witnessed`, outside the envelope properties and the §8 mapping: a Receipt passes when it
+  verifies over the anchor under a witness key the relying party's policy lists, and the anchor's
+  witnessed time is the earliest protected `iat` of a passing Receipt, always with that Receipt's
+  witness (P-67). SH §6 "The witness line" now lets a verifier say a standard card's snapshot was
+  witnessed, at that time and by that witness, only when `anchor_witnessed` is `PASS`, and never
+  that a witness checked the counts; `anchor_inclusion` stays `NOT_CHECKED` for a card. No card
+  member, counting table, wording pack or envelope check changes. Go `witness.CheckAnchorWitnessed`,
+  Python `witness.check_anchor_witnessed` and TypeScript `checkAnchorWitnessed` (the `witness`
+  entry point) run the new `vectors/anchor-witness-v1/` (69 cases, positive and MUST-reject).
+- Spec: a verifier may draw a `standard_history/1` card's `outcomes` tally as one bar (AAC#507,
+  AAC#506). HF §4.6 gains an opt-in "count bar" that only SH §6 allows: it draws the counts and is not
+  a ratio, carries no figure, scale or marker, is never aligned or ordered across subjects, and is
+  none when `of` is 0; no other proportional graphic is allowed. SH §6 also says what a verifier may
+  say about a witness receipt that came with a card: that one came with it, not checked against it,
+  and never that a witness saw or checked the snapshot until SH-4 is closed. No card member, vector
+  or wire form changes.
+- Evidence Request -02 §4.7 unavailable-window statements are read in Go, Python and Rust (AAC#477).
+  Go `evidencerequest.RecognizeUnavailableWindow` and Python
+  `evidence_request.recognize_unavailable_window` say whether a reader recognizes a statement (a
+  reason class from the closed list, `start` <= `end`, the responder key's signature checked in the
+  vectors' signature profile (strict Ed25519 over the RFC 8785 form of the present members among
+  `end`, `reason_class` and `start`; -02 §4.7 item 3 leaves the format to the deployment), and at
+  least one accepted receipt) and give its registration time, the earliest accepted receipt's (the
+  first given on a tie), or why it is ignored
+  (`malformed`, `not_signed_by_responder`, `not_registered`). `DisplayAbsence` and
+  `display_absence` show a recorded absence beside the statements held: covered by closed-interval
+  overlap with the waiting window, shown as "no answer; holder states unavailability" with each
+  covering statement's class, stated period, registration time and `stated_afterwards`. Refusal,
+  pending and the retention classification are unchanged. Go and Rust now run every case of
+  `vectors/evidence-request/unavailable-window.json` (35), and the Python vector test calls the
+  library reader instead of its own copy. `scripts/evidence-request-interlock.sh` gains a step in
+  which Python, Go and Rust each report exactly the corpus's expectation for all 35 cases. Go's
+  strict Ed25519 check moves from `witness` to `internal/ed25519strict`, and Python's to
+  `agent_action_capsule._ed25519_strict`, so the witness and evidence-request readers share it.
+- One History frame (`spec/history-frame-v0.md`, AAC#452): the rules every History shares, a
+  closed set of fifteen frame parameters, and per instance a counting table and a wording pack
+  pinned by digest (`spec/history-frame/`). Standard History (`standard_history/1`), the
+  Personal-Agent History Basic and Outcome levels (`personal_history_basic/1`,
+  `personal_history_outcome/1`) and Inference-Service History (`inference-service-history/0`) are
+  restated as its instances. The period rules stay Inference-Service History's own. No identifier,
+  definition digest or vector changes; SH §9 gains a "Differencing" note, and SH now states the
+  frame's composition rule (separate subjects compose only by an evidence-backed key link), which
+  it did not state before. New
+  `vectors/history-frame-v0/` (9 cases: the four instances' documents, a mismatched pack digest
+  and four other negatives), and the four instance generators assert that the documents match what
+  they emit.
+
+## ts 0.12.0 — 2026-10-31
+
+Tag `ts/v0.12.0`.
+
+- Witness Receipts over an anchor (SH-4, AAC#508). Spec: IP v1 §6.2.2 registers the kind
+  `cll-witness-receipt`, an RFC 9942 COSE Receipt (RFC9162_SHA256) whose leaf entry is the anchor
+  digest and which travels beside an answer, never in `verification`, and the check
+  `anchor_witnessed`, outside the envelope properties and the §8 mapping: a Receipt passes when it
+  verifies over the anchor under a witness key the relying party's policy lists, and the anchor's
+  witnessed time is the earliest protected `iat` of a passing Receipt, always with that Receipt's
+  witness (P-67). SH §6 "The witness line" now lets a verifier say a standard card's snapshot was
+  witnessed, at that time and by that witness, only when `anchor_witnessed` is `PASS`, and never
+  that a witness checked the counts; `anchor_inclusion` stays `NOT_CHECKED` for a card. No card
+  member, counting table, wording pack or envelope check changes. Go `witness.CheckAnchorWitnessed`,
+  Python `witness.check_anchor_witnessed` and TypeScript `checkAnchorWitnessed` (the `witness`
+  entry point) run the new `vectors/anchor-witness-v1/` (69 cases, positive and MUST-reject).
+- Spec: a verifier may draw a `standard_history/1` card's `outcomes` tally as one bar (AAC#507,
+  AAC#506). HF §4.6 gains an opt-in "count bar" that only SH §6 allows: it draws the counts and is not
+  a ratio, carries no figure, scale or marker, is never aligned or ordered across subjects, and is
+  none when `of` is 0; no other proportional graphic is allowed. SH §6 also says what a verifier may
+  say about a witness receipt that came with a card: that one came with it, not checked against it,
+  and never that a witness saw or checked the snapshot until SH-4 is closed. No card member, vector
+  or wire form changes.
+- One History frame (`spec/history-frame-v0.md`, AAC#452): the rules every History shares, a
+  closed set of fifteen frame parameters, and per instance a counting table and a wording pack
+  pinned by digest (`spec/history-frame/`). Standard History (`standard_history/1`), the
+  Personal-Agent History Basic and Outcome levels (`personal_history_basic/1`,
+  `personal_history_outcome/1`) and Inference-Service History (`inference-service-history/0`) are
+  restated as its instances. The period rules stay Inference-Service History's own. No identifier,
+  definition digest or vector changes; SH §9 gains a "Differencing" note, and SH now states the
+  frame's composition rule (separate subjects compose only by an evidence-backed key link), which
+  it did not state before. New
+  `vectors/history-frame-v0/` (9 cases: the four instances' documents, a mismatched pack digest
+  and four other negatives), and the four instance generators assert that the documents match what
+  they emit.
+
+## python 0.14.0 — 2026-10-31
+
+Tag `python/v0.14.0`.
 
 - Witness Receipts over an anchor (SH-4, AAC#508). Spec: IP v1 §6.2.2 registers the kind
   `cll-witness-receipt`, an RFC 9942 COSE Receipt (RFC9162_SHA256) whose leaf entry is the anchor
@@ -112,31 +206,6 @@ has not yet.
   WebCrypto for this; the helper moves from `cose-receipt.ts` to `ed25519-strict.ts`. Honest
   signatures verify as before. The producer envelope and Go's Evidence Request -00
   `VerifySignature` stay with #322. (#448)
-- **Breaking**, TypeScript (the next ts minor, 0.11.0): the two calibration readers read
-  `calibration-summary/v1` as `schemas/judge/calibration-summary-v1.json` defines it, and the cited
-  per-case ratings as `schemas/judge/human-rating-v1.json` does (AAC#446). New module
-  `calibration-summary` (`readCalibrationSummary`, `readHumanRating`) returns a record only when it
-  matches its schema exactly and every count has `k <= n`; a record with a stored rate or any other
-  member the schema lacks reads as not matching. The outcome-report model's `calibration` is now
-  `CalibrationReading[]`: one per `calibration` claim, with the summary it cites, its clauses' stated
-  agreement and drift, and the `human-rating/v1` records it cites (each digest read once). Each
-  clause's agreement is recomputed from those ratings and compared with the stated count
-  (`agreementCheck`: `matches`, `mismatch` only when the ratings contradict the stated count, or
-  `not_recomputable`); the stated count is never replaced, and `ratingsOutsideClauses` counts
-  ratings no clause counts. The recompute rests on reader conventions that neither the schemas nor
-  the judge record family spec state, pending evidencebook-skills#73 and #74: a rating is bound
-  to the requirement claim that cites its rated case, a `clause_ref` is read as that claim's
-  `requirement_ref`, a rating counts in k and n only when both its `label` and the judge's verdict
-  are `met` or `not_met` (agreeing when they are equal; `not_evaluable`, `out_of_scope` and any
-  other value on either side leave it out, as settled with Sherlock2), and the cited ratings are a
-  sample of a clause's cases, not all of them. `heldCount` (judge `met`, rater `not_met`) and
-  `addedCount` (judge `not_met`, rater `met`) are read from the bound ratings, each rating digest
-  counted once across claims.
-  `CalibrationWeek` and `CalibrationSample` are removed. The evidence graph's `calibration` node is
-  `{capsuleId, matchesSchema, summary}`, matched on `record_version`; `CalibrationCount`,
-  `calibrationCount`, `confusion`, `correctedRate` and `periodWindow` are removed. No reader computes
-  or stores a rate or percentage. capsule-viewer#121 adopts the new shapes. New devDependency
-  `ajv` 8.20.0, used only by the test that checks the fixtures against the schemas.
 - One History frame (`spec/history-frame-v0.md`, AAC#452): the rules every History shares, a
   closed set of fifteen frame parameters, and per instance a counting table and a wording pack
   pinned by digest (`spec/history-frame/`). Standard History (`standard_history/1`), the

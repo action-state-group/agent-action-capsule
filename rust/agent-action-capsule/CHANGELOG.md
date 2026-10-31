@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-10-31
+
+Tag `crates/agent-action-capsule-v0.6.0`.
+
 - Witness Receipts over an anchor (feature `strict`, AAC#508):
   `witness::check_anchor_witnessed` runs `anchor_witnessed` of
   `spec/interop-profile-v1.md` §6.2.2 over `cll-witness-receipt` Receipts
