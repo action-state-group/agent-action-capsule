@@ -372,11 +372,8 @@ binds each answer to a request the recipient itself made.
 A responder answers a Basic level request only for the requester its definition names, after
 authenticating it [IP §6.5 item 4]. Any other requester is refused `not_authorized`, or
 `policy_declined` where the more specific token would disclose what the policy protects
-[IP §6.3]. The definition's digest covers the holder's selection of deal references, which are not
-derived from counterparty, item, amount or message text (§4.5), so an outsider cannot compute it
-for a candidate recipient, and `not_authorized` tells it nothing a digest would. Either token
-maps to `WITHHELD` [IP §8.1; HF §4.9]. Possessing a definition, a deal reference or a
-History grants nothing.
+[IP §6.3]. Either token maps to `WITHHELD` [IP §8.1; HF §4.9]. Possessing a definition, a deal
+reference or a History grants nothing.
 
 A discovery manifest never lists a Basic level definition, its identifier or its deal
 references [IP §11.4.3].
@@ -402,6 +399,11 @@ checked. Everything else in §6 is the same.
 - **Recipient binding is not secrecy.** The definition names its recipient, and the responder
   answers only that requester. A recipient can still forward what it received.
 - **Linkage.** Deal references and record digests are stable across Histories (§4.5).
+- **Refusals.** The identifier covers the selection and the recipient (§4.2), and deal references
+  are carried in the clear (§4.5), so a party that knows a whole selection, such as an earlier
+  recipient of it, can compute the identifier for a candidate recipient. A `not_authorized`
+  refusal can then tell it that the holder holds a History under that identifier. Where that
+  matters, the responder can refuse `policy_declined` instead, as §8.1 already allows (HF §4.9).
 - **What one key proves.** Every envelope verifies under the holder key. That does not prove the
   key's holder made the deals, because a record's identifier does not cover the signature it was
   sealed with, and the Basic level does not reveal those signatures.

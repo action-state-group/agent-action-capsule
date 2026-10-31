@@ -3,13 +3,12 @@
 **Status.** Informational, pre-Internet-Draft, kept in this repository. It changes no
 Internet-Draft, no part of the Minimum Evidence Interoperability Profile
 (`spec/interop-profile-v0.md` and `spec/interop-profile-v1.md`, cited as IP), and no member, value,
-identifier or digest of the four documents it frames. Where it needs a rule that no other document
-states, it states the rule as its own and lists it under [Open points](#9-open-points) (HF-1,
-HF-2, …).
+identifier or digest of the four documents it frames. Its own rules are §3 to §6. The questions
+it leaves open are listed under [Open points](#9-open-points) (HF-1, HF-2, …).
 
 This document defines one **History frame**: the rules every History shares, a closed set of
 **frame parameters**, and two documents each instance supplies, a **counting table** and a
-**wording pack**. A History is an instance of the frame: it sets a value for each parameter and
+**wording pack**. A History is an instance of the frame: it sets its values of the parameters and
 pins one table and one pack. Four instances exist, each defined by its own document:
 
 | Tag | Document | Instance identifier |
@@ -64,8 +63,8 @@ described in BCP 14 (RFC 2119, RFC 8174) when, and only when, they appear in all
 Terms from IP §1 and ER §2 are used unchanged. This document adds:
 
 - **Frame:** the rules of §4 and the parameters of §3.
-- **Instance:** a History defined by one identifier (§6.1), with one value for each frame
-  parameter, one counting table and one wording pack.
+- **Instance:** a History defined by one identifier (§6.1), with its values of the frame
+  parameters (per level, for an instance with levels), one counting table and one wording pack.
 - **Subject key:** the key that signs every envelope of a History: SH's and PH's holder key, ISH's
   node key.
 - **Counting table:** an instance's document naming what it counts, from what, in which units,
@@ -79,27 +78,31 @@ Terms from IP §1 and ER §2 are used unchanged. This document adds:
 The frame decides what every History says the same way: one subject key, one anchor, how an
 envelope is accepted, how a History property is read, that a count is never combined into a
 figure, how two subjects compose, and when a non-recipient is refused with which token. An
-instance decides only what its parameters, its counting table and its wording pack say. A new
-behaviour that no parameter value expresses is a revision of this frame, never an instance's own
-extension of it.
+instance decides only what its parameters, its counting table and its wording pack say. An
+instance's document states the rules that carry out its own parameter values, such as ISH's period
+rules under `aggregation` `periods`; it never adds a rule that contradicts §4 or that needs a
+parameter or value §3 does not list. Such a behaviour is a revision of this frame, never an
+instance's own extension of it.
 
 ## 3. Frame parameters
 
-The frame parameters are exactly these, each with exactly the values listed. An instance sets one
-value for each, and nothing else. A parameter or value not listed here is a revision of this
-document.
+The frame parameters are exactly these, each with exactly the values listed. An instance sets, for
+each parameter, one listed value, or a set of listed values where its document allows several (as
+PO's `coverage_kind`), and nothing else. An instance with levels (ISH) sets its values per level;
+its levels share one identifier, one counting table and one wording pack. A parameter or value not
+listed here is a revision of this document.
 
 | Parameter | Values | What it decides |
 |---|---|---|
 | `identification` | `token`: a registered derivation token [ER "Derivation"]; `definition_digest`: SHA-256 of UTF-8 of JCS of a definition document [ER §3.3; IP §6.5] | what the request's `derivation` carries |
 | `level` | `recipient_free`: every admitted requester gets the same bytes [ER §5]; `recipient_specific`: one recipient, named in the definition [IP §6.5] | who may be answered, and whether §4.9 and §4.10 apply |
 | `subject_form` | `full_history`, `correlation` [ER §3.1] | the subject each request names |
-| `coverage_kind` | an IP §6.7.1 kind (`stream_interval`, `holder_selected`, `source_authoritative`), or `policy_window`: every deal of the subject's book at the anchor within the window its policy sets, completeness not asserted | what the History is complete relative to (§4.12) |
+| `coverage_kind` | an IP §6.7.1 kind: `stream_interval` (with the `rule` the instance requires), `holder_selected` or `source_authoritative`; or `policy_window`, a frame value only, never an IP §6.7.1 kind and never carried in a `coverage_declaration`: the holder's own statement that the card covers the deals of its book at the anchor within the window its policy sets, with no completeness asserted under IP §6.7 | what the History is complete relative to (§4.12) |
 | `coverage_carriage` | `instance_text`: stated by the instance's document, no member; `completeness`: the definition's `completeness` member; `definition`: the definition's `coverage_declaration`; `definition_and_artifact`: split between the definition and the artifact | where the coverage kind is carried |
 | `aggregation` | `window`: counts over a window ending at the anchor; `per_deal`: one state or claim set per selected deal, no count across deals; `periods`: counts per aligned closed period, under a floor and complementary suppression (ISH §6); `per_exchange`: one entry per exchange shown | how what is shown is grouped |
 | `answer_anchor` | `any_checkpoint`; `period_boundary`: only a checkpoint whose time is a period boundary | which anchors a History is answered at |
 | `streams` | `one`; `witnessed_tick`: one stream, or several at one witnessed checkpoint tick (PH §2) | how many evidence streams one anchor covers |
-| `embeds` | `none`; `beside`: `history_card/1` travels beside the answer; `history_card/1`: embedded, byte-identical [ER §8.1] | how the history card relates to the answer |
+| `embeds` | `none`; `receipt_beside`: no `history_card/1` is carried, and the anchor's witness receipt travels beside the answer (SH §3 "Inclusion"); `history_card/1`: embedded, byte-identical [ER §8.1] | what the answer carries of the stream's checkpoints and receipts |
 | `stated_by` | `responder`: the counts are the subject key's statement; `verifier`: the verifier derives what is shown from what is carried | who states each count, and so how a verifier labels it |
 | `claims` | `none`; `requirement_results`: source-checked claims with requirement results of the instance's own (§4.13) | whether a requirement can be `SATISFIED` from the History |
 | `interop_pin` | `evidence-interop/0`; `evidence-interop/1`, with `evidence-interop/0` negotiated per request | which IP revision requests and envelopes name |
@@ -152,13 +155,19 @@ it is `PASS`, except that a property the instance's counting table lists in `may
 (for a claim, `claim_may_be_not_checked`) may be `NOT_CHECKED`. Those are the properties that
 need an input outside the answer, such as a policy or the deal entries, which a verifier may not
 hold. A property `FAIL` means not accepted: a verifier shows no count of a History or card that
-is not accepted, and a claim that is not accepted does not count. A coverage property of IP §6.7.2 is not a History property; it acts as IP §6.7.3 says.
+is not accepted, and a claim that is not accepted does not count. How a coverage property of
+IP §6.7.2 acts is the instance's: one the instance lists among its History properties is one
+(PO §8.2 lists `coverage_declaration_form`); otherwise it acts as IP §6.7.3 says, and as the
+instance's acceptance rule adds (ISH §8 accepts no History with a coverage property `FAIL`).
 
 ### 4.6 Counts, and no score, grade, ratio or ordering
 
-Every count is in exactly one unit, from the instance's counting table, and is shown beside what
-it is part of: "9 of 12", never "75%". No count is in two units. No figure adds counts of
-different units, labels, subjects or periods.
+Every count is in exactly one unit, from the instance's counting table, and no count is in two
+units. Where an instance carries a count as part of a total, such as an SH tally's `of`, the count
+is shown beside that total: "9 of 12", never "75%". No figure adds counts beyond the totals the
+instance's own counting rules define (SH's tallies, ISH's per-period unit total), so no figure
+adds counts of different units or subjects; an instance may forbid more, as ISH §5.1 forbids a
+figure across labels or periods.
 
 No instance defines a score, a grade, a ratio, a rate, a share, a mean or an ordering of subjects,
 deals, exchanges or counterparties, and a verifier that follows an instance shows and outputs
@@ -186,15 +195,18 @@ A `recipient_specific` instance answers only the recipient its definition names,
 authenticating it [IP §6.5 item 4]. It refuses any other requester with a signed refusal
 [IP §6.3]:
 
-- where an outsider can compute the instance's definition digest for a candidate recipient, as
-  from a published template, the refusal is `policy_declined`, and the instance gives the same
-  token for a digest it does not hold. `not_authorized` would tell the outsider that a History
-  for that recipient exists (ISH §8.4);
-- where no outsider can compute the digest, the refusal MAY be `not_authorized`, or
-  `policy_declined` where the more specific token would disclose what the policy protects
-  [IP §6.3]. PH's digest covers the holder's selection of deal references, which are not derived from
-  counterparty, item, amount or message text (PH §4.5), so no outsider computes it, and its
-  acceptance vector signs `not_authorized` (PH §6.4).
+- where the definition digest is a function of a published template and a candidate recipient
+  alone, anyone can compute it: the refusal is `policy_declined`, and the instance gives the same
+  token for a digest it does not hold, because `not_authorized` would tell the requester that a
+  History for that recipient exists (ISH §8.4, the ISH Detailed level);
+- where the digest also covers a selection the holder makes for one recipient (PH, PO), the
+  refusal MAY be `not_authorized`, or `policy_declined` where the more specific token would
+  disclose what the policy protects [IP §6.3]. Such a digest is not secret: deal references are
+  carried in the clear and are the same in every History that includes the deal (PH §4.5). A
+  party that knows a whole selection, such as an earlier recipient of it, can compute the digest
+  for a candidate recipient, and a `not_authorized` refusal can then tell it that a History under
+  that digest is held. PH keeps `not_authorized`, which its acceptance vector signs (PH §6.4); a
+  holder for whom that disclosure matters refuses `policy_declined`, as PH §8.1 allows.
 
 Under both IP revisions, `not_authorized`, `policy_declined` and `derivation_unsupported` map to
 `WITHHELD`, sufficiency `GAP`, verdict `not_evaluable` [IP §8.1]. Every refusal of a non-recipient
@@ -268,8 +280,9 @@ values are non-empty text strings.
   instance derives; it never changes what is derived.
 - A verifier MAY show a translation of the pinned pack into another language. A translation is
   not a pack: it is not pinned, binds nothing and is never offered in place of the pinned pack
-  (§6.2 `pack_binding`). It keeps each string's meaning, and is never stronger than the string it
-  translates. A property-checked value is shown as itself.
+  (§6.2 `pack_binding`). Whoever makes a translation keeps each string's meaning, never
+  stronger than the string it translates; no property checks this. A property-checked value is
+  shown as itself.
 
 ### 5.4 Pinning
 
@@ -298,7 +311,7 @@ already signs (the token, the definition's `name`, or the definition's `profile`
 | `aggregation` | `window` | `per_deal` | `per_deal` | `periods` | `per_exchange` |
 | `answer_anchor` | `any_checkpoint` | `any_checkpoint` | `any_checkpoint` | `period_boundary` | `any_checkpoint` |
 | `streams` | `one` | `witnessed_tick` | `witnessed_tick` | `one` | `one` |
-| `embeds` | `beside` | `none` | `none` | `history_card/1` | `history_card/1` |
+| `embeds` | `receipt_beside` | `none` | `none` | `history_card/1` | `history_card/1` |
 | `stated_by` | `responder` | `verifier` | `verifier` | `responder` | `verifier` |
 | `claims` | `none` | `none` | `requirement_results` | `none` | `none` |
 | `interop_pin` | `evidence-interop/0` | `evidence-interop/0` | `evidence-interop/0` | `evidence-interop/1` | `evidence-interop/1` |
@@ -340,8 +353,10 @@ The instance's own document is the source of truth, and its counting table and w
 restate it. If a document and the instance's text disagree, the change that made them disagree is
 in error, and is corrected before it merges; neither is read as overriding the other in a
 released revision. Each instance's vector generator loads its documents, checks their digests
-against §6.1 and §6.2, and asserts that the counting table, and the wording pack where its vectors
-show display strings, match what it emits, so a disagreement stops the generator.
+against §6.1 and §6.2, and asserts that each document equals, member for member, the one its own
+constants and cases give: what it emits, and, for a member its vectors do not emit, the
+instance's text as the generator states it. It also derives `may_be_not_checked` from the
+properties that are `NOT_CHECKED` in its accepted cases. A disagreement stops the generator.
 
 ## 7. Vectors
 

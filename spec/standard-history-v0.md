@@ -61,7 +61,8 @@ changes no member, value, identifier or vector of this document.
   `instance_text`: a card covers every deal of the holder's book at the anchor whose `agreed_at`
   is in the window the policy sets (§5.1), completeness is not asserted, and the card carries no
   coverage member; `aggregation` `window`; `answer_anchor` `any_checkpoint`; `streams` `one`;
-  `embeds` `beside` (§3 "Inclusion"); `stated_by` `responder` (§2); `claims` `none`;
+  `embeds` `receipt_beside` (§3 "Inclusion": no `history_card/1` is carried); `stated_by`
+  `responder` (§2); `claims` `none`;
   `interop_pin` `evidence-interop/0`; `non_recipient_refusal` `none`; `policy_digest`
   `policy_octets` (§5.1); `container` `none`.
 - **Counting table:** `spec/history-frame/standard-history-1-table.json`, digest
@@ -75,9 +76,10 @@ changes no member, value, identifier or vector of this document.
   `standard_history/2`. Where a document and this text disagree, HF §6.3 applies.
 - **Frame rules.** One holder key per card (HF §4.1), envelope acceptance (HF §4.3), card
   properties outside the IP §8 mapping (HF §4.4), acceptance (HF §4.5: a standard card, §6), no
-  score, grade, ratio or ordering (HF §4.6), composition only by an evidence-backed key link
-  (HF §4.7), and differencing (HF §4.8; §9 "Differencing") are the frame's. This document states
-  each again where it applies them.
+  score, grade, ratio or ordering (HF §4.6) and differencing (HF §4.8; §9 "Differencing") are the
+  frame's, and this document states each again where it applies them. Composition only by an
+  evidence-backed key link (HF §4.7) is the frame's rule, which this document did not state
+  before: cards under two holder keys compose only by such a link, never by being shown together.
 
 ## 1. Conventions
 

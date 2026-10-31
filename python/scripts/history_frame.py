@@ -4,8 +4,8 @@
 Each instance of the frame pins one counting table and one wording pack, by the digests HF §6
 lists. ``DIGESTS`` restates that list. ``load`` reads an instance's two documents from
 ``spec/history-frame/``, and fails unless their digests are the listed ones and the pack meets
-HF §5.3. The instance generators call it and then assert that the table matches what they emit
-(HF §6.3): when a document and the instance's text disagree, the change that made them disagree
+HF §5.3. The instance generators call it and then assert that each document equals, member for
+member, the one their own constants and cases give (HF §6.3): when a document and the instance's text disagree, the change that made them disagree
 is wrong, and the generator stops it.
 
 Standard library only.
@@ -104,6 +104,18 @@ def load(instance: str) -> tuple[dict, dict]:
     assert json_digest(pack) == DIGESTS[instance]["pack"], f"{pack_file}: digest is not the one HF §6 lists"
     assert pack_form(table, pack, instance), f"{pack_file}: not a wording pack under HF §5.3"
     return table, pack
+
+
+def header(kind: str, instance: str) -> dict:
+    """HF §5.1's members of one document."""
+    return {"document": kind, "frame": FRAME, "instance": instance}
+
+
+def not_checked_when_accepted(accepted_statuses: list[dict], order: list[str]) -> list[str]:
+    """The properties, in report order, that are ``NOT_CHECKED`` in some accepted case: what the
+    vectors show the instance's ``may_be_not_checked`` to be (HF §4.5)."""
+    seen = {k for statuses in accepted_statuses for k, v in statuses.items() if v == "NOT_CHECKED"}
+    return [k for k in order if k in seen]
 
 
 def accepted(statuses: dict, may_be_not_checked: list[str]) -> bool:

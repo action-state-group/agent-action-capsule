@@ -365,23 +365,55 @@ def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+# HF §6.1: what the standard_history/1 counting table and wording pack restate of this document.
+DEAL_ENTRY = ["deal", "agreed_at", "counterparty_class", "role", "amount", "outcome", "happened", "disputes"]  # §5.2
+COUNTERPARTY_CLASSES = ["person_agent", "business_agent", "shop_preauth"]  # §7
+NOT_COUNTED = ["shop_preauth"]  # §5.3
+RECORD_KINDS = ["receipt_document"]  # §8
+UNITS = ["deals", "disputes"]  # §4
+PACK_STRINGS = {  # §2, §6 "What a verifier shows"
+    "count.of": "{count} of {of}",
+    "counts.cover": "the counts cover counted deals in the stated window",
+    "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
+    "deals.not_counted": "deals in the window not counted",
+    "deals.undecided": "counted deals without a decided outcome",
+}
+
+
 def check_frame(all_cases: list) -> None:
-    """HF §6.3: the instance's counting table (``spec/history-frame/``) matches what these vectors
-    emit, and every case's ``standard`` is HF §4.5's acceptance rule under the table's list."""
-    table, _ = history_frame.load("standard_history/1")
-    assert table["properties"] == list(PROPERTIES), "counting table: properties"
-    assert table["card_members"] == list(PERSON_3M), "counting table: card members"
-    t = table["tallies"]
-    for name in ("in_window", "class_missing", "outcomes", "roles", "happened", "disputes"):
-        assert t[name] == list(PERSON_3M[name]), f"counting table: tally {name}"
-    assert t["band"] == list(PERSON_3M["bands"][0]), "counting table: band tally"
+    """HF §6.3: the instance's counting table and wording pack (``spec/history-frame/``) equal, member
+    for member, what this generator's constants and cases give, and every case's ``standard`` is
+    HF §4.5's acceptance rule under the table's ``may_be_not_checked``."""
+    table, pack = history_frame.load("standard_history/1")
     raised = PERSON_3M["disputes"]["raised"]
-    assert t["dispute"] == list(raised), "counting table: dispute tally"
-    assert t["by_outcome"] == list(raised["by_outcome"]) and t["by_forum"] == list(raised["by_forum"])
     every_deal = [d for c in all_cases for d in c["inputs"].get("deals", [])]
-    assert all(set(d) <= set(table["inputs"]["deal_entry"]) for d in every_deal), "counting table: deal entry"
-    assert {d["counterparty_class"] for d in every_deal if "counterparty_class" in d} <= set(
-        table["inputs"]["counterparty_class"]), "counting table: counterparty_class"
+    assert all(set(d) <= set(DEAL_ENTRY) for d in every_deal), "deal entry"
+    assert {d["counterparty_class"] for d in every_deal if "counterparty_class" in d} <= set(COUNTERPARTY_CLASSES)
+    # §5.3 on the positive case: in_window.not_counted is the deals in the window of a class in NOT_COUNTED.
+    person = next(c for c in all_cases if c["id"] == "person-3-months")
+    in_window = [d for d in person["inputs"]["deals"] if d["agreed_at"] >= "2026-07-28T12:00:00Z"]
+    assert PERSON_3M["in_window"]["not_counted"] == sum(d.get("counterparty_class") in NOT_COUNTED for d in in_window)
+    standard = [c["expected"]["properties"] for c in all_cases if c["expected"]["standard"]]
+    expected_table = {
+        **history_frame.header("counting_table", "standard_history/1"),
+        "inputs": {"deal_entry": DEAL_ENTRY,
+                   "dispute_entry": list(deal("x", "", "", {}, "", "", None, (("s", "o", "f"),))["disputes"][0]),
+                   "counterparty_class": COUNTERPARTY_CLASSES, "not_counted": NOT_COUNTED,
+                   "record_kinds": RECORD_KINDS},
+        "card_members": list(PERSON_3M),
+        "tallies": {**{name: list(PERSON_3M[name]) for name in
+                       ("in_window", "class_missing", "outcomes")},
+                    "band": list(PERSON_3M["bands"][0]),
+                    **{name: list(PERSON_3M[name]) for name in ("roles", "happened", "disputes")},
+                    "dispute": list(raised), "by_outcome": list(raised["by_outcome"]),
+                    "by_forum": list(raised["by_forum"])},
+        "units": UNITS,
+        "properties": list(PROPERTIES),
+        "may_be_not_checked": history_frame.not_checked_when_accepted(standard, list(PROPERTIES)),
+    }
+    assert table == expected_table, "counting table differs from this generator"
+    assert pack == {**history_frame.header("wording_pack", "standard_history/1"), "language": "en",
+                    "strings": PACK_STRINGS}, "wording pack differs from this generator"
     for c in all_cases:
         statuses = c["expected"]["properties"]
         assert c["expected"]["standard"] is history_frame.accepted(statuses, table["may_be_not_checked"]), c["id"]

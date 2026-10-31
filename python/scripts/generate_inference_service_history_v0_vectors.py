@@ -38,6 +38,7 @@ interop profile generator beside this script, for its encodings and statuses.
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 import json
 from pathlib import Path
@@ -678,35 +679,83 @@ def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+# HF §6.1: what the inference-service-history/0 counting table and wording pack restate of the profile.
+DEFINITION_MEMBERS = ["profile", "name", "kind", "level", "embeds", "subjects", "members", "reads", "excludes",
+                      "coverage_declaration", "period_policy", "recipient", "spec"]  # §4.1
+MEMBER_ENTRY = ["name", "required", "derivation", "reads", "units", "claims"]  # §4.1
+MEMBER_CLAIMS = ["asserted_by", "label", "where"]  # §4.1
+VERDICT_COUNTS = ["corroborated", "contradicted", "inconclusive", "not_comparable"]  # §5.3
+ARTIFACT_MEMBERS = ["anchor", "derivation", "subject", "evidence_stream", "declared", "history_card",
+                    "history_card_digest", "coverage_declaration"]  # §8.2
+EXCHANGE_ENTRY = ["client_nonce", "half", "peer_half", "unit", "label"]  # §7.2
+PERIOD_POLICY = ["epoch", "length_s", "min_length_s", "floor", "suppression"]  # §6.1
+PACK_STRINGS = {  # §5.2, §7.2, §10
+    "card.no_witness": "no witness named",
+    "exchange.not_joinable": NOT_JOINABLE[1],
+    "exchange.one_sided": ONE_SIDED[1],
+    "exchange.peer_confirmed": PEER_CONFIRMED[1],
+    "exchange.peer_untrusted": PEER_UNTRUSTED[1],
+    "exchange.redundant": REDUNDANT[1],
+    "session.ordering_not_established": "agreement present; ordering not established",
+}
+
+
+def _artifact(c: dict) -> dict:
+    a = json.loads(c["inputs"]["reply"]["octets_text"])["artifact"]
+    return json.loads(base64.urlsafe_b64decode(a + "=" * (-len(a) % 4)))
+
+
 def check_frame(all_cases: list[dict]) -> None:
-    """HF §6.3: the instance's counting table and wording pack (``spec/history-frame/``) match the
-    definitions and what these vectors emit, and every case's acceptance is HF §4.5's rule."""
+    """HF §6.3: the instance's counting table and wording pack (``spec/history-frame/``) equal, member
+    for member, what this generator's constants, definitions and cases give, and every case's
+    acceptance is HF §4.5's rule under the table's ``may_be_not_checked``."""
     table, pack = history_frame.load(HISTORY_PROFILE)
-    assert table["units"] == UNITS and table["labels"] == LABELS, "counting table: units, labels"
-    assert table["properties"] == {"standard": STANDARD_PROPS, "detailed": DETAILED_PROPS}, "counting table: properties"
-    members = table["definition_members"]
-    for d, absent in ((standard_definition(), "recipient"), (detailed_definition(), "period_policy")):
-        assert sorted(d) == sorted(m for m in members if m != absent), f"counting table: {d['level']} members"
-        assert all(d[k] == v for k, v in table["definition_fixed"].items()), "counting table: definition values"
-        assert d["level"] in table["levels"]
+    std, det = standard_definition(), detailed_definition()
+    for d, absent in ((std, "recipient"), (det, "period_policy")):
+        assert sorted(d) == sorted(m for m in DEFINITION_MEMBERS if m != absent), f"{d['level']} definition members"
         for m in d["members"]:
-            assert set(m) <= set(table["member_entry"]), "counting table: member entry"
-            assert {u["unit"] for u in m["units"]} <= set(UNITS), "counting table: member units"
-            assert set(m.get("claims", {})) <= set(table["member_claims"]), "counting table: member claims"
-    assert sorted(POLICY) == sorted(table["period_policy"]) and POLICY["suppression"] in table["suppression"]
-    s = pack["strings"]
-    for _, shown_as, _ in (PEER_CONFIRMED, ONE_SIDED, REDUNDANT, NOT_JOINABLE, PEER_UNTRUSTED):
-        assert shown_as in s.values(), f"wording pack: {shown_as!r}"
+            assert set(m) <= set(MEMBER_ENTRY) and set(m.get("claims", {})) <= set(MEMBER_CLAIMS), "member entry"
+            assert {u["unit"] for u in m["units"]} <= set(UNITS), "member units"
+    assert sorted(POLICY) == sorted(PERIOD_POLICY), "period policy members"
+    by_id = {c["id"]: c for c in all_cases}
+    a_std, a_det = _artifact(by_id["standard-served-only"]), _artifact(by_id["detailed-peer-confirmed"])
+    assert set(a_std) - (set(a_std["declared"]) - {"history_card"}) == set(ARTIFACT_MEMBERS), "standard artifact"
+    assert set(a_det) - (set(a_det["declared"]) - {"history_card"}) == set(ARTIFACT_MEMBERS) - {"coverage_declaration"}
+    assert any(set(e) == set(EXCHANGE_ENTRY) for e in a_det["exchanges"]), "exchange entry"
+    reasons = sorted({x["suppressed"] for p in a_std["period_counts"]["periods"] for x in p["cells"] if "suppressed" in x})
+    accepted = [c["expected"]["history_properties"] for c in all_cases
+                if c["expected"].get("accepted") and "history_properties" in c["expected"]]
+    expected_table = {
+        **history_frame.header("counting_table", HISTORY_PROFILE),
+        "definition_members": DEFINITION_MEMBERS,
+        "definition_fixed": {k: std[k] for k in ("profile", "kind", "embeds", "subjects")},
+        "levels": [std["level"], det["level"]],
+        "member_entry": MEMBER_ENTRY,
+        "member_claims": MEMBER_CLAIMS,
+        "units": UNITS,
+        "labels": LABELS,
+        "verdict_counts": VERDICT_COUNTS,
+        "period_policy": PERIOD_POLICY,
+        "suppression": [POLICY["suppression"]],
+        "suppressed_reasons": reasons,
+        "artifact_members": ARTIFACT_MEMBERS,
+        "exchange_entry": EXCHANGE_ENTRY,
+        "properties": {"standard": STANDARD_PROPS, "detailed": DETAILED_PROPS},
+        "may_be_not_checked": history_frame.not_checked_when_accepted(accepted, STANDARD_PROPS),
+    }
+    assert table == expected_table, "counting table differs from this generator"
+    assert pack == {**history_frame.header("wording_pack", HISTORY_PROFILE), "language": "en",
+                    "strings": PACK_STRINGS}, "wording pack differs from this generator"
     for c in all_cases:
         e = c["expected"]
         for x in e.get("shows", {}).get("exchanges", []):
-            assert x["shown_as"] in s.values() and x["derived"] in LABELS, c["id"]
+            assert x["shown_as"] in PACK_STRINGS.values() and x["derived"] in LABELS, c["id"]
         if "history_properties" in e:
             ok = (e["exchange"]["accepted"]
                   and history_frame.accepted(e["history_properties"], table["may_be_not_checked"])
                   and "FAIL" not in e["coverage"]["properties"].values())
             assert e["accepted"] is ok, c["id"]
-        if e.get("message_type") == "refusal" and c["id"] == "refused-detailed-other-requester":
+        if c["id"] == "refused-detailed-other-requester":
             assert e["reason"] == "policy_declined", "HF §4.9: the instance's non-recipient refusal"
 
 
