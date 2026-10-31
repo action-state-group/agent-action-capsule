@@ -11,9 +11,10 @@
 //! Refused, at any depth: a duplicate member name, a number other than an
 //! integer from 0 to 2^53 − 1 written as digits alone (no sign, fraction or
 //! exponent), an unpaired surrogate escape, an unescaped control character,
-//! nesting deeper than 128, input that is not UTF-8, and anything after the
-//! value but whitespace. The profile's Python verifier refuses the same,
-//! except that it bounds nesting only by its recursion limit.
+//! nesting of objects and arrays deeper than 128 levels (`[]` is one), input
+//! that is not UTF-8, and anything after the value but whitespace. The
+//! profile's Python verifier refuses the same, and Go, Python and TypeScript
+//! share the nesting limit (`vectors/json-nesting/`).
 //!
 //! [`decode_json_numbers`] is the same decoder with every RFC 8259 number
 //! accepted, as Go's `evidencerequest.DecodeJSON` reads one. A controller
@@ -27,7 +28,8 @@
 
 use serde_json::{Map, Number, Value};
 
-const MAX_DEPTH: usize = 128;
+use crate::jcs::MAX_DEPTH;
+
 const MAX_INTEGER: u64 = (1 << 53) - 1;
 
 /// Which numbers the decoder accepts.
@@ -40,13 +42,11 @@ enum Numbers {
 }
 
 /// The value the octets hold, or `None` when they are refused.
-#[cfg_attr(not(feature = "acceptance"), allow(dead_code))]
 pub(crate) fn decode(octets: &[u8]) -> Option<Value> {
     decode_with(octets, Numbers::Profile)
 }
 
 /// [`decode`], with any RFC 8259 number accepted.
-#[cfg_attr(not(feature = "controller-binding"), allow(dead_code))]
 pub(crate) fn decode_json_numbers(octets: &[u8]) -> Option<Value> {
     decode_with(octets, Numbers::Json)
 }
@@ -392,5 +392,46 @@ mod tests {
         let deep = |n: usize| format!("{}{}", "[".repeat(n), "]".repeat(n));
         assert!(decode(deep(128).as_bytes()).is_some());
         assert!(decode(deep(129).as_bytes()).is_none());
+    }
+
+    /// `vectors/json-nesting/`, the limit Go, Python and TypeScript share: both
+    /// decoders read each accepted case, whose JCS digest is the vector's,
+    /// and refuse each refused one; JCS refuses the refused case's value.
+    #[test]
+    fn json_nesting_vectors() {
+        use super::decode_json_numbers;
+        use crate::jcs::{to_string, JcsError};
+        use serde_json::{Map, Value};
+        use sha2::{Digest, Sha256};
+
+        let doc: Value =
+            serde_json::from_str(include_str!("../../../vectors/json-nesting/cases.json")).unwrap();
+        assert_eq!(doc["max_nesting_depth"], super::MAX_DEPTH);
+        let cases = doc["cases"].as_array().unwrap();
+        for case in cases {
+            let id = case["id"].as_str().unwrap();
+            let text = case["json"].as_str().unwrap().as_bytes();
+            if case["accept"].as_bool().unwrap() {
+                let value = decode(text).unwrap_or_else(|| panic!("{id}"));
+                assert_eq!(decode_json_numbers(text).as_ref(), Some(&value), "{id}");
+                let digest = Sha256::digest(to_string(&value).unwrap().as_bytes());
+                assert_eq!(
+                    hex::encode(digest),
+                    case["jcs_sha256"].as_str().unwrap(),
+                    "{id}"
+                );
+            } else {
+                assert_eq!(decode(text), None, "{id}");
+                assert_eq!(decode_json_numbers(text), None, "{id}");
+                let twin = cases.iter().find(|c| c["id"] == case["wraps"]).unwrap();
+                let inner = decode(twin["json"].as_str().unwrap().as_bytes()).unwrap();
+                let deeper = if text[0] == b'[' {
+                    Value::Array(vec![inner])
+                } else {
+                    Value::Object(Map::from_iter([("a".to_string(), inner)]))
+                };
+                assert_eq!(to_string(&deeper), Err(JcsError::TooDeep), "{id}");
+            }
+        }
     }
 }

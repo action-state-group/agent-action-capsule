@@ -193,8 +193,13 @@ func TestEncodeJCS(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, `{"b":"-_8"}`, string(bin), "bytes are base64url without padding in JSON")
 
-	deep := bytes.Repeat([]byte("["), 40)
-	_, err = er.DecodeJSON(append(deep, bytes.Repeat([]byte("]"), 40)...))
+	// Nesting is bounded at 128 levels (vectors/json-nesting/ has the cases).
+	deep := func(n int) []byte {
+		return append(bytes.Repeat([]byte("["), n), bytes.Repeat([]byte("]"), n)...)
+	}
+	_, err = er.DecodeJSON(deep(128))
+	assert.NoError(t, err, "128 levels are read")
+	_, err = er.DecodeJSON(deep(129))
 	assert.Error(t, err, "nesting is bounded")
 }
 

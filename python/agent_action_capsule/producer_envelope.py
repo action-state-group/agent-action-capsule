@@ -19,6 +19,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from scitt_cose.cose_sign1 import CoseError, strict_decode, verify_sign1
 
+from .canonical import too_deep
 from .media_types import CAPSULE_ID_MEDIA_TYPE
 
 CONTENT_TYPE = CAPSULE_ID_MEDIA_TYPE
@@ -233,6 +234,8 @@ def verify_record_signature(record: object) -> tuple[str, list[str]]:
     """
     if not isinstance(record, dict):
         return INVALID, ["not a mapping"]
+    if too_deep(record):
+        return INVALID, ["record is nested too deeply"]
     cid = record.get("capsule_id", "<none>")
     has_signature, has_key_id = "signature" in record, "key_id" in record
     if not has_signature and not has_key_id:

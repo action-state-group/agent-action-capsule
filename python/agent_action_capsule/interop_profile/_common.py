@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 from .._ed25519_strict import verify_strict
-from ..canonical import jcs
+from ..canonical import jcs, json_text_too_deep
 from ._cbor import Tag
 
 __all__ = [
@@ -312,10 +312,13 @@ def parse_json(data: bytes) -> ParsedJson | None:
     """
     irregular = _JsonIrregular()
     try:
-        value = json.loads(data.decode("utf-8"), object_pairs_hook=irregular.pairs,
+        text = data.decode("utf-8")
+        if json_text_too_deep(text):
+            return None
+        value = json.loads(text, object_pairs_hook=irregular.pairs,
                            parse_float=irregular.number, parse_constant=irregular.number,
                            parse_int=irregular.integer)
-    except (UnicodeDecodeError, ValueError, RecursionError):
+    except (UnicodeDecodeError, ValueError):
         return None
     return ParsedJson(value, irregular.duplicates, irregular.bad_number)
 

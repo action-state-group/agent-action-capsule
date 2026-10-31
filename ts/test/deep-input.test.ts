@@ -7,10 +7,10 @@ import { verifyRecordSignature } from "../src/producer-envelope-verification.js"
 import { pageModel } from "./helpers/page-model.js";
 
 // vectors/bundle/strict/README.md: a verifier never raises on its input. A
-// Bundle or record nested beyond what an implementation can read is
-// refused, the Bundle with bundle_malformed on every claim (INVALID) and a
-// record signature as invalid. The depth differs between languages, so no
-// vector reaches it.
+// Bundle or record nested more than 128 levels deep is refused, the Bundle
+// with bundle_malformed on every claim (INVALID) and a record signature as
+// invalid. json-nesting.test.ts checks the limit itself; these cases are far
+// past it.
 const vectors = JSON.parse(
   readFileSync(
     resolve(process.cwd(), "..", "vectors", "bundle", "strict", "vectors.json"),

@@ -21,6 +21,7 @@ import {
   type ReceiptVerification,
 } from "./cose-receipt.js";
 import { decodeStrictJson, JsonNumber, sha256Hex } from "./json.js";
+import { nestedTooDeep } from "./nesting.js";
 import { concat, hexToBytes } from "./producer-envelope-wire.js";
 import { directoryKeyCounts } from "./spki.js";
 
@@ -532,6 +533,9 @@ export async function verifyRekorReceipt(
         base64Canonical(receipt.body),
       ),
     );
+    // The limit Go, Python and Rust read the body with (vectors/json-nesting/).
+    if (nestedTooDeep(entry))
+      return fail("unreadable receipt: body nested too deeply");
     if (!object(entry) || entry.kind !== "dsse")
       return fail("entry kind is not dsse");
     const spec = entry.spec || {};

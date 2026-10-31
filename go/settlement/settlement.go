@@ -240,9 +240,9 @@ func Verify(in Input) Result {
 		if text, isString := capsule["capsule_id"].(string); isString {
 			cid = &text
 		}
-		// A leg nested deeper than any JSON text decodes to (only a value
-		// built in Go can be) is refused before the recursive Capsule checks
-		// can exhaust the stack; it takes no part in any state.
+		// A leg nested more than canonical.MaxNestingDepth levels deep is
+		// refused before the recursive Capsule checks run; it takes no part
+		// in any state.
 		if canonical.TooDeep(capsule) {
 			report.Failures = append(report.Failures, Entry{Records: []*string{cid}, Code: "capsule_invalid"})
 			continue
@@ -719,7 +719,9 @@ func x402Scheme(legs []map[string]interface{}, objects map[string][]byte) interf
 	return nil
 }
 
-// decodeJSON reads one JSON value, or returns nil when it is not JSON.
+// decodeJSON reads one JSON value, or returns nil when it is not JSON or
+// nests more than canonical.MaxNestingDepth levels deep (as Rust and Python
+// read it; vectors/json-nesting/).
 func decodeJSON(data []byte) interface{} {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
@@ -728,6 +730,9 @@ func decodeJSON(data []byte) interface{} {
 		return nil
 	}
 	if _, err := decoder.Token(); err != io.EOF {
+		return nil
+	}
+	if canonical.TooDeep(value) {
 		return nil
 	}
 	return value

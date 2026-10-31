@@ -720,76 +720,13 @@ impl Item {
         }
     }
 
-    /// Read JSON octets, refusing a duplicate member name at any depth and
-    /// any number that is not a profile integer.
+    /// Read JSON octets, refusing a duplicate member name at any depth, any
+    /// number that is not a profile integer, and nesting deeper than 128
+    /// levels, the limit every implementation shares (`vectors/json-nesting/`).
     fn from_json_octets(octets: &[u8]) -> Result<Item, ReplyError> {
-        use serde::de::{Deserializer as _, MapAccess, SeqAccess, Visitor};
-        struct V;
-        impl<'de> Visitor<'de> for V {
-            type Value = Item;
-            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.write_str("a value in the profile's data model")
-            }
-            fn visit_unit<E>(self) -> Result<Item, E> {
-                Ok(Item::Null)
-            }
-            fn visit_bool<E>(self, b: bool) -> Result<Item, E> {
-                Ok(Item::Bool(b))
-            }
-            fn visit_u64<E: serde::de::Error>(self, n: u64) -> Result<Item, E> {
-                if n > MAX_INTEGER {
-                    return Err(E::custom("an integer above 2^53 - 1"));
-                }
-                Ok(Item::UInt(n))
-            }
-            fn visit_i64<E: serde::de::Error>(self, n: i64) -> Result<Item, E> {
-                u64::try_from(n)
-                    .map_err(|_| E::custom("a negative integer"))
-                    .and_then(|u| self.visit_u64(u))
-            }
-            fn visit_f64<E: serde::de::Error>(self, _: f64) -> Result<Item, E> {
-                Err(E::custom("a number that is not an integer"))
-            }
-            fn visit_str<E>(self, s: &str) -> Result<Item, E> {
-                Ok(Item::Text(s.to_string()))
-            }
-            fn visit_string<E>(self, s: String) -> Result<Item, E> {
-                Ok(Item::Text(s))
-            }
-            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Item, A::Error> {
-                let mut out = Vec::new();
-                while let Some(item) = seq.next_element_seed(Seed)? {
-                    out.push(item);
-                }
-                Ok(Item::Array(out))
-            }
-            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Item, A::Error> {
-                let mut out: Vec<(String, Item)> = Vec::new();
-                let mut seen = std::collections::HashSet::new();
-                while let Some(key) = map.next_key::<String>()? {
-                    if !seen.insert(key.clone()) {
-                        return Err(serde::de::Error::custom("a duplicate member name"));
-                    }
-                    let value = map.next_value_seed(Seed)?;
-                    out.push((key, value));
-                }
-                Ok(Item::Map(out))
-            }
-        }
-        struct Seed;
-        impl<'de> serde::de::DeserializeSeed<'de> for Seed {
-            type Value = Item;
-            fn deserialize<D: serde::Deserializer<'de>>(self, d: D) -> Result<Item, D::Error> {
-                d.deserialize_any(V)
-            }
-        }
-        let mut de = serde_json::Deserializer::from_slice(octets);
-        let item = de
-            .deserialize_any(V)
-            .map_err(|_| ReplyError::Encoding("not JSON in the profile's data model"))?;
-        de.end()
-            .map_err(|_| ReplyError::Encoding("bytes after the reply"))?;
-        Ok(item)
+        crate::strict_json::decode(octets)
+            .map(|value| Item::from_json(&value))
+            .ok_or(ReplyError::Encoding("not JSON in the profile's data model"))
     }
 
     /// From a decoded CBOR item already checked deterministic: `None` for

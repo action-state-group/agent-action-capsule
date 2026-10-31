@@ -92,7 +92,6 @@ pub mod request;
 pub mod resolve;
 pub mod retention;
 pub mod status;
-#[cfg(any(feature = "acceptance", feature = "controller-binding"))]
 mod strict_json;
 pub mod time;
 pub mod unavailable_window;

@@ -25,6 +25,7 @@ from .canonical import (
     FloatInDigestError,
     UnsafeIntegerError,
     compute_capsule_id,
+    too_deep,
 )
 from .contracts import (
     CROSS_PARTY_RUNG_RANK,
@@ -381,6 +382,10 @@ def verify(
 ) -> VerificationResult:
     """Run Class 1 verification (§6) over a single Capsule. Never raises."""
     findings: list[Finding] = []
+    # Refused before any check walks it, as Go, TypeScript and Rust refuse it.
+    if too_deep(capsule):
+        findings.append(Finding("verifier_internal_error", "Capsule is nested too deeply or contains itself"))
+        return VerificationResult(ok=False, findings=findings)
     try:
         return _verify(capsule, findings, store, registries)
     except Exception as exc:  # never throw (§6)

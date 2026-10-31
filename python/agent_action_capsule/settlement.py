@@ -27,13 +27,13 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import json
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
 from ._ed25519_strict import verify_strict
+from .canonical import loads_bounded, too_deep
 from .verify import verify
 
 __all__ = [
@@ -339,11 +339,11 @@ def _x402_scheme(legs: list[dict], objects: dict[str, bytes]) -> str | None:
             try:
                 if w["type"] == "x402.offer":
                     if octets.count(b".") == 2 and not octets.lstrip().startswith(b"{"):  # JWS compact
-                        return json.loads(_b64u_decode(octets.split(b".")[1].decode("ascii"))).get("scheme")
-                    payload = json.loads(octets).get("payload", {})  # EIP-712 envelope, RFC 8785 octets
+                        return loads_bounded(_b64u_decode(octets.split(b".")[1].decode("ascii"))).get("scheme")
+                    payload = loads_bounded(octets).get("payload", {})  # EIP-712 envelope, RFC 8785 octets
                     return payload.get("scheme") if isinstance(payload, dict) else None
                 if w["type"] == "x402.payment-payload":
-                    accepted = json.loads(octets).get("accepted", {})
+                    accepted = loads_bounded(octets).get("accepted", {})
                     return accepted.get("scheme") if isinstance(accepted, dict) else None
             except (ValueError, AttributeError, UnicodeDecodeError, RecursionError):
                 continue
@@ -438,6 +438,9 @@ def verify_settlements(
             report.failures.append({"records": [None], "code": "capsule_invalid"})
             continue
         cid = capsule.get("capsule_id") if isinstance(capsule.get("capsule_id"), str) else None
+        if too_deep(capsule):
+            report.failures.append({"records": [cid], "code": "capsule_invalid"})
+            continue
         own: list[str] = []
         kid = None
         try:

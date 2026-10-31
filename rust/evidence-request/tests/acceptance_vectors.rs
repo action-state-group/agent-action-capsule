@@ -368,6 +368,17 @@ fn a_contract_without_text_id_and_version_is_not_evaluated() {
         eval(json!({"id": "C", "version": "1"})),
         Ok(Finding::NotAccepted)
     );
+    // A member nested `n` levels deep makes the contract n + 1 deep; 128
+    // levels is the limit every implementation shares (vectors/json-nesting/).
+    let nested = |n: usize| (0..n).fold(json!(0), |inner, _| json!([inner]));
+    assert_eq!(
+        eval(json!({"id": "C", "version": "1", "x": nested(127)})),
+        Ok(Finding::NotAccepted)
+    );
+    assert_eq!(
+        eval(json!({"id": "C", "version": "1", "x": nested(128)})),
+        Err(ContractDigest)
+    );
 }
 
 #[test]

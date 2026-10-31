@@ -20,6 +20,8 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any
 
+from .canonical import too_deep
+
 __all__ = [
     "DERIVATION",
     "PROPERTIES",
@@ -353,11 +355,15 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
     ``policy`` is ``{"digest", "window"}`` (SH §5.1); ``as_of`` is ``{"anchor", "anchor_time",
     "first_checkpoint_time"}``; ``deals`` is every deal entry the stream holds at the anchor. Each
     is optional; a property that needs a missing one is ``NOT_CHECKED``. Raises ``ValueError`` on a
-    malformed input, never on a malformed card.
+    malformed input, never on a malformed card. A card nested deeper than the shared
+    128-level limit reads as no card, as Go's ``Check`` reads one it cannot parse.
     """
+    parsed = not too_deep(card)
+    if not parsed:
+        card = None
     p = {}
     p["card_form"] = _status(_card_form(card))
-    p["counts_integral"] = _status(_counts_integral(card))
+    p["counts_integral"] = _status(parsed and _counts_integral(card))
     if p["card_form"] == "PASS" and p["counts_integral"] == "PASS":
         p["denominator"] = _status(_denominator(card))
     else:

@@ -75,10 +75,6 @@ func decodeReceivedJSON(data []byte) (receivedValue, bool, string) {
 	return out, true, ""
 }
 
-// maxReceivedNesting bounds how deep a received value may nest before it is
-// treated as no value; no object the profile defines nests near it.
-const maxReceivedNesting = 512
-
 func decodeReceivedCBOR(data []byte) (receivedValue, bool, string) {
 	d, err := decodeCBORItem(data)
 	if err != nil {

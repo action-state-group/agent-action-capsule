@@ -1,0 +1,12 @@
+{
+  "spec": null,
+  "provenance": "implementation limit (#498); no specification states one",
+  "generator": "python/scripts/generate_json_nesting_vectors.py",
+  "files": [
+    {
+      "path": "cases.json",
+      "sha256": "1e79279fa5e583dd3e150bad1725a301b610377f73d26ccda2729e7d9e0b78c6",
+      "count": 9
+    }
+  ]
+}

@@ -21,7 +21,16 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from .canonical import MAX_SAFE_INTEGER, FloatInDigestError, UnsafeIntegerError, jcs
+from .canonical import (
+    MAX_NESTING_DEPTH,
+    MAX_SAFE_INTEGER,
+    FloatInDigestError,
+    UnsafeIntegerError,
+    jcs,
+    json_text_too_deep,
+    loads_bounded,
+    too_deep,
+)
 from .disclosure_envelope import (
     INELIGIBLE,
     MATCH,
@@ -236,8 +245,13 @@ def decode_fragment(fragment: str) -> Any:
         raise ValueError("fragment must be unpadded base64url")
     try:
         raw = _b64url_decode(fragment)
+        text = raw.decode("utf-8")
+        # Checked before json.loads, which recurses per level: refused as
+        # every implementation refuses it (vectors/json-nesting/).
+        if json_text_too_deep(text):
+            raise ValueError(f"fragment is not UTF-8 JSON: nested more than {MAX_NESTING_DEPTH} levels deep")
         value = json.loads(
-            raw.decode("utf-8"),
+            text,
             parse_constant=_reject_constant,
             object_pairs_hook=_checked_object,
         )
@@ -322,16 +336,16 @@ def verify_bundle(
     ``log_coordinates`` (``log_id``, ``seq``, ``leaf_index``) and an
     ``inclusion_proof`` — an independent per-record membership check.
     """
-    try:
+    if not too_deep(bundle):
         return _verify_bundle(bundle, strict, require_signature, witness_directory)
-    except RecursionError:
-        # Nested deeper than the interpreter reads: refused, never raised.
-        invalid = ClaimResult("fail", ("bundle_malformed",))
-        result = BundleVerificationResult(None, invalid, invalid, invalid)
-        if strict:
-            result.kind_ok = False
-            result.record_identity = invalid
-        return result
+    # Nested more than MAX_NESTING_DEPTH levels deep (or containing itself):
+    # refused before any recursive check, never raised, as in Go and Rust.
+    invalid = ClaimResult("fail", ("bundle_malformed",))
+    result = BundleVerificationResult(None, invalid, invalid, invalid)
+    if strict:
+        result.kind_ok = False
+        result.record_identity = invalid
+    return result
 
 
 def _verify_bundle(bundle: Any, strict: bool, require_signature: bool, witness_directory: Any) -> BundleVerificationResult:
@@ -1275,7 +1289,7 @@ def _decode_record(capsule_id: str, stored: Any) -> dict[str, Any]:
     from .producer_envelope import verify_producer_envelope
 
     try:
-        capsule = json.loads(bytes(stored.capsule), object_pairs_hook=_checked_object)
+        capsule = loads_bounded(bytes(stored.capsule), object_pairs_hook=_checked_object)
     except (AttributeError, TypeError, ValueError) as exc:
         raise BundleBuildError(f"record {capsule_id}: the stored capsule is not a JSON object ({exc})") from exc
     if not isinstance(capsule, dict) or capsule.get("capsule_id") != capsule_id:

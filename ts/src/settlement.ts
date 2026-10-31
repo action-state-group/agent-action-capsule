@@ -16,6 +16,7 @@
 
 import { verifyEd25519Strict } from "./ed25519-strict.js";
 import { JsonNumber, sha256Hex, type ParsedJson } from "./json.js";
+import { nestedTooDeep } from "./nesting.js";
 import { verifyProducerEnvelope } from "./producer-envelope-verification.js";
 import { verifyClass1 } from "./verify.js";
 import { fromHex } from "./witness.js";
@@ -557,8 +558,12 @@ async function wrappedFailures(
 }
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
-const parseJson = (bytes: Uint8Array): unknown =>
-  JSON.parse(utf8.decode(bytes));
+/** JSON nested at most MAX_NESTING_DEPTH levels deep, as Go, Python and Rust read it. */
+const parseJson = (bytes: Uint8Array): unknown => {
+  const value: unknown = JSON.parse(utf8.decode(bytes));
+  if (nestedTooDeep(value)) throw new SyntaxError("JSON nested too deeply");
+  return value;
+};
 // Python's `dict.get(name, fallback)` on a parsed JSON value: anything that is
 // not an object has no `get`, which ends that object's reading.
 const getOr = (value: unknown, name: string, fallback: unknown): unknown => {
@@ -781,6 +786,10 @@ export async function verifySettlements(
     // A capsule_id that is not a string is reported as null.
     const cid =
       typeof capsule.capsule_id === "string" ? capsule.capsule_id : null;
+    if (nestedTooDeep(capsule)) {
+      failures.push({ records: [cid], code: "capsule_invalid" });
+      continue;
+    }
     const ownFailures: string[] = [];
     let kid: string | undefined;
     let ok = false;

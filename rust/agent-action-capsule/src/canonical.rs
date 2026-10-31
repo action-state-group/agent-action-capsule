@@ -35,6 +35,9 @@ pub enum CanonicalError {
     CanonicalizationIdMissing,
     CanonicalizationIdNotString,
     UnsupportedCanonicalizationId(String),
+    /// The value nests arrays and objects more than 128 levels deep, the
+    /// limit every implementation shares (`vectors/json-nesting/`).
+    TooDeep,
 }
 
 impl fmt::Display for CanonicalError {
@@ -59,6 +62,11 @@ impl fmt::Display for CanonicalError {
             CanonicalError::UnsupportedCanonicalizationId(id) => {
                 write!(f, "unsupported canonicalization_id {id:?}")
             }
+            CanonicalError::TooDeep => write!(
+                f,
+                "value is nested more than {} levels deep",
+                crate::json::MAX_DEPTH
+            ),
         }
     }
 }
@@ -172,7 +180,12 @@ fn jcs_value(v: &Value, out: &mut String) -> Result<(), CanonicalError> {
 
 /// Returns the RFC 8785 JCS serialization of `v` as UTF-8 bytes (no
 /// Unicode normalization is performed, matching the Go/Python/TS siblings).
+/// A value nested more than 128 levels deep is [`CanonicalError::TooDeep`],
+/// checked iteratively before the recursive serialization.
 pub fn jcs(v: &Value) -> Result<Vec<u8>, CanonicalError> {
+    if crate::json::exceeds_max_depth(v) {
+        return Err(CanonicalError::TooDeep);
+    }
     let mut out = String::new();
     jcs_value(v, &mut out)?;
     Ok(out.into_bytes())

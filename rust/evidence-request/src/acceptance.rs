@@ -29,9 +29,9 @@
 //! `method` and `detail` texts are informative and are not compared with
 //! another implementation's.
 //!
-//! One known difference from the Python verifier: this crate refuses a
-//! record nested deeper than 128 levels, which the Python verifier reads up
-//! to its recursion limit. The profile states no bound.
+//! A record nested more than 128 levels deep is not read, by this crate or
+//! by the Go, Python and TypeScript verifiers (`vectors/json-nesting/`). The
+//! profile states no bound.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -1155,11 +1155,12 @@ fn value_digest(value: &Value) -> Result<String, JcsError> {
     )))
 }
 
+/// Whether every number in `value`, enclosed by `depth` arrays and objects,
+/// is in the profile's domain; a value nested more than the shared limit
+/// deep has no digest, as in the other implementations.
 fn numbers_in_domain(value: &Value, depth: usize) -> bool {
-    if depth > 64 {
-        return false;
-    }
     match value {
+        Value::Array(_) | Value::Object(_) if depth >= crate::jcs::MAX_DEPTH => false,
         Value::Number(n) => n.as_u64().is_some_and(|u| u <= MAX_INTEGER),
         Value::Array(items) => items.iter().all(|v| numbers_in_domain(v, depth + 1)),
         Value::Object(map) => map.values().all(|v| numbers_in_domain(v, depth + 1)),

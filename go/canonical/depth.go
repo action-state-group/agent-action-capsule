@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BSD-3-Clause
 package canonical
 
-// MaxNestingDepth is the deepest nesting of objects and arrays a verifier
-// reads. encoding/json refuses deeper text, so only a value built in Go can
-// exceed it; recursing over such a value could exhaust the goroutine stack,
-// which is fatal rather than a recoverable panic.
-const MaxNestingDepth = 10000
+// MaxNestingDepth is the deepest nesting of objects and arrays a reader or
+// verifier accepts: 128 levels ("[]" is one level, "[[]]" two). Python,
+// TypeScript and Rust refuse the same documents (vectors/json-nesting/), so
+// one value never reads differently across implementations. It also keeps
+// every recursive walk far from the goroutine stack limit, whose overflow is
+// fatal rather than a recoverable panic.
+const MaxNestingDepth = 128
 
 // TooDeep reports whether value nests objects or arrays more than
 // MaxNestingDepth levels deep; a value that contains itself is infinitely

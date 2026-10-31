@@ -128,7 +128,8 @@ func Decode(raw []byte) (map[string]interface{}, error) {
 }
 
 // decodeJSONText decodes one JSON text with integers kept as json.Number,
-// refusing invalid UTF-8, unpaired surrogate escapes and trailing data.
+// refusing invalid UTF-8, unpaired surrogate escapes, trailing data and
+// nesting deeper than canonical.MaxNestingDepth.
 func decodeJSONText(raw []byte) (interface{}, error) {
 	if err := canonical.CheckJSONText(raw); err != nil {
 		return nil, err
@@ -142,6 +143,11 @@ func decodeJSONText(raw []byte) (interface{}, error) {
 	var trailing interface{}
 	if err := decoder.Decode(&trailing); err != io.EOF {
 		return nil, fmt.Errorf("trailing data after the JSON value")
+	}
+	// encoding/json reads 10000 levels; every implementation stops at
+	// canonical.MaxNestingDepth (vectors/json-nesting/).
+	if canonical.TooDeep(value) {
+		return nil, fmt.Errorf("nested more than %d levels deep", canonical.MaxNestingDepth)
 	}
 	return value, nil
 }
@@ -177,7 +183,9 @@ func VerifyBundle(value interface{}) VerificationResult {
 func VerifyBundleWithOptions(value interface{}, opts Options) VerificationResult {
 	invalid := ClaimResult{Status: "fail", Findings: []string{"bundle_malformed"}}
 	bundle, ok := value.(map[string]interface{})
-	if !ok {
+	// A Bundle nested more than canonical.MaxNestingDepth levels deep is
+	// malformed, as in Python, TypeScript and Rust (vectors/json-nesting/).
+	if !ok || canonical.TooDeep(bundle) {
 		return VerificationResult{GraphClosure: invalid, IntervalCoverage: invalid, PerRecordMembership: invalid}
 	}
 
