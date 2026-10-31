@@ -28,6 +28,7 @@ normative:
   RFC9052:
   RFC8392:
   RFC8785:
+  RFC8032:
   RFC3339:
   RFC8126:
   RFC6838:
@@ -220,6 +221,26 @@ parser to limit nesting depth; this profile fixes the limit so that every
 verifier reads the same input the same way. A conformance vector set for
 this bound is maintained at `vectors/json-nesting/` in this document's
 source repository.
+
+Where this document or a document that cites this section requires strict
+Ed25519 verification, a verifier accepts a signature only if the public key
+A and the signature's point R are each a canonical encoding ({{RFC8032}},
+Section 5.1.3: the y coordinate is below the field prime, and an x of zero
+does not carry the sign bit) and neither is of small order (the eight
+points whose order divides 8), if the scalar S is below the group order L, and if
+the cofactorless equation `[S]B = R + [k]A` of {{RFC8032}}, Section 5.1.7,
+holds. It rejects the signature if any condition fails. {{RFC8032}} fixes
+the decoding rules and the bound on S, and leaves open which of its two
+verification equations a verifier uses and so how it treats points of small
+order. A lenient verifier accepts, for a small-order A, a signature over any
+message that anyone can produce, and, for a small-order R, a signature that
+other verifiers refuse. This section fixes the cofactorless equation, so a
+key of mixed order is read the same way by every strict verifier. A conformance vector set is
+maintained at `vectors/cross-language/cll-ed25519-vectors.json` in this
+document's source repository. This section does not by itself make any
+signature in this document strict: the Producer Envelope check
+({{verification}}) is not yet stated to be, and a document that requires
+strictness says so where it names the signature.
 
 A committed payload digest, including `agent_input_digest`,
 `agent_output_digest`, `response_digest`, and `evidence_digest`, is the
@@ -1935,6 +1956,11 @@ before publication.
   rejects deeper input as malformed before any check and never rejects
   input 128 levels deep or less for its depth alone ({{conventions}},
   {{verification}}).
+* Strict Ed25519: the conditions of a strict verification are defined once
+  (A and R canonical and not of small order, S below L, the cofactorless
+  equation) for documents that require it. The Producer Envelope check
+  ({{verification}}) is not yet strict; a later revision makes it so, and
+  the definition does not apply to it until then ({{conventions}}).
 * Producer Envelope encoding: every CBOR data item of a Producer Envelope,
   including those inside the protected-header byte string, has a definite
   length and preferred serialization, map keys are unique, the outermost

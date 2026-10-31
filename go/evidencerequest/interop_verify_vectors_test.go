@@ -141,7 +141,7 @@ func normalize(t *testing.T, v any) any {
 func TestInteropProfileExchangeVectors(t *testing.T) {
 	// Each set and the number of its exchange cases.
 	for set, want := range map[string]int{"interop-profile-v0": 26, "interop-profile-v0-requirement-facts": 2,
-		"interop-profile-v1": 29, "interop-profile-v1-requirement-facts": 2} {
+		"interop-profile-v1": 33, "interop-profile-v1-requirement-facts": 2} {
 		t.Run(set, func(t *testing.T) { runExchangeVectors(t, set, want) })
 	}
 }

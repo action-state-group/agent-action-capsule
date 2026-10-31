@@ -5,7 +5,7 @@
   "profile": "evidence-interop/1",
   "spec": "spec/interop-profile-v1.md",
   "test_keys": {
-    "note": "TEST-ONLY. Each private key is the 32-byte Ed25519 seed SHA-256(seed_label).",
+    "note": "TEST-ONLY. Each private key is the 32-byte Ed25519 seed SHA-256(seed_label). small-order is the identity point as a public key: it has no private key and its signatures are forged (§5.2, P-68).",
     "keys": {
       "responder": {
         "seed_label": "draft-mih-agent-evidence-request-00 conformance vectors: primary responder key",
@@ -46,6 +46,10 @@
       "requester": {
         "seed_label": "evidence-interop/0 conformance vectors: key requester",
         "public": "1fdc3e56ad2204c8dc9ab5da9f96ca2239c13b7c3ee5ae6798dd8dfac3a325d0"
+      },
+      "small-order": {
+        "seed_label": "none: the identity point, a key of small order",
+        "public": "0100000000000000000000000000000000000000000000000000000000000000"
       }
     }
   },
@@ -134,7 +138,7 @@
     "producer_record": "members claim, issued_at, producer, sig; sig is Ed25519 by producer over UTF-8 of JCS of the other members; the producer is its issuer (§11.2.3)",
     "record_digest": "SHA-256 over UTF-8 of JCS of the whole object, sig included"
   },
-  "count": 58,
+  "count": 62,
   "cases": [
     {
       "id": "valid-exchange",
@@ -1421,6 +1425,404 @@
                 {
                   "digest_alg": "SHA-256",
                   "digest": "17e32a450704e171287b09703cb5e87a426e016f73c68b57b6ff27d112b40758"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "envelope-small-order-key",
+      "description": "Envelope C signed by a key of small order, the identity point, that the trust policy accepts, with R the identity point and S zero, which a lenient verifier accepts over any message. Strict Ed25519 (§5.2) refuses it: envelope_signature FAIL, so anchor_inclusion is never run (§6.2.1 step 4). responder_trust checks the named key against the policy and passes (reading P-54).",
+      "cites": [
+        "§5.2",
+        "§7.2 envelope_signature",
+        "§6.2.1 step 4",
+        "§8.1 row 2",
+        "P-54",
+        "P-68"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117",
+            "0100000000000000000000000000000000000000000000000000000000000000"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:10Z/c\",\"profile\":\"evidence-interop/1\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [
+          {
+            "carriage": "http",
+            "media_type": "application/json",
+            "octets_text": "{\"anchor\":{\"digest\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"artifact\":\"eyJleGFtcGxlIjoiZXZpZGVuY2UgcmVjb3JkIiwic2VxIjoxfQ\",\"artifact_digest\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\",\"issued_at\":\"2026-10-12T00:00:11Z\",\"profile\":\"evidence-interop/1\",\"request_digest\":\"5e831bef85dbcf0392b2f3a2402af4f3d04a50f379e6b4adbd7d59070b620861\",\"responder\":\"0100000000000000000000000000000000000000000000000000000000000000\",\"sig\":\"01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"},\"verification\":[{\"digest\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\",\"kind\":\"cll-checkpoint\"},{\"digest\":\"013ac5a3bdff9cf62a3ea2816b3cd197151930f6dd49d67d9286f12c3c47527a\",\"kind\":\"cll-inclusion-proof\"},{\"digest\":\"06550cca75319242ea40e7f3fd9ff0b8e5e3bfa8a06122f678578a57cb4bdc71\",\"kind\":\"cll-consistency-proof\"}],\"verification_content\":[\"0oRYVqMBJwRYIMgqz2bvK9wQYBdUS5GHPfvckvCWOwmdSbD2Ib7fduKvD6IBeBhodHRwczovL3Byb2R1Y2VyLmV4YW1wbGUCcWV2aWRlbmNlLXN0cmVhbS0xoFkBH6dka2luZG5jbGwtY2hlY2twb2ludGdjYWRlbmNlGQ4QaGxvZ19zaXplB2lpc3N1ZWRfYXR0MjAyNi0xMC0xMlQwMDowMDowMFppcHJldl9zaXplA2pjb21taXRtZW50WGeDWCA2Hv5XX0J69rbO594PIaTFrEu3aHQboQSVygMCPYVKIlggAGBqwLL7_5rqKvrukXgtX99ZsjxsHcgPrxhSgJTIpdNYIEHDkl_jYMILAnupQpzWFFWQLvsysQluPUEtHutCGE0_b3ByZXZfY29tbWl0bWVudFhFglggF3Us2g9a5VJodhK_4u2zXOQUt2nSfeNps4YOBEdcLh9YIGFMhoFhw9VZv1QdGWYUHqG3Jp2jxCFVBO2p_UiCJj-NWEDvXy9Wul9e0sSXJ0vMlC2Bk6fTGNEZid47QJAJ-olec56PoIrbEkBt5fK2vi536fM5iPsZx831c0QIMwb8jrML\",\"ggOCWCBFM6JlYBMmRSZBwsJwARda_HwkBzP_qfTteo-1NSM9dVggF3Us2g9a5VJodhK_4u2zXOQUt2nSfeNps4YOBEdcLh8\",\"hAQLgoFYIF_WvN_6EdtXpovlEsNtCc4KvQBEhFcktjedHHfhr47cglggRTOiZWATJkUmQcLCcAEXWvx8JAcz_6n07XqPtTUjPXVYIBd1LNoPWuVSaHYSv-Lts1zkFLdp0n3jabOGDgRHXC4fglggAGBqwLL7_5rqKvrukXgtX99ZsjxsHcgPrxhSgJTIpdNYIEHDkl_jYMILAnupQpzWFFWQLvsysQluPUEtHutCGE0_\"]}"
+          }
+        ]
+      },
+      "expected": {
+        "request_digest": "5e831bef85dbcf0392b2f3a2402af4f3d04a50f379e6b4adbd7d59070b620861",
+        "replies": [
+          {
+            "message_type": "envelope",
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "FAIL",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "PASS",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "requirements": {
+              "r-record": {
+                "row": "envelope-2",
+                "status": "INSUFFICIENT",
+                "sufficiency": "INSUFFICIENT",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "set_properties": {
+          "caller_invariance": "NOT_CHECKED"
+        }
+      }
+    },
+    {
+      "id": "envelope-identity-r",
+      "description": "Envelope C signed by the trusted responder's own key with R the identity point, a signature only that key holder can make and that a lenient verifier accepts. Strict Ed25519 (§5.2) refuses it: envelope_signature FAIL, so anchor_inclusion is never run (§6.2.1 step 4).",
+      "cites": [
+        "§5.2",
+        "§7.2 envelope_signature",
+        "§6.2.1 step 4",
+        "§8.1 row 2",
+        "P-68"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:10Z/c\",\"profile\":\"evidence-interop/1\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [
+          {
+            "carriage": "http",
+            "media_type": "application/json",
+            "octets_text": "{\"anchor\":{\"digest\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"artifact\":\"eyJleGFtcGxlIjoiZXZpZGVuY2UgcmVjb3JkIiwic2VxIjoxfQ\",\"artifact_digest\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\",\"issued_at\":\"2026-10-12T00:00:11Z\",\"profile\":\"evidence-interop/1\",\"request_digest\":\"5e831bef85dbcf0392b2f3a2402af4f3d04a50f379e6b4adbd7d59070b620861\",\"responder\":\"e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117\",\"sig\":\"0100000000000000000000000000000000000000000000000000000000000000d0754166fc4fe2c31c339a499cdf0ca2ddb9e2af9841dbcd023ac3993d103a0d\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"},\"verification\":[{\"digest\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\",\"kind\":\"cll-checkpoint\"},{\"digest\":\"013ac5a3bdff9cf62a3ea2816b3cd197151930f6dd49d67d9286f12c3c47527a\",\"kind\":\"cll-inclusion-proof\"},{\"digest\":\"06550cca75319242ea40e7f3fd9ff0b8e5e3bfa8a06122f678578a57cb4bdc71\",\"kind\":\"cll-consistency-proof\"}],\"verification_content\":[\"0oRYVqMBJwRYIMgqz2bvK9wQYBdUS5GHPfvckvCWOwmdSbD2Ib7fduKvD6IBeBhodHRwczovL3Byb2R1Y2VyLmV4YW1wbGUCcWV2aWRlbmNlLXN0cmVhbS0xoFkBH6dka2luZG5jbGwtY2hlY2twb2ludGdjYWRlbmNlGQ4QaGxvZ19zaXplB2lpc3N1ZWRfYXR0MjAyNi0xMC0xMlQwMDowMDowMFppcHJldl9zaXplA2pjb21taXRtZW50WGeDWCA2Hv5XX0J69rbO594PIaTFrEu3aHQboQSVygMCPYVKIlggAGBqwLL7_5rqKvrukXgtX99ZsjxsHcgPrxhSgJTIpdNYIEHDkl_jYMILAnupQpzWFFWQLvsysQluPUEtHutCGE0_b3ByZXZfY29tbWl0bWVudFhFglggF3Us2g9a5VJodhK_4u2zXOQUt2nSfeNps4YOBEdcLh9YIGFMhoFhw9VZv1QdGWYUHqG3Jp2jxCFVBO2p_UiCJj-NWEDvXy9Wul9e0sSXJ0vMlC2Bk6fTGNEZid47QJAJ-olec56PoIrbEkBt5fK2vi536fM5iPsZx831c0QIMwb8jrML\",\"ggOCWCBFM6JlYBMmRSZBwsJwARda_HwkBzP_qfTteo-1NSM9dVggF3Us2g9a5VJodhK_4u2zXOQUt2nSfeNps4YOBEdcLh8\",\"hAQLgoFYIF_WvN_6EdtXpovlEsNtCc4KvQBEhFcktjedHHfhr47cglggRTOiZWATJkUmQcLCcAEXWvx8JAcz_6n07XqPtTUjPXVYIBd1LNoPWuVSaHYSv-Lts1zkFLdp0n3jabOGDgRHXC4fglggAGBqwLL7_5rqKvrukXgtX99ZsjxsHcgPrxhSgJTIpdNYIEHDkl_jYMILAnupQpzWFFWQLvsysQluPUEtHutCGE0_\"]}"
+          }
+        ]
+      },
+      "expected": {
+        "request_digest": "5e831bef85dbcf0392b2f3a2402af4f3d04a50f379e6b4adbd7d59070b620861",
+        "replies": [
+          {
+            "message_type": "envelope",
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "FAIL",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "PASS",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "NOT_CHECKED"
+            },
+            "requirements": {
+              "r-record": {
+                "row": "envelope-2",
+                "status": "INSUFFICIENT",
+                "sufficiency": "INSUFFICIENT",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ],
+        "set_properties": {
+          "caller_invariance": "NOT_CHECKED"
+        }
+      }
+    },
+    {
+      "id": "forged-refusal-small-order-key",
+      "description": "A refusal signed by a key of small order, the identity point, that the trust policy accepts, with R the identity point and S zero, which a lenient verifier accepts over any message. Strict Ed25519 (§5.2) refuses it: refusal_signature FAIL; UNKNOWN. responder_trust checks the named key against the policy and passes (reading P-54).",
+      "cites": [
+        "§5.2",
+        "§6.3",
+        "§7.2 refusal_signature",
+        "§8.1 refusal not PASS",
+        "P-21",
+        "P-54",
+        "P-68"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117",
+            "0100000000000000000000000000000000000000000000000000000000000000"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:10Z/c\",\"profile\":\"evidence-interop/1\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [
+          {
+            "carriage": "http",
+            "media_type": "application/json",
+            "octets_text": "{\"issued_at\":\"2026-10-12T00:00:11Z\",\"key_id\":\"0100000000000000000000000000000000000000000000000000000000000000\",\"reason\":\"no_such_subject\",\"request_digest\":\"5e831bef85dbcf0392b2f3a2402af4f3d04a50f379e6b4adbd7d59070b620861\",\"sig\":\"01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\"}"
+          }
+        ]
+      },
+      "expected": {
+        "request_digest": "5e831bef85dbcf0392b2f3a2402af4f3d04a50f379e6b4adbd7d59070b620861",
+        "replies": [
+          {
+            "message_type": "refusal",
+            "properties": {
+              "refusal_signature": "FAIL",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "request_binding": "PASS",
+              "reason_registered": "PASS",
+              "issued_at_form": "PASS"
+            },
+            "requirements": {
+              "r-record": {
+                "row": "refusal-failed",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "3e76d64c3ea414788edb3fab72b077bc67bd31a6e2d6d55763476ad7448a2a82"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "forged-refusal-identity-r",
+      "description": "A refusal signed by the trusted responder's own key with R the identity point, a signature only that key holder can make and that a lenient verifier accepts. Strict Ed25519 (§5.2) refuses it: refusal_signature FAIL; UNKNOWN.",
+      "cites": [
+        "§5.2",
+        "§6.3",
+        "§7.2 refusal_signature",
+        "§8.1 refusal not PASS",
+        "P-21",
+        "P-68"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:10Z/c\",\"profile\":\"evidence-interop/1\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [
+          {
+            "carriage": "http",
+            "media_type": "application/json",
+            "octets_text": "{\"issued_at\":\"2026-10-12T00:00:11Z\",\"key_id\":\"e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117\",\"reason\":\"no_such_subject\",\"request_digest\":\"5e831bef85dbcf0392b2f3a2402af4f3d04a50f379e6b4adbd7d59070b620861\",\"sig\":\"01000000000000000000000000000000000000000000000000000000000000002ec91c6f0e198ff4bff5664dfeadd36e61e66422cab16e30a5795e665fcfb00b\"}"
+          }
+        ]
+      },
+      "expected": {
+        "request_digest": "5e831bef85dbcf0392b2f3a2402af4f3d04a50f379e6b4adbd7d59070b620861",
+        "replies": [
+          {
+            "message_type": "refusal",
+            "properties": {
+              "refusal_signature": "FAIL",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "request_binding": "PASS",
+              "reason_registered": "PASS",
+              "issued_at_form": "PASS"
+            },
+            "requirements": {
+              "r-record": {
+                "row": "refusal-failed",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "ca4c13f952f837d744f369c76f0e10337d8afaafbea413608791722503ce8550"
                 }
               ],
               "proofs": []

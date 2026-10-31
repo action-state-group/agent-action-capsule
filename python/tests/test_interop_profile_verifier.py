@@ -296,10 +296,12 @@ def test_verifier_reproduces_the_requirement_facts_set(case):
 
 
 def test_v1_corpus_size_and_contract_pin():
-    assert DATA_V1["count"] == len(DATA_V1["cases"]) == 58
+    assert DATA_V1["count"] == len(DATA_V1["cases"]) == 62
     assert DATA_V1["contract"]["contract_digest"] == DATA["contract"]["contract_digest"]
     assert {c["id"] for c in DATA_V1["cases"]} - {c["id"] for c in CASES} == {
-        "capacity-exceeded", "request-unauthenticated", "capacity-exceeded-under-v0"}
+        "capacity-exceeded", "request-unauthenticated", "capacity-exceeded-under-v0",
+        "envelope-small-order-key", "envelope-identity-r", "forged-refusal-small-order-key",
+        "forged-refusal-identity-r"}
 
 
 @pytest.mark.parametrize("case", DATA_V1["cases"], ids=lambda c: c["id"])

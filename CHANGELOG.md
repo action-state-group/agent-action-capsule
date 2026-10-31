@@ -47,6 +47,15 @@ Tag `go/v0.19.0`.
 
 - The embedded copy of `REGISTRY.md` cites the base draft's -05 section numbers (AAC#501, closes
   #497).
+- Strict Ed25519 verification is stated once and pinned by shared vectors (AAC#494). The in-tree capsule
+  draft working revision (`spec/draft-mih-scitt-agent-action-capsule-06.md`) defines it in Conventions
+  (A and R canonical and not of small order, S below the group order, the cofactorless equation) for
+  documents that require it; the Producer Envelope check is not changed (#322).
+  `spec/interop-profile-v1.md` §5.2 requires it of every signature the profile checks (P-68), and
+  `vectors/interop-profile-v1/` gains four `FAIL` cases (58 to 62): `envelope-small-order-key`,
+  `envelope-identity-r`, `forged-refusal-small-order-key` and `forged-refusal-identity-r`.
+  `evidence-interop/0` stays frozen. The settlement identity-R case (#494) waits on a ruling on
+  what the `wrapped_resigned` check should count.
 - The capsule draft states the JSON nesting limit (AAC#498): the in-tree working revision
   `spec/draft-mih-scitt-agent-action-capsule-06.md` (cut from the posted -05, `spec/Makefile` now
   gates it) says in Conventions that a JSON text or value nests at most 128 levels, a verifier
