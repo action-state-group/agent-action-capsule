@@ -360,6 +360,7 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-other-checkpoint` | a genuine receipt for another checkpoint | INVALID |
 | `neg-witness-cll-wrong-key` | a receipt signed by a key the row does not list | INVALID |
 | `neg-witness-cll-attached-payload` | a receipt with an attached payload signed by the listed key | INVALID |
+| `neg-witness-cll-undefined-payload` | a receipt over the right root whose payload is CBOR undefined (`0xf7`), not null | INVALID |
 | `neg-witness-cll-vds-ccf` | a receipt signed over the right root that declares `vds` 2 | INVALID |
 | `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
 | `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |
