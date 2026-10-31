@@ -19,7 +19,9 @@ invalid key.
 The encoding cases pin the Producer Envelope CBOR encoding rule: definite
 lengths, the shortest form of every argument and float (outside and inside the
 protected-header byte string), no tag but the outermost tag 18, a map as the
-unprotected header, and byte strings as payload and signature. The Python
+unprotected header, byte strings as payload and signature, and exactly one
+CBOR item with nothing after it, both for the envelope and for the protected
+map inside its byte string. The Python
 reference already enforced it; draft-mih-scitt-agent-action-capsule-06
 states it in the Producer Envelope wire profile. Each violation
 is `envelope_malformed`. `protected-label-order` is positive: map-key order is

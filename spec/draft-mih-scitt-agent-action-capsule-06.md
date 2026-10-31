@@ -268,7 +268,9 @@ a NaN whose payload does not fit in half precision cannot appear. Map keys MUST 
 constrained. The outermost tag 18 is the only CBOR tag in a Producer
 Envelope. The unprotected header MUST be a map, and the payload and signature
 MUST be byte strings; `null` and `undefined` do not stand in for them. A
-verifier MUST reject an envelope that violates this paragraph, so a given
+Producer Envelope is exactly one CBOR data item, and its protected-header
+byte string contains exactly one, the protected map; no octet follows
+either. A verifier MUST reject an envelope that violates this paragraph, so a given
 protected-header byte string, payload, and signature have exactly one
 acceptable encoding.
 
@@ -1936,8 +1938,9 @@ before publication.
 * Producer Envelope encoding: every CBOR data item of a Producer Envelope,
   including those inside the protected-header byte string, has a definite
   length and preferred serialization, map keys are unique, the outermost
-  tag 18 is the only tag, the unprotected header is a map, and the payload
-  and signature are byte strings; a verifier rejects any violation
+  tag 18 is the only tag, the unprotected header is a map, the payload
+  and signature are byte strings, and no octet follows the envelope or the
+  protected map inside its byte string; a verifier rejects any violation
   ({{envelope}}).
 * Wire version unchanged: a producer conforming to this revision still
   emits "draft-mih-scitt-agent-action-capsule-05", and verifier acceptance

@@ -81,7 +81,7 @@ of any positive vector's `input.json`, run the language's command, then
 |---|---|---|---|
 | `vectors/capsule/` | `draft-mih-scitt-agent-action-capsule-05` (format 4, Class-1) | record, verify | 119 |
 | `provenance-mode-vectors/` | `draft-mih-scitt-agent-action-capsule-05` (provenance mode) | record, verify | 27 |
-| `vectors/producer-envelope/` | `draft-mih-scitt-agent-action-capsule-04#producer-envelope` | record, verify | 47 |
+| `vectors/producer-envelope/` | `draft-mih-scitt-agent-action-capsule-04#producer-envelope` | record, verify | 49 |
 | `vectors/disclosure-envelope/` | `draft-mih-agent-disclosure-envelope-00` | record, verify | 9 |
 | `vectors/cross-language/` | Class-1 and Evidence Bundle inputs shared by every implementation | record, pack, verify | 73 |
 | `vectors/bundle/vectors.json` | `draft-mih-zhang-agent-disclosure-bundle-00` | pack, verify | 14 |
