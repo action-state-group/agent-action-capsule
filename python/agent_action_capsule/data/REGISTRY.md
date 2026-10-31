@@ -71,7 +71,7 @@ Initial contents:
 | `expired` | TTL policy on the deferral elapsed; terminal unless superseded by escalation. |
 | `escalated` | Expiry or policy routed the item to a higher authority; open item at the new authority. |
 | `resolved` | A terminal decision capsule closed the chain without executing (pairing rule, Internet-Draft -05 §5.5.2). |
-| `epoch_boundary` | An administrative capsule (`action_type: "fyi"`) marking a configuration-epoch transition. REQUIRES `effect_mode: "not_applicable"` — no effect is dispatched by an administrative epoch record. Defined in §5.1 (Configuration epochs) of the Internet-Draft. |
+| `epoch_boundary` | An administrative capsule (`action_type: "fyi"`) marking a configuration-epoch transition. REQUIRES `effect_mode: "not_applicable"` — no effect is dispatched by an administrative epoch record. Defined in §5.2 (Configuration epochs) of the Internet-Draft (-05). |
 
 **`deferred` token ownership.** The `deferred` token's semantics are OWNED by
 the `verdict_class` registry; the `disposition.decision` entry of the same
@@ -152,7 +152,7 @@ Initial contents:
 | `follows` | Non-terminal: a bare next-link — this capsule appends to the producer's stream after the parent and asserts no outcome, observation, or transition over it; the parent's open state is unaffected. The default relation for an ordinary sequential record, including a record whose substance lies in its own fields or its `references[]` citations rather than in any claim about the parent (e.g. a counterparty-half custody record citing a foreign half via `citation_purpose: counterparty_half`, §11). **Verifier consequence:** verifiers and downstream evidence evaluators MUST NOT read a `follows` link as confirming, superseding, or otherwise grading the parent — it is ordering only. |
 | `confirms` | Non-terminal: this capsule observes or records the outcome of the parent — the parent's open state remains. The most common chain link: *attempted → confirmed*. |
 | `supersedes` | Terminal transition over the parent — resolution, expiry, escalation close/replace the parent's open state. |
-| `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.1 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft. |
+| `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.2.2 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft (-05). |
 | `duplicates` | Non-terminal: this capsule is a backfilled import of the same logical event already recorded by the parent, a contemporaneous capsule in this producer's own stream. Defined in the Internet-Draft's Provenance mode section (`-05` and later revisions). A `duplicates`-linked pair is counted once by verifiers and downstream evidence evaluators; the contemporaneous parent's assurance and disposition govern. |
 
 **Designated-expert guidance (this registry).** Seeded with the bare ordering
