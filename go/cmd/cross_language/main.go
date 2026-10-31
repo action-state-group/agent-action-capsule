@@ -4,9 +4,10 @@
 // seal and verify read a Capsule. signature reads one record (a Capsule with
 // its local-only signature and key_id) and prints its producer-signature
 // verdict. binding reads a Controller Binding v0 record with what was
-// received beside it and prints its report. bundle-produce <kind> reads the producer
-// fixture (vectors/cross-language/bundle-producer-log.json) and writes the
-// JCS bytes of the Bundle kind names in its builds. bundle-verify reads a
+// received beside it and prints its report. bundle-produce <kind> reads a
+// producer fixture (vectors/cross-language/bundle-producer-log.json or
+// bundle-producer-padded-log.json) and writes the JCS bytes of the Bundle kind
+// names in its builds. bundle-verify reads a
 // Bundle's JSON text and prints its strict verdict.
 package main
 
@@ -19,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/action-state-group/agent-action-capsule/go/bundle"
@@ -113,10 +115,13 @@ func (h *hexBytes) UnmarshalJSON(data []byte) error {
 type fixture struct {
 	Root   string `json:"root"`
 	Builds map[string]struct {
-		IntervalFrom *uint64 `json:"interval_from"`
-		ClosureDepth int     `json:"closure_depth"`
+		IntervalFrom         *uint64 `json:"interval_from"`
+		ClosureDepth         int     `json:"closure_depth"`
+		CarryNonRecordLeaves bool    `json:"carry_non_record_leaves"`
 	} `json:"builds"`
-	Log struct {
+	// LeafContents is each padding leaf's content by seq, as a store holds it.
+	LeafContents map[string]map[string]interface{} `json:"leaf_contents"`
+	Log          struct {
 		Entries []hexBytes `json:"entries"`
 		State   struct {
 			Size       uint64     `json:"size"`
@@ -167,6 +172,17 @@ func (r fixtureRecords) GetRecord(_ context.Context, id string) ([]byte, []byte,
 	return stored.Capsule, stored.ProducerEnvelope, nil
 }
 
+// withLeafContent is a ProofSource with the optional LeafContent capability,
+// over the fixture's leaf_contents.
+type withLeafContent struct {
+	bundle.ProofSource
+	contents map[string]map[string]interface{}
+}
+
+func (w withLeafContent) LeafContent(_ context.Context, seq uint64) (map[string]interface{}, error) {
+	return w.contents[strconv.FormatUint(seq, 10)], nil
+}
+
 func byteLists(values []hexBytes) [][]byte {
 	out := make([][]byte, len(values))
 	for i, value := range values {
@@ -204,11 +220,18 @@ func bundleProduce(kind string) int {
 	for id, record := range fx.Records {
 		records[id] = bundle.StoredRecord{Capsule: record.Capsule, ProducerEnvelope: record.ProducerEnvelope}
 	}
-	opts := bundle.BuildOptions{Root: fx.Root, ClosureDepth: &build.ClosureDepth, NoRange: build.IntervalFrom == nil}
+	opts := bundle.BuildOptions{
+		Root: fx.Root, ClosureDepth: &build.ClosureDepth, NoRange: build.IntervalFrom == nil,
+		CarryNonRecordLeaves: build.CarryNonRecordLeaves,
+	}
 	if build.IntervalFrom != nil {
 		opts.IntervalFrom = *build.IntervalFrom
 	}
-	built, err := bundle.BuildEvidenceBundle(context.Background(), bundle.ProofSourceFromCLL(backend, records), opts)
+	source := bundle.ProofSourceFromCLL(backend, records)
+	if fx.LeafContents != nil {
+		source = withLeafContent{source, fx.LeafContents}
+	}
+	built, err := bundle.BuildEvidenceBundle(context.Background(), source, opts)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

@@ -35,13 +35,14 @@ func TestVerifyBundleForPageProducerSelection(t *testing.T) {
 			assert.True(t, bundle.Verified(result), c.ID)
 			assert.Equal(t, "withheld", result.IntervalCoverage.Status, c.ID)
 			assert.Contains(t, result.IntervalCoverage.Findings, "selection_not_checkable", c.ID)
-			// The plain checks read the selection as an interval and refuse it;
-			// the strict reading is what lets the page show it.
-			assert.False(t, bundle.Verified(bundle.VerifyBundle(c.Bundle)), c.ID)
 		case strs.HasPrefix(c.ID, "neg-producer-selected-"):
 			require.Equal(t, "INVALID", c.Expect["verdict"], c.ID)
 			assert.False(t, bundle.Verified(result), c.ID)
-			assert.Equal(t, claims(bundle.VerifyBundle(c.Bundle)), claims(result), "%s keeps the plain reading", c.ID)
+			// Bundle -02's plain checks read the selection too; the page
+			// keeps their other claims and fails per-record membership.
+			plain := claims(bundle.VerifyBundle(c.Bundle))
+			plain[2] = "fail"
+			assert.Equal(t, plain, claims(result), "%s keeps the plain reading", c.ID)
 		default:
 			t.Fatalf("unexpected producer-selected case %s", c.ID)
 		}

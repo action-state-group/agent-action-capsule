@@ -16,9 +16,11 @@ same-commit files in CI.
 - `disclosure-envelope/`: Disclosure Envelope DE-1 through DE-3 cases.
 - `cross-language/`: format-4 inputs used by the all-producer/all-consumer
   interlock: the released `-04` `seal-input.json` and its `-05` twin
-  `seal-input-v05.json`, and `bundle-producer-log.json`, one checkpointed log
+  `seal-input-v05.json`, `bundle-producer-log.json`, one checkpointed log
   of signed records every implementation builds the same Evidence Bundles
-  from; `python/scripts/generate_bundle_producer_fixture.py` regenerates it.
+  from, and `bundle-producer-padded-log.json`, the same for a log whose range
+  covers padding leaves (Bundle -02 `non_record_leaves`);
+  `python/scripts/generate_bundle_producer_fixture.py` regenerates both.
   `verify-number-findings.json` pins the number findings every verifier
   reports for one record (at most 64 per code, paths cut to 256 characters);
   `python/scripts/generate_verify_number_findings_fixture.py` regenerates it.
@@ -72,6 +74,23 @@ same-commit files in CI.
   `draft-mih-zhang-agent-disclosure-bundle`): payloads and the tokens an
   independent encoder wrote for them, run by the TypeScript and Go codecs
   (see its README). Hand-maintained; `SHA256SUMS` pins it.
+- `bundle/non-record-leaves/`, `bundle/certificate-mode/` and
+  `bundle/category-coverage/`: Evidence Bundle -02 under strict verification:
+  a range that carries padding leaves in full in
+  `completeness_certificate.non_record_leaves`, the producer-selected
+  certificate in the shape producers emit, `completeness.selection` values
+  naming a mode the verifier does not implement
+  (`certificate_mode_unsupported`, never a failure), and the
+  `category_coverage` member's five properties;
+  `python/scripts/generate_bundle_02_vectors.py` regenerates them.
+- `bundle/composed-controller-binding/`: the `controller_binding` join basis
+  of Evidence Bundle -02's `composed/v1`: a linked join (redundant, never
+  corroborating), unjoined joins (revoked, one key signing for both, other
+  keys, outside the window), a declared state a revocation contradicts, and
+  joins that cannot be derived (no binding record delivered, a method or key
+  type not implemented), and joins with an empty-history member (linked:
+  `one_sided`; revoked: `unjoined`; no checkpoint: not derivable);
+  `python/scripts/generate_bundle_composed_cb_vectors.py` regenerates them.
 - `judgment/`: PROVISIONAL judgment extension cases (the `x-judgment-v1`
   Capsule member: `rubric_digest`, `rubric_version`, `judge_parameters_digest`,
   schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are

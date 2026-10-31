@@ -66,6 +66,10 @@ name = "bundle_producer"
 required-features = ["strict"]
 
 [[test]]
+name = "bundle_02_vectors"
+required-features = ["strict"]
+
+[[test]]
 name = "settlement_vectors"
 required-features = ["settlement"]
 

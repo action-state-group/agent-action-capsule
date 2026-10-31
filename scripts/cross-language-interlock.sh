@@ -223,14 +223,32 @@ done
 # from one checkpointed log of signed records, and a one-byte change of its
 # whole-log Bundle; every implementation's strict verifier reads all of them.
 # The three built Bundles must also be the same JCS bytes in every language.
+# The same holds for a log whose range covers padding leaves (Bundle -02,
+# non_record_leaves): its whole-log Bundle, and a one-byte change of a carried
+# padding record that the range proof does not cover.
 bundle_fixture="$repo/vectors/cross-language/bundle-producer-log.json"
-bundle_kinds=(whole-log suffix producer-selected tampered)
+padded_fixture="$repo/vectors/cross-language/bundle-producer-padded-log.json"
+bundle_kinds=(whole-log suffix producer-selected tampered padded-whole-log padded-tampered)
+built_kinds=(whole-log suffix producer-selected padded-whole-log)
 expected_verdict() {
   case "$1" in
-    whole-log | suffix) echo VALID ;;
+    whole-log | suffix | padded-whole-log) echo VALID ;;
     producer-selected) echo INCOMPLETE ;;
-    tampered) echo INVALID ;;
+    tampered | padded-tampered) echo INVALID ;;
   esac
+}
+# flip_after <marker> <file>: flip the first hex digit after marker, one byte
+# of the JSON text.
+flip_after() {
+  "$python_bin" -c '
+import sys
+
+marker, path = sys.argv[1].encode(), sys.argv[2]
+text = open(path, "rb").read()
+at = text.index(marker) + len(marker)
+flipped = b"1" if text[at:at + 1] == b"0" else b"0"
+sys.stdout.buffer.write(text[:at] + flipped + text[at + 1:])
+' "$1" "$2"
 }
 for producer in "${languages[@]}"; do
   for kind in whole-log suffix producer-selected; do
@@ -238,19 +256,15 @@ for producer in "${languages[@]}"; do
   done
   # Flip the first hex digit of the first body_digest: one byte of the JSON
   # text, which the range proof no longer covers.
-  "$python_bin" -c '
-import sys
-
-text = open(sys.argv[1], "rb").read()
-marker = b"\"body_digests\":[\""
-at = text.index(marker) + len(marker)
-flipped = b"1" if text[at:at + 1] == b"0" else b"0"
-sys.stdout.buffer.write(text[:at] + flipped + text[at + 1:])
-' "$work/bundle-$producer-whole-log.json" > "$work/bundle-$producer-tampered.json"
+  flip_after '"body_digests":["' "$work/bundle-$producer-whole-log.json" > "$work/bundle-$producer-tampered.json"
+  "produce_bundle_$producer" padded-whole-log < "$padded_fixture" > "$work/bundle-$producer-padded-whole-log.json"
+  # Flip the first hex digit of the first padding record's store_nonce: its
+  # recomputed capsule_id no longer matches (non_record_leaf_mismatch).
+  flip_after '"store_nonce":"' "$work/bundle-$producer-padded-whole-log.json" > "$work/bundle-$producer-padded-tampered.json"
 done
 
 mismatches=()
-for kind in whole-log suffix producer-selected; do
+for kind in "${built_kinds[@]}"; do
   for producer in go ts rust; do
     if cmp -s "$work/bundle-python-$kind.json" "$work/bundle-$producer-$kind.json"; then
       printf '%s-built %s Bundle: JCS byte-identical to python-built\n' "$producer" "$kind"
