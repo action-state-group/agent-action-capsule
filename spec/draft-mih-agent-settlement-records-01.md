@@ -306,11 +306,11 @@ characters. A "JSON digest" is the Capsule profile's JSON digest: SHA-256
 over the RFC 8785 {{RFC8785}} canonical form ({{I-D.mih-scitt-agent-action-capsule}},
 Conventions and Definitions).
 
-A leg record is a Capsule and a JSON digest is the Capsule profile's, so
-both are subject to that profile's JSON nesting limit of 128 levels,
-including its producer and verifier requirements
-({{I-D.mih-scitt-agent-action-capsule}}, Conventions and Definitions). A
-verifier applies it to each leg record before any check in this document.
+A leg record is a Capsule, so it is subject to that profile's JSON
+nesting limit of 128 levels, including its producer and verifier
+requirements ({{I-D.mih-scitt-agent-action-capsule}}, Conventions and
+Definitions). A verifier applies it to each leg record before any check in
+this document.
 
 # Two Independent Sealers {#sealers}
 
@@ -1362,9 +1362,9 @@ other members abbreviated):
 This appendix is non-normative. RFC Editor: please remove this appendix
 before publication.
 
-* JSON nesting: leg records and JSON digests are subject to the Capsule
-  profile's 128-level JSON nesting limit, which a verifier applies to each
-  leg record before any check in this document ({{conventions}}). The
+* JSON nesting: a leg record is subject to the Capsule profile's
+  128-level JSON nesting limit, which a verifier applies to each leg
+  record before any check in this document ({{conventions}}). The
   Capsule profile reference is updated to
   draft-mih-scitt-agent-action-capsule-06, which states the limit.
 * Wire unchanged: the `settlement` member's `version` is still `"0"`
