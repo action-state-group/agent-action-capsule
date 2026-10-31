@@ -171,7 +171,8 @@ figure across labels or periods.
 
 No instance defines a score, a grade, a ratio, a rate, a share, a mean or an ordering of subjects,
 deals, exchanges or counterparties, and a verifier that follows an instance shows and outputs
-none, except a count bar as below. A History stays the subject key's statement, never a requester's conclusion about it.
+none, except a count bar as below. A History stays the subject key's statement, never a
+requester's conclusion about it.
 
 **A count bar.** An instance MAY allow a verifier to draw the parts of one of its tallies as one
 bar, the lengths of its segments the parts' counts out of the tally's `of`. The bar draws the

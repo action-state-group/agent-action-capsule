@@ -324,12 +324,13 @@ including `anchor_inclusion` `NOT_CHECKED` and, without their inputs, `window_fr
 `as_of` and `counts_recompute` `NOT_CHECKED`. It shows the bands grouped by `currency`, each
 band with its own currency, and never merges bands of two currencies into one row or shows a band
 in another currency: amounts in different assets are never equal or converted [SR "Amounts"
-rule 4]. It shows no ratio of two counts, in figures, words or a graphic, but for the outcome bar below, which draws the counts and is not itself a ratio; and it never ranks or grades the holder.
+rule 4]. It shows no ratio of two counts, in figures, words or a graphic, but for the outcome bar
+below, which draws the counts and is not itself a ratio; and it never ranks or grades the holder.
 
 **The outcome bar.** A verifier MAY draw the `outcomes` tally's `held`, `did_not_hold` and
 `undecided` counts as one bar (HF §4.6 "A count bar"): three segments, in that order, the lengths
 of the three counts out of `of`, drawn with the three counts and each count's `of` shown beside
-the bar as the rule above requires. `undecided` is drawn in a tone that is neither the colour of
+the bar, as above. `undecided` is drawn in a tone that is neither the colour of
 `held` nor of `did_not_hold`. No other tally of the card is drawn as a bar, the bar never replaces
 the counts, and a card whose `outcomes.of` is 0 has none. This display rule has no vector: a vector
 checks a card's properties (§6), not how a verifier draws it.
