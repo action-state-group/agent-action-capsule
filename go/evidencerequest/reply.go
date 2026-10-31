@@ -79,19 +79,26 @@ func (r Refusal) Verify() error {
 // VerifyFor authenticates the refusal as the answer of the responder whose
 // key is responderKey (lowercase hex) to the request whose digest is
 // requestDigest: the key and the digest must be those, the signature must
-// verify, and the refusal must conform. Conforming is the profile's check, so
-// a refusal with one of the two -02 reasons is ErrInvalid here until the
-// profile re-pins (AAC#479); a caller that reads ER -02 alone uses
-// CheckRefusal.
+// verify, and the refusal must conform under evidence-interop/0, so a refusal
+// with one of the two -02 reasons is ErrInvalid here. For a refusal answering
+// a request under another identifier use VerifyForProfile; a caller that
+// reads ER -02 alone uses CheckRefusal.
 func (r Refusal) VerifyFor(responderKey, requestDigest string) error {
+	return r.VerifyForProfile(ProfileID, responderKey, requestDigest)
+}
+
+// VerifyForProfile is VerifyFor for a refusal answering a request that asks
+// for profile: it must conform under that identifier (ConformingUnder), so
+// capacity_exceeded is accepted for an evidence-interop/1 request.
+func (r Refusal) VerifyForProfile(profile, responderKey, requestDigest string) error {
 	if r.KeyID != responderKey || r.RequestDigest != requestDigest {
 		return fmt.Errorf("%w: refusal is not for this request under the pinned responder key", ErrInvalid)
 	}
 	if err := r.Verify(); err != nil {
 		return err
 	}
-	if !r.Conforming() {
-		return fmt.Errorf("%w: refusal does not conform", ErrInvalid)
+	if !r.ConformingUnder(profile) {
+		return fmt.Errorf("%w: refusal does not conform under %s", ErrInvalid, profile)
 	}
 	return nil
 }

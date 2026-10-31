@@ -252,6 +252,11 @@ func TestRefusalSignatureCoversReasonAndTime(t *testing.T) {
 	assert.NoError(t, unregistered.Verify(), "the signature alone does not judge the reason")
 	assert.False(t, unregistered.Conforming())
 	assert.Error(t, unregistered.VerifyFor(keyID, digestOf("req")))
+	capacity, err := er.Refusal{RequestDigest: digestOf("req"), Reason: er.ReasonCapacityExceeded, IssuedAt: "2026-09-28T00:00:00Z", KeyID: keyID}.Sign(context.Background(), s)
+	require.NoError(t, err)
+	assert.Error(t, capacity.VerifyFor(keyID, digestOf("req")), "capacity_exceeded is unregistered under evidence-interop/0")
+	assert.NoError(t, capacity.VerifyForProfile(er.ProfileIDv1, keyID, digestOf("req")), "and registered under /1")
+	assert.Error(t, capacity.VerifyForProfile(er.ProfileIDv1, otherKey, digestOf("req")), "another responder's key")
 
 	for _, mediaType := range []string{er.MediaTypeJSON, er.MediaTypeCBOR} {
 		reply, err := er.EncodeReply(mediaType, nil, &original)

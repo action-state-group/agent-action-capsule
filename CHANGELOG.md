@@ -29,7 +29,8 @@ has not yet.
   `evidence-interop/0` each state that they stay on it. Python `interop_profile` and Go
   `evidencerequest` verify both identifiers (`PROFILE_IDS`, `Profiles`); Python
   `evidence_request.sign_envelope` takes `profile`, and Go `ParseRequest` accepts a /1 request and
-  `Refusal.ConformingUnder` checks a refusal under a given identifier (`Conforming` stays /0's).
+  `Refusal.ConformingUnder` and `VerifyForProfile` check a refusal under a given identifier
+  (`Conforming` and `VerifyFor` stay /0's).
 - Evidence Request -02 refusal reasons `capacity_exceeded` (a limit of the responder's own: load, a
   size limit, a full replay cache, a transient fault) and `request_unauthenticated` (a requester
   authentication a deployment profile defines does not verify) (AAC#478, Mesh-LLM/capsules-plugin#114).
@@ -39,9 +40,9 @@ has not yet.
   `vectors/evidence-request/refusal-02.json` (11 cases). Go `evidencerequest` and Python
   `agent_action_capsule.evidence_request` register both tokens (`RefusalReasons`,
   `REFUSAL_REASONS`) and classify them under a retention commitment; both read the new corpus. The
-  interop profile still lists the eight -01 tokens until it re-pins to -02 as posted (AAC#479), so
-  the profile checks keep the eight: Go `Refusal.Conforming` and `VerifyFor` refuse a refusal
-  with either new token, while `CheckRefusal` (the ER-level check) accepts it.
+  interop profile's `evidence-interop/0` keeps the eight -01 tokens, so Go `Refusal.Conforming`
+  and `VerifyFor` refuse a refusal with either new token, while `CheckRefusal` (the ER-level
+  check) accepts it; `evidence-interop/1` registers both (below).
 - Evidence Request -02 (`spec/draft-mih-agent-evidence-request-02.md`, dated 2026-10-30, not
   posted), cut from the posted -01; `spec/Makefile` `EVREQ` builds -02. New §4.7 "Unavailable-Window
   Statements" (AAC#473): a responder MAY seal a signed, registered statement that it was unavailable
