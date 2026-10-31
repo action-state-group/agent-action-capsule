@@ -1,0 +1,1993 @@
+---
+title: "An Agent Action Capsule Profile for SCITT"
+abbrev: "Agent Action Capsules"
+docname: draft-mih-scitt-agent-action-capsule-06
+category: std
+submissiontype: IETF
+ipr: trust200902
+area: "Security"
+workgroup: "SCITT"
+keyword:
+ - SCITT
+ - AI agent
+ - transparency
+ - audit
+ - verdict
+stand_alone: yes
+pi: [toc, sortrefs, symrefs]
+
+author:
+ - ins: S. Mih
+   name: Steven Mih
+   organization: Action State Group, Inc.
+   email: spec@actionstate.ai
+
+normative:
+  RFC2119:
+  RFC8174:
+  RFC9052:
+  RFC8392:
+  RFC8785:
+  RFC3339:
+  RFC8126:
+  RFC6838:
+  RFC8259:
+  RFC9943:
+  I-D.mih-sokolov-scitt-payload-binding:
+    title: "Canonical Payload Binding: A Signed Statement Construction Profile"
+    seriesinfo:
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-05
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+      - ins: A. Sokolov
+        name: Anton Sokolov
+        organization: Tyche Institute
+
+informative:
+  RFC9942:
+  I-D.ietf-scitt-scrapi:
+  I-D.ietf-scitt-receipts-ccf-profile:
+  I-D.ietf-spice-sd-cwt:
+  RFC8949:
+  RFC9053:
+  RFC9901:
+  I-D.munoz-scitt-permit-profile:
+  I-D.emirdag-scitt-ai-agent-execution:
+  I-D.kamimura-scitt-refusal-events:
+  I-D.kamimura-scitt-vcp:
+  I-D.kamimura-vap-framework:
+  I-D.dawkins-scitt-ai-article50:
+  I-D.sato-soos-gar:
+  I-D.nivalto-agentroa-route-authorization:
+  RFC6839:
+  I-D.mih-scitt-agent-action-capsule-sel-disc:
+    title: "Selective Disclosure Profile for Agent Action Capsules"
+    seriesinfo:
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-sel-disc-00
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+  I-D.mih-sato-agent-accountability-composition:
+    title: "Agent Accountability: Composition and Conformance"
+    seriesinfo:
+      Internet-Draft: draft-mih-sato-agent-accountability-composition-01
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+      - ins: T. Sato
+        name: Tom Sato
+  I-D.mih-agent-bilateral-attestation:
+    title: "Bilateral Agent Action Attestation"
+    seriesinfo:
+      Internet-Draft: draft-mih-agent-bilateral-attestation-02
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+  NotarizedAgents:
+    title: "Notarized Agents: Decentralized, Verifiable AI Agent Receipts"
+    target: https://arxiv.org/abs/2606.04193
+    date: 2026
+  ERC8004:
+    title: "ERC-8004: Agent Identity Registry"
+    target: https://eips.ethereum.org/EIPS/eip-8004
+  VerifiableIntent:
+    title: "Verifiable Intent"
+    author:
+      - organization: Mastercard
+  I-D.rampalli-scitt-capsule-provenance-binding:
+    title: "SCITT Capsule Provenance Binding"
+    author:
+      - ins: K. Rampalli
+        name: Karthik Rampalli
+        organization: Glyphzero
+    seriesinfo:
+      Internet-Draft: draft-rampalli-scitt-capsule-provenance-binding
+
+--- abstract
+
+This document defines a SCITT statement profile for recording what an AI
+agent did: the Agent Action Capsule. A Capsule is a digest-committed record
+of one agent action carrying its verdict-level disposition (executed,
+blocked, denied, errored, timed out), the deterministic constraints that
+were evaluated, the effect that was committed together with a
+confirmed-effect binding that distinguishes a dispatched attempt from an
+observed result, and an honest human-in-the-loop flag. Capsules are
+identified independently of signing and MAY be authenticated by one or more
+COSE_Sign1 Producer Envelopes. Its Capsule ID can separately be made
+transparent by registration in a SCITT Transparency Service {{I-D.ietf-scitt-scrapi}}. A Capsule is recorded on
+every verdict, including refusals: a blocked or denied Capsule is the
+auditor-grade evidence that a gate worked.
+
+--- note_Note_to_Readers
+
+This document is an individual submission. The intended venue for
+discussion is the SCITT Working Group (scitt@ietf.org).
+
+--- middle
+
+# Introduction
+
+AI agents increasingly take actions with external consequences: writing
+records, sending payments, filing documents. Two distinct evidentiary
+questions follow. The question "was this action permitted?" is answered by
+authorization records produced before execution. The question this profile
+answers is different: "what did the agent actually do?" — including the
+cases where the answer is "it was stopped."
+
+This document defines the Agent Action Capsule, its signer-independent
+identity, a COSE_Sign1 Producer Envelope, and a separate SCITT {{RFC9943}}
+registration statement for making the Capsule ID transparent. The Capsule is a digest-committed
+record of one agent action and its verdict-level disposition. The profile's central
+design commitments are:
+
+1. The may/did distinction. A Capsule records what occurred, with an
+   effect-state binding ({{effect}}) that structurally distinguishes "the
+   effect was dispatched" from "the effect's result was observed and
+   bound." A producer cannot present an attempt as a completion.
+
+2. A Capsule on every verdict ({{everyverdict}}). Capsules are recorded
+   for refusals, blocks, errors, and timeouts — not only for executed
+   effects. An evidence trail that records only successes is
+   survivorship-biased and cannot prove its gates ever fired.
+
+3. Independent verifiability. The substrate guarantees (envelope
+   signature, registration, receipt) are SCITT's and are verified by
+   reference; the agent-domain checks defined here ({{verification}},
+   {{class2}}) are deterministic and reproducible by any verifier from
+   the record's own bytes, in two conformance classes ({{conformance}}).
+
+The term "Producer Envelope profile" means the exact COSE protected-header,
+payload, and signature constraints in {{envelope}}. The Capsule JSON and its
+identity construction remain independently verifiable without an envelope.
+
+# Conventions and Definitions {#conventions}
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+"OPTIONAL" in this document are to be interpreted as described in BCP 14
+{{RFC2119}} {{RFC8174}} when, and only when, they appear in all capitals,
+as shown here.
+
+Capsule:
+: The Agent Action Capsule, a JSON record of one agent action with a
+  signer-independent content identity.
+
+Verdict:
+: The terminal outcome of one agent action — what the decision gate
+  concluded and what is consequently known about the effect.
+
+Disposition:
+: The digest-committed block within a Capsule recording how the decision
+  was disposed: the gate outcome, who disposed it, an honest
+  human-in-the-loop flag, and optionally a verdict reason-class.
+
+Producer:
+: The party that constructs Capsules and may create one or more independent
+  Producer Envelopes over a Capsule ID.
+
+Producer Envelope:
+: A COSE_Sign1 object whose attached payload is the raw 32-byte Capsule ID.
+  It authenticates one signing key's commitment to that identity without
+  changing the Capsule or its `capsule_id`.
+
+Verifier:
+: Any party that validates a Capsule from its bytes, without trusting the
+  Producer. Verifier conformance is split into two classes
+  ({{conformance}}).
+
+Format 4 is the sole supported format for producers and verifiers. A
+conforming Capsule MUST declare `format_version: "4"` and
+`canonicalization_id: "jcs"`. A producer or verifier MUST check both
+declarations before computing any digest. Capsules compute JSON digests with
+plain JSON Canonicalization Scheme (JCS) {{RFC8785}}. `null`, empty arrays,
+and empty objects participate when present. JSON floating-point values are
+forbidden in digest-bearing material, and integers outside the IEEE-754 safe
+range MUST be represented as decimal strings.
+
+A JSON text or value under this profile, including a Capsule and every
+value a committed payload digest covers, nests objects and arrays at most
+128 levels deep. Each object or array inside another is one more level, so
+`[]` is one level and `[[]]` two. A producer MUST NOT emit or digest a
+deeper value. A verifier MUST reject a deeper text or value as malformed
+input, before any check, and MUST NOT reject a text or value nested 128
+levels or fewer for its depth alone. {{RFC8259}}, Section 9, permits a
+parser to limit nesting depth; this profile fixes the limit so that every
+verifier reads the same input the same way. A conformance vector set for
+this bound is maintained at `vectors/json-nesting/` in this document's
+source repository.
+
+A committed payload digest, including `agent_input_digest`,
+`agent_output_digest`, `response_digest`, and `evidence_digest`, is the
+lowercase-hex SHA-256 digest of `UTF8(JCS(value))` for the entire JSON value
+being committed. JCS property sorting applies recursively to every object in
+that value. A producer or verifier MUST NOT apply an object-member allow-list,
+replacer array, or other key-filtering operation at any depth before JCS; all
+members of every nested object participate in the digest.
+
+Any other `format_version`, or an absent, null, non-string, empty, unknown, or
+`"jcs-n"` `canonicalization_id`, MUST fail closed for producers and verifiers.
+Pre-format-4 Capsules and the withdrawn `jcs-n` construction of
+{{I-D.mih-sokolov-scitt-payload-binding}} are out of scope for this document
+and are not verifiable under it.
+
+# Producer Envelopes and SCITT registration {#projection}
+
+## Producer Envelope wire profile {#envelope}
+
+A Producer Envelope is a tagged COSE_Sign1 {{RFC9052}} object (CBOR tag 18,
+{{RFC8949}}). It signs the Capsule's stable identity, not the Capsule JSON.
+Its attached payload MUST be the raw 32 bytes obtained by decoding the
+Capsule's 64-character lowercase hexadecimal `capsule_id`. The payload MUST
+NOT be hexadecimal text or a JSON serialization.
+
+The protected header map MUST contain exactly these three entries:
+
+| COSE label | Value | Meaning |
+|---|---|---|
+| 1 (`alg`) | -8 | EdDSA using Ed25519. |
+| 3 (`content type`) | `application/agent-action-capsule-id` | The attached raw Capsule-ID payload. |
+| 4 (`kid`) | raw 32-byte Ed25519 public key | Self-contained verification key and self-attested signer identifier. |
+
+The unprotected header map MUST be empty in a bare Producer Envelope. The
+signature MUST be a 64-byte Ed25519 signature over the COSE Sig_structure
+with context `Signature1`, the encoded protected map, an empty external AAD,
+and the attached payload.
+
+A Capsule MAY have zero, one, or multiple Producer Envelopes. Each envelope
+is an independent object and MUST verify independently against the same
+Capsule ID. Envelopes are not embedded in the Capsule-ID preimage. Adding,
+removing, or replacing an envelope therefore never changes `capsule_id`.
+This document does not mandate a container representation for carrying a
+Capsule together with its envelopes.
+
+## Issuer Binding {#issuer-binding}
+
+Successful Producer Envelope verification proves that the holder of the
+private key corresponding to the protected `kid` signed the Capsule ID. It
+does not prove that this key is authorized for the Capsule's `operator`,
+`developer`, or action. Key authorization is caller policy and is deliberately
+separate from the cryptographic verdict. A verifier MUST return the
+authenticated public key so the caller can apply an allow-list, certificate,
+DID, SPIFFE, or other authorization policy without changing this wire profile.
+
+## Registration and Receipts {#registration}
+
+A bare Producer Envelope is not an {{RFC9943}} Signed Statement. Its protected
+map intentionally contains only the three entries in {{envelope}}, whereas an
+RFC 9943 Signed Statement additionally requires protected CWT {{RFC8392}} `iss`
+and `sub` claims. A conforming Transparency Service therefore MUST NOT treat a bare
+Producer Envelope as an RFC 9943 Signed Statement.
+
+To make a Capsule ID transparent, a registrar creates a distinct RFC 9943
+Signed Statement whose attached payload is the same raw 32-byte Capsule ID and
+whose content type is `application/agent-action-capsule-id`. That registration
+statement MUST satisfy every RFC 9943 protected-header requirement, including
+CWT `iss` and `sub`. The returned Receipt binds the registration statement to
+the service's append-only log. It does not replace or modify any Producer
+Envelope and does not by itself authorize a Producer Envelope key.
+
+Receipt format, Merkle-tree proof construction, and proof verification are
+SCITT substrate concerns defined by reference to
+{{RFC9942}} and an applicable receipt profile such as
+{{I-D.ietf-scitt-receipts-ccf-profile}}. Verification is compositional: verify
+the Capsule ID, verify each Producer Envelope independently, require the SCITT
+registration statement payload to equal that raw Capsule ID, then verify its
+Receipt under a trusted Transparency Service key. A verifier MUST NOT report
+`attestation_mode: "anchored"` unless all applicable registration-statement and
+Receipt checks succeed.
+
+## Outcomes {#outcomes}
+
+An asynchronously observed consequence, such as a reversal, dispute,
+correction, or confirmation, is recorded as a new Capsule with its own
+Capsule ID. It MAY carry its own Producer Envelopes. Correlation uses payload
+fields such as `action_id`, `decision_id`, `external_ref`, and `chain`; it does
+not mutate the original Capsule. The log remains append-only and the original
+identity remains immutable.
+
+# Registries of this profile (summary) {#registries}
+
+Seven vocabularies of this profile are registry-governed under a
+Specification Required policy ({{RFC8126}}, Section 4.6):
+`verdict_class`, `disposition.decision`, `effect.type`,
+`irreversibility_class`, `effect_attestation`, `chain.relation`, and
+`citation_purpose`. The
+registries and their initial contents are defined in {{iana}}, kept at
+the back of this document per convention.
+
+The binding invariant, stated once here and again in {{iana}}: verifiers
+MUST treat unregistered values as informational and MUST NOT reject a
+Capsule for carrying one. Registration governs shared meaning, never
+acceptance. Every registry check in this profile is performable from the
+Capsule's own bytes and the registry contents alone.
+
+# The Agent Action Capsule {#capsule}
+
+A Capsule is a JSON object: the envelope that is disclosed and
+digest-committed. Sensitive content (model reasoning, evaluated evidence,
+raw tool payloads) is not carried in the envelope; it is committed to by
+digest only. A Capsule also carries Constraint Records — the public
+verdicts of the deterministic checks that ran against the action; their
+detail is specified in {{constraints}}.
+
+## Identity and parties {#identity}
+
+| Field | Type | Req | Meaning |
+|---|---|---|---|
+| spec_version | string | REQUIRED | The profile prose version the Capsule conforms to. The value defined by this profile version is "draft-mih-scitt-agent-action-capsule-05". Verifiers also accept "draft-mih-scitt-agent-action-capsule-04" (below). |
+| format_version | string | REQUIRED | The serialization-suite version. The value MUST be exactly "4". |
+| canonicalization_id | string | REQUIRED | The value MUST be exactly "jcs". Absent, null, non-string, empty, unknown, and `"jcs-n"` declarations are invalid. |
+| capsule_id | string (64 lowercase hex) | REQUIRED | The derived identifier. Remove local-only `signature` and `key_id` envelope fields, if present in a local composite representation, then compute SHA-256 over plain JCS of the Capsule after removing only `capsule_id`. The `canonicalization_id` declaration, `chain` block, and `references` array participate. Verifiers MUST recompute; carried values MUST NOT be trusted. |
+| action_id | string | REQUIRED | Stable identifier of the action; unique within one producer ledger. |
+| action_type | string | REQUIRED | "fyi" (informational) or "decide" (a disposition was required). |
+| operator | string | REQUIRED | The accountable tenant the action was performed for. |
+| developer | string | REQUIRED | The agent identity and version that performed the action. |
+| timestamp | string | REQUIRED | {{RFC3339}} UTC with "Z" suffix. |
+| epoch_id | string | OPTIONAL | An operator-assigned epoch identifier, stable within one operational configuration of the agent system. Producers SHOULD populate this field and rotate its value — together with an epoch-boundary Capsule ({{epochs}}) — when a configuration change that materially alters agent behavior occurs (for example, a model-version swap, a policy-manifest revision, or a significant constraint-schema change). A verifier or ledger consumer scopes a history window to a specific operational configuration by filtering on operator and epoch_id. Absent epoch_id implies a single, unnamed epoch; a producer MUST NOT back-fill epoch_id on Capsules already sealed. |
+
+A producer conforming to this revision MUST emit
+"draft-mih-scitt-agent-action-capsule-05". A verifier MUST accept the
+values "draft-mih-scitt-agent-action-capsule-04" and
+"draft-mih-scitt-agent-action-capsule-05" (the revisions that define
+format 4) and MUST NOT reject a Capsule solely because it carries either.
+`spec_version` never selects a digest, canonicalization, or verification
+algorithm. An unrecognized `spec_version` value is informational and is
+never by itself a reason to reject (consistent with check 8).
+
+Monetary and quantity values are subject to the exact-decimal-string
+requirement in {{conventions}}.
+
+## Configuration epochs {#epochs}
+
+A configuration epoch is the contiguous sequence of Capsules produced by
+one agent configuration — one model version, one policy-manifest version,
+one runtime variant — before any of those configuration dimensions changes.
+Epochs exist because a model swap or policy revision is a behavioral
+discontinuity; without a recorded epoch boundary, pre- and post-change
+history blend silently and a verifier cannot scope a query to "the current
+configuration."
+
+### The epoch_id field
+
+The `epoch_id` payload field ({{identity}}) carries the current epoch
+identifier. It is committed to `capsule_id` and is therefore tamper-evident.
+Producers that operate across multiple epochs SHOULD populate `epoch_id` and
+rotate its value on every configuration change. Producers that do not
+anticipate epoch changes MAY omit it; absent `epoch_id` implies a single,
+unnamed epoch.
+
+A producer MUST NOT assign the same `epoch_id` value across a configuration
+boundary. The invariant "all Capsules sharing an operator and epoch_id were
+produced under the same configuration" is what makes epoch-scoped history
+queries meaningful; violating it makes pre- and post-change records
+indistinguishable by `epoch_id` alone.
+
+### Epoch-boundary Capsules {#epochboundary}
+
+When an epoch opens, a producer SHOULD emit a single epoch-boundary Capsule
+before resuming normal action recording. An epoch-boundary Capsule is a
+regular Capsule (no new statement type) with:
+
+- `action_type: "fyi"` (it is an administrative record, not a decided
+  action);
+- the **new** `epoch_id` value — the epoch it opens;
+- `chain.relation: "epoch_opens"` linking to the last Capsule produced
+  under the prior epoch (registry-governed, {{iana}}); and
+- a RECOMMENDED `model_attestation` block ({{identity}}) recording the
+  new model and provider, so the transition is commit-addressed and verifiable
+  from the Capsule's own bytes.
+
+An epoch-boundary Capsule MAY additionally carry `disposition.verdict_class:
+"epoch_boundary"` (registry-governed, {{iana}}) and a `reason_digest`
+committing to a machine-readable record of what changed — at minimum the
+prior `epoch_id`, the new model identity, and the new policy-manifest
+version — so that a verifier can distinguish a configuration-change record
+from an ordinary `fyi` action.
+
+### Epoch-scoped verification {#epochverify}
+
+A verifier scoping a query to a specific epoch filters by `operator` and
+`epoch_id`. An epoch-boundary Capsule carrying `chain.relation: "epoch_opens"`
+marks the temporal left edge of that epoch; the next epoch-boundary Capsule
+whose chain parent lies within this epoch marks its right edge. A verifier
+SHOULD report, as an informational finding, any action Capsule whose
+`epoch_id` differs from the prevailing epoch established by the most recent
+epoch-boundary Capsule for that operator; such a discrepancy is not a
+verification failure (an epoch change mid-stream is not structurally
+non-conforming), but it is evidence that a configuration boundary occurred
+without a corresponding epoch-boundary Capsule.
+
+The `chain` block participates in `capsule_id`. Changing a parent identifier
+or relation after sealing therefore changes the recomputed identity and
+invalidates every Producer Envelope over the prior Capsule ID.
+
+## Effect Record and the confirmed-effect binding {#effect}
+
+The Effect Record describes the side effect the action committed. Its
+`status` member takes one of five values:
+
+| status | Meaning | Binding requirement |
+|---|---|---|
+| planned | Intended, not dispatched. | request_digest and response_digest MUST be absent. |
+| dispatched | Sent; result not observed. | request_digest SHOULD be present; response_digest MUST be absent. |
+| confirmed | Result observed and bound. | response_digest MUST be present and MUST be a JSON digest ({{conventions}}) of the actual response. |
+| failed | Attempted; runtime reported failure (state known). | response_digest, when present, digests the failure response. |
+| reverted | A committed effect was undone. | Correlated via external_ref / decision_id. |
+
+The confirmed-effect invariant: a producer MUST NOT emit
+`status: "confirmed"` without a `response_digest` over the actually
+observed response. A verifier MUST treat `confirmed` with a missing
+response_digest as a verification failure. This is the byte-level
+mechanism behind the may/did distinction: "confirmed" is an observed
+result, never a promise. Under {{assurance}}'s rederivation from the
+evidence present, such a record's `effect_mode` is
+`dispatched_unconfirmed`, never `confirmed`: the effect was dispatched,
+but the binding this section requires did not hold, and a rederived
+grade cannot exceed what the bytes support.
+
+The Effect Record also carries the logical `type` (registry-governed,
+{{iana}}), an optional `external_ref` join key for later outcomes, and an
+`irreversibility_class` — an ordered consequence enumeration (`two_way`,
+`one_way_recoverable`, `one_way_consequential`, `one_way_terminal`;
+registry-governed, {{iana}}).
+
+Beyond the seeded examples `write_order` and `send_payment`, the `type`
+registry defines `inference_completion`: an inference request to a
+model-serving runtime whose committed effect is producing a completion. For
+this type, `request_digest` is the JSON digest ({{conventions}}) of the
+request body as received at the serving boundary, and `response_digest` is
+the JSON digest of the completion body as returned; the confirmed-effect
+invariant above applies unchanged, so `status: "confirmed"` requires the
+`response_digest` over the completion body actually returned.
+
+The Effect Record additionally carries `effect_attestation`: WHO vouches
+for the effect's execution — the evidence grade of the effect claim. The
+vocabulary is registry-governed ({{iana}}; Specification Required), seeded
+with three values:
+
+| effect_attestation | Meaning |
+|---|---|
+| gate_executed | The commit transited the gate; the engine observed the effect boundary directly. |
+| runtime_claimed | The gate issued a verdict only; the executing runtime asserted completion; the capsule records that claim, not an observation. |
+| host_served_observed | The serving host's runtime reported the completion (its request and response digests) through the host's lifecycle channel; the producer observed that report, not the effect boundary itself. |
+
+`gate_executed` is the stronger grade. `runtime_claimed` and
+`host_served_observed` are equal in grade: each records a runtime's report
+of completion rather than a gate observation of the effect boundary, so
+neither grades above the other and both sit below `gate_executed`.
+
+Validity is checked against the assurance `effect_mode` ({{assurance}}):
+
+| effect_mode | effect_attestation |
+|---|---|
+| confirmed | REQUIRED (states WHO confirmed) |
+| dispatched_unconfirmed | REQUIRED |
+| not_applicable | MUST be absent — nothing executed, there is no claim to grade |
+
+The planned carve: `effect.status: "planned"` asserts no execution, so
+`effect_attestation` MUST be absent — there is nothing to grade, and a
+phantom grade would poison grade-based queries. It becomes REQUIRED the
+moment dispatch occurs.
+
+The matrix is total over the `effect.status` values of {{effect}}. An
+`effect.status` of `failed` (the effect was dispatched and the runtime
+reported a failure; state known) derives `effect_mode:
+"dispatched_unconfirmed"` — the effect was dispatched and its result, though
+a failure, was not gate-confirmed; therefore `effect_attestation` is REQUIRED.
+`reverted` (a previously-committed effect was undone) likewise derives
+`effect_mode: "dispatched_unconfirmed"` and REQUIRES `effect_attestation`; the
+underlying committed effect it reverses is correlated separately via
+`external_ref` / `decision_id` (the Effect Record fields, {{effect}}), not
+by a distinct `effect_mode`. So
+every `effect.status` other than `planned` (carved above) and the
+no-effect case (`not_applicable`) requires `effect_attestation`.
+
+Consumers MUST treat an unregistered or unrecognized `effect_attestation`
+value as no stronger than `runtime_claimed`; unknown values are
+informational, never a verification failure, and unknown never grades up.
+The grade is digest-committed in the Capsule payload and is available to
+any payload-bearing verifier, distinguishing gate-observed execution from
+runtime-claimed execution. It is not copied into a Producer Envelope header.
+
+References to external authorization records carried in the Effect Record
+(for example, permit receipts per {{I-D.munoz-scitt-permit-profile}}, or
+machine mandates) are typed digest references per
+{{I-D.mih-sokolov-scitt-payload-binding}}'s Typed Digest References
+section, with artifact types drawn from the CPB Artifact Type registry.
+Cross-profile comparability of digest values (comparable only under
+compatible declared digest contexts; otherwise indeterminate/deny, never
+equal-looking-hex) follows that document's Cross-Profile Comparability
+subsection.
+
+NOTE: `docs/interop/aac-aep-scitt-digest-binding-vector.json` pins a
+machine-checkable positive/negative demonstration of this Cross-Profile
+Comparability rule across AAC, AEP, and SCITT under the profile label
+`urn:action-state:aac-aep-scitt:digest-binding:2026-07-02`.
+
+This profile's own `chain.parent_capsule_id`, `reason_digest`,
+`evidence_digest`, and `external_ref` fields are a distinct concept from
+the typed digest reference above: they are bare intra-profile digests and
+join keys, either a current JSON digest or an opaque correlation string, not
+`{type, digest_alg, digest}` objects citing an external artifact by
+registered artifact type. They MUST NOT be interpreted as CPB typed digest
+references. Only the external-authorization references described in this
+paragraph use the CPB typed-reference mechanism.
+
+## Assurance {#assurance}
+
+Every Capsule carries an `assurance` object stating, as
+independently-rederivable claims: `attestation_mode` ("self_attested" or
+"anchored"), `effect_mode` ("not_applicable", "dispatched_unconfirmed", or
+"confirmed"), and `ledger_mode` ("standalone", "chained", or "anchored").
+`ledger_mode` records the custody tier of the record: "standalone" is a
+lone Capsule (no chain linkage); "chained" is a Capsule whose hash-chain
+linkage to a predecessor is present and intact; "anchored" is a chained
+Capsule whose chain root has additionally been committed to an independent
+transparency log. A verifier rederives `ledger_mode` from the bytes it can
+check — "standalone" versus "chained" from the presence and integrity of
+the hash-chain linkage, and "anchored" only after it verifies an inclusion
+proof against a trusted log key — and the three tiers are ordered
+standalone < chained < anchored for overclaim detection. A producer MUST
+NOT record an assurance mode it did not achieve; a verifier rederives each
+mode from the evidence present and reports any overclaim.
+
+`chained` is derived solely from the presence and integrity of the
+Capsule's own chain-linkage block ({{hitl}}) — the fields committed under
+`chain` at seal time. Parent *resolution* is a separate, store-level
+question (check 6, {{verification}}): whether a store can locate and
+validate the chain parent a Capsule names. A missing or unresolvable
+parent is reported there, but it never downgrades `ledger_mode` — a
+Capsule handed over standalone, without the store that holds its parent,
+still derives `chained` from its own linkage block. If parent existence
+instead fed `ledger_mode`, the same Capsule would derive `chained` inside
+a full ledger and `standalone` handed over alone; an assurance tier that
+depends on what the verifier happens to hold is not a property of the
+record. (`anchored` is not a counterexample: its receipt travels with the
+Capsule, so what the verifier holds does not change.)
+
+### Cross-party assurance {#crossparty}
+
+A Capsule's evidentiary weight along the *counterparty* dimension — how
+much of a counterparty's own attestation is structurally present in this
+record — is a fourth, orthogonal claim: `assurance.cross_party_rung`. It
+is a new axis, not a new value folded into `attestation_mode`, for the
+same reason {{orthogonality}} already gives for keeping `verdict_class`
+and `effect_mode` separate: `attestation_mode` answers "has this record
+been committed to an independent transparency log" (log custody);
+`cross_party_rung` answers "how much of the counterparty's own signed
+evidence is bound into this record" (exchange evidence). These are
+independent facts a producer can hold in any combination — a
+`self_attested` record can still be `full_bilateral` (both parties signed,
+neither side anchored yet), and an `anchored` record can still stand on
+`unilateral_fallback` evidence alone (a solo attestation that was
+independently anchored). Folding a `countersigned` value into
+`attestation_mode` would collapse these two facts into one claim and make
+that combination inexpressible, so this profile keeps them orthogonal.
+
+`cross_party_rung` takes one of three values, ordered
+`unilateral_fallback` < `acknowledged_receipt` < `full_bilateral` for
+overclaim detection — the same never-grades-up discipline
+{{assurance}} already applies to `attestation_mode`, `effect_mode`, and
+`ledger_mode`:
+
+| cross_party_rung | Meaning |
+|---|---|
+| unilateral_fallback | Only the initiator's own signed half is present; no counterparty evidence, or the counterparty was unreachable or its half did not verify. |
+| acknowledged_receipt | A counterparty reference and correlator are present and well-formed: the counterparty cryptographically acknowledged receipt, but the referenced half carries no substantive co-signed result. |
+| full_bilateral | A counterparty reference and correlator are present and well-formed, and the referenced half is marked as carrying a substantive co-signed result — both parties' evidence is bound to the same exchange. |
+
+`cross_party_rung` is REQUIRED when a `cross_party` evidence block (below)
+is present, and both are OPTIONAL on a Capsule with no cross-party
+exchange. A producer MUST NOT claim a `cross_party_rung` its evidence does
+not support. A Class-1 verifier independently rederives the highest rung
+the `cross_party` block supports and reports any claim above the derived
+rung as an `assurance_overclaim` ({{verification}}), downgrading the
+reported derived rung to the value the evidence actually supports — the
+same treatment {{verification}} already gives an overclaimed
+`attestation_mode` or `ledger_mode`.
+
+A Capsule that participates in a cross-party exchange carries an OPTIONAL
+top-level `cross_party` block:
+
+- `initiator_ref` (REQUIRED when the block is present): a JSON digest
+  ({{conventions}}) of the initiator's own signed half. A bare
+  intra-profile digest, not a CPB typed digest reference ({{effect}}).
+- `counterparty_ref` (OPTIONAL): a JSON digest of the counterparty's
+  signed half. Its absence means no usable counterparty evidence was
+  obtained — the counterparty was unreachable, or its half did not verify
+  at the layer that checked it.
+- `correlator` (REQUIRED when `counterparty_ref` is present): an opaque
+  profile-native correlation string joining `initiator_ref` and
+  `counterparty_ref` to the same exchange — the same kind of "opaque
+  correlation string" primitive `external_ref` already uses ({{effect}}),
+  not a CPB reference.
+- `substantive` (OPTIONAL boolean, meaningful only when `counterparty_ref`
+  is present): true only when the counterparty's referenced half carries a
+  substantively co-signed result rather than a bare receipt of the
+  initiator's half.
+
+A verifier derives `cross_party_rung` from this block's own bytes alone,
+never by dereferencing the digests it cites: `unilateral_fallback` when
+`counterparty_ref` is absent or malformed; `acknowledged_receipt` when
+`counterparty_ref` and `correlator` are both present and well-formed but
+`substantive` is absent or false; `full_bilateral` when
+`counterparty_ref` and `correlator` are both present and well-formed and
+`substantive` is true. This is a structural check, the same kind
+{{assurance}} already uses to derive "chained" from the mere presence of a
+well-formed `chain` block — it does not verify the counterparty's
+underlying signature itself, which is a substrate concern by reference
+({{verification}}), mirroring how this layer never derives `anchored`.
+The two-party wire encoding this rung summarizes — the initiator and
+counterparty attestation halves, their signatures, and the handshake that
+produces them — is the companion
+{{I-D.mih-agent-bilateral-attestation}}'s concern, not this profile's;
+this profile carries only the rung claim and the minimal correlation
+evidence needed to rederive it honestly.
+
+### Cross-algorithm re-anchoring {#reanchoring}
+
+The `anchored` `ledger_mode` tier (above) rests on one SCITT
+registration receipt, sealed under one signature and digest algorithm.
+Decades later that algorithm may no longer be cryptographically
+load-bearing; an Ed25519 receipt from the year this profile was
+published is not a claim this document can promise will still mean
+anything in twenty years. Extending an anchored root's evidentiary
+life across such a boundary — re-anchoring — is standard practice for
+long-term non-repudiation (compare the archive-timestamp-renewal
+pattern of the Evidence Record Syntax family); this profile defines
+its own minimal, public FORMAT for it, reusing existing mechanism
+rather than inventing new cryptography.
+
+**Re-anchor Statement.** A re-anchoring is itself an ordinary CPB
+typed-digest-referencing artifact, sealed and registered to a
+conforming SCITT Transparency Service exactly as a Capsule is
+({{projection}}) — under whatever algorithm that service currently
+uses, which MAY differ from the algorithm being extended. It carries:
+
+- `subject`: a CPB typed digest reference {{I-D.mih-sokolov-scitt-payload-binding}}
+  identifying the material being re-anchored — an anchored Capsule's
+  `capsule_id` together with its original registration receipt, or a
+  prior Re-anchor Statement, so a subject MAY itself be re-anchored
+  again at the next boundary crossing.
+- `issuer`: a producer-defined identifier naming the party performing
+  this re-anchoring, under the same declared-party discipline
+  {{retentiondecl}} already gives `declarant` — a re-anchoring is a
+  claim by a named party, not a fact this format attests.
+- `issued_at`: {{RFC3339}} UTC timestamp of this re-anchoring.
+
+No new registry, header, or claim type is requested for the
+statement's own transport: it is registered and receipted using the
+same SCITT registration this profile already defines ({{registration}}),
+and its `subject` uses the same typed-digest-reference shape
+{{xref}} already defines. The extension this format adds is entirely
+in what a verifier does with the resulting chain of receipts, below.
+
+**Verifying a chain that crosses the boundary.** A stranger holding
+only the newest Re-anchor Statement and the original evidence checks
+the chain with no algorithm-specific code beyond what {{verification}}
+and ordinary SCITT receipt verification already require:
+
+1. Verify the newest Re-anchor Statement's own SCITT registration
+   receipt under whatever algorithm that receipt declares — the only
+   algorithm this step's present-day trust needs to extend to.
+2. Recompute the digest of the artifact `subject` names and confirm it
+   matches `subject`'s carried `{digest_alg, digest}` — a structural,
+   algorithm-agnostic bytes-in-hand check, the same discipline
+   {{xref}} already gives any typed digest reference.
+3. If `subject` names another Re-anchor Statement, recurse to step 1
+   for that statement, walking backward through however many boundary
+   crossings have occurred.
+4. Terminate at a `subject` naming the original Capsule; verify that
+   Capsule and its original receipt under {{verification}} as usual.
+5. Report the full hop sequence. A break at any hop — an
+   unverifiable receipt, a digest mismatch — truncates trust at that
+   hop; the chain before the break is unaffected, the same
+   partial-trust discipline {{assurance}} already applies to a chain
+   parent this producer's own stream cannot resolve.
+
+**What this format does not do.** A Re-anchor Statement's own
+registration receipt confirms it was sealed and timestamped as
+claimed; it does not confirm `issuer`'s authority to re-anchor on the
+original producer's behalf. That authority — or its absence — is a
+relationship the citing ecosystem establishes out of band (for
+example, a registered role naming who may re-anchor a given
+producer's roots), never a fact this format itself attests. Nor does
+this format extend evidentiary life on its own: a Re-anchor Statement
+created after the algorithm it restates has already been broken proves
+only that its `issuer` could still forge that broken algorithm, not
+that the original evidence is sound. A re-anchoring is only as good as
+its timing relative to the algorithm it extends. Deciding a
+re-anchoring cadence and operating it, across a fleet of roots, for
+decades, is a service — out of this document's scope by design, so
+that the format itself stays verifiable by a party who runs no such
+service and holds no relationship with `issuer`.
+
+Crossing a key boundary is compounded by a related gap: a receipt's
+COSE header carries `alg` but no `kid`, so a verifier checking an
+older-algorithm receipt against multiple keys published under that
+algorithm must try each one to find the signer. This document does
+not resolve that gap; a Re-anchor Statement's own receipt is subject
+to the same key-discovery limitation as any other SCITT receipt until
+it is.
+
+### Provenance mode and backfilled records {#provenancemode}
+
+Most Capsules are sealed close to when the action they describe occurred:
+the producer's `timestamp` ({{identity}}) is a contemporaneous account. An
+operator MAY also import a record of an action that occurred before the
+Capsule describing it was produced — a migration, a reconciliation, a bulk
+historical import. This profile represents that as a MODE on the ordinary
+Capsule, never a distinct record type: a backfilled Capsule carries the
+same fields, registries, and Class 1 checks as any other; only its
+provenance differs.
+
+A Capsule MAY carry a top-level `provenance_mode` object:
+
+| Field | Type | Req | Meaning |
+|---|---|---|---|
+| mode | string | REQUIRED when the block is present | "contemporaneous" or "backfilled" (closed enum). A `provenance_mode` block is OPTIONAL and its absence implies "contemporaneous"; a producer importing a historical record MUST include the block. |
+| source_ref | typed digest reference | REQUIRED when mode is "backfilled" | `{type, digest_alg, digest}`, the same CPB typed-reference mechanism `references[]` uses ({{xref}}), identifying the historical record or artifact this Capsule was imported from. |
+| source_asserted_at | string ({{RFC3339}}) | REQUIRED when mode is "backfilled" | When the source claims the action occurred. Self-attested: a producer claim about the past, never independently witnessed by virtue of being carried here. |
+| import_batch | string | REQUIRED when mode is "backfilled" | An opaque, producer-scoped identifier for the bulk import run that produced this Capsule. |
+| imported_at | string ({{RFC3339}}) | REQUIRED when mode is "backfilled" | When this Capsule was actually appended to the producer's own ledger. |
+| time_rung | string | OPTIONAL; MUST be absent unless mode is "backfilled" | "self_attested" or "witnessed", ordered `self_attested` < `witnessed` for overclaim detection ({{verification}}) — the same never-grades-up discipline {{assurance}} already applies to `attestation_mode`, `ledger_mode`, and `cross_party_rung`. Absent implies "self_attested". |
+
+`provenance_mode` is a distinct field from the pre-existing top-level
+`provenance` member (a scalar dedup-rank signal — "gate" / "runtime" /
+"collector" — defined by the `-02` `domain`/`provenance` addendum,
+REGISTRY.md §9). The two are unrelated vocabularies; this document uses a
+different key deliberately so that adding one never collides with, shadows,
+or reinterprets the other.
+
+A producer MUST NOT claim `time_rung: "witnessed"` unless a `references[]`
+entry ({{xref}}) cites, by digest, a signed or independently witnessed
+timestamp corroborating the source's claimed occurrence time — for
+example a countersignature or transparency-service receipt obtained over
+the source record, never merely a repetition of `source_asserted_at`
+inside the citing Capsule itself. This profile registers a
+`citation_purpose` value for exactly that citation: `corroborates_source_time`
+({{iana}}).
+
+**Time semantics, normative.** `timestamp` and, when present,
+`provenance_mode.source_asserted_at` are both producer self-attestations
+of when an action occurred; carrying either inside a Capsule never makes
+it witnessed. This profile defines no in-payload field for the moment a
+record enters an append-only log — that fact belongs to the registration
+substrate ({{registration}}) and, for a backfilled record, is
+approximated by `provenance_mode.imported_at`, itself also a producer
+self-attestation, not a Receipt. A verifier and every downstream consumer
+MUST treat a backfilled record's occurrence-time claim as no stronger
+than self-attested (`time_rung: "self_attested"`) unless a witnessed
+reference under `corroborates_source_time` is present and well-formed —
+and even then, corroboration of the source's claim is a distinct fact
+from this record's own custody assurance ({{assurance}}) and NEVER
+upgrades `attestation_mode` or `ledger_mode`, which continue to be
+derived exactly as {{assurance}} already specifies. `ledger_mode` and
+`attestation_mode` MAY legitimately reach `anchored` for a backfilled
+record that is properly registered today; that is a claim about custody
+of this record's own bytes, never about when the action it describes
+actually happened. A verifier MUST NOT infer occurrence-time assurance
+from custody assurance, and MUST NOT infer occurrence-time assurance from
+equality between `provenance_mode.imported_at` and
+`provenance_mode.source_asserted_at` — such equality is exactly the shape
+a laundering producer would construct to make a backfilled import look
+contemporaneous, and a Class 1 verifier ({{verification}}) MUST report it
+as a failure, not as corroboration.
+
+**Status cap.** A backfilled record's occurrence-time claim can never
+satisfy a requirement that specifically depends on log-witnessed time,
+regardless of any other assurance value the record carries. A verifier
+MUST always report `provenance_mode.mode` and the derived `time_rung` cap
+in its structured result when the block is present, so a downstream
+evidence-sufficiency evaluation (out of scope of this profile) can apply
+that cap correctly rather than inferring it from `ledger_mode` or
+`attestation_mode` alone.
+
+**Duplicates.** When the same logical event already has a contemporaneous
+Capsule in this producer's own stream, an importing producer SHOULD chain
+the backfilled Capsule to it with `chain.relation: "duplicates"`
+({{hitl}}, {{iana}}), citing the contemporaneous Capsule as
+`chain.parent_capsule_id`. `duplicates` is non-terminal, like `confirms`:
+the parent's own state is unaffected. Verifiers and downstream evidence
+evaluators MUST count a `duplicates`-linked pair once, with the
+contemporaneous record's own assurance and disposition governing; the
+backfilled member exists to preserve the import in the append-only
+history, not to be independently counted. `duplicates` is scoped to the
+producer's own same-stream history, the same scope {{hitl}} already gives
+`chain`; citing a different producer's record as a duplicate is a
+`references` citation ({{xref}}), out of scope for this revision.
+
+**Never fold history retroactively.** An imported record MUST be appended
+at its import position in the producer's ledger — its
+`chain.parent_capsule_id`, when present, is the Capsule that immediately
+preceded it at import time, never a historical predecessor spliced in
+after the fact to make the backfilled record appear as though it had
+always been there. Retroactively re-linking history to insert an imported
+record at the position its `source_asserted_at` implies would change the
+identity of every already-sealed Capsule whose chain it is spliced into
+(`capsule_id` commits `chain`, {{identity}}), which is impossible without
+invalidating existing Producer Envelopes over those Capsule IDs — so this
+is a structural guarantee, not only a policy one. (Informative, non-normative:
+this is the same convention independently documented for out-of-order
+ledger ingestion elsewhere in the ecosystem — TRACE's June-entry
+precedent — an import is placed where it lands, not where its content
+claims it belongs.)
+
+## Disposition and the verdict reason-class {#disposition}
+
+A Capsule's `disposition` block records how the decision was disposed:
+
+- `decision` (REQUIRED): "accept", "reject", "needs_input", or "deferred"
+  (registry-governed, {{iana}}).
+- `approver` (REQUIRED): a closed enum, exactly "human", "policy", or
+  "counterparty". The value domain is fixed by this specification (not
+  registry-governed); an unknown approver value is not a conforming
+  Capsule. Unlike the registry-governed vocabularies of this document
+  ({{iana}}), `approver` stays a closed three-member enum after this
+  addition — never a registry an implementation is expected to extend by
+  registration.
+- `human_disposed` (REQUIRED, boolean): the honest in-the-loop flag —
+  true ONLY when a human actually acted. A policy auto-approval is false.
+  `human_disposed: true` REQUIRES `approver: "human"`; a producer MUST
+  NOT claim a human disposed what a policy did.
+- `authority` (OPTIONAL): an opaque reference to the authority under
+  which a non-human disposition acted. A conforming Capsule carries at
+  most the reference, never the authority's internal structure.
+- `verdict_class` (OPTIONAL): the terminal-verdict reason-class
+  ({{verdictclass}}). It is RECOMMENDED for any non-executed verdict,
+  where it carries the terminal reason; it is legitimately absent for a
+  clean `executed` verdict (which has no reason-class, mirroring an absent
+  `reason_digest`).
+- `reason_digest` (OPTIONAL): a JSON digest ({{conventions}}) of a structured, private reason
+  object — machine-readable members such as the constraint identifier,
+  the threshold, and the observed value; never free prose — so two
+  engines attesting the same refusal produce the same digest. The member
+  is absent (not a digest of an empty object) when a verdict has no
+  reason, such as a clean "executed".
+- `expiry_policy` (OPTIONAL; deferral dispositions only): a digested
+  `{ttl_seconds, on_expiry}` object — `ttl_seconds` is an integer count
+  of seconds, never a duration string, and `on_expiry` is "expired" or
+  "escalated". `ttl_seconds` is evaluated against the deferral Capsule's
+  registration time — the `timestamp` field inside the digest commitment
+  — not the Transparency Service receipt time, and not a consumer's
+  local wall clock; a named clock basis is what makes the expiry
+  computation deterministically reproducible, so any verifier derives the
+  same elapsed-time result from the record's own bytes. The deferral's
+  frozen summary is a
+  digest-committed, content-side layer written once at deferral time; it
+  MUST NOT be regenerated.
+
+- `approver: "counterparty"` (see {{crossparty}}) records that a
+  counterparty to a cross-party exchange, rather than this operator's own
+  human or policy, disposed the decision. The honesty invariant above is
+  unaffected: `human_disposed: true` still REQUIRES `approver: "human"`,
+  so a counterparty disposition is never claimed as human-in-the-loop.
+
+
+### The verdict_class vocabulary {#verdictclass}
+
+`verdict_class` records WHY the action terminated as it did. The seeded
+vocabulary (registry-governed, {{iana}}; unregistered values are
+informational to a verifier, never a rejection):
+
+| verdict_class | Meaning |
+|---|---|
+| executed | The action ran. |
+| blocked | A blocking constraint stopped it before dispatch. |
+| hitl_dispatched | Routed to a human operator; awaiting resolution. |
+| denied | An operator or policy refused it before dispatch. |
+| timeout | The decision timed out (see the orthogonality rule). |
+| errored | The action ran and threw; final state unknown. |
+| engine_failure | The engine could not evaluate the action. |
+| deferred | A human elected to postpone the decision; open item. |
+| needs_decision | Evaluation complete; decision required, not yet routed to a decider; open item. |
+| expired | TTL policy on the deferral elapsed; terminal unless superseded by escalation. |
+| escalated | Expiry or policy routed the item to a higher authority; open item at the new authority. |
+| resolved | A terminal decision Capsule closed the chain without executing — the non-executing closure only (see the pairing rule, {{orthogonality}}). |
+
+`hitl_dispatched` and `deferred` are sequential states, not synonyms:
+`hitl_dispatched` means sent to a decider and awaiting response;
+`deferred` means a decider responded "later".
+
+### Orthogonality with effect_mode {#orthogonality}
+
+`verdict_class` (why the verdict) and `assurance.effect_mode` (what is
+known about the effect) are independent axes and MUST NOT be folded into
+one another:
+
+- The pre/post-dispatch distinction lives in `effect_mode`, not in the
+  class. A timeout before dispatch is `verdict_class: "timeout"` with
+  `effect_mode: "not_applicable"`; a timeout after dispatch is
+  `verdict_class: "timeout"` with `effect_mode: "dispatched_unconfirmed"`.
+  One `timeout` value covers both.
+- `errored` pairs with `effect_mode: "dispatched_unconfirmed"` — the
+  effect was dispatched and may have left a partial side effect.
+  `not_applicable` would falsely assert nothing happened, which is the
+  inverse of attesting an execution that did not occur and equally
+  non-conforming.
+- A class that by its kind never dispatches (`blocked`,
+  `hitl_dispatched`, `denied`, `engine_failure`, `deferred`,
+  `needs_decision`, `expired`, `escalated`, `resolved`) REQUIRES the
+  derived `effect_mode` to be `"not_applicable"`. A verifier reports any
+  other derived mode as an error: an effect attempt contradicts a
+  verdict that claims it never executed.
+- The pairing rule: `resolved` is exclusively the NON-executing closure
+  (decline, waive, recorded-elsewhere) — it pairs with `effect_mode:
+  "not_applicable"` and an absent `effect_attestation`. An EXECUTING
+  closure is encoded as `verdict_class: "executed"` chained
+  `supersedes` to the deferral ({{hitl}}) — one valid encoding of
+  "closed with effect", never two.
+- The effect status `"failed"` (ran and returned a clean failure, state
+  known) is distinct from `verdict_class: "errored"` (ran and threw,
+  state unknown). "failed" is an effect status, never a reason-class.
+
+### A Capsule on every verdict {#everyverdict}
+
+A conforming producer MUST record a Capsule for every verdict, whatever
+its disposition. This requirement is universal over the `verdict_class`
+vocabulary — the IANA registry of this document ({{iana}}) — and
+applies to every value later admitted by registration; it is
+deliberately not stated as an enumerated list, which would go stale the
+moment Specification Required admits a new value. A refusal or block with
+no Capsule is invisible to an auditor; a blocked or denied Capsule is
+auditor-grade evidence that the gate worked: the affirmative,
+digest-committed record that the constraint or policy fired and the
+action did not proceed. Recording only successes makes the evidence trail
+survivorship-biased and the refusal path unverifiable.
+
+### Chained Capsules and human-in-the-loop resolution {#hitl}
+
+Every Capsule that references a prior Capsule carries a digested `chain`
+block: `{parent_capsule_id, relation}`. The `relation` vocabulary is
+registry-governed ({{iana}}; Specification Required), seeded with the
+values below; the additional `duplicates` relation is defined in
+{{provenancemode}}:
+
+| relation | Meaning |
+|---|---|
+| follows | Non-terminal: a bare next-link — this Capsule appends to the producer's stream after the parent and asserts no outcome, observation, or transition over it; the parent's open state is unaffected. The default relation for an ordinary sequential record, including one whose substance lies in its own fields or its `references` citations ({{xref}}) rather than in any claim about the parent. Verifiers and downstream evidence evaluators MUST NOT read a `follows` link as confirming, superseding, or otherwise grading the parent — it is ordering only. |
+| confirms | Non-terminal: this Capsule observes or records the outcome of the parent; the parent's open state remains. |
+| supersedes | Terminal transition over the parent — resolution, expiry, escalation close or replace the parent's open state. |
+| epoch_opens | Non-terminal: this Capsule opens a new operational epoch. The chain parent is the last Capsule produced under the prior epoch. The opening Capsule carries the new epoch_id ({{epochboundary}}); the prior epoch's last Capsule is the parent. |
+
+Single-parent is intentional: a Capsule chains to exactly one parent.
+
+Human-in-the-loop resolution is the `supersedes` relation: a
+`hitl_dispatched` Capsule is sealed at dispatch time and is never
+mutated. When the decision is later resolved, that resolution is a
+second, linked Capsule carrying its own disposition and chaining to the
+dispatch Capsule with `relation: "supersedes"`. The dispatch Capsule
+stays `hitl_dispatched` forever; resolution state lives only on the
+resolution Capsule, preserving the append-only model.
+
+Concurrent-supersedes rule: the ledger is append-only and totally
+ordered; the earliest capsule in ledger order with `relation=supersedes`
+over a given parent is authoritative; any later supersedes over the same
+parent is structurally valid but MUST surface as a verification finding.
+
+Open-items predicate: an item is open when its Capsule's
+`verdict_class` is one of `deferred`, `needs_decision`,
+`hitl_dispatched`, `escalated`, or `blocked`, and no Capsule in the
+store carries `chain.parent_capsule_id` equal to its `capsule_id` with
+`relation: "supersedes"`.
+
+### Cross-record references {#xref}
+
+`chain` presupposes the cited Capsule is this producer's own: it is
+scoped to same-custody-stream, single-parent state transitions
+({{hitl}}). It has no shape for citing a record outside that stream —
+a different producer's Capsule, or any other artifact this Capsule's
+action was performed on or in response to. A Capsule MAY carry a
+digested `references` array for exactly that case; absent or empty
+means the Capsule makes no such citation. Like the rest of the payload,
+`references` participates in the `capsule_id` digest ({{identity}}):
+citing a record is itself a claim this Capsule's signature covers.
+
+**Boundary rule.** `chain` is exclusively the producer's own same-stream
+parent and is the only field {{assurance}}'s `ledger_mode` derivation
+reads. `references` is exclusively for everything else. A `references`
+entry MUST NOT name the same target as `chain.parent_capsule_id` — a
+producer citing its own same-stream parent states that once, in
+`chain`, never redundantly in `references`.
+
+**Shape.** Each `references` entry's identity is a CPB typed digest
+reference {{I-D.mih-sokolov-scitt-payload-binding}}: `{type, digest_alg,
+digest}`, the same mechanism this profile already uses for the
+external-authorization references of the Effect Record ({{effect}}).
+`type` names an artifact type per the CPB Artifact Type registry; this
+document defines the `references` entry shape, not an exhaustive list
+of what may be cited.
+
+**Digest as identity.** A `references` entry's target is identified
+solely by the `{digest_alg, digest}` pair from its shape (above); no
+producer-local identifier, URI, or other locator carried alongside an
+entry constitutes an alternative identity. Two entries whose
+`{digest_alg, digest}` match MUST be treated as citing the same target
+regardless of any other identifier either carries, and two entries whose
+digests differ MUST NOT be treated as citing the same target merely
+because they share a locator or producer-local identifier. Comparison,
+deduplication, and cross-record correlation over `references` entries
+therefore key on `{digest_alg, digest}` alone: a locator can be
+repointed without altering the entry that carries it; the digest cannot.
+
+**Why the digest is the identity.** A reference whose identity is a
+name — a URI, a record identifier, a position in some other party's
+system — can be resolved tomorrow to bytes that differ from the bytes
+the citing producer saw. The name survives; the content moves beneath
+it. A citation that can drift is worse than no citation, because it
+presents as evidence while guaranteeing nothing about what it points
+to. Resolvability and unchangedness are two different promises, and
+only a digest can make the second one. This profile therefore makes
+the digest the identity and treats every locator as a route to it
+rather than as the reference itself.
+
+This rule is this profile's own and predates its generalization.
+{{I-D.mih-sokolov-scitt-payload-binding}} supplies the typed reference
+mechanism that CPB profiles share; the requirement that a cited
+artifact be identified by content rather than by name originates here.
+
+**Identity references, never policy references.** Every `references`
+entry, as defined above, is an IDENTITY reference: its `{digest_alg,
+digest}` pair pins the exact bytes of one target, the same discipline
+`capsule_id` gives this Capsule itself ({{identity}}) — for a cited AAC
+Capsule, checking a `references` entry against that Capsule's own
+`capsule_id` computation is exactly this comparison. This profile
+defines no POLICY reference: a citation of the shape "this issuer,
+this subject, at least this version," which deliberately pins no
+historical bytes and instead names an evolving relationship a runtime
+is willing to accept. A policy reference belongs to whatever layer
+states runtime acceptance criteria — for example, a pack version
+constraint in capsule-registry's Pack Schema & `pack_id` Namespace —
+and MUST NOT be expressed as a `references` entry: relaxing an entry's
+`digest` to match a class of acceptable bytes, or substituting a
+version range for it, breaks the exact-bytes guarantee this section
+exists to give a verifier. An implementation that needs both — a
+record of what was cited exactly, and a statement of what versions a
+policy currently accepts — carries the identity reference here and
+states its acceptance policy in the governing policy document; it
+never conflates the two in one field.
+
+This profile states no availability or retention obligation for a
+cited artifact. Content-derived addressing establishes that bytes,
+once obtained, are the bytes cited; it cannot establish that any party
+will serve them. An availability undertaking is a separate claim with
+a named obligated party and an expiry, and belongs to whatever profile
+carries the locator. {{retentiondecl}} defines such an undertaking for
+a `references` entry.
+
+### Retention declarations {#retentiondecl}
+
+A `references` entry MAY additionally carry a `retention` object,
+declaring a retention undertaking about the cited target:
+
+| Field | Type | Req | Meaning |
+|---|---|---|---|
+| declarant | string | REQUIRED | A producer-defined identifier naming the party making this undertaking (an operator identifier, DID, URI, or other string meaningful in the citing ecosystem — this profile mandates no scheme). The declarant need not be this Capsule's own producer; an entry MAY name the operator of wherever the cited artifact resides. |
+| retained_until | string ({{RFC3339}}) | OPTIONAL | Floor: `declarant` undertakes the cited target will remain resolvable at least until this time. |
+| not_retained_after | string ({{RFC3339}}) | OPTIONAL | Ceiling: `declarant` states the cited target will not be retained past this time (an erasure or data-minimization commitment). |
+
+At least one of `retained_until` and `not_retained_after` MUST be
+present when `retention` is present; a `retention` object carrying
+neither is malformed and a Class 1 verifier MUST reject it, the same
+structural treatment given any other malformed optional block. The two
+bounds are independent and MAY both be present, stating an exact
+retention window.
+
+**Declared, not attested.** A `retention` object is a statement by
+`declarant`, never a fact this profile or a Transparency Service
+attests to, and never independently checkable at seal time —
+content-derived addressing (above) establishes what the cited bytes
+are, never who will keep serving them, for how long, or on whose
+promise. A Class 1 verifier MUST report a `retention` object's field
+values as carried, structural data — the same treatment
+`constraints[].result` receives ({{constraints}}) — and MUST NOT
+report it as verified or attested. This is the same discipline this
+profile already applies to graded claims a producer makes about
+itself ({{assurance}}): a declaration is evidence of what was
+promised, not of what will occur.
+
+**Absence is not a finding.** A `references` entry with no `retention`
+object makes no claim about the cited target's retention in either
+direction — not that it is retained, not that it is unretained, not
+that no undertaking exists elsewhere. It is silence, not a negative
+fact. A verifier or downstream consumer MUST NOT treat the absence of
+a `retention` declaration as a finding against the record, the citing
+producer, or the cited target — the same discipline {{assurance}}
+already applies to a Capsule carrying no `cross_party` evidence block
+({{crossparty}}): an unpopulated optional field is missing
+information, never a negative claim.
+
+**Selective disclosure is orthogonal.** A `retention` declaration
+concerns the resolvability of the cited target's committed bytes; it
+says nothing about which of the CITING Capsule's own fields a holder
+later discloses. The selective-disclosure extension point
+({{selectivedisclosure}}) neither affects nor is affected by any
+`retention` declaration: disclosures are retained by the party
+presenting the Capsule, never by a log or Transparency Service
+({{I-D.mih-scitt-agent-action-capsule-sel-disc}}, Disclosure Delivery), and
+`capsule_id` is computed over commitments that do not change under
+redaction. Retention of a cited artifact and disclosure of the citing
+Capsule's own fields are independent axes, and a hosted verification
+service that itself holds no state (for example, one that retains
+nothing beyond the lifetime of a single verification request) makes no
+`retention` declaration of its own by virtue of performing
+verification: verifying a Capsule is not citing one.
+
+A reference MAY additionally carry `log_coordinates`, an object
+`{log_id, leaf_index, inclusion_proof}`, present as a unit when the
+cited record has been registered to an append-only log a verifier can
+consult. `leaf_index` MUST be a JSON integer, not a string. It is the
+zero-based MMR leaf index for which `inclusion_proof` was computed, not the
+one-based CLL log-entry sequence number. When a log exposes a one-based
+sequence number `seq`, the producer MUST encode `leaf_index` as `seq - 1`.
+The outer `leaf_index` MUST agree with the index used by the enclosed
+`inclusion_proof`; a proof for any other index is non-conforming.
+`log_coordinates` is an upgrade, not a second identity: it proves the exact
+referenced bytes were found at the stated log position, and its presence or
+absence never changes what `type` + `digest_alg` + `digest` already identify. Producer-local log
+checkpointing is future scope at the CPB binding layer, not this
+document ({{future}}); until that mechanism is specified, a Class 1
+verifier treats a present `log_coordinates` member as structurally
+recorded and MUST NOT report it as independently verified.
+
+**Citation purpose.** A `references` entry MAY carry `citation_purpose`,
+a registry-governed (Specification Required, {{iana}}) string stating
+why this Capsule cites the target. `citation_purpose` is a distinct
+vocabulary from CPB's own `purpose` field on a typed digest reference:
+CPB's `purpose` selects among an artifact type's registered digest
+contexts, and `citation_purpose` is this profile's own, separately-named
+field for the citing relationship, never a repurposing of CPB's field.
+The seeded vocabulary:
+
+| citation_purpose | Meaning |
+|---|---|
+| acted_on | This Capsule's action targeted, consumed, or was performed against the cited record's declared content — a stream boundary, not a custody claim: the cited record may belong to a different producer or stream entirely, and citing it asserts only that this action is about that content, never that the citing producer holds or continues its custody. |
+| responds_to | This Capsule addresses or answers the cited record without a same-stream chain relationship to it — the cited record is not this Capsule's `chain.parent_capsule_id` and MAY be a different producer's record or otherwise outside this producer's own stream. |
+| ran_under | This Capsule cites a record stating the runtime environment and the authority under which its action executed — what ran, and under whose attestation. The cited record MAY belong to a different producer (for example, a hardware-attestation record emitted by an attestation service); citing it with this purpose asserts that this Capsule's action ran under the conditions that record attests, not that the citing producer re-derived them. |
+| counterparty_half | The cited record is the counterparty's half of a two-party exchange, received and held by the citing node. The citing node cites the counterparty's already-sealed Capsule by digest through this entry. How the citing node obtained and checked the cited half is outside this profile; the citation asserts custody of the cited record, not an observation of it. The citing node does NOT re-assert the cited half as its own observation, action, or outcome — the entry records CUSTODY of an external half, so a held foreign half becomes a committed, checkpointed fact of this stream rather than a render-time observation. The cited half is a foreign record, never this Capsule's `chain.parent_capsule_id`, so the boundary rule above holds. |
+| counterparty_inclusion | This Capsule cites, by digest, a counterparty's inclusion proof and the checkpoint covering it — and that checkpoint's receipt when it is witnessed — for a counterparty half the citing node already holds under an earlier `counterparty_half` citation, with one `references` entry per cited artifact. The value exists because `log_coordinates` cannot be added to a Capsule after sealing: inclusion evidence that arrives later is cited by a later record. The cited artifacts are held artifacts, never entries in the citing node's chain. The citing Capsule chains to its own same-stream head via `follows` ({{hitl}}) and never mutates the earlier `counterparty_half` citation: inclusion evidence is added by a new record, never by amending the custody record. |
+
+Designated-expert guidance: `acted_on`, `responds_to`, and `ran_under`
+name a cross-stream citation intent that `chain.relation` cannot express
+because `chain.relation` is scoped to same-stream transitions ({{hitl}}).
+`acted_on` and `responds_to` name what the action was *about*;
+`ran_under` names the environment and authority the action executed
+*under* — a relationship, not a category of evidence, so one value
+covers a cited account whether it carries the runtime side, the
+authority side, or both. A
+producer whose citation is a same-stream state transition over its own
+parent uses `chain` instead and never mints a `references` entry for it
+(the boundary rule above). `counterparty_half` likewise names a citation,
+not a parent-link: the citing Capsule still chains to its own same-stream
+head with an ordinary `chain.relation` that asserts no outcome over the
+parent — `follows` ({{hitl}}) when the record makes no other claim over
+that head — and the fact that it holds a counterparty's foreign half is
+carried
+solely by this `references` entry — never by a new `chain.relation` value.
+`counterparty_inclusion` follows the same discipline: it is a further
+citation by a later record, so later evidence about a held half (its
+inclusion in the counterparty's log) never rewrites the record that first
+took custody of it.
+Registering the held-half meaning on `chain.relation` (for example a
+proposed `cites`) would conflate the parent-link axis with the
+citation-target axis, the same conflation this section forbids below when it
+requires a cross-stream citation to be "a `references` entry with the
+appropriate `citation_purpose`, not a new `chain.relation` value."
+Additional `citation_purpose` values are
+expected future registrations, each admitted once its semantics are
+pinned in a publicly available specification, per this document's
+Specification Required policy ({{iana}}).
+
+**Grade non-propagation for a cited attestation.** A record cited with
+`ran_under` may carry its own assurance grade for the conditions it
+attests — for instance, a trust record graded by whether a hardware root
+of trust signed the measurement it reports. That grade attaches to the
+specific fact the cited record attests and does not extend to any other
+claim, including a claim stated inside the cited record's own content: a
+platform-attested measurement does not make a self-reported workload
+identity attested. A verifier reading a `ran_under` citation therefore
+carries the cited record's grade only for what that record measured,
+never for everything the measured thing asserts — the citation cannot
+launder an unattested claim through an attested envelope. This restates
+the cited format's own grading rule rather than adding one. A conformance
+vector set demonstrates this behaviour as runnable cases rather than
+prose — a passing grade on the cited record still refusing to lift the
+citation in both the untrusted-signer and the inner-self-reported-claim
+directions — and is maintained at `vectors/interop/ran_under` in this
+document's source repository.
+
+**Relation to `chain.relation`'s `confirms` value in deployed
+implementations.** A cross-stream citation — for example, a denial
+Capsule addressing a prior record that is not its own chain parent — is
+not a same-stream state transition and so is not a `chain.relation`
+value under this profile; `chain.relation` registers no value for it,
+and none is added by this revision. Such a citation is a `references`
+entry with `citation_purpose: "responds_to"` (or `"acted_on"`, if it is
+the affirmative case). An implementation using `chain` with a
+`confirms`-shaped relation for a citation that is not the same-stream
+parent is not using `chain` as this document defines it; the compatible
+migration is a `references` entry with the appropriate
+`citation_purpose`, not a new `chain.relation` value.
+
+# Class 1 verification {#verification}
+
+Capsule verification and Producer Envelope verification are independent.
+A verifier can validate a Capsule with no envelope, and can validate any
+number of envelopes against a Capsule ID without changing the Capsule result.
+
+For each Producer Envelope, a verifier MUST:
+
+1. validate the exact tag, protected map, empty unprotected map, attached
+   payload, and signature sizes in {{envelope}};
+2. require the attached payload to equal the raw 32 bytes of the Capsule ID;
+3. verify the Ed25519 signature under the public key carried in `kid`; and
+4. return that authenticated public key separately from any caller-defined
+   authorization decision.
+
+Malformed or unverifiable envelopes MUST produce structured failures and MUST
+NOT cause the verifier to throw or panic. One invalid envelope does not erase
+the validity of another independent envelope over the same Capsule ID.
+Receipt verification is a separate substrate step performed by reference to
+{{RFC9943}} and {{RFC9942}}.
+
+The agent-profile checks below are normative here and constitute Class 1
+verification ({{conformance}}): every check is performable from the
+Capsule JSON, the registry contents
+({{registries}}), and — for the chain checks — the producer's store of
+Capsules; no other input is needed. A verifier MUST return a structured
+result, never throw; a single `ok` boolean gates trust in every other
+reported field; findings are reported in a fixed order. A Capsule nested
+deeper than the bound in {{conventions}} is rejected before check 1, and
+its result is not `ok`.
+
+1. Structural: REQUIRED fields present and typed; `format_version` is exactly
+   the string `"4"`; `canonicalization_id` is exactly the string `"jcs"`; and
+   no floating-point values occur in digest-bearing fields. Any other format
+   or canonicalization declaration fails closed. A member of the wrong
+   JSON type (for example, an array or an object where a string is
+   defined) fails this check; the never-reject rule for unregistered
+   values (check 8, {{iana}}) applies only to well-typed values.
+2. Identity: remove local-only `signature` and `key_id` envelope fields, if
+   present in a local composite representation, and remove only `capsule_id`
+   from the Capsule. Compute SHA-256 over plain JCS and compare the result with
+   the carried `capsule_id`.
+3. Confirmed-effect binding: `effect.status: "confirmed"` without a
+   well-formed `response_digest` is a failure ({{effect}}).
+4. Verdict/effect orthogonality: a never-dispatching `verdict_class`
+   with a derived `effect_mode` other than `"not_applicable"` is a
+   failure ({{orthogonality}}); `resolved` is in the never-dispatch set
+   per the pairing rule.
+5. Effect-attestation matrix: `effect_attestation` missing where the
+   matrix REQUIRES it, or present where it MUST be absent — including
+   the planned carve — is a failure ({{effect}}).
+6. Chain semantics (store-level): a missing chain parent is a failure;
+   concurrent supersedes surface as findings per {{hitl}}. A
+   `references` entry ({{xref}}) is a different claim: it is informational
+   cross-stream correlation, never a chain-integrity input, and a
+   verifier MUST NOT treat a `references` entry naming an unresolvable
+   or absent target as a chain-semantics failure — only a `references`
+   entry that duplicates `chain.parent_capsule_id` is a failure, per the
+   boundary rule of {{xref}}.
+7. Assurance reconciliation: rederive the assurance modes from evidence
+   actually verified; report overclaims.
+8. Unknown registry values (`verdict_class`, `decision`,
+   `effect.type`, `irreversibility_class`, `effect_attestation`,
+   `chain.relation`, `citation_purpose`): report as informational
+   findings; MUST NOT reject ({{iana}}). An unknown `effect_attestation`
+   is additionally graded no stronger than `runtime_claimed` ({{effect}}).
+9. Provenance mode: `provenance_mode.mode: "backfilled"` without a
+   well-formed `provenance_mode` block (`source_ref`, `source_asserted_at`,
+   `import_batch`, and `imported_at` all present and well-formed) is a
+   failure ({{provenancemode}}). A claimed `time_rung: "witnessed"` not
+   supported by a well-formed `references[]` entry citing
+   `citation_purpose: "corroborates_source_time"` is a failure — unlike
+   the informational overclaim treatment of `attestation_mode`,
+   `ledger_mode`, and `cross_party_rung` in check 7, a `provenance_mode`
+   time-assurance overclaim gates `ok`, because it is falsifiable from the
+   record's own bytes and this profile treats it as a dishonesty claim,
+   not merely an unverifiable one ({{provenancemode}}). Byte-equality
+   between `provenance_mode.imported_at` and
+   `provenance_mode.source_asserted_at` on a backfilled record is
+   likewise a failure — the laundering shape {{provenancemode}} already
+   describes.
+
+Disposition honesty is structurally guaranteed, not a live check above.
+The honesty invariant — `human_disposed: true` REQUIRES `approver:
+"human"` ({{disposition}}) — is enforced when the disposition is
+constructed: the typed disposition carrier rejects `human_disposed:
+true` paired with any non-`human` approver, so a violating Capsule
+cannot be formed or signed at all. A Class 1 verifier
+therefore does not re-assert it in the enumeration above; like
+parse- and type-level malformations that a typed record cannot
+represent, a dishonest disposition is an unrepresentable state rather
+than a runtime failure mode. A verifier consuming arbitrary bytes not
+produced by a conforming constructor SHOULD nonetheless assert the
+invariant defensively against hand-crafted input. The
+closed `approver` enum ({{disposition}}) is likewise structural: an
+approver value outside the closed set defined in {{disposition}} is non-conforming by
+construction and so is absent from the unknown-registry-value reporting
+of check 8.
+
+NOTE (Class 1 test vector, effect-attestation matrix, check 5): a Capsule
+carrying `effect.status: "failed"` derives `effect_mode:
+"dispatched_unconfirmed"` ({{effect}}); the matrix therefore REQUIRES
+`effect_attestation`. A conforming verifier MUST report a check-5 failure
+for such a Capsule when `effect_attestation` is absent, and MUST NOT treat
+the `failed` status as exempt (only `planned` is carved, and only
+`not_applicable` is the no-effect case). The same expectation holds for
+`effect.status: "reverted"`, which likewise derives
+`dispatched_unconfirmed`. This vector exists to demonstrate the matrix is
+total over `effect.status`: the runtime reporting a failure is still a
+dispatch, and a dispatch that escapes attestation is the precise condition
+check 5 exists to catch.
+
+A verifier MUST NOT consult a model, a clock-dependent heuristic, or
+network state to decide `ok` for the checks above. Manifest-dependent
+verification is Class 2 ({{class2}}).
+
+# Conformance: two verifier classes {#conformance}
+
+This profile defines two verifier conformance classes. Producer
+conformance is a single class and is unchanged by this split: a
+conforming producer emits the same Capsules regardless of which verifier
+class consumes them.
+
+Class 1 verifier:
+: Verifies the Capsule payload WITHOUT any constraint manifest: the structural
+  and identity checks, the registry vocabularies, the digest
+  recomputations, and the validity matrices (confirmed-effect binding,
+  verdict/effect orthogonality, effect-attestation, chain semantics).
+  The complete Class 1 check set is {{verification}}. Producer Envelope and
+  Receipt results are reported independently and do not alter payload Class 1.
+
+Class 2 verifier:
+: A Class 1 verifier that additionally performs manifest-aware
+  verification ({{class2}}): constraint evidence-schema checks and
+  manifest-sourced thresholds. Class 2 conformance presupposes access to
+  the producer's constraint manifest and the private evidence its
+  Constraint Records bind; absent those inputs, a Class 2 verifier
+  reports Class 1 results unchanged.
+
+# Manifest-dependent material {#manifestdep}
+
+The producer's constraint manifest — the private definition of each
+constraint's predicate, evidence schema, and thresholds — is not carried
+in the Capsule. The material in this section depends on it: the detail
+of Constraint Records and the Class 2 checks. Manifest discovery and
+authentication are out of scope for this profile; they are expected to be
+handled via out-of-band tenant configuration or a future discovery
+mechanism.
+
+## Constraint Records {#constraints}
+
+A Constraint Record is the public verdict of one deterministic check that
+ran against the action. It carries only sanitized categories — an `id`,
+optional `check_type` and `method` labels, a `result` of "pass" / "fail" /
+"n/a", `severity`, a `blocking` flag recording whether the check actually
+gated this decision, and an optional `evidence_digest` (a JSON digest,
+{{conventions}}) binding the verdict to the private evidence the check evaluated. The
+content a check evaluated MUST NOT appear in the public record; it is
+bound by digest only. The check's predicate, evidence schema, and
+thresholds live in the producer's manifest.
+
+Every recorded `result` MUST be the output of a deterministic predicate
+over disclosed or digest-committed evidence. The live decision path MUST
+NOT re-prompt a model to make a check pass, and a verifier MUST NOT
+re-prompt a model to "re-check" one: re-running a non-deterministic check
+is not verification.
+
+Constraint `id`, `check_type`, and `method` values are lowercase
+snake_case categories. New values follow the namespacing convention of
+{{namespacing}}.
+
+## Class 2 verification {#class2}
+
+The checks below are manifest-aware: they require the producer's
+constraint manifest and the private evidence a Constraint Record binds
+by digest. A Class 2 verifier performs them in addition to the complete
+Class 1 set ({{verification}}); their results never weaken a Class 1
+result — they extend it.
+
+1. Constraint evidence-schema check: for each Constraint Record
+   ({{constraints}}) carrying an `evidence_digest`, confirm the bound
+   evidence conforms to the manifest's evidence schema for that
+   constraint `id` and that the recomputed digest matches; a mismatch is
+   a failure.
+2. Threshold checks: confirm that manifest-sourced thresholds were
+   applied as the manifest states.
+
+# Extensibility {#extensibility}
+
+All Capsule extension points are in the Capsule JSON. The Producer Envelope
+protected map is exact and closed by {{envelope}}. An extra protected entry is
+a profile failure, not an extension mechanism. New envelope metadata requires
+a future format version or a separate carrying structure.
+
+## Namespacing convention {#namespacing}
+
+Three vocabularies are deliberately not registry-governed — constraint
+`id`/`check_type`, `compliance.framework_tags`, and
+`assurance.sources[].kind` — because their value space is producer-local
+by nature. Bare names (no namespace separator) are reserved for the
+values seeded in this document; any party introducing a new value MUST
+namespace it with a URI or reverse-DNS prefix (for example,
+`com.example.margin_floor`). A bare, unseeded name is non-conforming for
+a producer; a verifier still treats it as informational.
+
+## Selective Disclosure {#selectivedisclosure}
+
+The base confidentiality posture of this profile is whole-envelope: a
+producer discloses a Capsule by sharing its full payload, or withholds it
+entirely. Sensitive content not carried in the envelope leaves no on-wire
+indicator of its existence. This whole-envelope posture is sufficient for
+the common case where the unit of disclosure is the Capsule as a whole.
+
+For cases in which a producer must reveal a subset of payload fields to a
+verifier while concealing both the values and the existence of
+unrevealed fields, a per-field selective-disclosure mechanism is needed.
+This profile reserves an extension point in the Capsule payload for such
+a mechanism. The intended field-level technique follows the SD-JWT
+selective-disclosure model {{RFC9901}} — salted-hash commitments over
+JCS-canonicalized arrays — because the Capsule payload is JSON; it is
+written to stay aligned with SPICE's SD-CWT {{I-D.ietf-spice-sd-cwt}}
+(the CBOR sibling) for SCITT-ecosystem consistency.
+
+The complete normative profile of this mechanism — including the
+commitment encoding, disclosure syntax, and verifier checks — is defined
+in the companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-sel-disc}}.
+This profile (AAC) retains only the
+eligibility-policy annex: the declaration of which AAC payload fields are
+eligible for selective disclosure and which are non-eligible because this
+profile's own verifier requires their values in clear.
+
+Implementations of this profile version MUST NOT generate or interpret
+selective-disclosure payload structures unless they additionally implement
+{{I-D.mih-scitt-agent-action-capsule-sel-disc}}: the extension point is
+defined only in that companion, and no conformance claim or verification
+behavior is defined for it in this document.
+
+# Related Work {#related}
+
+Several active individual drafts address adjacent evidence problems for
+AI agent actions; this profile is complementary to each.
+{{I-D.munoz-scitt-permit-profile}} defines pre-execution authorization
+records (Permits) that bind an allow/deny/challenge decision to the
+request bytes subsequently dispatched.
+{{I-D.nivalto-agentroa-route-authorization}} defines Agent Route Origin
+Authorization (AgentROA), a cryptographic policy-enforcement framework
+that authorizes agent capability invocations before dispatch through
+signed policy envelopes and per-hop attestations; like Permits it governs
+whether an action may proceed (may), complementary to this profile's
+record of what occurred (did).
+{{I-D.emirdag-scitt-ai-agent-execution}} defines AgentInteractionRecords
+signed by an agent operator and registered with an independent evidence
+custodian, with redaction receipts and regulatory mappings.
+{{I-D.kamimura-scitt-refusal-events}} defines a serialization-independent
+claim set for AI content-refusal audit trails carried in SCITT Signed
+Statements; the same author's {{I-D.kamimura-scitt-vcp}} (VeritasChain
+Protocol) is a SCITT profile for verifiable audit trails in algorithmic
+trading — a vertical-specific application of the same transparency
+substrate. {{I-D.kamimura-vap-framework}}, by the same author, is a
+conformance-tiered Verifiable AI Provenance framework (hash-chaining,
+signatures, SCITT anchoring, and a completeness invariant) under which the
+trading profile sits; it shares this profile's SCITT-anchored,
+third-party-verifiable substrate, framed as a provenance architecture
+rather than a per-action verdict record. {{I-D.dawkins-scitt-ai-article50}}
+profiles SCITT receipts
+for the transparency obligations of EU AI Act Article 50.
+{{I-D.sato-soos-gar}} defines session-level Governance Audit Records
+produced by a governing enforcement component; this profile differs in
+recording per-action verdicts with effect-state binding rather than
+session-close summaries.
+
+The distinction this profile contributes is verdict-level disposition
+with effect-state binding: authorization records prove permission was
+granted (may); Capsules prove what occurred (did) — executed, blocked,
+denied, errored, or timed out — with a structural binding that prevents
+an attempt from being presented as a completion, and with refusals
+recorded as affirmative evidence.
+
+{{NotarizedAgents}} defines receiver-attested confidential agent-action
+receipts registered on a witness-cosigned Merkle log. This profile
+differs in providing self-and-counterparty bilateral attestation — each
+party holds proof of the other's commitment — over a SCITT-neutral
+anchor, with an explicit disposition vocabulary (executed, blocked,
+denied, timeout, errored, deferred, expired, escalated) that
+distinguishes outcome categories rather than receiver attestation alone.
+The companion Internet-Draft {{I-D.mih-agent-bilateral-attestation}}
+profiles the two-party extension. {{I-D.mih-sato-agent-accountability-composition}}
+defines composition and conformance rules for multi-agent accountability
+chains built on the same CPB derived-identifier primitive this profile
+uses; Capsules chained via {{hitl}} and bilaterally attested Capsules
+compose under those rules.
+
+{{ERC8004}} defines on-chain identity, reputation, and validation
+registries for AI agents on a public blockchain. This profile differs in
+that payload content is content-private — only digests and timestamps are
+anchored, never payloads or PII — and the transparency log is off-chain-anchorable
+to any conforming SCITT service, separating conduct evidence from the
+on-chain content-public constraint of registry entries.
+
+Mastercard Verifiable Intent ({{VerifiableIntent}}) records a signed
+intent-to-act over a checkout-authorization chain. This profile
+complements it by recording general-purpose conduct, obligation, and
+refusal verdicts in an agent-to-agent lane, anchored to a neutral
+transparency log, without being coupled to a specific payment or
+checkout context.
+
+{{I-D.rampalli-scitt-capsule-provenance-binding}} binds a per-action
+delegation-authorization decision and provenance references into an Agent
+Action Capsule via namespaced payload extensions that leave the core fields
+untouched, recording that an action was taken under a stated authorization
+without asserting the authority. This specification is complementary; the
+profile is deliberately agnostic to the delegation mechanism, and such
+bindings compose by shared action digest.
+
+# Future Work {#future}
+
+The companion Internet-Draft {{I-D.mih-agent-bilateral-attestation}}
+defines a bilateral attestation extension in which two parties
+independently seal Capsules over a shared action digest, each holding
+proof of the other's commitment. The extension reuses this profile's
+disposition vocabulary (executed, blocked, denied, timeout, errored,
+deferred, expired, escalated) and anchors both seals to a conforming
+SCITT Transparency Service, so a third party trusting neither signatory
+can verify the record end-to-end. Statement-type and verdict-class
+values reserved in this document for that extension are governed by
+the registries in {{iana}}.
+
+The companion Internet-Draft {{I-D.mih-scitt-agent-action-capsule-sel-disc}}
+normatively profiles the selective-disclosure extension point reserved in
+{{selectivedisclosure}}, specifying the per-field commitment structure,
+disclosure syntax, eligible fields, and verifier checks, aligned with
+{{I-D.ietf-spice-sd-cwt}}.
+
+# IANA Considerations {#iana}
+
+## New registries
+
+Every registry requested below governs a vocabulary that lives entirely
+in the Capsule JSON. A SCITT-generic Transparency Service does not need to
+parse those values because registration, inclusion, and Receipt issuance
+operate on the separate SCITT registration statement. The media-type registrations are addressed
+separately in {{media-types}}. This profile requests no new COSE header
+parameter or CWT claim registry; the new registries here are payload
+vocabularies only.
+
+IANA is requested to create a new registry group, "Agent Action Capsule
+Parameters", containing the seven registries below. The registration
+policy for each is Specification Required ({{RFC8126}}, Section 4.6).
+
+Specification Required is chosen deliberately. The threat it answers is a
+vocabulary value whose meaning is defined only inside a closed product —
+two verifiers would then disagree on what the value means, and the
+interoperable, falsifiable-from-the-record property this profile depends
+on would erode. The mitigation is the policy's publicly-available-spec
+requirement: a value enters the shared vocabulary only once its semantics
+are pinned in a specification any implementer can read. Accordingly, for
+each registry the designated expert approves a registration when (1) the
+citing specification defines the value's semantics precisely enough that
+two independent implementations would apply it identically — for
+verdict_class, including its dispatch consequence and its effect_mode
+pairing under {{orthogonality}}; (2) the value's meaning is not already
+expressible by an existing registered value; and (3) the citing
+specification is publicly available.
+
+Binding invariant for all seven registries: verifiers MUST treat
+unregistered values as informational and MUST NOT reject a Capsule for
+carrying one. Registration governs shared meaning, never acceptance.
+
+Initial contents are the seeded values of this document, verbatim:
+
+1. "verdict_class" registry ({{verdictclass}}): executed, blocked,
+   hitl_dispatched, denied, timeout, errored, engine_failure, deferred,
+   needs_decision, expired, escalated, resolved, epoch_boundary.
+   The `deferred` token's semantics are OWNED by this registry; the
+   entry of the same spelling in the "disposition.decision" registry is
+   a cross-reference to it. The `epoch_boundary` token denotes an
+   administrative Capsule (`action_type: "fyi"`) that marks a
+   configuration-epoch transition ({{epochboundary}}); it REQUIRES
+   `effect_mode: "not_applicable"` (no effect is dispatched by an
+   administrative epoch record).
+2. "disposition.decision" registry ({{disposition}}): accept, reject,
+   needs_input, deferred. The `deferred` entry is a cross-reference to
+   the "verdict_class" registry, which owns the token's semantics.
+3. "effect.type" registry ({{effect}}): write_order, send_payment,
+   inference_completion. `inference_completion` is an inference request to
+   a model-serving runtime whose committed effect is producing a
+   completion; its `request_digest` is the JSON digest of the request body
+   as received at the serving boundary and its `response_digest` the JSON
+   digest of the completion body as returned ({{effect}}).
+4. "irreversibility_class" registry ({{effect}}; ordered by ascending
+   consequence — a registration states its position): two_way,
+   one_way_recoverable, one_way_consequential, one_way_terminal.
+5. "effect_attestation" registry ({{effect}}): gate_executed,
+   runtime_claimed, host_served_observed. `host_served_observed` is equal
+   in grade to runtime_claimed and below gate_executed: the serving host's
+   runtime reported the completion through its lifecycle channel, and the
+   producer observed that report, not the effect boundary. The registry definition carries the grade-floor
+   invariant of {{effect}} — an unregistered or unrecognized value is
+   graded no stronger than runtime_claimed; unknown never grades up —
+   and the planned carve of {{effect}}: with `effect.status: "planned"`
+   the member MUST be absent, and it becomes REQUIRED the moment
+   dispatch occurs. Designated-expert guidance: plausible future
+   registrations exist and are deliberately not seeded — for example,
+   independent sensor confirmation of a claimed effect, or hardware- or
+   TEE-anchored execution; a registration states where its grade sits
+   relative to the seeded values.
+6. "chain.relation" registry ({{hitl}}): follows, confirms, supersedes,
+   epoch_opens, duplicates. Designated-expert guidance: `supersedes` is
+   the single terminal relation; `follows`, `confirms`, `epoch_opens`,
+   and `duplicates` are non-terminal relations. `follows` is the bare
+   next-link and the default relation for an ordinary sequential record:
+   it asserts no outcome, observation, or transition over the parent,
+   and verifiers and downstream evidence evaluators MUST NOT read it as
+   confirming, superseding, or otherwise grading the parent — it is
+   ordering only ({{hitl}}). `epoch_opens` is reserved for
+   configuration-epoch boundaries ({{epochboundary}}) and `duplicates` is
+   reserved for a backfilled Capsule citing the contemporaneous Capsule
+   of the same logical event in this producer's own stream
+   ({{provenancemode}}) — a `duplicates`-linked pair is counted once, the
+   contemporaneous record governing. Additional non-terminal
+   relations (for example, deposit-toward-open and effort-toward-open
+   relations, or amends / contradicts) are expected future registrations,
+   each admitted once its semantics and any verifier consequence are
+   pinned in a publicly available specification.
+7. "citation_purpose" registry ({{xref}}): acted_on, responds_to,
+   ran_under, corroborates_source_time, counterparty_half,
+   counterparty_inclusion.
+   This registry is distinct
+   from, and never a
+   repurposing of, CPB's own
+   `purpose` field on a typed digest reference
+   ({{I-D.mih-sokolov-scitt-payload-binding}}), which selects among an
+   artifact type's registered digest contexts and is orthogonal to any
+   role a companion profile assigns a digest within a cross-document
+   citation. Designated-expert guidance: `acted_on`, `responds_to`, and
+   `ran_under` name a citation whose target is outside the citing Capsule's own chain — a
+   different producer or a different stream ({{xref}}); a citation to
+   the producer's own same-stream `chain` parent is never expressed
+   here. `corroborates_source_time` is the seeded exception to that
+   same-stream/cross-stream framing: it cites, by digest, a signed or
+   independently witnessed timestamp supporting a `provenance_mode`
+   block's `source_asserted_at` claim ({{provenancemode}}), and is the
+   only citation this profile permits to raise `provenance_mode.time_rung`
+   from `self_attested` to `witnessed`. `counterparty_half` cites the
+   counterparty's already-sealed half of a two-party exchange, received and
+   held by the citing node ({{xref}}); it is a citation, never a
+   `chain.relation` value — the citing Capsule chains to its own same-stream
+   head with an ordinary relation that asserts no outcome over the parent
+   (`follows`, the bare next-link, when it makes no other claim over that
+   head), and holding a foreign half is carried solely by the `references`
+   entry. `counterparty_inclusion` cites, by digest, a counterparty's
+   inclusion proof and covering checkpoint (and the checkpoint's receipt
+   when witnessed) for a half the citing node already holds, stored as held
+   artifacts; the citing Capsule chains to its own head via `follows` and
+   never mutates the earlier `counterparty_half` citation ({{xref}}).
+   Additional values are expected
+   future registrations, each admitted once its semantics are pinned in
+   a publicly available specification.
+
+Interim registry of record: until this document is published as an RFC,
+the registry of record is the `REGISTRY.md` file of the source
+specification repository, seeded with the same initial contents and the
+same policy; on publication the IANA registries become the registry of
+record. Change controller: Action State Group, Inc. (interim); the IETF
+on publication.
+
+## No new registry {#no-new-registry}
+
+- Attestation/signature algorithms: this profile defines no algorithm
+  registry; algorithm identifiers are those of the existing IANA "COSE
+  Algorithms" registry ({{RFC9053}}).
+- Constraint `id`/`check_type`, `compliance.framework_tags`, and
+  `assurance.sources[].kind`: no registry; governed by the namespacing
+  convention of {{namespacing}}.
+- Producer Envelopes use only existing COSE header labels `alg`, content
+  type, and `kid`. This document requests no new COSE header or CWT claim.
+
+## Media Type Registrations {#media-types}
+
+IANA is requested to register the Capsule JSON media type and the raw
+Capsule-ID payload media type in the "Media Types" registry per the templates
+below ({{RFC6838}}). The JSON representation uses the `+json`
+structured-syntax suffix of {{RFC8259}}. The raw identity payload has no
+structured-syntax suffix.
+
+Agent Action Capsule media type:
+
+- Type name: application
+- Subtype name: agent-action-capsule+json
+- Required parameters: N/A
+- Optional parameters: N/A
+- Encoding considerations: binary; the representation is JSON
+  ({{RFC8259}}) as defined in this document.
+- Security considerations: see {{security}} of this document.
+- Interoperability considerations: see this document.
+- Published specification: this document (and its successors).
+- Applications that use this media type: producers, ledgers, transports, and
+  verifiers recording and verifying AI agent actions.
+- Fragment identifier considerations: as for application/json
+  ({{RFC8259}}) per the `+json` suffix ({{RFC6839}}).
+- Additional information: Deprecated alias names: N/A. Magic number(s):
+  N/A. File extension(s): N/A. Macintosh file type code(s): N/A.
+- Person & email address to contact for further information: the author of
+  this document.
+- Intended usage: COMMON
+- Restrictions on usage: N/A
+- Author: see the Authors' Addresses section of this document.
+- Change controller: Action State Group, Inc. (interim); the IETF on
+  publication.
+- Provisional registration: yes (pending publication of this document).
+
+Agent Action Capsule ID media type:
+
+- Type name: application
+- Subtype name: agent-action-capsule-id
+- Required parameters: N/A
+- Optional parameters: N/A
+- Encoding considerations: binary; exactly 32 octets containing the raw
+  SHA-256 Capsule ID represented in Capsule JSON as 64 lowercase hexadecimal
+  characters.
+- Security considerations: see {{security}} of this document.
+- Interoperability considerations: see this document.
+- Published specification: this document (and its successors).
+- Applications that use this media type: COSE Producer Envelopes and SCITT
+  Transparency Services registering Capsule identities.
+- Fragment identifier considerations: N/A.
+- Additional information: Deprecated alias names: N/A. Magic number(s):
+  N/A. File extension(s): N/A. Macintosh file type code(s): N/A.
+- Person & email address to contact for further information: the author of
+  this document.
+- Intended usage: COMMON
+- Restrictions on usage: N/A
+- Author: see the Authors' Addresses section of this document.
+- Change controller: Action State Group, Inc. (interim); the IETF on
+  publication.
+- Provisional registration: yes (pending publication of this document).
+
+# Security Considerations {#security}
+
+The tamper-evidence-versus-runtime-honesty boundary — that the envelope
+signature and registration Receipt attest record bytes and their timing,
+not the recording runtime's honesty at the moment of recording — is given
+in {{I-D.mih-sokolov-scitt-payload-binding}}'s Security Considerations
+(Tamper Evidence and Runtime Honesty). This profile inherits that
+boundary; the following extends it to the confirmed-effect binding.
+
+Confirmed means observed-and-bound, not world-state. A `confirmed`
+effect proves the producer bound the bytes of an observed response, not
+that the external world reached the claimed state. The same boundary
+extends one hop upstream: binding an observed response proves the producer
+observed those bytes, not that the responding system was authentic or that
+the channel was on-path-intact. An attacker who substitutes or forges the
+response — a false success delivered on-path — induces an honest
+`confirmed` Capsule for an effect that did not land; this profile does not
+mitigate upstream spoofing of the response itself, which is bounded by the
+same trust assumption as runtime honesty above. Later, independently
+sourced outcome statements ({{outcomes}}) are the mechanism by which such
+a spoofed confirmation is contradicted over time.
+
+Self-attested versus anchored tiers differ in evidentiary weight. A
+self-attested Capsule is verifiable against its own bytes and signer; an
+anchored (registered) Capsule additionally resists omission and
+back-dating through the Transparency Service's append-only log and
+receipts. A verifier reports the tier it actually verified and never
+upgrades a claim it could not check.
+
+The honest human-in-the-loop flag ({{disposition}}) is itself
+security-relevant: it prevents a policy auto-approval from being
+presented as human oversight. The invariant — `human_disposed: true`
+requires `approver: "human"` — is structurally guaranteed: a conforming
+producer cannot construct a Capsule that violates it, so the
+combination simply does not arise in well-formed records, and the claim
+is falsifiable from the record alone. A verifier consuming
+non-constructor-produced bytes SHOULD assert the invariant defensively
+against hand-crafted input ({{verification}}).
+
+The low-entropy digest leakage risk — that a digest over a small
+enumeration, short identifier, or bounded value space is recoverable by an
+adversary via a dictionary attack, and so is not confidential merely by
+being a digest — is given in {{I-D.mih-sokolov-scitt-payload-binding}}'s
+Security Considerations (Low-Entropy Fields). This profile's
+`reason_digest` and `evidence_digest` fields are subject to that caveat;
+producers SHOULD commit such values under a per-tenant salt or via a
+tenant-private manifest rather than digesting the bare value.
+
+Input integrity is a composable upstream concern. This profile records
+what the producer observed and bound at seal time; it does not
+authenticate the provenance of inputs delivered to the agent before
+sealing. A response spoofed on-path induces an honest `confirmed`
+Capsule for an effect that did not land. Input integrity — binding the
+authenticity of request bytes and upstream grounding sources to the
+authorization before the seal — is a separate guarantee that composes
+with this profile at the digest layer: a producer that holds
+input-integrity evidence (a signed tool response, an attested transport
+record, a C2PA-style content credential, or an action-body HMAC with
+memory provenance attestation) MAY reference it by digest in the Capsule
+payload, preserving the verifier's disinterest — the verifier checks the
+binding without trusting the producer's claim about upstream systems it
+cannot observe. This profile partially addresses the grounding dimension
+via the `value_grounded` constraint ({{constraints}}), which checks that
+a quoted value matches its cited source, and via `model_attestation`
+({{identity}}), which constrains the emitter identity. The remaining
+input-integrity surface is out of scope for this profile and is addressed
+by composing a dedicated input-integrity mechanism upstream.
+
+Capsule identity is stable across signing-key rotation. The `operator` and
+`developer` fields in the Capsule payload ({{identity}}) are plain strings
+committed to `capsule_id` and are independent of the signing key. Rotating a
+COSE signing key creates a new Producer Envelope but does not change the
+Capsule ID. A verifier accumulating long-horizon history SHOULD correlate
+Capsules by payload `operator` and, when present, `epoch_id` ({{epochs}}),
+then apply its own authorization policy to each authenticated envelope key.
+A producer SHOULD treat a key rotation that coincides with a configuration
+change as an epoch boundary ({{epochboundary}}).
+See also {{privacy}} of this document for the data-admission tiers that govern
+which runtime context fields MAY enter a Capsule, including the consequence of
+the low-entropy digest caveat above for end-user identity fields.
+
+Signer authorization is caller-policy territory, not Capsule or envelope
+cryptography. The raw public key in `kid` is self-attested. A verifier relying
+on producer identity for a policy decision MUST apply an external authorization
+rule to the authenticated key and MUST NOT infer authority from signature
+validity alone.
+
+# Privacy Considerations {#privacy}
+
+A Capsule is content-addressed, tamper-evident, and MAY be anchored to a
+Transparency Service. As a direct consequence, a committed Capsule cannot be
+retracted: there is no after-the-fact edit path, and an anchored record is durable
+beyond the producer's control. Therefore: anything admitted to a Capsule is
+admitted permanently, and PII or secrets in a content-addressed, tamper-evident,
+anchored record are unfixable by design. Producers MUST apply a default-deny
+posture to runtime context before it reaches a Capsule.
+
+## Data-Admission Tiers {#data-admission-tiers}
+
+Producer and adapter authors MUST classify every candidate field into exactly one
+of the following tiers before admission:
+
+1. **Clear-safe** — Opaque correlation handles that are joinable but
+   non-identifying: for example, `agent_name`, `function_call_id`,
+   `invocation_id`. A field is clear-safe when its value neither identifies a
+   natural person nor carries content material. These MAY be committed in clear.
+
+2. **Digest-only** — when a value must be *provable later* without being
+   *disclosed now*, it MUST be committed as a digest, never in clear. This tier
+   covers payload content: material a verifier may need to check but that must
+   not be exposed in the record. This tier is realized by the selective-disclosure
+   / detached-payload model ({{selectivedisclosure}}): the Capsule carries only a
+   digest; content is held under deployment controls and disclosed selectively.
+
+3. **Never-enters** — end-user identity (session identifiers, user identifiers,
+   account handles) and secrets/credentials (tokens, keys) MUST NOT enter a
+   Capsule, in clear or as a digest. Critical: hashing is not anonymization for
+   low-entropy identifiers. Session and user identifiers and similar low-entropy
+   values are recoverable by dictionary attack against their digest (see also
+   {{security}}). Therefore a digest of such an identifier is not a safe
+   substitute — the digest re-identifies. Identity MUST be excluded, not digested.
+   Where cross-record or cross-slot correlation of a subject is genuinely required,
+   a pairwise or encrypted correlation identifier SHOULD be used instead of the
+   raw or hashed user identifier.
+
+## Adapter Allow-List Pattern {#adapter-allow-list}
+
+Adapters SHOULD adopt an allow-list stance: enumerate the fields that MAY enter
+a Capsule (tier 1, plus tier-2 digests) and default-deny everything else. A
+block-list — enumerating what may NOT enter — fails open: when a runtime adds a
+new context field in a later version, a block-list silently admits it. An allow-list
+fails closed, which is the correct direction for a record that cannot be retracted
+once committed. Adapter authors SHOULD publish the allow-list in adapter
+documentation so deployers can audit admission without reading implementation code.
+
+
+--- back
+
+# Changes from draft-mih-scitt-agent-action-capsule-05 {#changes-from-05}
+
+This appendix is non-normative. RFC Editor: please remove this appendix
+before publication.
+
+* JSON nesting: a JSON text or value under this profile nests at most 128
+  levels; a producer emits or digests nothing deeper, and a verifier
+  rejects deeper input as malformed before any check and never rejects
+  input 128 levels deep or less for its depth alone ({{conventions}},
+  {{verification}}).
+* Wire version unchanged: a producer conforming to this revision still
+  emits "draft-mih-scitt-agent-action-capsule-05", and verifier acceptance
+  of `spec_version` is unchanged ({{identity}}).
+
+# Changes from draft-mih-scitt-agent-action-capsule-04 {#changes-from-04}
+
+This appendix is non-normative. RFC Editor: please remove this appendix
+before publication.
+
+* Wire version: the `spec_version` value defined by this revision is
+  "draft-mih-scitt-agent-action-capsule-05". A producer conforming to this
+  revision emits it; a verifier accepts both
+  "draft-mih-scitt-agent-action-capsule-04" and
+  "draft-mih-scitt-agent-action-capsule-05", so a format-4 Capsule carrying
+  "draft-mih-scitt-agent-action-capsule-04" verifies unchanged. An
+  unrecognized value is informational, never by itself a rejection
+  ({{identity}}).
+* Format 4 only (contributed by Yiqun Zhang): format 4 with
+  `canonicalization_id: "jcs"` is the sole supported format for producers
+  and verifiers; the vintage format-2 and withdrawn `jcs-n` verification
+  path of -04 is removed, so a format-2 Capsule now fails closed. A
+  committed payload digest is SHA-256 over `UTF8(JCS(value))` for the whole
+  value, with JCS sorting applied recursively and no member allow-list,
+  replacer, or key filtering at any depth ({{conventions}}). `capsule_id`
+  is computed after removing local-only `signature` and `key_id` envelope
+  fields and `capsule_id`, with `references` participating ({{identity}}).
+  `log_coordinates.leaf_index` is a JSON integer holding the zero-based
+  MMR leaf index (a one-based sequence number `seq` is encoded as
+  `seq - 1`) ({{xref}}). Class 1 checks 1 and 2 are restated accordingly
+  ({{verification}}).
+* Provenance mode: an optional `provenance_mode` block distinguishes
+  contemporaneous from backfilled records, with the `duplicates`
+  `chain.relation`, the `corroborates_source_time` `citation_purpose`, and
+  Class 1 check 9 ({{provenancemode}}, {{verification}}).
+* New registrations: `chain.relation` `follows`, the bare next-link
+  ({{hitl}}); `citation_purpose` `ran_under`, with its grade
+  non-propagation rule, and `counterparty_half` and
+  `counterparty_inclusion` ({{xref}}); `effect.type` `inference_completion`
+  ({{effect}}); and `effect_attestation` `host_served_observed`, equal in
+  grade to `runtime_claimed` ({{effect}}).
+* Cross-record references: `{digest_alg, digest}` is stated normatively as
+  a reference's sole identity, with a non-normative rationale ("Why the
+  digest is the identity"); policy references are excluded; an optional,
+  declared-not-attested `retention` object is defined ({{xref}},
+  {{retentiondecl}}).
+* Cross-algorithm re-anchoring of an anchored root is specified
+  ({{reanchoring}}).
+* Assurance: a `confirmed` effect whose binding does not hold derives
+  `effect_mode` `dispatched_unconfirmed`; `chained` derives from the
+  Capsule's own chain block, and parent resolution never downgrades
+  `ledger_mode` ({{effect}}, {{assurance}}).
+* Class-1 approver check now defers to the Disposition section's closed
+  set ({{disposition}}), which the check had restated without
+  `counterparty` (reported by Imran Siddique, #108).
+* References: the selective-disclosure companion is cited as
+  {{I-D.mih-scitt-agent-action-capsule-sel-disc}}, correcting a citation of
+  a document that does not exist, and the sentence describing that
+  companion as a CPB payload-class document is removed; companion-draft
+  revision pins are updated; {{I-D.ietf-scitt-scrapi}} and {{RFC8392}} are
+  cited where already relied on.
+
+# Acknowledgments
+{:numbered="false"}
+
+The author thanks the reviewers and contributors who shaped the design
+recorded here, and the SCITT and COSE working groups whose substrate this
+profile builds on. The author additionally thanks Jody Edmondson for
+identifying the producer-context data-admission problem and the allow-list
+adapter pattern in capsule-emit issue #22, which shaped the Privacy
+Considerations of this document, and Imran Siddique for finding that
+the Class 1 verification section restated the `approver` set without
+`counterparty` (#108).
