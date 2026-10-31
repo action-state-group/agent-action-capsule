@@ -5,7 +5,8 @@
 The Producer Envelope encoding rule is definite lengths, the preferred
 (shortest) serialization of every argument and float, unique map keys, no tag
 but the outermost tag 18, a map as the unprotected header, and byte strings as
-payload and signature. The Python reference already enforced it;
+payload and signature, with no octet after the envelope or after the
+protected map inside its byte string. The Python reference already enforced it;
 draft-mih-scitt-agent-action-capsule-06 states it in the Producer Envelope
 wire profile. These cases pin the rule, on which the Go, Python, Rust and
 TypeScript verifiers once disagreed. Each envelope is written byte by byte and, where the protected bytes change,
@@ -286,6 +287,18 @@ def producer_envelope_cases() -> list[dict]:
             "protected-alg-map-duplicate-keys",
             "protected alg is a map whose two keys are one map with its entries in two orders",
             _envelope(_protected_map(b"\xa3", b"\x01\xa2\xa2\x01\x02\x03\x04\x00\xa2\x03\x04\x01\x02\x01", CT, KID)),
+            malformed,
+        ),
+        (
+            "outer-trailing-octet",
+            "a valid envelope followed by one more CBOR item, the integer 0",
+            _envelope() + b"\x00",
+            malformed,
+        ),
+        (
+            "protected-trailing-octet",
+            "signed protected-header byte string holding the protected map followed by the integer 0",
+            _envelope(PROTECTED + b"\x00"),
             malformed,
         ),
     ]
