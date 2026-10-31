@@ -705,6 +705,22 @@ async function bindingReport(
  * delivered statement at or before either. The record checks are
  * `controller-binding.ts`'s; only the join's reading of its report is here.
  */
+/**
+ * -02's binding digest: SHA-256 of the JCS of the record without `sigs`. A
+ * join names its record by it, so a record with another digest is skipped
+ * before any signature is checked.
+ */
+async function bindingDigest(
+  record: Record<string, unknown>,
+): Promise<string | undefined> {
+  const { sigs: _sigs, ...rest } = record;
+  try {
+    return await sha256Hex(jcs(rest));
+  } catch {
+    return undefined;
+  }
+}
+
 async function controllerBindingLink(
   j: Join,
   a: BindingSide,
@@ -723,12 +739,13 @@ async function controllerBindingLink(
   let derivable = false;
   for (const record of options.controllerBindings ?? []) {
     if (!object(record)) continue;
+    if ((await bindingDigest(record)) !== j.identifier) continue;
     const { report, wellFormed } = await bindingReport(
       record,
       times,
       statements,
     );
-    if (report === undefined || report.bindingDigest !== j.identifier) continue;
+    if (report === undefined) continue;
     if (!wellFormed) {
       // A malformed record does not apply: the join derives, unjoined.
       derivable = true;

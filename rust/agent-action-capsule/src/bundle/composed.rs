@@ -1242,6 +1242,16 @@ fn implemented(record: &Map<String, Value>) -> bool {
 /// before either. A join without `pointer` or `identifier_digest` names no
 /// record: not derivable. The record checks are `controller_binding`'s; only
 /// the join's reading of its report is here.
+/// -02's binding digest: SHA-256 of the JCS of the record without `sigs`. A
+/// join names its record by it, so a record with another digest is skipped
+/// before any signature is checked.
+fn binding_digest(record: &Map<String, Value>) -> Option<String> {
+    let mut rest = record.clone();
+    rest.remove("sigs");
+    let octets = canonical::jcs(&Value::Object(rest)).ok()?;
+    Some(hex::encode(<sha2::Sha256 as sha2::Digest>::digest(octets)))
+}
+
 fn controller_binding_link(
     j: &Join,
     a: &BindingSide,
@@ -1266,12 +1276,12 @@ fn controller_binding_link(
         let Some(record) = raw.as_object() else {
             continue;
         };
+        if binding_digest(record).as_deref() != Some(identifier.as_str()) {
+            continue;
+        }
         let (Some(report), well_formed) = binding_report(record, &times, &statements) else {
             continue;
         };
-        if report.binding_digest.as_deref() != Some(identifier.as_str()) {
-            continue;
-        }
         if !well_formed {
             // A malformed record does not apply: the join derives, unjoined.
             derivable = true;

@@ -195,10 +195,12 @@ class _Block:
 # --- the block ---------------------------------------------------------------
 
 
-def verify_composed(raw: Any, opts: ComposedOptions | None = None) -> ComposedResult:
+def verify_composed(raw: Any, opts: ComposedOptions | None = None, coverage_inputs: Mapping[str, Any] | None = None) -> ComposedResult:
     """Verify a composed/v1 block as carried in a Bundle's extensions. Carried
-    member bundles are verified recursively with ``opts``."""
+    member bundles are verified recursively with ``opts`` and the same
+    ``category_coverage`` inputs."""
     opts = opts or ComposedOptions()
+    coverage_inputs = coverage_inputs or {}
     block, reason = _parse_composed(raw)
     if reason:
         return ComposedResult("fail", [f"composed_block_malformed:{reason}"], malformed=True)
@@ -228,7 +230,7 @@ def verify_composed(raw: Any, opts: ComposedOptions | None = None) -> ComposedRe
     by_id: dict = {}
     for m in block.members:
         by_id[m.id] = m
-        member, member_closure, member_failed, member_withheld = _verify_member(m, missing.get(m.id, False), opts)
+        member, member_closure, member_failed, member_withheld = _verify_member(m, missing.get(m.id, False), opts, coverage_inputs)
         result.members.append(member)
         closure_findings += member_closure
         failed += member_failed
@@ -265,7 +267,7 @@ def verify_composed(raw: Any, opts: ComposedOptions | None = None) -> ComposedRe
     return result
 
 
-def _verify_member(m: _Member, declared_missing: bool, opts: ComposedOptions):
+def _verify_member(m: _Member, declared_missing: bool, opts: ComposedOptions, coverage_inputs: Mapping[str, Any]):
     from .bundle import bundle_digest, verify_bundle
 
     out = ComposedMemberResult(m.id, m.observer, m.outcome)
@@ -291,7 +293,7 @@ def _verify_member(m: _Member, declared_missing: bool, opts: ComposedOptions):
             computed = bundle_digest(m.body)
         except _DIGEST_ERRORS:
             computed = ""
-        out.bundle = verify_bundle(m.body, composed_options=opts)
+        out.bundle = verify_bundle(m.body, composed_options=opts, **coverage_inputs)
         # A carried response binds the artifact to the request it answered:
         # the request digest it signs is the member's, and the artifact digest
         # it signs is the member's bundle digest.
@@ -589,6 +591,16 @@ def _implemented(record: Mapping[str, Any]) -> bool:
     return record.get("method") == want and _ed25519_keys(record)
 
 
+def _binding_digest(record: Mapping[str, Any]) -> str | None:
+    """-02's binding digest: SHA-256 of the JCS of the record without ``sigs``.
+    A join names its record by it, so a record with another digest is skipped
+    before any signature is checked."""
+    try:
+        return hashlib.sha256(jcs({k: v for k, v in record.items() if k != "sigs"})).hexdigest()
+    except _DIGEST_ERRORS:
+        return None
+
+
 def _controller_binding_link(j: _Join, a: _Side, b: _Side, opts: ComposedOptions):
     """The linkage of a controller_binding join between two root records, as
     ``(linked, derivable)``. ``derivable`` is false when no delivered binding
@@ -611,9 +623,9 @@ def _controller_binding_link(j: _Join, a: _Side, b: _Side, opts: ComposedOptions
             pass
     derivable = False
     for record in opts.controller_bindings:
-        report, well_formed = _binding_report(record, times, statements)
-        if report.binding_digest != j.identifier:
+        if not isinstance(record, Mapping) or _binding_digest(record) != j.identifier:
             continue
+        report, well_formed = _binding_report(record, times, statements)
         if not well_formed:
             # A malformed record does not apply: the join derives, unjoined.
             derivable = True

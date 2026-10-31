@@ -225,3 +225,11 @@ def test_binding_form_rules_of_minus_02():
     typed["key_types"] = ["ed25519", "bip340"]
     assert c._binding_report(typed, [], [])[1] is True
     assert c._implemented(typed) is False
+
+
+def test_a_delivered_record_that_is_not_an_object_is_skipped():
+    case = next(x for x in BINDING if x["id"] == "controller-binding-linked")
+    opts = c.ComposedOptions(controller_bindings=["not an object", 7, None, *case["controller_bindings"]])
+    result = verify_bundle(case["container"], composed_options=opts)
+    joins = next(e.composed for e in result.extensions if e.composed is not None).joins
+    assert [j.derived for j in joins] == ["agree"]

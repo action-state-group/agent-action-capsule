@@ -30,7 +30,7 @@
   "vectors/cll-material/": {"python": ["test_cll_material_vectors.py"], "go": ["./evidencerequest"], "rust": ["evidence-request:cll_material_vectors"]},
   "vectors/json-nesting/": {"python": ["test_json_nesting_vectors.py"], "ts": ["json-nesting.test.ts"], "go": ["./canonical", "./evidencerequest"], "rust": ["agent-action-capsule:json_nesting"]},
   "vectors/coverage-declaration-v0/": {"python": ["test_coverage_declaration_v0_vectors.py"]},
-  "vectors/controller-binding-v0/": {"python": ["test_controller_binding_v0_vectors.py", "test_controller_binding_library.py"], "ts": ["controller-binding-vectors.test.ts"], "go": ["./controllerbinding"]},
+  "vectors/controller-binding-v0/": {"python": ["test_controller_binding_v0_vectors.py", "test_controller_binding_library.py"], "ts": ["controller-binding-vectors.test.ts"], "go": ["./controllerbinding"], "rust": ["evidence-request:controller_binding_vectors"]},
   "vectors/personal-history-basic-v0/": {"python": ["test_personal_history_basic_v0_vectors.py"], "go": ["./personalhistory"]},
   "vectors/personal-history-outcome-v0/": {"python": ["test_personal_history_outcome_v0_vectors.py"]},
   "vectors/standard-history-v0/": {"python": ["test_standard_history_v0_vectors.py"], "go": ["./standardhistory"]},
