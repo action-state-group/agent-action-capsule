@@ -33,7 +33,8 @@ GOWORK=off go run ./cmd/vector_runner/
 the strict verdict (`VALID`, `INCOMPLETE` or `INVALID`).
 `bundle.VerifyBundleForPage` reads a Bundle as the TypeScript page context
 does (`bundle.VerifyBundle`, with a producer selection the strict checks do not
-reject read through `bundle.VerifyStrict`), and `bundle.Verified` is the page's
+reject read through `bundle.VerifyStrict`, and one they call INVALID refused),
+and `bundle.Verified` is the page's
 verification gate on that result (`spec/verification-display-v0.md` section 1,
 TypeScript `bundleVerified`). The presentation resolver that was `presentation/`
 is now `github.com/action-state-group/capsule-viewer/go/presentation`.

@@ -28,13 +28,15 @@
 //! CLL backend and a [`RecordSource`]; [`build_unproven_bundle`] builds the
 //! form with no log proof.
 
+mod category_coverage;
+pub use category_coverage::{
+    category_coverage_signing_input, check_category_coverage, CategoryCoverage, CategoryInputs,
+    CATEGORY_COVERAGE_GATING, CATEGORY_COVERAGE_PROPERTIES, CATEGORY_STATUSES,
+};
 #[cfg(feature = "strict")]
 mod strict;
 #[cfg(feature = "strict")]
-pub use strict::{
-    verify_bundle_strict, RecordResult, StrictOptions, StrictVerificationResult,
-    SELECTION_PRODUCER_SELECTED,
-};
+pub use strict::{verify_bundle_strict, RecordResult, StrictOptions, StrictVerificationResult};
 #[cfg(feature = "strict")]
 mod producer;
 #[cfg(feature = "strict")]
@@ -54,6 +56,16 @@ use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 
 const B64: base64::engine::GeneralPurpose = base64::engine::general_purpose::URL_SAFE_NO_PAD;
+
+/// `completeness.selection` of a producer-selected Bundle: records the
+/// producer picked from its log, each proven on its own, with no claim about
+/// the records between them (Bundle -02).
+pub const SELECTION_PRODUCER_SELECTED: &str = "producer-selected";
+
+/// The finding for a `completeness.selection` value naming a certificate mode
+/// this verifier does not implement (Bundle -02): interval coverage and
+/// per-record membership are withheld, never failed.
+pub const CERTIFICATE_MODE_UNSUPPORTED: &str = "certificate_mode_unsupported";
 
 // ---- public result types --------------------------------------------------
 
@@ -115,6 +127,9 @@ pub struct VerificationResult {
     pub countersignatures: Vec<CountersignatureResult>,
     pub verification: Option<ProducerSelfReport>,
     pub capsule_results: BTreeMap<String, verify::VerificationResult>,
+    /// The `category_coverage` member's five properties, in report order, or
+    /// `None` when the Bundle carries no such member.
+    pub category_coverage: Option<CategoryCoverage>,
 }
 
 #[derive(Debug)]
@@ -571,18 +586,23 @@ fn authenticate_checkpoint(
     }
 }
 
+/// Per-record membership over `[first, last]`: every finding in report
+/// order, and whether any of them fails the claim (the others are
+/// `non_record_leaf_type_unsupported`, which withhold it). Every seq of the
+/// interval is a record's membership, a non-record leaf, or
+/// `membership_record_missing`.
 fn verify_memberships(
     root: &[u8; 32],
     log_id: &str,
     first: i64,
     last: i64,
-    raw: Option<&Value>,
+    certificate: &Map<String, Value>,
     records: &BTreeMap<String, Map<String, Value>>,
     completeness: Option<&Value>,
-) -> Vec<String> {
-    let members = match raw.and_then(Value::as_object) {
+) -> (Vec<String>, bool) {
+    let members = match certificate.get("memberships").and_then(Value::as_object) {
         Some(m) => m,
-        None => return vec!["memberships_absent".to_string()],
+        None => return (vec!["memberships_absent".to_string()], true),
     };
     let mut by_seq: BTreeMap<i64, String> = BTreeMap::new();
     let mut bound_records: HashSet<String> = HashSet::new();
@@ -633,8 +653,25 @@ fn verify_memberships(
         }
     }
 
+    let mut leaf_seqs = HashSet::new();
+    let mut unsupported = 0;
+    if let Some(raw_leaves) = certificate.get("non_record_leaves") {
+        let leaf_findings;
+        (leaf_findings, leaf_seqs) = non_record_leaves(
+            raw_leaves,
+            first,
+            last,
+            certificate.get("body_digests"),
+            &stated_seqs(members),
+        );
+        unsupported = leaf_findings
+            .iter()
+            .filter(|f| f.starts_with(UNSUPPORTED_LEAF))
+            .count();
+        findings.extend(leaf_findings);
+    }
     for seq in first..=last {
-        if !by_seq.contains_key(&seq) {
+        if !by_seq.contains_key(&seq) && !leaf_seqs.contains(&seq) {
             findings.push(format!("membership_record_missing:{seq}"));
         }
     }
@@ -654,7 +691,111 @@ fn verify_memberships(
             findings.push(format!("membership_record_unbound:{id}"));
         }
     }
-    findings
+    let failed = findings.len() > unsupported;
+    (findings, failed)
+}
+
+const UNSUPPORTED_LEAF: &str = "non_record_leaf_type_unsupported:";
+
+/// The one non-record leaf type a range can carry (Bundle -02, Evidence Layer
+/// padding), and the exact members of its content.
+const PADDING: &str = "padding";
+const PADDING_MEMBERS: [&str; 4] = ["capsule_id", "epistemic_type", "record_type", "store_nonce"];
+
+/// Every seq a `memberships` entry states in `log_coordinates`, whatever else
+/// is wrong with the entry: a non-record leaf may not claim one.
+fn stated_seqs(members: &Map<String, Value>) -> HashSet<i64> {
+    members
+        .values()
+        .filter_map(|member| {
+            let coordinates = member.get("log_coordinates")?;
+            as_bundle_int(coordinates.get("seq"))
+        })
+        .collect()
+}
+
+/// Checks `completeness_certificate.non_record_leaves` (Bundle -02): the
+/// findings in element order and the seqs the member accounts for. Every
+/// finding fails the claim except `non_record_leaf_type_unsupported:<seq>`.
+/// An element whose `seq` is valid accounts for that seq whatever else it
+/// fails, so the seq is never also reported missing. `body_digests` has
+/// already been checked by the range proof.
+fn non_record_leaves(
+    raw: &Value,
+    first: i64,
+    last: i64,
+    body_digests: Option<&Value>,
+    record_seqs: &HashSet<i64>,
+) -> (Vec<String>, HashSet<i64>) {
+    let mut accounted = HashSet::new();
+    let Some(elements) = raw.as_array() else {
+        return (vec!["non_record_leaves_malformed".to_string()], accounted);
+    };
+    let digests = body_digests.and_then(Value::as_array);
+    let mut findings = Vec::new();
+    for (index, element) in elements.iter().enumerate() {
+        let Some(element) = element.as_object() else {
+            findings.push(format!("non_record_leaf_element_invalid:{index}"));
+            continue;
+        };
+        let seq = match as_bundle_int(element.get("seq")) {
+            Some(seq)
+                if seq >= first
+                    && seq <= last
+                    && !record_seqs.contains(&seq)
+                    && !accounted.contains(&seq) =>
+            {
+                seq
+            }
+            _ => {
+                findings.push(format!("non_record_leaf_seq_invalid:{index}"));
+                continue;
+            }
+        };
+        accounted.insert(seq);
+        let content = element.get("content").and_then(Value::as_object);
+        let Some((content, record_type)) =
+            content.and_then(|c| Some((c, c.get("record_type")?.as_str()?)))
+        else {
+            // Includes an element that carries a digest in place of content.
+            findings.push(format!("non_record_leaf_malformed:{seq}"));
+            continue;
+        };
+        if record_type != PADDING {
+            findings.push(format!("{UNSUPPORTED_LEAF}{seq}"));
+            continue;
+        }
+        let shaped = content.len() == PADDING_MEMBERS.len()
+            && PADDING_MEMBERS
+                .iter()
+                .all(|name| content.contains_key(*name))
+            && is_str(content.get("epistemic_type"), "producer_claim")
+            && content
+                .get("store_nonce")
+                .and_then(Value::as_str)
+                .is_some_and(verify::is_hex64)
+            && content
+                .get("capsule_id")
+                .and_then(Value::as_str)
+                .is_some_and(verify::is_hex64);
+        if !shaped {
+            findings.push(format!("non_record_leaf_malformed:{seq}"));
+            continue;
+        }
+        let body = digests.and_then(|d| d.get((seq - first) as usize));
+        match padding_leaf(content) {
+            Some(leaf) if is_str(content.get("capsule_id"), &leaf) && is_str(body, &leaf) => {}
+            _ => findings.push(format!("non_record_leaf_mismatch:{seq}")),
+        }
+    }
+    (findings, accounted)
+}
+
+/// A padding record's leaf: JSON-DIGEST of its content without `capsule_id`.
+fn padding_leaf(content: &Map<String, Value>) -> Option<String> {
+    let mut preimage = content.clone();
+    preimage.remove("capsule_id");
+    canonical::json_digest(&Value::Object(preimage)).ok()
 }
 
 /// `completeness_certificate` and `checkpoint`, when supplied, support three
@@ -679,6 +820,22 @@ fn completeness(
             return (absent.clone(), absent);
         }
     };
+    if let Some(selection) = bundle
+        .get("completeness")
+        .and_then(Value::as_object)
+        .and_then(|c| c.get("selection"))
+    {
+        if is_str(Some(selection), SELECTION_PRODUCER_SELECTED) {
+            return plain_selected(bundle, checkpoint);
+        }
+        // A certificate mode this verifier does not implement: not shown, and
+        // never a failure (Bundle -02).
+        let unsupported = ClaimResult {
+            status: "withheld".to_string(),
+            findings: vec![CERTIFICATE_MODE_UNSUPPORTED.to_string()],
+        };
+        return (unsupported.clone(), unsupported);
+    }
     let (root, log_id, first, last, proof) = match certificate_data(certificate, checkpoint) {
         Some(data) => data,
         None => {
@@ -695,27 +852,184 @@ fn completeness(
         let failure = ClaimResult::fail(vec!["checkpoint_authentication_invalid".to_string()]);
         return (failure.clone(), failure);
     }
-    let membership_findings = verify_memberships(
+    let (mut findings, failed) = verify_memberships(
         &root,
         &log_id,
         first,
         last,
-        certificate.get("memberships"),
+        certificate,
         records,
         bundle.get("completeness"),
     );
-    let mut interval = ClaimResult::pass();
-    if authentication != "verified" {
-        interval.findings = vec!["checkpoint_unverified".to_string()];
+    let qualifier: Vec<String> = if authentication == "verified" {
+        Vec::new()
+    } else {
+        vec!["checkpoint_unverified".to_string()]
+    };
+    let interval = ClaimResult {
+        status: "pass".to_string(),
+        findings: qualifier.clone(),
+    };
+    if failed {
+        return (interval, ClaimResult::fail(findings));
     }
-    if !membership_findings.is_empty() {
-        return (interval, ClaimResult::fail(membership_findings));
+    if !findings.is_empty() {
+        findings.extend(qualifier);
+        let withheld = ClaimResult {
+            status: "withheld".to_string(),
+            findings,
+        };
+        return (interval, withheld);
     }
-    let mut membership = ClaimResult::pass();
-    if authentication != "verified" {
-        membership.findings = vec!["checkpoint_unverified".to_string()];
+    (interval.clone(), interval)
+}
+
+/// A producer-selected Bundle without strict mode: no interval to check;
+/// each record's own proof against the stated checkpoint, qualified like a
+/// range Bundle's when the checkpoint's COSE form does not authenticate it.
+fn plain_selected(
+    bundle: &Map<String, Value>,
+    checkpoint: &Map<String, Value>,
+) -> (ClaimResult, ClaimResult) {
+    let interval = ClaimResult {
+        status: "withheld".to_string(),
+        findings: vec!["selection_not_checkable".to_string()],
+    };
+    let null = Value::Null;
+    let stated = |name: &str| checkpoint.get(name).unwrap_or(&null);
+    let membership =
+        selected_membership(bundle, stated("root"), stated("mmr_size"), stated("log_id"));
+    if membership.status != "pass" {
+        return (interval, membership);
     }
+    // selected_membership passed, so these are a string, 64 hex digits and a
+    // safe integer.
+    let log_id = stated("log_id").as_str().unwrap_or_default();
+    let root: [u8; 32] = hex::decode(stated("root").as_str().unwrap_or_default())
+        .ok()
+        .and_then(|r| r.try_into().ok())
+        .unwrap_or_default();
+    let size = as_bundle_int(Some(stated("mmr_size"))).unwrap_or_default();
+    let authentication = match u64::try_from(size) {
+        Ok(size) => authenticate_checkpoint(checkpoint, log_id, &root, size),
+        Err(_) if !checkpoint.contains_key("cose") => "unverified",
+        Err(_) => "invalid",
+    };
+    let membership = match authentication {
+        "invalid" => ClaimResult::fail(vec!["checkpoint_authentication_invalid".to_string()]),
+        "verified" => ClaimResult::pass(),
+        _ => ClaimResult {
+            status: "pass".to_string(),
+            findings: vec!["checkpoint_unverified".to_string()],
+        },
+    };
     (interval, membership)
+}
+
+/// Each record's inclusion proof against `root_hex` and `size`, for a
+/// producer-selected Bundle. A `non_record_leaves` member makes the
+/// certificate invalid: with no range there is no interval for it to cover.
+fn selected_membership(
+    bundle: &Map<String, Value>,
+    root_hex: &Value,
+    size: &Value,
+    log_id: &Value,
+) -> ClaimResult {
+    let invalid = || ClaimResult::fail(vec!["completeness_certificate_invalid".to_string()]);
+    let Some(certificate) = bundle
+        .get("completeness_certificate")
+        .and_then(Value::as_object)
+    else {
+        return invalid();
+    };
+    let (Some(members), Some(log_id), Some(root_text), Some(size)) = (
+        certificate.get("memberships").and_then(Value::as_object),
+        log_id.as_str(),
+        root_hex.as_str(),
+        as_bundle_int(Some(size)),
+    ) else {
+        return invalid();
+    };
+    if certificate.contains_key("non_record_leaves")
+        || !is_str(certificate.get("range_root"), root_text)
+        || !is_str(certificate.get("log_id"), log_id)
+        || !verify::is_hex64(root_text)
+    {
+        return invalid();
+    }
+    let root: [u8; 32] = match hex::decode(root_text).ok().and_then(|r| r.try_into().ok()) {
+        Some(r) => r,
+        None => return invalid(),
+    };
+    let ids: Vec<String> = bundle
+        .get("records")
+        .and_then(Value::as_array)
+        .map_or(&[][..], Vec::as_slice)
+        .iter()
+        .filter_map(Value::as_object)
+        .map(|r| {
+            r.get("capsule_id")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string()
+        })
+        .collect();
+    let mut findings = Vec::new();
+    let mut seen: HashSet<i64> = HashSet::new();
+    for cid in &ids {
+        let member = members.get(cid).and_then(Value::as_object);
+        let coords = match member
+            .and_then(|m| m.get("log_coordinates"))
+            .and_then(Value::as_object)
+        {
+            Some(c) => c,
+            None => {
+                findings.push(format!("membership_record_unbound:{cid}"));
+                continue;
+            }
+        };
+        let seq = as_bundle_int(coords.get("seq"));
+        let index = as_bundle_int(coords.get("leaf_index"));
+        let (seq, index) = match (seq, index) {
+            (Some(seq), Some(index))
+                if is_str(coords.get("log_id"), log_id)
+                    && seq >= 1
+                    && index == seq - 1
+                    && !seen.contains(&seq) =>
+            {
+                (seq, index)
+            }
+            _ => {
+                findings.push(format!("membership_coordinates_invalid:{cid}"));
+                continue;
+            }
+        };
+        seen.insert(seq);
+        let proof = parse_inclusion_proof(member.and_then(|m| m.get("inclusion_proof")));
+        let leaf: Option<[u8; 32]> = hex::decode(cid).ok().and_then(|b| b.try_into().ok());
+        let proof_ok = match (proof, leaf, u64::try_from(size)) {
+            (Some(proof), Some(leaf), Ok(size)) => {
+                proof.size == size
+                    && mmr::verify_inclusion(&root, size, index as u64, &leaf, &proof)
+            }
+            _ => false,
+        };
+        if !proof_ok {
+            findings.push(format!("membership_proof_invalid:{cid}"));
+        }
+    }
+    let mut unknown: Vec<&String> = members.keys().filter(|cid| !ids.contains(cid)).collect();
+    unknown.sort();
+    findings.extend(
+        unknown
+            .into_iter()
+            .map(|cid| format!("membership_record_unknown:{cid}")),
+    );
+    if findings.is_empty() {
+        ClaimResult::pass()
+    } else {
+        ClaimResult::fail(findings)
+    }
 }
 
 // ---- disclosures --------------------------------------------------------------
@@ -869,6 +1183,7 @@ fn malformed_bundle() -> VerificationResult {
         countersignatures: Vec::new(),
         verification: None,
         capsule_results: BTreeMap::new(),
+        category_coverage: None,
     }
 }
 
@@ -879,6 +1194,12 @@ fn malformed_bundle() -> VerificationResult {
 /// a caller-built `Value` cannot overflow the stack), is `bundle_malformed`
 /// on every claim.
 pub fn verify_bundle(value: &Value) -> VerificationResult {
+    verify_bundle_with(value, &CategoryInputs::default())
+}
+
+/// [`verify_bundle`] with the inputs a Bundle cannot carry for its
+/// `category_coverage` member ([`CategoryInputs`]).
+pub fn verify_bundle_with(value: &Value, category: &CategoryInputs) -> VerificationResult {
     let bundle = match value.as_object() {
         Some(b) if !crate::json::exceeds_max_depth(value) => b,
         _ => return malformed_bundle(),
@@ -920,6 +1241,7 @@ pub fn verify_bundle(value: &Value) -> VerificationResult {
         countersignatures,
         verification,
         capsule_results,
+        category_coverage: check_category_coverage(bundle, category),
     }
 }
 

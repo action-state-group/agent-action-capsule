@@ -43,6 +43,19 @@ type ResponseSignatureVerifier func(response map[string]interface{}) string
 type Options struct {
 	RefusalSignature  RefusalSignatureVerifier
 	ResponseSignature ResponseSignatureVerifier
+	// ControllerBindings are the binding records delivered beside the
+	// Bundle, and BindingRevocations the revocation statements, that a
+	// controller_binding join is derived from (bundle -02, "Controller
+	// Binding Records"). A join whose record was not delivered is
+	// not_derivable.
+	ControllerBindings []map[string]interface{}
+	BindingRevocations []map[string]interface{}
+	// CategorySets, CategoryRequest and RecordCategories are the inputs a
+	// Bundle cannot carry for its category_coverage member; see
+	// CheckCategoryCoverage.
+	CategorySets     map[string][]string
+	CategoryRequest  []byte
+	RecordCategories map[string]*string
 }
 
 // ComposedDigestResult is the recomputed composed digest beside the declared one.
@@ -149,7 +162,7 @@ var labelRE = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
 
 var (
 	composedOutcomes = map[string]string{"artifact": "bundle", "refusal": "refusal", "absence": "absence"}
-	joinBases        = map[string]bool{"pre_agreed_identifier": true, "shared_artifact_digest": true, "issued_receipt": true, "same_interval": true}
+	joinBases        = map[string]bool{"pre_agreed_identifier": true, "shared_artifact_digest": true, "issued_receipt": true, "same_interval": true, "controller_binding": true}
 	joinStates       = map[string]bool{"agree": true, "mismatch": true, "unjoined": true, "one_sided": true}
 )
 
@@ -242,7 +255,7 @@ func VerifyComposed(raw interface{}, opts Options) ComposedResult {
 		observers[o.id] = o
 	}
 	for _, j := range block.joins {
-		joinResult := deriveJoin(j, byID, missing)
+		joinResult := deriveJoin(j, byID, missing, opts)
 		result.Joins = append(result.Joins, joinResult)
 		pair := j.members[0] + "," + j.members[1]
 		switch joinResult.Result {
@@ -370,9 +383,9 @@ func rootRecord(m composedMember) map[string]interface{} {
 	return nil
 }
 
-func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[string]bool) ComposedJoinResult {
+func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options) ComposedJoinResult {
 	out := ComposedJoinResult{Members: j.members, Basis: j.basis, Declared: j.state}
-	out.Derived, out.Differences = derivedState(j, byID, missing)
+	out.Derived, out.Differences = derivedState(j, byID, missing, opts)
 	switch {
 	case out.Derived == "":
 		out.Result = "not_derivable"
@@ -384,19 +397,46 @@ func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[stri
 	return out
 }
 
-func derivedState(j composedJoin, byID map[string]composedMember, missing map[string]bool) (string, []JoinDifference) {
+func derivedState(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options) (string, []JoinDifference) {
 	a, b := byID[j.members[0]], byID[j.members[1]]
-	artifacts := 0
+	// An artifact member counts as having records unless its carried Bundle
+	// is an empty-history Bundle, which shows no history.
+	var withRecords, empty []composedMember
 	for _, m := range []composedMember{a, b} {
-		if m.outcome == "artifact" {
-			artifacts++
+		switch {
+		case m.outcome != "artifact":
+		case !missing[m.id] && m.body != nil && EmptyHistory(m.body):
+			empty = append(empty, m)
+		default:
+			withRecords = append(withRecords, m)
 		}
 	}
-	switch artifacts {
+	switch len(withRecords) {
 	case 0:
 		return "unjoined", nil
 	case 1:
-		return "one_sided", nil
+		if len(empty) == 0 || j.basis != "controller_binding" {
+			return "one_sided", nil
+		}
+		// controller_binding still derives against an empty-history member,
+		// from the key that signed its checkpoint at that checkpoint's time.
+		full := withRecords[0]
+		if missing[full.id] || j.pointer == nil {
+			return "", nil
+		}
+		record := rootRecord(full)
+		side, keyed := checkpointSide(empty[0].body)
+		if record == nil || !keyed {
+			return "", nil
+		}
+		linked, derivable := controllerBindingLink(j, recordSide(record, *j.pointer), side, opts)
+		switch {
+		case !derivable:
+			return "", nil
+		case linked:
+			return "one_sided", nil
+		}
+		return "unjoined", nil
 	}
 	if missing[a.id] || missing[b.id] {
 		return "", nil
@@ -417,6 +457,14 @@ func derivedState(j composedJoin, byID map[string]composedMember, missing map[st
 			sa, strA := va.(string)
 			sb, strB := vb.(string)
 			linked = okA && okB && strA && strB && sa == sb
+		}
+	case "controller_binding":
+		if j.pointer == nil {
+			return "", nil
+		}
+		var derivable bool
+		if linked, derivable = controllerBindingLink(j, recordSide(ra, *j.pointer), recordSide(rb, *j.pointer), opts); !derivable {
+			return "", nil
 		}
 	default:
 		return "", nil
@@ -473,6 +521,11 @@ func corroboration(j composedJoin, derived string, byID map[string]composedMembe
 	keyB, okB := rootRecord(b)["key_id"].(string)
 	if okA && okB && keyA == keyB {
 		out.Reasons = append(out.Reasons, "same_key_id")
+	}
+	// A controller_binding agreement is the bound keys' holders agreeing:
+	// their keys are not independent issuers (bundle -02).
+	if j.basis == "controller_binding" {
+		out.Reasons = append(out.Reasons, "controller_binding")
 	}
 	if len(out.Reasons) != 0 {
 		out.Result = "redundant"

@@ -72,7 +72,11 @@ GENERATORS = (
     "generate_min_necessary_vectors.py",
     "generate_bundle_producer_key_vectors.py",
     "generate_bundle_composed_vectors.py",
+    # Reuses the composed generator's records, keys and block helpers.
+    "generate_bundle_composed_cb_vectors.py",
     "generate_bundle_strict_vectors.py",
+    # Reuses the strict generator's records, keys and checkpoint signer.
+    "generate_bundle_02_vectors.py",
     "generate_bundle_producer_fixture.py",
     "generate_verify_number_findings_fixture.py",
     "generate_judgment_extension_vectors.py",

@@ -4,8 +4,8 @@
 Internet-Draft. It defines one signed object, the **binding record**, by which the holders of two
 signing keys jointly state how the two keys are related, and the properties a verifier reports for
 it. The Minimum Evidence Interoperability Profile (`spec/interop-profile-v0.md`, cited here as IP)
-uses it in issuer independence (IP §6.7.4). It is proposed as a `composed/v1` join basis for a
-later revision of the Evidence Bundle draft (§8). Where this document needs a rule that no other
+uses it in issuer independence (IP §6.7.4). Evidence Bundle `-02` restates the binding record and
+defines the `controller_binding` `composed/v1` join basis from it (§8). Where this document needs a rule that no other
 document states, it lists it under [Open points](#11-open-points) (CB-1, CB-2, …).
 
 A binding record shows that whoever held each of the two private keys signed it. That is all its
@@ -16,14 +16,15 @@ signatures show. It does not show who controls either key, and it never establis
 **Owns:** the binding record, its member names and signing input (§3, §4), the claim types and
 their verification methods (§3.2), the key types and how each signs (§3.3, §4.1), the revocation
 statement (§5), the declaration of a complete revocation list (§5.1), the binding properties (§6),
-what a verifier reports (§7), and the proposed `controller_binding` join basis (§8).
+what a verifier reports (§7), and the `controller_binding` join basis derivation that EB `-02`
+adopts (§8).
 
 **Uses unchanged:**
 
 | Tag | Document | What this document takes from it |
 |---|---|---|
 | IP | `spec/interop-profile-v0.md` (`evidence-interop/0`) | the value conventions (§5.2), the as-transmitted rule for foreign objects (§5.1), the per-property status vocabulary (§7.1), issuer independence (§6.7.4) |
-| EB | `draft-mih-zhang-agent-disclosure-bundle` -01 working revision (`spec/draft-mih-zhang-agent-disclosure-bundle-01.md`) | the `composed/v1` block, its joins and its redundancy rule ("The composed/v1 Extension") |
+| EB | `draft-mih-zhang-agent-disclosure-bundle` -02 (`spec/draft-mih-zhang-agent-disclosure-bundle-02.md`; -01 posted 2026-10-20) | the `composed/v1` block, its joins and its redundancy rule ("The composed/v1 Extension") |
 | BIP-340 | Bitcoin Improvement Proposal 340, "Schnorr Signatures for secp256k1" | x-only public keys and signature verification, for the `bip340` key type (§3.3, §4.1) |
 | NIP-01 | Nostr Implementation Possibilities 01, "Basic protocol flow description" | the event, its serialization and its id, for the `bip340` key type (§4.1) |
 
@@ -354,10 +355,12 @@ that two keys have *distinct* controllers is still open (IP P-60).
 
 ## 8. The `controller_binding` join basis
 
-### 8.1 Proposed derivation
+### 8.1 Derivation
 
-EB's `composed/v1` joins name a linkage basis from a closed list ("Joins"). This document proposes
-one more basis, `controller_binding`, for the next revision of EB:
+EB's `composed/v1` joins name a linkage basis from a closed list ("Joins"). EB `-02` adds
+`controller_binding` with this derivation, and restates the binding record, its signing input,
+revocation and §6.2 in its section "Controller Binding Records", so that the I-D cites no document
+in this repository:
 
 - `identifier_digest` is the binding digest (§4). `pointer` selects a key identifier in each
   member's root record, for example its `key_id`. The two selected values differ: they are the two
@@ -368,12 +371,25 @@ one more basis, `controller_binding`, for the next revision of EB:
 - The two members are *linked* when all of these hold:
   - the delivered record's binding digest equals `identifier_digest`;
   - the two values `pointer` selects are the record's two `keys`, one in each root record;
-  - the record applies (§6.2) to those two keys, with T the time each root record was issued.
+  - the record applies (§6.2) to those two keys, with T each root record's `timestamp`. Times
+    compare as instants; a `timestamp` may carry fractional seconds.
 - Once the members are linked, `compare` gives `agree` or `mismatch` exactly as EB says. EB's join
   says two records are about the same thing. Under this basis, that thing is the activity of the
   keys' holders, as both of them stated it.
 - A verifier that does not have the binding record, or does not implement this basis, reports the
-  join as `not_derivable`, as EB requires for any basis it cannot derive.
+  join as `not_derivable`, as EB requires for any basis it cannot derive. So does a verifier that
+  has the record but does not implement its `method`, or a key type its `key_types` names (EB `-02`
+  defines only `ed25519`). Under §6.2 such a record does not
+  apply, but a verifier that cannot check the signatures cannot derive the join either, and a
+  method it lacks must not fail a block a verifier with the method passes. A record that is
+  malformed, signed by one key, outside its window or revoked does not apply, and the join derives
+  `unjoined`.
+- A member may be an EB `-02` *empty-history Bundle*: no records and no root, a stream with no
+  history (never started, or cleared by starting a new stream with a new `log_id` under the same
+  key). The join still derives. That member's key is the one that signed its `checkpoint.cose`,
+  and its T is that checkpoint's `timestamp`. Linked gives `one_sided`, never `agree`, since
+  nothing was compared; not linked gives `unjoined`; a member without a checkpoint that verifies
+  has no key, and the join is `not_derivable`.
 - A `controller_binding` join that derives `agree` is `redundant`: it is added to the cases in
   EB's "Observers and Redundancy". The linked members' keys are not independent issuers (§7), so
   their agreement is not corroboration.
@@ -382,21 +398,24 @@ This is how a composite joins two families of records: service records under a n
 personal agent's records under a holder key. The join shows the two records are under keys whose
 holders bound them. It says nothing about who those holders are.
 
-### 8.2 How it is registered in this revision
+### 8.2 How it is registered
 
-EB `-01` is an unposted working revision, and its `join-basis` is a closed list. This document does
-not edit it. Until an EB revision adds `controller_binding` to `join-basis`, an EB `-01` verifier
-reads a `composed/v1` block carrying it as malformed. So:
+EB `-02` adds `controller_binding` to `join-basis` and to the redundancy cases ("Observers and
+Redundancy"). EB `-01`, posted 2026-10-20, does not list it, and a `-01` verifier reads a
+`composed/v1` block carrying it as malformed. So:
 
-1. `controller_binding` is listed in `REGISTRY.md` under "Provisional: composed/v1 join basis
-   values", **held for ratification and not yet registered**, alongside EB's four values for
-   reference.
-2. A producer MUST NOT put a `controller_binding` join in a `composed/v1` block until a posted EB
-   revision lists it.
-3. Until then, the binding is used only beside the composition, under IP §6.7.4. A verifier
-   compares two members presented as corroborating, and the binding makes them redundant.
+1. `controller_binding` is listed in `REGISTRY.md` under "composed/v1 join basis values" as
+   **registered by EB `-02`**, alongside EB's four other values.
+2. A producer MUST NOT put a `controller_binding` join in a `composed/v1` block until EB `-02` is
+   posted. From then on it MAY, and a verifier that implements only `-01` still reads that block as
+   malformed.
+3. Before then, and for a verifier that does not implement the basis, the binding is used beside
+   the composition, under IP §6.7.4. A verifier compares two members presented as corroborating,
+   and the binding makes them redundant.
 
-Adding the basis to EB is a change to a co-authored draft and needs its authors' agreement (CB-5).
+EB `-02` is co-authored; its authors agree to it at the bytes submitted (CB-5).
+
+Conformance vectors for the join: `vectors/bundle/composed-controller-binding/` (Python and Go).
 
 ### 8.3 Declared and derived join states
 
@@ -534,7 +553,7 @@ No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it 
 | CB-2 | The ceremony time is the signers' statement. Nothing anchors `issued_at`. A binding whose record is counter-signed by a time source or included in a log would show when the ceremony happened, and no such form is registered. |
 | CB-3 | Credential format. `same_organization_credentialed` names its credential by digest and native method. No credential format is registered. The vectors fix one for themselves only (§10). |
 | CB-4 | Delegation scope. `delegated_by` has no scope member. A scope would be a claim about authority, which this document does not make. |
-| CB-5 | Registration of `controller_binding` as an EB join basis (§8). It needs a posted EB revision that adds it to `join-basis` and to the redundancy cases, with its co-authors' agreement. Until then it is provisional in `REGISTRY.md`. |
+| CB-5 | Registration of `controller_binding` as an EB join basis (§8). EB `-02` adds it to `join-basis` and to the redundancy cases; it takes effect for producers when `-02` is posted with its co-authors' agreement (§8.2). |
 | CB-6 | More than two keys. A record binds exactly two keys. Three keys under one controller take three records, one per pair. |
 | CB-7 | A revocation the producer of a `composed/v1` block did not have makes a declared `agree` a `join_state_mismatch` (§8.3). A later EB revision may report that join as `not_derivable`, or as a finding on the join alone, rather than failing the block. |
 | CB-8 | The Nostr event kind of §4.1, 3374, is chosen from the kinds no NIP lists. It is provisional in `REGISTRY.md` and not registered with the NIPs. |

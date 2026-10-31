@@ -13,8 +13,10 @@ every result of the plain verifier and adds:
   directory the caller supplies;
 - a verdict: `VALID`, `INCOMPLETE` or `INVALID`.
 
-Two inputs here are **not defined by the Bundle draft**:
-`completeness.selection: "producer-selected"` and `checkpoint.witnesses`. A
+Two inputs here were **not defined by Bundle -01**:
+`completeness.selection: "producer-selected"` (defined by -02, "Certificate
+Modes"; see `../certificate-mode/`) and `checkpoint.witnesses` (still not
+defined by the Bundle draft). A
 witness entry is a CLL `WitnessRecord`
 (`draft-mih-scitt-checkpointed-local-log`). Strict mode reads both as verifier
 extensions. A Bundle without them is judged by the draft's rules alone, and

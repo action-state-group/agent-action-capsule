@@ -63,6 +63,7 @@ fn every_strict_case_matches() {
             require_signature: case["options"]["require_signature"] == json!(true),
             witness_directory: (case["options"]["witness_directory"] == json!(true))
                 .then_some(directory),
+            ..StrictOptions::default()
         };
         let mut expect = json!({"kind_ok": true});
         for (k, v) in case["expect"].as_object().expect("expect") {

@@ -3,19 +3,15 @@
 //! the Python reference's `verify_bundle(..., strict=True)`;
 //! `vectors/bundle/strict/README.md` is the normative description.
 
-use super::{as_bundle_int, is_b64url, is_str, parse_inclusion_proof, verify_bundle, ClaimResult};
-use super::{VerificationResult, B64};
+use super::category_coverage::category_coverage_fails;
+use super::{as_bundle_int, is_b64url, is_str, selected_membership, verify_bundle_with};
+use super::{CategoryInputs, ClaimResult, VerificationResult, B64, SELECTION_PRODUCER_SELECTED};
 use crate::disclosure;
 use crate::envelope::{self, INVALID, UNCLAIMED};
 use crate::witness::{self, SignedCheckpoint, WitnessReceiptResult};
 use base64::Engine as _;
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
-
-/// `completeness.selection` of a producer-selected Bundle: records the
-/// producer picked from its log, with no claim about the records between
-/// them. Not defined by the Bundle draft; read only in strict mode.
-pub const SELECTION_PRODUCER_SELECTED: &str = "producer-selected";
 
 /// The checkpoint fields a signed COSE checkpoint states; the Bundle's JSON
 /// copy must match every one it carries.
@@ -39,6 +35,10 @@ pub struct StrictOptions<'a> {
     /// whose keys the witness receipts are checked under. `None` trusts no
     /// witness.
     pub witness_directory: Option<&'a Value>,
+    /// The inputs a Bundle cannot carry for its `category_coverage` member.
+    /// A `FAIL` of its form, signature or consistency makes the verdict
+    /// INVALID.
+    pub category: CategoryInputs<'a>,
 }
 
 /// One record of the Bundle's `records` list.
@@ -97,11 +97,13 @@ impl StrictVerificationResult {
             .map(|(_, claim)| claim)
     }
 
-    /// Nothing failed (`withheld` is not a failure).
+    /// Nothing failed (`withheld` is not a failure), including the gating
+    /// `category_coverage` properties.
     pub fn ok(&self) -> bool {
         self.kind_ok
             && self.claims.iter().all(|(_, c)| c.status != "fail")
             && self.witnesses.as_ref().is_none_or(|w| w.status != "fail")
+            && !category_coverage_fails(self.base.category_coverage.as_ref())
     }
 
     /// `VALID` (every claim passed), `INCOMPLETE` (nothing failed, something
@@ -186,9 +188,9 @@ fn too_deep(base: VerificationResult) -> StrictVerificationResult {
 /// (`INVALID`).
 pub fn verify_bundle_strict(value: &Value, options: &StrictOptions) -> StrictVerificationResult {
     if crate::json::exceeds_max_depth(value) {
-        return too_deep(verify_bundle(value));
+        return too_deep(verify_bundle_with(value, &options.category));
     }
-    let base = verify_bundle(value);
+    let base = verify_bundle_with(value, &options.category);
     let bundle = match value.as_object() {
         Some(b)
             if is_str(b.get("bundle_kind"), "evidence-bundle/v2")
@@ -302,7 +304,25 @@ pub fn verify_bundle_strict(value: &Value, options: &StrictOptions) -> StrictVer
         // The certificate binds the producer's selection, not an interval:
         // the interval proof cannot be read, each record's own proof still can.
         interval = withheld(vec!["selection_not_checkable".to_string()]);
-        membership = selected_membership(bundle, signed.as_ref().map(|(s, _)| s));
+        if let Some((signed, _)) = &signed {
+            membership = selected_membership(
+                bundle,
+                &Value::String(signed.root.clone()),
+                &Value::from(signed.mmr_size),
+                &Value::String(signed.log_id.clone()),
+            );
+        } else if checkpoint.status == "fail" {
+            // A signed checkpoint the stated copies contradict anchors nothing
+            // (vectors/bundle/strict neg-producer-selected-*-log-id*).
+            membership = if certificate.contains_key("non_record_leaves") {
+                ClaimResult::fail(vec!["completeness_certificate_invalid".to_string()])
+            } else {
+                withheld(vec!["checkpoint_unverified".to_string()])
+            };
+        }
+        // Without a signed checkpoint the plain reading stands: each proof
+        // against the stated checkpoint, withheld below unless it failed, as
+        // for a range Bundle.
     }
     if signed.is_none() {
         interval = unanchored(interval);
@@ -488,113 +508,6 @@ fn membership_seqs(bundle: &Map<String, Value>) -> HashMap<String, i64> {
         }
     }
     out
-}
-
-/// Each record's inclusion proof against the signed checkpoint's root and
-/// size, for a producer-selected Bundle. With no signed checkpoint nothing is
-/// shown.
-fn selected_membership(
-    bundle: &Map<String, Value>,
-    signed: Option<&SignedCheckpoint>,
-) -> ClaimResult {
-    let signed = match signed {
-        Some(s) => s,
-        None => return withheld(vec!["checkpoint_unverified".to_string()]),
-    };
-    let invalid = || ClaimResult::fail(vec!["completeness_certificate_invalid".to_string()]);
-    let certificate = match bundle
-        .get("completeness_certificate")
-        .and_then(Value::as_object)
-    {
-        Some(c) => c,
-        None => return invalid(),
-    };
-    let members = match certificate.get("memberships").and_then(Value::as_object) {
-        Some(m) if is_str(certificate.get("range_root"), &signed.root) => m,
-        _ => return invalid(),
-    };
-    let root: [u8; 32] = match hex::decode(&signed.root)
-        .ok()
-        .and_then(|r| r.try_into().ok())
-    {
-        Some(r) => r,
-        None => return invalid(),
-    };
-    let ids: Vec<String> = bundle
-        .get("records")
-        .and_then(Value::as_array)
-        .map_or(&[][..], Vec::as_slice)
-        .iter()
-        .filter_map(Value::as_object)
-        .map(|r| {
-            r.get("capsule_id")
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .to_string()
-        })
-        .collect();
-    let mut findings = Vec::new();
-    let mut seen: HashSet<i64> = HashSet::new();
-    for cid in &ids {
-        let member = members.get(cid).and_then(Value::as_object);
-        let coords = match member
-            .and_then(|m| m.get("log_coordinates"))
-            .and_then(Value::as_object)
-        {
-            Some(c) => c,
-            None => {
-                findings.push(format!("membership_record_unbound:{cid}"));
-                continue;
-            }
-        };
-        let seq = as_bundle_int(coords.get("seq"));
-        let index = as_bundle_int(coords.get("leaf_index"));
-        let (seq, index) = match (seq, index) {
-            (Some(seq), Some(index))
-                if is_str(coords.get("log_id"), &signed.log_id)
-                    && seq >= 1
-                    && index == seq - 1
-                    && !seen.contains(&seq) =>
-            {
-                (seq, index)
-            }
-            _ => {
-                findings.push(format!("membership_coordinates_invalid:{cid}"));
-                continue;
-            }
-        };
-        seen.insert(seq);
-        let proof = parse_inclusion_proof(member.and_then(|m| m.get("inclusion_proof")));
-        let leaf: Option<[u8; 32]> = hex::decode(cid).ok().and_then(|b| b.try_into().ok());
-        let proof_ok = match (proof, leaf) {
-            (Some(proof), Some(leaf)) => {
-                proof.size == signed.mmr_size
-                    && cll::mmr::verify_inclusion(
-                        &root,
-                        signed.mmr_size,
-                        index as u64,
-                        &leaf,
-                        &proof,
-                    )
-            }
-            _ => false,
-        };
-        if !proof_ok {
-            findings.push(format!("membership_proof_invalid:{cid}"));
-        }
-    }
-    let mut unknown: Vec<&String> = members.keys().filter(|cid| !ids.contains(cid)).collect();
-    unknown.sort();
-    findings.extend(
-        unknown
-            .into_iter()
-            .map(|cid| format!("membership_record_unknown:{cid}")),
-    );
-    if findings.is_empty() {
-        ClaimResult::pass()
-    } else {
-        ClaimResult::fail(findings)
-    }
 }
 
 #[cfg(test)]

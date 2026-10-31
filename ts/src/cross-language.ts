@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // The stdin/stdout adapter for the CI interlock.
 //
-// `seal` and `verify` read a Capsule. `bundle-produce <kind>` reads the
-// producer fixture (vectors/cross-language/bundle-producer-log.json) and
-// writes the JCS bytes of the Bundle `kind` names in its `builds`.
+// `seal` and `verify` read a Capsule. `bundle-produce <kind>` reads a
+// producer fixture (vectors/cross-language/bundle-producer-log.json or
+// bundle-producer-padded-log.json) and writes the JCS bytes of the Bundle
+// `kind` names in its `builds`.
 // `bundle-verify` reads a Bundle's JSON text and prints its strict verdict.
 import { readFileSync } from "node:fs";
 import {
@@ -25,8 +26,14 @@ interface Fixture {
   readonly root: string;
   readonly builds: Record<
     string,
-    { readonly interval_from: number | null; readonly closure_depth: number }
+    {
+      readonly interval_from: number | null;
+      readonly closure_depth: number;
+      readonly carry_non_record_leaves?: boolean;
+    }
   >;
+  /** Each padding leaf's content by seq, as a store holds it. */
+  readonly leaf_contents?: Record<string, unknown>;
   readonly log: {
     readonly entries: readonly string[];
     readonly state: {
@@ -86,14 +93,17 @@ async function bundleProduce(kind: string): Promise<number> {
       };
     },
   };
-  const bundle = await buildEvidenceBundle(
-    proofSourceFromCll(backend, records),
-    {
-      root: fixture.root,
-      intervalFrom: build.interval_from,
-      closureDepth: build.closure_depth,
-    },
-  );
+  const source = proofSourceFromCll(backend, records);
+  const contents = fixture.leaf_contents;
+  if (contents !== undefined)
+    source.leafContent = async (seq: number) =>
+      Object.hasOwn(contents, String(seq)) ? contents[String(seq)] : undefined;
+  const bundle = await buildEvidenceBundle(source, {
+    root: fixture.root,
+    intervalFrom: build.interval_from,
+    closureDepth: build.closure_depth,
+    carryNonRecordLeaves: build.carry_non_record_leaves === true,
+  });
   process.stdout.write(jcs(bundle));
   return 0;
 }

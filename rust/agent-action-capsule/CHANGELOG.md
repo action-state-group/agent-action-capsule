@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Evidence Bundle -02, as the Python reference reads it. Certificate modes:
+  `completeness.selection` names the certificate's mode; a producer-selected
+  Bundle is no longer a failure in plain mode, and any other value withholds
+  interval coverage and per-record membership with
+  `bundle::CERTIFICATE_MODE_UNSUPPORTED`. Non-record leaves: a range covers
+  padding leaves carried in `completeness_certificate.non_record_leaves`.
+  Category coverage: `bundle::check_category_coverage`,
+  `bundle::verify_bundle_with` and `CategoryInputs`; the five properties are
+  `VerificationResult::category_coverage`, and in strict mode
+  (`StrictOptions::category`) a `FAIL` of the form, signature or consistency
+  is INVALID. Producer: the optional `ProofSource::leaf_content` (default
+  `None`) with `BuildOptions::carry_non_record_leaves`. New public struct
+  fields (`VerificationResult::category_coverage`, `StrictOptions::category`,
+  `BuildOptions::carry_non_record_leaves`): a struct literal needs them, or
+  `..Default::default()` where the type has one.
+  `bundle::SELECTION_PRODUCER_SELECTED` is now defined with feature `bundle`.
+  The `category_coverage` signature verifies under strict Ed25519, the same
+  check as the witness receipts (now shared with feature `bundle`).
 - The strict receipt check refuses a COSE Receipt whose payload is CBOR undefined (`0xf7`)
   (AAC#519): `coset` reads it as an absent payload, so it was taken as detached. Only null
   (`0xf6`) is detached, as scitt-cose's Python verifier has it. Passes the new strict vector

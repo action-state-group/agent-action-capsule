@@ -9,7 +9,9 @@
 //! the strict verifier.
 
 use super::SELECTION_PRODUCER_SELECTED;
-use super::{bundle_digest, parse_inclusion_proof, parse_range_proof};
+use super::{
+    bundle_digest, is_str, padding_leaf, parse_inclusion_proof, parse_range_proof, PADDING,
+};
 use super::{citation_targets, committed_digest, verify_bundle_strict, StrictOptions, B64};
 use crate::canonical::MAX_SAFE_INTEGER;
 use crate::disclosure;
@@ -162,6 +164,15 @@ pub trait ProofSource {
 
     /// The range proof over `[first_seq, tip]`.
     fn range_proof(&self, first_seq: u64) -> Result<RangeProof, BuildError>;
+
+    /// Optional capability: the content of the leaf at `seq` when it is not a
+    /// record (a padding record's four members), or `None` when the source
+    /// does not hold it. [`build_evidence_bundle`] reads it only with
+    /// [`BuildOptions::carry_non_record_leaves`]; a source that does not
+    /// implement it builds exactly as before.
+    fn leaf_content(&self, _seq: u64) -> Result<Option<Value>, BuildError> {
+        Ok(None)
+    }
 }
 
 /// A record store [`proof_source_from_cll`] reads records from.
@@ -392,6 +403,12 @@ pub struct BuildOptions {
     pub extensions: Map<String, Value>,
     /// The producer's self-report (`verification`), carried as given.
     pub verification: Option<Map<String, Value>>,
+    /// Lets a range cover a padding leaf: the source's
+    /// [`ProofSource::leaf_content`] is carried in
+    /// `completeness_certificate.non_record_leaves` (Bundle -02). Off by
+    /// default because a verifier that predates -02 reads such a Bundle as
+    /// missing those seqs; turn it on only for readers that check the member.
+    pub carry_non_record_leaves: bool,
 }
 
 impl BuildOptions {
@@ -409,6 +426,7 @@ impl BuildOptions {
             producer_key: None,
             extensions: Map::new(),
             verification: None,
+            carry_non_record_leaves: false,
         }
     }
 }
@@ -680,6 +698,43 @@ fn decode_record(capsule_id: &str, stored: &StoredRecord) -> Result<Record, Buil
     Ok(capsule)
 }
 
+/// The source's content for the non-record leaf at `seq`, when it is a
+/// padding record whose recomputed `capsule_id` is that leaf; `None` when the
+/// source holds nothing for `seq`. Any other content is refused by name: the
+/// producer carries padding only.
+fn padding_content<S: ProofSource + ?Sized>(
+    source: &S,
+    seq: u64,
+    leaf_hex: &str,
+) -> Result<Option<Value>, BuildError> {
+    let Some(stored) = source.leaf_content(seq)? else {
+        return Ok(None);
+    };
+    let mut content = match stored {
+        Value::Object(content) if is_str(content.get("record_type"), PADDING) => content,
+        _ => {
+            return Err(BuildError::new(format!(
+                "seq {seq}: the source's leaf content is not a padding record; a range cannot \
+                 cover it"
+            )))
+        }
+    };
+    // Local-only producer envelope members are outside the leaf's preimage.
+    content.remove("signature");
+    content.remove("key_id");
+    let leaf = padding_leaf(&content).ok_or_else(|| {
+        BuildError::new(format!(
+            "seq {seq}: the padding record has no canonical digest"
+        ))
+    })?;
+    if leaf != leaf_hex || !is_str(content.get("capsule_id"), leaf_hex) {
+        return Err(BuildError::new(format!(
+            "seq {seq}: the padding record does not hash to the leaf"
+        )));
+    }
+    Ok(Some(Value::Object(content)))
+}
+
 /// Builds an Evidence Bundle around `options.root` from `source`.
 ///
 /// With [`Interval::From`]`(N)` the Bundle carries every record in
@@ -716,6 +771,7 @@ pub fn build_evidence_bundle<S: ProofSource + ?Sized>(
         producer_key,
         extensions,
         verification,
+        carry_non_record_leaves,
     } = options;
     check_options(
         *closure_depth,
@@ -806,17 +862,27 @@ pub fn build_evidence_bundle<S: ProofSource + ?Sized>(
                 named.join(", ")
             )));
         }
+        let mut non_record = Vec::new();
         for seq in first..=tip {
             let capsule_id = &leaf_hex[(seq - 1) as usize];
             if carried.contains_key(capsule_id) {
                 continue;
             }
-            let record = lookup(capsule_id)?.ok_or_else(|| {
-                BuildError::new(format!(
-                    "seq {seq} in the interval is not a record the source holds; a range cannot \
-                     cover it: start the interval after it or build without a range"
-                ))
-            })?;
+            let Some(record) = lookup(capsule_id)? else {
+                let content = if *carry_non_record_leaves {
+                    padding_content(source, seq, capsule_id)?
+                } else {
+                    None
+                };
+                let content = content.ok_or_else(|| {
+                    BuildError::new(format!(
+                        "seq {seq} in the interval is not a record the source holds; a range \
+                         cannot cover it: start the interval after it or build without a range"
+                    ))
+                })?;
+                non_record.push(json!({"seq": seq, "content": content}));
+                continue;
+            };
             carried.insert(capsule_id.clone(), record);
         }
         certificate.insert("first_seq".into(), json!(first));
@@ -829,6 +895,9 @@ pub fn build_evidence_bundle<S: ProofSource + ?Sized>(
             "range_proof".into(),
             normalised_range_proof(first, &source.range_proof(first)?)?,
         );
+        if !non_record.is_empty() {
+            certificate.insert("non_record_leaves".into(), Value::Array(non_record));
+        }
     }
 
     let mut ordered: Vec<&String> = carried.keys().collect();

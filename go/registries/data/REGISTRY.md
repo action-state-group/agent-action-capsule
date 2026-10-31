@@ -54,7 +54,7 @@ assert a state that only the store can compute.
 
 ## 1. `verdict_class`
 
-Defined in §5.4.1 of the Internet-Draft (the `verdict_class` vocabulary).
+Defined in §5.5.1 of the Internet-Draft (-05) (the `verdict_class` vocabulary).
 Initial contents:
 
 | Value | Semantics |
@@ -70,8 +70,8 @@ Initial contents:
 | `needs_decision` | Evaluation complete, decision required, not yet routed to a decider; open item. |
 | `expired` | TTL policy on the deferral elapsed; terminal unless superseded by escalation. |
 | `escalated` | Expiry or policy routed the item to a higher authority; open item at the new authority. |
-| `resolved` | A terminal decision capsule closed the chain without executing (pairing rule, Internet-Draft §5.4.2). |
-| `epoch_boundary` | An administrative capsule (`action_type: "fyi"`) marking a configuration-epoch transition. REQUIRES `effect_mode: "not_applicable"` — no effect is dispatched by an administrative epoch record. Defined in §5.1 (Configuration epochs) of the Internet-Draft. |
+| `resolved` | A terminal decision capsule closed the chain without executing (pairing rule, Internet-Draft -05 §5.5.2). |
+| `epoch_boundary` | An administrative capsule (`action_type: "fyi"`) marking a configuration-epoch transition. REQUIRES `effect_mode: "not_applicable"` — no effect is dispatched by an administrative epoch record. Defined in §5.2 (Configuration epochs) of the Internet-Draft (-05). |
 
 **`deferred` token ownership.** The `deferred` token's semantics are OWNED by
 the `verdict_class` registry; the `disposition.decision` entry of the same
@@ -79,7 +79,7 @@ spelling (§2) is a cross-reference to it.
 
 ## 2. `disposition.decision`
 
-Defined in §5.4 of the Internet-Draft (Disposition).
+Defined in §5.5 of the Internet-Draft (-05) (Disposition).
 Initial contents: `accept`, `reject`, `needs_input`, `deferred`.
 
 **`deferred` token ownership.** The `deferred` token's semantics are OWNED by
@@ -88,18 +88,18 @@ cross-reference to it.
 
 ## 3. `effect.type`
 
-Defined in §5.2 of the Internet-Draft (Effect Record and the confirmed-effect
+Defined in §5.3 of the Internet-Draft (-05) (Effect Record and the confirmed-effect
 binding). Initial contents:
 
 | Value | Semantics |
 |---|---|
-| `write_order` | Seeded example value of the profile (Internet-Draft §5.2). |
-| `send_payment` | Seeded example value of the profile (Internet-Draft §5.2). |
+| `write_order` | Seeded example value of the profile (Internet-Draft -05 §5.3). |
+| `send_payment` | Seeded example value of the profile (Internet-Draft -05 §5.3). |
 | `inference_completion` | An inference request to a model-serving runtime whose committed effect is producing a completion. `request_digest` is the JSON digest of the request body as received at the serving boundary; `response_digest` is the JSON digest of the completion body as returned. |
 
 ## 4. `irreversibility_class`
 
-Defined in §5.2 of the Internet-Draft (Effect Record). An **ordered**
+Defined in §5.3 of the Internet-Draft (-05) (Effect Record). An **ordered**
 vocabulary by ascending consequence; a registration MUST state its position in
 the consequence order relative to the existing values. Initial contents, in
 order:
@@ -111,7 +111,7 @@ order:
 
 ## 5. `effect_attestation`
 
-Defined in §5.2 of the Internet-Draft (Effect Record; the validity matrix).
+Defined in §5.3 of the Internet-Draft (-05) (Effect Record; the validity matrix).
 
 **Grade-floor rule (registry preamble).** Consumers MUST treat an unregistered
 or unrecognized `effect_attestation` value as **no stronger than
@@ -121,7 +121,7 @@ informational, never a verification failure — but unknown NEVER grades up.
 **Planned carve (registry preamble).** `effect.status = "planned"` asserts no
 execution — `effect_attestation` MUST be absent (nothing to grade; a phantom
 grade would poison grade-based queries); it becomes REQUIRED the moment
-dispatch occurs (Internet-Draft §5.2).
+dispatch occurs (Internet-Draft -05 §5.3).
 
 Initial contents:
 
@@ -152,7 +152,7 @@ Initial contents:
 | `follows` | Non-terminal: a bare next-link — this capsule appends to the producer's stream after the parent and asserts no outcome, observation, or transition over it; the parent's open state is unaffected. The default relation for an ordinary sequential record, including a record whose substance lies in its own fields or its `references[]` citations rather than in any claim about the parent (e.g. a counterparty-half custody record citing a foreign half via `citation_purpose: counterparty_half`, §11). **Verifier consequence:** verifiers and downstream evidence evaluators MUST NOT read a `follows` link as confirming, superseding, or otherwise grading the parent — it is ordering only. |
 | `confirms` | Non-terminal: this capsule observes or records the outcome of the parent — the parent's open state remains. The most common chain link: *attempted → confirmed*. |
 | `supersedes` | Terminal transition over the parent — resolution, expiry, escalation close/replace the parent's open state. |
-| `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.1 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft. |
+| `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.2.2 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft (-05). |
 | `duplicates` | Non-terminal: this capsule is a backfilled import of the same logical event already recorded by the parent, a contemporaneous capsule in this producer's own stream. Defined in the Internet-Draft's Provenance mode section (`-05` and later revisions). A `duplicates`-linked pair is counted once by verifiers and downstream evidence evaluators; the contemporaneous parent's assurance and disposition govern. |
 
 **Designated-expert guidance (this registry).** Seeded with the bare ordering
@@ -377,7 +377,7 @@ the other. **Optional**; absent implies `mode: "contemporaneous"`.
 
 `provenance_mode.mode` is a closed two-value enum, not itself
 Specification-Required-governed (mirroring `assurance.attestation_mode`'s
-treatment, Internet-Draft §5.3): an unrecognized `mode` value is a
+treatment, Internet-Draft -05 §5.4): an unrecognized `mode` value is a
 structural failure, not an informational finding, because downstream
 evidence-sufficiency logic depends on being able to tell the two modes
 apart.
@@ -461,22 +461,27 @@ below). Example, with the producer's reverse-DNS prefix:
 `n/a` when no decision applied. `blocking: true` records that the action would
 not have run had the check failed.
 
-### Provisional: composed/v1 join basis values
+### composed/v1 join basis values
 
-**Held for ratification; not yet registered.** The Evidence Bundle draft
-(`-01`), "Joins", defines the `composed/v1` join basis as a closed list:
-`pre_agreed_identifier` and `shared_artifact_digest`, each with a derivation, and
-`issued_receipt` and `same_interval`, reserved for a later specification. The value
-below is proposed for a later Bundle revision. It is not part of `-01`. A `-01`
-verifier reads a block that carries it as malformed, so a producer MUST NOT put it
-in a `composed/v1` block until a posted Bundle revision lists it. Until then, the
-binding is used beside the composition, under issuer independence
+Defined in the Evidence Bundle draft, "Joins": the `composed/v1` join basis is a
+closed list. `-01` lists `pre_agreed_identifier` and `shared_artifact_digest`, each
+with a derivation, and `issued_receipt` and `same_interval`, reserved for a later
+specification. **`-02` registers `controller_binding`** with its derivation, and
+defines the controller binding record it rests on ("Controller Binding Records").
+A `-01` verifier reads a block that carries it as malformed, so a producer MUST NOT
+put it in a `composed/v1` block until `-02` is posted; from then on it MAY. Until
+then, the binding is used beside the composition, under issuer independence
 (`spec/interop-profile-v0.md` §6.7.4). Conformance vectors:
-`vectors/controller-binding-v0/`.
+`vectors/bundle/composed-controller-binding/` (the join) and
+`vectors/controller-binding-v0/` (the binding record under issuer independence).
 
-| Value | Semantics |
-|---|---|
-| `controller_binding` | `identifier_digest` is the digest of a controller binding record (`spec/controller-binding-v0.md` §4) delivered beside the block, and `pointer` selects each member root record's `key_id`. `identifier_digest` is SHA-256 of the record's signing input (the record without `sigs`). The two members are linked when the delivered record's digest equals `identifier_digest`, the two selected values are its two keys, and it applies to them (§6.2 of that document): it is well formed, both keys signed it under a method the verifier implements, it is in its window at each root record's time, and no received revocation applies. A `controller_binding` join that derives `agree` is redundant, not corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
+| Value | Defined by | Semantics |
+|---|---|---|
+| `pre_agreed_identifier` | `-01` | `pointer` selects a string in each root record; linked when SHA-256 of its UTF-8 octets equals `identifier_digest` on both sides. |
+| `shared_artifact_digest` | `-01` | `pointer` selects a digest string in each root record; linked when the two values are identical. |
+| `issued_receipt` | `-01`, reserved | No derivation: a verifier reports the join `not_derivable`. |
+| `same_interval` | `-01`, reserved | No derivation: a verifier reports the join `not_derivable`. |
+| `controller_binding` | `-02` | `identifier_digest` is the binding digest of a controller binding record delivered beside the block (SHA-256 of the UTF-8 JCS of the record without `sigs`), and `pointer` selects a key identifier in each member root record, for example `key_id`. The two members are linked when a delivered record with that digest applies to the two selected values: it is well formed, both keys signed it under a method the verifier implements, each root record's `timestamp` is in its window, and no received revocation statement applies at or before either. No record with that digest, only well-formed ones under a method the verifier does not implement, or a join without `pointer` or `identifier_digest` is `not_derivable`; any other record with that digest that does not apply (malformed, not signed by both keys, other keys, outside its window, revoked) leaves them `unjoined`. A `controller_binding` join that derives `agree` is redundant, never corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
 
 ### Provisional: controller binding key types and signing event kind
 
