@@ -48,6 +48,9 @@ same-commit files in CI.
   responder's inputs and the exact `cll-inclusion-proof` and
   `cll-consistency-proof` octets, including the §10.1 worked example's;
   `python/scripts/generate_cll_material_vectors.py` regenerates them.
+- `anchor-witness-v1/`: profile `evidence-interop/1` §6.2.2 witness Receipts
+  over an anchor and the `anchor_witnessed` report, positive and MUST-reject;
+  `python/scripts/generate_anchor_witness_v1_vectors.py` regenerates them.
 - `minimum-necessary/`: provisional registry entries held for ratification
   (`spec/REGISTRY.md` §10, §14, §16): SD-JWT (RFC 9901) presentations as a
   revealed `agent_input`, the `disclosure-policy-decisions/v1` and

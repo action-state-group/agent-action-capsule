@@ -22,6 +22,7 @@
   "vectors/interop-profile-v0-requirement-facts/": {"python": ["test_interop_profile_v0_vectors.py"], "go": ["./evidencerequest"]},
   "vectors/interop-profile-v1/": {"python": ["test_interop_profile_v1_vectors.py"], "go": ["./evidencerequest"], "rust": ["evidence-request:acceptance_vectors"]},
   "vectors/interop-profile-v1-requirement-facts/": {"python": ["test_interop_profile_v1_vectors.py"], "go": ["./evidencerequest"]},
+  "vectors/anchor-witness-v1/": {"python": ["test_anchor_witness_v1_vectors.py"], "ts": ["anchor-witness-vectors.test.ts"], "go": ["./witness"], "rust": ["agent-action-capsule:anchor_witness_vectors"]},
   "vectors/cll-material/": {"python": ["test_cll_material_vectors.py"], "go": ["./evidencerequest"], "rust": ["evidence-request:cll_material_vectors"]},
   "vectors/coverage-declaration-v0/": {"python": ["test_coverage_declaration_v0_vectors.py"]},
   "vectors/controller-binding-v0/": {"python": ["test_controller_binding_v0_vectors.py"], "go": ["./controllerbinding"]},

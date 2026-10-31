@@ -10,8 +10,9 @@ drop it.
 
 This is revision v1, identified as `evidence-interop/1` (§3.1). It is `evidence-interop/0`
 (`spec/interop-profile-v0.md`, frozen) with ER re-pinned from -01 to -02, the two refusal reasons
--02 registers added to §9.1 and mapped in §8.1, and -02's unavailable-window statements deferred.
-P-65 and P-66 list every change. `evidence-interop/0` keeps its meaning: a responder or verifier
+-02 registers added to §9.1 and mapped in §8.1, -02's unavailable-window statements deferred, and
+a witness Receipt over an anchor added with its own check (§6.2.2), which changes no check of an
+exchange. P-65 to P-67 list every change. `evidence-interop/0` keeps its meaning: a responder or verifier
 that implements both checks each exchange under the identifier it names.
 
 This revision covers versions (§3), naming (§4), canonical bytes (§5), the digest and signature
@@ -214,12 +215,12 @@ that to every object it defines.
 | Envelope members | `profile`, `request_digest`, `subject`, `derivation`, `anchor`, `artifact_digest`, `verification`, `responder`, `issued_at`, `sig`, `artifact`, `verification_content`, `retention` | P-7 |
 | Anchor members | `digest`, `freshness` | P-7 |
 | Verification entry members | `kind`, `digest` | P-7 |
-| Verification material kinds | `cll-checkpoint`, `cll-inclusion-proof`, `cll-consistency-proof` | CLL §3; P-31 |
+| Verification material kinds | `cll-checkpoint`, `cll-inclusion-proof`, `cll-consistency-proof`; `cll-witness-receipt`, beside an answer (§6.2.2) | CLL §3; P-31; P-67 |
 | Absence record members | `outcome`, `request_digest`, `route`, `window`, `opened`, `closed`, `recorded_at`, `retention`, `key_id`, `sig` | ER §4.4; P-8 |
 | Property report members | `property`, `status`, `method`, `detail` | P-16 |
 | Outcome names | `artifact`, `refusal`, `recorded_absence`; the state `pending` | ER §4; ERV `registry.json` |
 | Property statuses | `PASS`, `FAIL`, `NOT_PRESENT`, `NOT_CHECKED`, `INCONCLUSIVE` | §7.1 |
-| Property names | the names in §7.2 | §7.2 |
+| Property names | the names in §7.2; `anchor_witnessed`, outside §7.2 (§6.2.2) | §7.2; P-67 |
 | Subprotocol | `evidence-request/1` | ER §10 |
 | Manifest members (JSON only) | `profiles`, `drafts`, `subject_forms`, `derivations`, `bindings`, `refusal_policy`, `retention` | P-2; P-41 |
 | Binding tokens | `evidence-request/1`, `http`, `a2a`, `mcp` | ER §10; P-41 |
@@ -423,8 +424,9 @@ The **signing input** is UTF-8 of JCS over the object made of the signed members
    check is `NOT_CHECKED` unless the verifier implements a mechanism from elsewhere (P-13).
 
 **Verification material kinds.** `kind` names an evidence-mechanism-specific proof format
-[ER §4.1 item 3]. This revision registers three kinds, all for one mechanism, the Checkpointed
-Local Log (§6.2.1). A verifier that does not implement a `kind` it receives reports
+[ER §4.1 item 3]. This revision registers four kinds, all for one mechanism, the Checkpointed
+Local Log: three that prove an artifact against an anchor (§6.2.1), and a witness Receipt over the
+anchor itself, which travels beside an answer (§6.2.2). A verifier that does not implement a `kind` it receives reports
 `anchor_inclusion` as `NOT_CHECKED` (§7.2). A verifier MAY implement a mechanism defined
 elsewhere and name it in `method` [P-13].
 
@@ -462,7 +464,8 @@ profile's own identifiers (P-31).
 unprotected header [CLL §3.3 item 2], and COSE allows a tagged and an untagged form. Either would give
 one signed checkpoint several digests. So the `cll-checkpoint` item MUST be the tagged form with an
 empty unprotected header [P-31]. A responder holding a countersigned copy removes the
-countersignature before sending it. Witness confirmations are not a kind in this revision (P-13).
+countersignature before sending it. A witness's Receipt is the kind of §6.2.2; a countersignature
+is not a kind in this revision (P-13).
 
 **What the envelope's `verification` covers.** Each entry's `digest` is SHA-256 over that item's
 octets as carried, as for every kind (§6.2). Through the `cll-checkpoint` entry, the envelope
@@ -500,9 +503,9 @@ key. This profile does not decide it, and the log key need not be the responder'
   none (P-23). Under `expected_pin` the requester chose the checkpoint itself. Under
   `min_freshness` the responder chose it, so a relying party SHOULD accept a log key only for
   the log identities it expects that responder to answer from [P-31].
-- It does not show that the checkpoint was witnessed. A witness Receipt or countersignature
-  [CLL §3.3] is not a kind in this revision (P-13). An unwitnessed checkpoint is only as strong as
-  its producer [CLL §3.2 item 4, §4].
+- It does not show that the checkpoint was witnessed. `anchor_witnessed` checks a witness
+  Receipt separately (§6.2.2); a countersignature [CLL §3.3 item 2] is not a kind in this revision
+  (P-13). An unwitnessed checkpoint is only as strong as its producer [CLL §3.2 item 4, §4].
 - It never shows that the entry's content is true [CLL §5].
 
 **Check procedure for `anchor_inclusion`.** Steps run in order, and the first that yields a status
@@ -579,6 +582,117 @@ decides. Each status means what §7.1 says. MMR's functions are used as MMR defi
   peak, `index` is not verified (P-31).
 - MMR's misprinted `all_ones` primitive (Appendix B.4) is read as intended: `pos` has all bits set
   below its most significant bit, that is `pos & (pos + 1) == 0` (P-31).
+
+#### 6.2.2 A witness Receipt over a Checkpointed Local Log anchor
+
+A witness that registers a CLL checkpoint as a Signed Statement returns a Receipt
+[CLL §3.3 item 1; RFC 9942]. This revision registers one kind for that Receipt, and one check,
+`anchor_witnessed`, that a relying party runs over an anchor [P-67]. The check answers one
+question: did a witness the relying party accepts register this anchor, and when? It says nothing
+about any artifact under the anchor, so it is not `anchor_inclusion` and not an envelope property
+(§7.2), and it never enters the §8 mapping.
+
+**The kind.** `cll-witness-receipt` is this profile's own identifier [P-67]. Its octets are one
+COSE Receipt [RFC 9942] for an RFC 9162 transparency log, of at most 10,485,760 octets, in this one
+form:
+
+- a CBOR tag-18 COSE_Sign1 (RFC 9052) `[protected, unprotected, payload, signature]` whose
+  payload is `nil` (detached), so that the signature covers the root the inclusion proof
+  rebuilds, and whose signature is a byte string of 64 octets;
+- `protected`, a non-empty byte string holding a map with `alg` (1) EdDSA (-8) or ES256 (-7) and
+  `vds` (395) the integer 1, RFC9162_SHA256, and optionally `kid` (4) as a byte string,
+  CWT_Claims (15, RFC 9597) as a map, and labels below -65536 (private use) with any value. It
+  carries no other label, so no `crit` (2);
+- `unprotected`, a map with exactly one label, `vdp` (396), whose value is a map with exactly one
+  key, -1, holding an array of one to 16 inclusion proofs. Each is a byte string holding the CBOR
+  array `[tree_size, leaf_index, inclusion_path]`: `tree_size` an unsigned integer from 1 to
+  2^62, `leaf_index` an unsigned integer below `tree_size`, and `inclusion_path` an array of byte
+  strings of 32 octets, as many as RFC 9162 §2.1.3.1 gives for that index and size, and so at
+  most 62 [RFC 9942; RFC 9162 §2.1.3].
+
+The COSE_Sign1, its protected header and each inclusion proof are each one CBOR item with no
+trailing octet, definite lengths, every argument in its shortest form (RFC 8949 §4.2.1), no
+repeated map key, every integer from -2^63 to 2^64 - 1, every map key an integer or a text
+string, no float, no simple value but
+`false`, `true` and `null`, no tag but the outer
+tag 18, and no item nested more than 16 levels deep (an item inside an array, a map or a tag is one
+level deeper than it); map order is not checked. This is the Receipt shape `vectors/bundle/strict/README.md`
+"COSE Receipts" checks for a witness over a Bundle checkpoint, with another leaf and these
+stricter encoding rules, so that every verifier decides the form the same way.
+
+**The entry.** The Receipt's leaf entry E is the 32 raw octets of the anchor's digest: SHA-256
+over the `cll-checkpoint` octets in the one form of §6.2.1, which is `anchor.digest` [P-31]. The
+leaf hash is SHA-256(0x00 || E), and the root is rebuilt from it as RFC 9162 §2.1.3.2 says. A
+witness that registered the checkpoint in any other form registered other octets, and its Receipt
+does not cover this anchor.
+
+**Carriage.** In this revision the kind travels beside an answer, as material for the answer's
+anchor, and is never an entry of an envelope's `verification`: §6.2.1 step 3 is unchanged, and an
+envelope that lists it there reports `anchor_inclusion` `NOT_CHECKED`. How it travels beside an
+answer is the carrying profile's (P-13). Nothing in the answer signs it. A Receipt authenticates
+itself, so a Receipt can add a witness but never take away one that another Receipt shows.
+
+**What the relying party must trust.** Its witness policy lists the witnesses it accepts, each with
+a name and the public keys the witness signs Receipts under: Ed25519 keys for EdDSA and ECDSA P-256
+keys for ES256. A relying party SHOULD list only witnesses it holds independent of the responder:
+a witness the producer operates is a replica and confers no witnessed status [CLL §3.2 item 3;
+ER §4.7]. This profile does not decide which witnesses those are.
+
+**Check procedure for one Receipt.** Steps run in order, and the first that yields a status
+decides:
+
+1. If the octets are not of the form above: `FAIL`.
+2. If the policy lists no key of the type `alg` needs: `NOT_CHECKED`. A policy key is lowercase
+   hex of a DER SubjectPublicKeyInfo of exactly one of two shapes: the 12 octets
+   `302a300506032b6570032100` followed by a 32-octet Ed25519 key, or the 27 octets
+   `3059301306072a8648ce3d020106082a8648ce3d03010703420004` followed by the 64-octet
+   uncompressed P-256 point. Any other entry lists no key. A listed key whose octets are not a
+   valid public key is still listed, and nothing verifies under it.
+3. For each listed key of that type, in policy order, and each inclusion proof, in order: rebuild
+   the root from E and verify the signature under that key over the `Signature1` Sig_structure
+   with the protected header, an empty external AAD and the root as payload (RFC 9052 §4.4). An
+   ES256 signature is the 64 octets `r || s`. EdDSA is verified strictly: the key and the
+   signature's R are canonical encodings of points not of small order, S is below the group
+   order, and the cofactorless equation holds (RFC 8032 §5.1.7). The first key under which some
+   proof verifies is the Receipt's witness. A verifier that cannot run the signature algorithm
+   at all reports `NOT_CHECKED` (§7.1).
+4. If no listed key and proof verify: `FAIL`. The Receipt is not by an accepted witness, or not
+   over this anchor.
+5. Otherwise: `PASS`. The **registration time** is the CWT_Claims `iat` (6) when it is an
+   unsigned integer no larger than 2^53 - 1: a NumericDate, seconds since 1970-01-01T00:00:00Z
+   (RFC 8392 §2). A Receipt whose CWT_Claims has no such `iat`, or that has no CWT_Claims,
+   passes with no registration time.
+
+**`anchor_witnessed`.** Over every Receipt received for one anchor:
+
+- `NOT_PRESENT` when there is none;
+- otherwise `PASS` when one or more Receipts pass, `FAIL` when none passes and one or more fail,
+  and `NOT_CHECKED` otherwise.
+
+A Receipt that fails takes nothing from one that passes: anyone can place octets beside an answer.
+For the same reason a `FAIL` is no finding against the anchor or the responder; it says only that
+nothing beside the answer shows a witness.
+The report names, for each Receipt, its status, its witness's name when it passed, and its
+registration time. The **witnessed time** of the anchor is the earliest registration time of a
+passing Receipt, and the **witness** it names is that Receipt's witness; of two Receipts with that
+time, the first received. When no passing Receipt has a registration time, the anchor has no
+witnessed time, and its witness is that of the first passing Receipt received. A verifier never
+pairs one Receipt's time with another Receipt's witness.
+
+**What a `PASS` shows.** A witness the policy accepts entered this anchor's digest in its log,
+under its key, at the witnessed time when there is one [CLL §3.3]. It does not show:
+
+- that the checkpoint is well formed, or signed by any log key: §6.2.1 steps 7 to 10 check that,
+  and this check does not run them;
+- that the witness checked continuity [CLL §3.2 item 2]. The Receipt does not say which kind of
+  witness issued it;
+- that no divergent history exists, beyond what the witness itself would have refused [CLL §6];
+- anything about an artifact under the anchor, its content or its inclusion. A derivation's
+  artifact, such as a count, is still the responder's statement.
+
+The report is `{property, status, receipts, witness, witnessed_time}`, with each Receipt's
+`{status, witness, registration_time}`, and MAY add `method` and `detail` as §7.1 does, for example
+`RFC 9942 Receipt (RFC9162_SHA256, EdDSA) over the CLL-01 anchor digest`.
 
 ### 6.3 Signed refusal
 
@@ -1552,7 +1666,7 @@ Rules [P-28]:
     point.
   - A witness's countersignature over a checkpoint does not adopt any time the checkpoint's
     operator wrote. Only a time the witness itself signs is an ordering point [P-28].
-  - This revision names no receipt mechanism, and the log material of §6.2.1 carries no time signed by a party other than the acceptor (P-13). A verifier that does not implement
+  - This revision names no receipt mechanism for such an object, and the log material of §6.2.1 carries no time signed by a party other than the acceptor (P-13). The Receipt of §6.2.2 is over an anchor, not over an object. A verifier that does not implement
     the mechanism of a form (ii) object reports it as `NOT_CHECKED`.
 - Before comparison, a time given at finer than seconds precision is reduced to the §5.2 form.
   An ordering point is rounded up and an action time is rounded down [P-28].
@@ -2811,7 +2925,7 @@ Each negative half changes one thing:
 #### 11.4.9 Not filled in this revision
 
 Still unspecified: the shape of a carried retention commitment (the envelope's `retention`,
-§6.2); verification-material kinds beyond §6.2.1 (P-13); where the HTTP binding serves the
+§6.2); verification-material kinds beyond §6.2.1 and §6.2.2 (P-13); where the HTTP binding serves the
 manifest; stream addressing (P-23); and MCP's tasks extension. Filling any of them only adds
 objects, rows and properties, so it keeps the identifier (§3.1) [P-1].
 
@@ -2859,6 +2973,10 @@ only, and are not registered:
 
 For both, `sig` is Ed25519 over UTF-8 of JCS of the other members, and the digest is
 SHA-256 over UTF-8 of JCS of the whole record.
+
+The witness Receipt check of §6.2.2 has its own set, `vectors/anchor-witness-v1/`, generated by
+`python/scripts/generate_anchor_witness_v1_vectors.py`. Each case gives an anchor digest, the
+Receipts beside it, a witness policy and the expected `anchor_witnessed` report.
 
 The vectors fix four readings, each an open point:
 
@@ -2923,11 +3041,13 @@ it defers.
 - **P-11** The verifier MUST run a foreign object's native check before reporting on it (§5.1).
 - **P-12** Time form with seconds precision; unsigned integers no larger than 2^53 − 1 and no
   floats; duplicate members rejected in JSON and CBOR (§5.2).
-- **P-13** Verification-material kinds cover only the Checkpointed Local Log, for a `record` subject
-  with no derivation (§6.2.1). Still without a kind:
+- **P-13** Verification-material kinds cover only the Checkpointed Local Log: an artifact of a
+  `record` subject with no derivation (§6.2.1), and a witness Receipt over the anchor itself,
+  beside an answer (§6.2.2). Still without a kind:
   - the other subject forms and every derivation;
   - the `checkpoints` subject and history_card/1, whose artifact is the material;
-  - a witness Receipt or countersignature over a checkpoint;
+  - a witness countersignature over a checkpoint, and a witness Receipt (§6.2.2) carried in an
+    envelope's `verification` rather than beside the answer;
   - a consistency proof from an earlier anchor the requester holds, which ER §5 allows but the
     request has no member to name.
 
@@ -3217,6 +3337,24 @@ it defers.
   nothing here changes that. The cost: adopting §4.7 means at least a statement object, a
   registration property and a way to carry the statement into the claim, which changes §7 or §8,
   so it most likely takes `evidence-interop/2` (§3.1).
+- **P-67** The witness Receipt over an anchor (§6.2.2). This profile adds:
+  - the identifier `cll-witness-receipt`, since CLL -01 and RFC 9942 define none for a Receipt
+    over a checkpoint;
+  - the leaf entry as the 32 octets of `anchor.digest`, the SHA-256 of the checkpoint in the one
+    form of §6.2.1, so a Receipt covers an anchor only when the witness registered that form;
+  - the Receipt form: detached payload, RFC9162_SHA256, EdDSA (verified strictly) or ES256, at
+    most 16 proofs, a closed set of protected labels and only `vdp` unprotected, no `crit`, and
+    strict CBOR throughout, so that every verifier decides the form the same way;
+  - a policy key as one of two exact SubjectPublicKeyInfo shapes;
+  - the check `anchor_witnessed`, outside §7.2 and §8: any passing Receipt gives `PASS`, and a
+    failing one takes nothing from it;
+  - the registration time as the protected `iat` only, and the witnessed time as the earliest
+    registration time of a passing Receipt, always paired with that Receipt's witness.
+
+  Left open: carrying the kind in an envelope's `verification`, which would change §6.2.1 step 3
+  and the envelope it signs; a witness countersignature [CLL §3.3 item 2]; a way for a Receipt to
+  say that its witness checked continuity [CLL §3.2 item 2]; and any other Receipt profile than
+  RFC9162_SHA256.
 
 ## References
 
@@ -3262,4 +3400,4 @@ it defers.
 - Evidence Result v0, `spec/evidence-result-v0.md`.
 - Controller Binding v0, `spec/controller-binding-v0.md`.
 - Evidence Contract v0 schema, `evidence-contract-v0.json`.
-- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8259; RFC 8785; RFC 8949; RFC 9052; RFC 9597.
+- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8259; RFC 8785; RFC 8949; RFC 8392; RFC 9052; RFC 9162; RFC 9597; RFC 9942.

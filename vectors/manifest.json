@@ -30,6 +30,7 @@
     "bundle_strict": "bundle/strict/manifest.json",
     "bundle_fragment": "bundle/fragment/manifest.json",
     "cll_material": "cll-material/manifest.json",
+    "anchor_witness_v1": "anchor-witness-v1/manifest.json",
     "adapter_x402": "adapters/x402/manifest.json",
     "adapter_ucp": "adapters/ucp/manifest.json"
   }
