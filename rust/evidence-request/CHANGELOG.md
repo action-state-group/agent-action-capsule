@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-10-31
+
+Tag `crates/evidence-request-v0.4.0`.
+
 - Breaking: `jcs::to_string` refuses a value nested more than 128 levels deep with the new
   `JcsError::TooDeep` instead of recursing. The acceptance record's contract digest now has the
   same limit (it was 64). The strict decoders' limit is unchanged (128); Go, Python and TypeScript
