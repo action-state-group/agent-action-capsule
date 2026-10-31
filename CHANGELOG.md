@@ -57,6 +57,12 @@ Tag `go/v0.18.0`.
   which Python, Go and Rust each report exactly the corpus's expectation for all 35 cases. Go's
   strict Ed25519 check moves from `witness` to `internal/ed25519strict`, and Python's to
   `agent_action_capsule._ed25519_strict`, so the witness and evidence-request readers share it.
+- Registry predicate table (AAC#496, closes #407): `REGISTRY.md` §19 lists nine predicates
+  (`performed`, `acknowledged`, `settled`, `refunded`, `disputed`, `adjudicated(outcome, judge, pack)`,
+  `controls-domain`, `key-continuous-since`, `answered-within-deadline`), each with its version,
+  allowed sources, unit and work class, and a verifier reports a predicate the table does not list
+  as `NOT_CHECKED`. The section is a table, not a registry. The Go, Python and Rust embedded copies
+  of `REGISTRY.md` are updated byte for byte.
 - One History frame (`spec/history-frame-v0.md`, AAC#452): the rules every History shares, a
   closed set of fifteen frame parameters, and per instance a counting table and a wording pack
   pinned by digest (`spec/history-frame/`). Standard History (`standard_history/1`), the
@@ -174,6 +180,12 @@ Tag `python/v0.14.0`.
   which Python, Go and Rust each report exactly the corpus's expectation for all 35 cases. Go's
   strict Ed25519 check moves from `witness` to `internal/ed25519strict`, and Python's to
   `agent_action_capsule._ed25519_strict`, so the witness and evidence-request readers share it.
+- Registry predicate table (AAC#496, closes #407): `REGISTRY.md` §19 lists nine predicates
+  (`performed`, `acknowledged`, `settled`, `refunded`, `disputed`, `adjudicated(outcome, judge, pack)`,
+  `controls-domain`, `key-continuous-since`, `answered-within-deadline`), each with its version,
+  allowed sources, unit and work class, and a verifier reports a predicate the table does not list
+  as `NOT_CHECKED`. The section is a table, not a registry. The Go, Python and Rust embedded copies
+  of `REGISTRY.md` are updated byte for byte.
 - Security, strict Ed25519 on trusted-key paths: each Ed25519 check under a pinned, registered or
   trusted key now uses the strict rule of #447 (A and R canonical and not of small order, S < L,
   then the cofactorless check), so a small-order key no longer verifies a forgery over any message,
@@ -191,21 +203,6 @@ Tag `python/v0.14.0`.
   `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on whether the
   runtime's WebCrypto, which varies by version, refuses these; the helper moves from
   `cose-receipt.ts` to `ed25519-strict.ts`. Honest signatures verify as before. (#448)
-- Security, strict Ed25519 on every trusted-key path: each Ed25519 check under a pinned,
-  registered or trusted key now uses the strict rule of #447 (A and R canonical and not of small
-  order, S < L, then the cofactorless check), so a small-order key no longer verifies a forgery
-  over any message. Go: the interop profile's envelope, refusal and acceptance signatures, the
-  CLL checkpoint (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`) and the
-  settlement `wrapped_resigned` check; the strict helper moves from `witness` to
-  `internal/ed25519strict`. Python: `interop_profile` (every signature it checks),
-  `evidence_request` (which already refused a small-order key, and now also a small-order or
-  non-canonical R and S >= L), the settlement `wrapped_resigned` check and `verify --transparent`
-  (the Signed Statement under the issuer key and each receipt under the log key); the helper
-  moves from `witness` to `agent_action_capsule._ed25519_strict`. TypeScript: the settlement
-  `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on the runtime's
-  WebCrypto for this; the helper moves from `cose-receipt.ts` to `ed25519-strict.ts`. Honest
-  signatures verify as before. The producer envelope and Go's Evidence Request -00
-  `VerifySignature` stay with #322. (#448)
 - One History frame (`spec/history-frame-v0.md`, AAC#452): the rules every History shares, a
   closed set of fifteen frame parameters, and per instance a counting table and a wording pack
   pinned by digest (`spec/history-frame/`). Standard History (`standard_history/1`), the

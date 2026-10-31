@@ -16,6 +16,12 @@ Tag `crates/agent-action-capsule-v0.6.0`.
   `verify::verify` reports only `verifier_internal_error` for such a Capsule, as Go, Python and
   TypeScript now do. The decoder's limit is unchanged (128); the four implementations now share it
   and `tests/json_nesting.rs` runs the shared `vectors/json-nesting/` (AAC#498).
+- Registry predicate table (AAC#496, closes #407): `REGISTRY.md` §19 lists nine predicates
+  (`performed`, `acknowledged`, `settled`, `refunded`, `disputed`, `adjudicated(outcome, judge, pack)`,
+  `controls-domain`, `key-continuous-since`, `answered-within-deadline`), each with its version,
+  allowed sources, unit and work class, and a verifier reports a predicate the table does not list
+  as `NOT_CHECKED`. The section is a table, not a registry. The Go, Python and Rust embedded copies
+  of `REGISTRY.md` are updated byte for byte.
 - Security, settlement: the `wrapped_resigned` check verifies a wrapped JWS
   under the leg key with dalek's `verify_strict`, not `verify`, so a
   small-order key (such as the identity key's forgery, R the identity and
