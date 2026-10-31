@@ -154,7 +154,7 @@ fn coverage_value(coverage: &Option<Vec<(&'static str, &'static str)>>) -> Value
 fn every_category_coverage_case_matches() {
     let mut failures = Vec::new();
     let all = cases("category-coverage");
-    assert_eq!(all.len(), 33);
+    assert_eq!(all.len(), 34);
     for case in all {
         let inputs = Inputs::of(&case["options"]);
         let options = StrictOptions {

@@ -16,6 +16,7 @@
 //! Each property is `PASS`, `FAIL`, `NOT_PRESENT`, `NOT_CHECKED` or
 //! `INCONCLUSIVE`.
 
+use crate::ed25519_strict::strict_ed25519;
 use crate::{canonical, verify};
 use ed25519_dalek::{Signature, Verifier as _, VerifyingKey};
 use serde::de::{self, Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
@@ -191,14 +192,13 @@ fn signature(member: &Map<String, Value>, root: &Value) -> &'static str {
     let (Some(key), Some(signature)) = (key, signature) else {
         return FAIL;
     };
-    // A small-order key "verifies" signatures over any message, so it is
-    // refused, as strict verification (RFC 8032 with a small-order check) does.
-    let verified = VerifyingKey::from_bytes(&key).is_ok_and(|key| {
-        !key.is_weak()
-            && key
-                .verify(&signing_input, &Signature::from_bytes(&signature))
+    // Strict Ed25519, as the Python reference reads it: a small-order or
+    // non-canonical key or R, or S >= L, never verifies.
+    let verified = strict_ed25519(&key, &signature)
+        && VerifyingKey::from_bytes(&key).is_ok_and(|key| {
+            key.verify(&signing_input, &Signature::from_bytes(&signature))
                 .is_ok()
-    });
+        });
     if verified {
         PASS
     } else {

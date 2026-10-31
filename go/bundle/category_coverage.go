@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 )
 
 // The values of a category_coverage property.
@@ -209,48 +209,12 @@ func coverageSignature(member map[string]interface{}, root interface{}) string {
 	// The form check has made both 64 and 128 lowercase hex digits.
 	key, _ := hex.DecodeString(member["signer"].(map[string]interface{})["key_id"].(string))
 	signature, _ := hex.DecodeString(member["signature"].(string))
-	if smallOrder(key) || !ed25519.Verify(key, signingInput, signature) {
+	// Strict Ed25519, as the Python reference reads it: a small-order or
+	// non-canonical key or R, or S >= L, never verifies.
+	if !ed25519strict.Verify(ed25519.PublicKey(key), signingInput, signature) {
 		return CoverageFail
 	}
 	return CoveragePass
-}
-
-var (
-	p25519 = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), 255), big.NewInt(19))
-	// y8 is the y-coordinate of a point of order 8, little-endian.
-	y8 = littleEndian(mustHex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"))
-)
-
-// smallOrder reports whether key encodes a small-order point, canonically or
-// not. Such a key "verifies" signatures over any message, so it is refused,
-// as strict verification (RFC 8032 with a small-order check) does;
-// crypto/ed25519 does not refuse it.
-func smallOrder(key []byte) bool {
-	y := littleEndian(key)
-	y.SetBit(y, 255, 0)
-	y.Mod(y, p25519)
-	for _, small := range []*big.Int{big.NewInt(0), big.NewInt(1), new(big.Int).Sub(p25519, big.NewInt(1)), y8, new(big.Int).Sub(p25519, y8)} {
-		if y.Cmp(small) == 0 {
-			return true
-		}
-	}
-	return false
-}
-
-func littleEndian(data []byte) *big.Int {
-	reversed := make([]byte, len(data))
-	for i, b := range data {
-		reversed[len(data)-1-i] = b
-	}
-	return new(big.Int).SetBytes(reversed)
-}
-
-func mustHex(text string) []byte {
-	data, err := hex.DecodeString(text)
-	if err != nil {
-		panic(err)
-	}
-	return data
 }
 
 func coverageSetRegistered(member map[string]interface{}, categorySets map[string][]string) string {

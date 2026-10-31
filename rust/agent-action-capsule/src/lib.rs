@@ -32,6 +32,8 @@ pub mod verify;
 pub mod bundle;
 #[cfg(feature = "bundle")]
 mod disclosure;
+#[cfg(feature = "bundle")]
+mod ed25519_strict;
 #[cfg(feature = "settlement")]
 pub mod settlement;
 #[cfg(feature = "strict")]

@@ -108,6 +108,7 @@ The other properties never change it.
 | `neg-signature-wrong-key` | signed by another key | INVALID |
 | `neg-signature-other-root` | signed over another root | INVALID |
 | `neg-signature-edited` | a status changed after signing | INVALID |
+| `neg-signature-s-not-reduced` | the valid signature with S + L (strict Ed25519 requires S < L) | INVALID |
 | `neg-undisclosed-without-policy-uri` | `UNDISCLOSED` without `policy_uri` | INVALID |
 | `neg-policy-uri-relative` | a relative `policy_uri` | INVALID |
 | `neg-policy-uri-fragment` | a `policy_uri` with a fragment | INVALID |

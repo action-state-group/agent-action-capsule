@@ -25,7 +25,8 @@ import {
   probeEd25519,
   sha256Hex,
 } from "./json.js";
-import { hexToBytes, producerPublicKeySpki } from "./producer-envelope-wire.js";
+import { strictEd25519, verifyEd25519Strict } from "./ed25519-strict.js";
+import { hexToBytes } from "./producer-envelope-wire.js";
 
 export type CategoryCoverageValue =
   | "PASS"
@@ -166,26 +167,6 @@ function wellFormed(member: unknown): member is JsonObject {
   return true;
 }
 
-const P25519 = (1n << 255n) - 19n;
-const littleEndian = (bytes: Uint8Array): bigint =>
-  bytes.reduceRight((acc, byte) => (acc << 8n) | BigInt(byte), 0n);
-const Y8 = littleEndian(
-  hexToBytes(
-    "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
-  ),
-);
-const SMALL_ORDER_Y = new Set([0n, 1n, P25519 - 1n, Y8, P25519 - Y8]);
-
-/**
- * Whether `key` encodes a small-order point, canonically or not. Such a key
- * "verifies" signatures over any message, so it is refused, as strict
- * verification (RFC 8032 with a small-order check) does.
- */
-function smallOrder(key: Uint8Array): boolean {
-  const y = littleEndian(key) & ((1n << 255n) - 1n);
-  return SMALL_ORDER_Y.has(y % P25519);
-}
-
 async function signature(
   member: JsonObject,
   root: unknown,
@@ -199,24 +180,15 @@ async function signature(
   }
   // The form check has made both 64 and 128 lowercase hex digits.
   const key = hexToBytes((member.signer as JsonObject).key_id as string);
-  if (smallOrder(key)) return "FAIL";
+  const sig = hexToBytes(member.signature as string);
+  // Strict Ed25519, as the Python reference reads it: a small-order or
+  // non-canonical key or R, or S >= L, never verifies.
+  if (!strictEd25519(key, sig)) return "FAIL";
   if (!(await probeEd25519())) return "NOT_CHECKED"; // no Ed25519 in this runtime
   try {
-    const subtle = globalThis.crypto.subtle;
-    const imported = await subtle.importKey(
-      "spki",
-      producerPublicKeySpki(key) as BufferSource,
-      { name: "Ed25519" },
-      false,
-      ["verify"],
-    );
-    const verified = await subtle.verify(
-      { name: "Ed25519" },
-      imported,
-      hexToBytes(member.signature as string) as BufferSource,
-      signingInput as BufferSource,
-    );
-    return verified ? "PASS" : "FAIL";
+    return (await verifyEd25519Strict(key, sig, signingInput))
+      ? "PASS"
+      : "FAIL";
   } catch {
     return "FAIL";
   }

@@ -18,6 +18,8 @@
   `BuildOptions::carry_non_record_leaves`): a struct literal needs them, or
   `..Default::default()` where the type has one.
   `bundle::SELECTION_PRODUCER_SELECTED` is now defined with feature `bundle`.
+  The `category_coverage` signature verifies under strict Ed25519, the same
+  check as the witness receipts (now shared with feature `bundle`).
 - The strict receipt check refuses a COSE Receipt whose payload is CBOR undefined (`0xf7`)
   (AAC#519): `coset` reads it as an absent payload, so it was taken as detached. Only null
   (`0xf6`) is detached, as scitt-cose's Python verifier has it. Passes the new strict vector

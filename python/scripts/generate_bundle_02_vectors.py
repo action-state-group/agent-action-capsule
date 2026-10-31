@@ -409,6 +409,10 @@ SET_NAMES = ["messages", "tool_calls", "payments", "approvals", "model_inputs", 
 POLICY_URI = "https://policy.example/retention/v1"
 
 
+# The Ed25519 group order (RFC 8032 section 5.1).
+ED25519_L = 2**252 + 27742317777372353535851937790883648493
+
+
 def sign_coverage(member: dict, root: str, key: Any = None) -> dict:
     """``member`` with ``signer`` and ``signature`` by ``key`` (the producer
     key by default) over JCS({"category_coverage": member without signature,
@@ -500,6 +504,15 @@ def coverage_cases() -> list[dict]:
     edited["categories"]["payments"]["status"] = "AVAILABLE"
     cases.append(coverage_case("neg-signature-edited", "WITHHELD changed to AVAILABLE after signing.",
                                with_member(edited), "INVALID", props(signature="FAIL"), **full))
+    # S + L satisfies the cofactorless equation as S does; strict Ed25519
+    # requires S < L, so the signature is refused in every implementation.
+    unreduced = copy.deepcopy(signed_six)
+    raw = bytes.fromhex(unreduced["signature"])
+    s_plus_l = int.from_bytes(raw[32:], "little") + ED25519_L
+    unreduced["signature"] = (raw[:32] + s_plus_l.to_bytes(32, "little")).hex()
+    cases.append(coverage_case("neg-signature-s-not-reduced", "The valid signature with S replaced by S + L: "
+                               "strict Ed25519 requires S < L.", with_member(unreduced), "INVALID",
+                               props(signature="FAIL"), **full))
 
     def malformed(case_id: str, description: str, edit: Any) -> None:
         member = copy.deepcopy(declaration)

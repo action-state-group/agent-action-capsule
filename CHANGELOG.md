@@ -52,7 +52,9 @@ has not yet.
   `LeafContentSource` with `BuildOptions.CarryNonRecordLeaves`. TypeScript: `CERTIFICATE_MODE_UNSUPPORTED`,
   `checkCategoryCoverage` (`category-coverage.ts`), `categoryCoverage` on every result, the
   `verifyBundle` options `categorySets`, `categoryRequest` and `recordCategories`, and the optional
-  `ProofSource.leafContent` with `carryNonRecordLeaves`. Rust: see its changelog. The interlock
+  `ProofSource.leafContent` with `carryNonRecordLeaves`. Rust: see its changelog. The `category_coverage` signature
+  verifies under strict Ed25519 in all four (a small-order or non-canonical key or R, or S >= L, is
+  refused; vector `neg-signature-s-not-reduced`). The interlock
   (`scripts/cross-language-interlock.sh`) adds `padded-whole-log` and `padded-tampered`, built by
   every language from `vectors/cross-language/bundle-producer-padded-log.json` and read by every
   strict verifier.
