@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0
+
 - **`evidence-interop/1`** (`spec/interop-profile-v1.md`, ER -02): `envelope::PROFILE_V1` and
   `envelope::PROFILES`. `Envelope::verify_for_profile` accepts an envelope that names the identifier
   the request asked for (`verify_for` is it with /0), and `cll_material::check_anchor_inclusion`
