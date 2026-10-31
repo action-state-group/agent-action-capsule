@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-10-31
+
+Tag `crates/agent-action-capsule-v0.7.0`.
+
+- Rollout gate: no producer may emit `non_record_leaves` until all four verifiers (Go, Python,
+  TypeScript, Rust), `capsulectl`, the hosted verify page and Evidencebook have released the check.
+  A verifier from this release reads them; a producer's flag for emitting them stays off until each
+  of those has released it.
+- One stated decoding rule for COSE Receipts (AAC#520): the strict receipt check decodes under the
+  receipt encoding rule of `spec/interop-profile-v1.md` §6.2.2 with the crate's own strict reader,
+  and verifies the inclusion proof and signature itself. Neither `coset` nor `scitt-cose-receipt` is
+  on the path any more: `scitt-cose-receipt` is no longer a dependency, and `coset` only a
+  dev-dependency. Changed outcomes: indefinite
+  lengths, repeated keys, non-shortest arguments, floats, tags and bignums are refused, as in the other
+  languages; a `kid` that is not a byte string, or a content type that is not `type/subtype`, is
+  ignored like any unread label instead of refused; a receipt over 10,485,760 octets is refused. The
+  reader's repeated-key check is no longer quadratic, which also bounds the anchor check on a large map.
+  Passes the 25 new strict vectors and the two renamed float vectors.
+- The embedded copy of `REGISTRY.md` cites the base draft's -05 section numbers (AAC#501, closes
+  #497).
 - Evidence Bundle -02, as the Python reference reads it. Certificate modes:
   `completeness.selection` names the certificate's mode; a producer-selected
   Bundle is no longer a failure in plain mode, and any other value withholds
@@ -13,7 +33,7 @@
   `VerificationResult::category_coverage`, and in strict mode
   (`StrictOptions::category`) a `FAIL` of the form, signature or consistency
   is INVALID. Producer: the optional `ProofSource::leaf_content` (default
-  `None`) with `BuildOptions::carry_non_record_leaves`. New public struct
+  `None`) with `BuildOptions::carry_non_record_leaves`. Breaking: new public struct
   fields (`VerificationResult::category_coverage`, `StrictOptions::category`,
   `BuildOptions::carry_non_record_leaves`): a struct literal needs them, or
   `..Default::default()` where the type has one.
@@ -24,16 +44,6 @@
   (AAC#519): `coset` reads it as an absent payload, so it was taken as detached. Only null
   (`0xf6`) is detached, as scitt-cose's Python verifier has it. Passes the new strict vector
   `neg-witness-cll-undefined-payload`.
-- One stated decoding rule for COSE Receipts (AAC#520): the strict receipt check decodes under the
-  receipt encoding rule of `spec/interop-profile-v1.md` §6.2.2 with the crate's own strict reader,
-  and verifies the inclusion proof and signature itself. Neither `coset` nor `scitt-cose-receipt` is
-  on the path any more: `scitt-cose-receipt` is no longer a dependency, and `coset` only a
-  dev-dependency. Changed outcomes: indefinite
-  lengths, repeated keys, non-shortest arguments, floats, tags and bignums are refused, as in the other
-  languages; a `kid` that is not a byte string, or a content type that is not `type/subtype`, is
-  ignored like any unread label instead of refused; a receipt over 10,485,760 octets is refused. The
-  reader's repeated-key check is no longer quadratic, which also bounds the anchor check on a large map.
-  Passes the 25 new strict vectors and the two renamed float vectors.
 
 ## 0.6.0 — 2026-10-31
 
