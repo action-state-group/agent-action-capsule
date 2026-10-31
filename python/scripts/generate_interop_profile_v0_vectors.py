@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the conformance vectors of the Minimum Evidence Interoperability Profile v0.
+"""Generate the conformance vectors of the Minimum Evidence Interoperability Profile v0 and v1.
 
-The profile is ``spec/interop-profile-v0.md`` (identifier ``evidence-interop/0``); its §11.5
-describes this corpus. Every expected status below is written by hand from the profile text, and
+The profile is ``spec/interop-profile-v0.md`` (identifier ``evidence-interop/0``), or with
+``--profile 1`` ``spec/interop-profile-v1.md`` (``evidence-interop/1``); its §11.5 describes this
+corpus. The v0 corpora are frozen with v0: ``--profile 0`` must reproduce them byte for byte. Every expected status below is written by hand from the profile text, and
 each case cites the sections it comes from. Nothing here imports or runs a verifier: the script
 encodes literal inputs (JSON per RFC 8785, CBOR per RFC 8949 §4.2.1), builds two small
 Checkpointed Local Logs with the MMR algorithms the profile pins, hashes, and signs with fixed
@@ -14,8 +15,9 @@ every expected status with its own evaluator.
 Each case pins its trust policy (test keys only), its verification policy, the contract version
 (``contract_ref`` and ``contract_digest``), its evaluation time, and its inputs as octets.
 
-Output: ``vectors/interop-profile-v0/`` (or ``--out DIR``). ``--set requirement-facts`` writes the
-second set, ``vectors/interop-profile-v0-requirement-facts/``: its own contract, whose requirements
+Output: ``vectors/interop-profile-v0/`` (``-v1/`` under ``--profile 1``, or ``--out DIR``).
+``--set requirement-facts`` writes the second set, ``vectors/interop-profile-v0-requirement-facts/``
+(``-v1-`` under ``--profile 1``): its own contract, whose requirements
 carry the facts §8.3 copies into the claim, and its own pins and exchanges. Deterministic: no clock, no
 randomness. Every key is derived from a public seed and is for testing only. ``README.md`` is
 hand-written; when present in the output directory it is included in ``SHA256SUMS`` but never
@@ -34,14 +36,40 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 ROOT = Path(__file__).resolve().parents[2]
+# The identifier this run writes, and the one the version cases use as the other identifier.
+# use_profile() switches every name _names() gives; the other generators import them at v0.
 DEFAULT_OUT = ROOT / "vectors" / "interop-profile-v0"
 SET = "aac-interop-profile-v0"
 FACTS_OUT = ROOT / "vectors" / "interop-profile-v0-requirement-facts"
 FACTS_SET = "aac-interop-profile-v0-requirement-facts"
 PROFILE = "evidence-interop/0"
+OTHER_PROFILE = "evidence-interop/1"
+VERSION = 0
 SPEC = "spec/interop-profile-v0.md"
 STATUS = ("Conformance vectors for the pre-Internet-Draft profile evidence-interop/0. Every key is a "
           "test key derived from a public seed; never use one for anything else.")
+ER_DRAFT = "draft-mih-agent-evidence-request-01"
+
+
+def _names(version: int) -> dict:
+    v = f"v{version}"
+    return {
+        "PROFILE": f"evidence-interop/{version}",
+        "OTHER_PROFILE": f"evidence-interop/{1 - version}",
+        "VERSION": version,
+        "DEFAULT_OUT": ROOT / "vectors" / f"interop-profile-{v}",
+        "SET": f"aac-interop-profile-{v}",
+        "FACTS_OUT": ROOT / "vectors" / f"interop-profile-{v}-requirement-facts",
+        "FACTS_SET": f"aac-interop-profile-{v}-requirement-facts",
+        "SPEC": f"spec/interop-profile-{v}.md",
+        "STATUS": (f"Conformance vectors for the pre-Internet-Draft profile evidence-interop/{version}. Every "
+                   "key is a test key derived from a public seed; never use one for anything else."),
+        # The ER revision a responder's manifest names in `drafts` (§11.4.2): -01 for v0 (P-64), -02 for v1.
+        "ER_DRAFT": "draft-mih-agent-evidence-request-01" if version == 0 else "draft-mih-agent-evidence-request-02",
+    }
+
+
+assert _names(0) == {name: globals()[name] for name in _names(0)}, "the v0 names drifted"
 EXT_URI = "https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"
 KINDS = ["cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof"]
 
@@ -343,7 +371,11 @@ EVAL = "2026-10-12T01:00:00Z"
 # ---------------------------------------------------------------------------
 
 
-def request(nonce: str, record: str, pin: str, *, profile: str | None = PROFILE) -> dict:
+_PROFILE: Any = object()  # the default `profile` argument: PROFILE when called, not when defined
+
+
+def request(nonce: str, record: str, pin: str, *, profile: str | None = _PROFILE) -> dict:
+    profile = PROFILE if profile is _PROFILE else profile
     r = {"coverage": {"expected_pin": pin}, "nonce": nonce, "subject": {"record": record}}
     if profile is not None:
         r["profile"] = profile
@@ -355,12 +387,13 @@ def encode(media_type: str, value: Any) -> bytes:
 
 
 def envelope(req_octets: bytes, record: str, anchor: str, artifact: bytes, mat: list[tuple[str, bytes]],
-             issued_at: str, media_type: str, *, key: str = "responder", profile: str | None = PROFILE,
+             issued_at: str, media_type: str, *, key: str = "responder", profile: str | None = _PROFILE,
              request_digest: str | None = None, signer: str | None = None) -> bytes:
     """An envelope (§6.2) in the encoding of ``media_type``. Signed over JCS whatever the frame (§5.1).
 
     ``signer`` differs from ``key`` only to forge one.
     """
+    profile = PROFILE if profile is _PROFILE else profile
     body: dict[str, Any] = {
         "anchor": {"digest": anchor},
         "artifact_digest": shx(artifact),
@@ -440,6 +473,9 @@ ROW = {
     "refusal-no_such_subject": ("NOT_FOUND", "GAP", "not_evaluable"),
     "refusal-withheld": ("WITHHELD", "GAP", "not_evaluable"),
     "refusal-deadline_or_malformed": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
+    # v1 only: the two ER -02 reasons (v1 §8.1, §9.1).
+    "refusal-capacity_exceeded": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
+    "refusal-request_unauthenticated": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
     "refusal-failed": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
     "absence": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
 }
@@ -471,13 +507,21 @@ def proofs_of(mat: list[tuple[str, bytes]]) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
+# The §10.1 envelope signature each revision prints. The envelope signs `profile`, so it differs.
+SECTION_10_1_SIG = {
+    0: "d98fcb97d551c5accc5094baf58d8d6446d21b74228602a88392dcf1719cc9b9"
+       "ab87f15e6f80792e1199e564a4f263dc35b2e8d015e65046bf2d095ec820800b",
+    1: "311678d69795b9f2786276b5fe73810a6d016e1e92e12909e0580f4e201a76be"
+       "8e56f2a1edc7f34f09836090cac4276766ebde40949aa12753d550b56bfe4205",
+}
+
+
 def exchange_cases() -> list[dict]:
     out = []
     J, C = "application/json", "application/cbor"
     req_c = encode(J, request("2026-10-12T00:00:10Z/c", ART, ANCHOR1))
     env_c = envelope(req_c, ART, ANCHOR1, ARTIFACT, MATERIAL1, "2026-10-12T00:00:11Z", J)
-    assert json.loads(env_c)["sig"] == ("d98fcb97d551c5accc5094baf58d8d6446d21b74228602a88392dcf1719cc9b9"
-                                        "ab87f15e6f80792e1199e564a4f263dc35b2e8d015e65046bf2d095ec820800b")
+    assert json.loads(env_c)["sig"] == SECTION_10_1_SIG[VERSION], "§10.1 drifted"
     claim_ok = {"evidence": [ref(ART)], "proofs": proofs_of(MATERIAL1)}
 
     out.append({
@@ -653,6 +697,39 @@ def exchange_cases() -> list[dict]:
         "A conforming refusal with reason no_such_subject: evidence not found. NOT_FOUND, projecting to GAP.",
         ["§6.3", "§8.1 no_such_subject"],
         refusal(req_c, "no_such_subject", "2026-10-12T00:00:11Z"), ref_props(), "refusal-no_such_subject"))
+    if VERSION >= 1:
+        out.append(refusal_case(
+            "capacity-exceeded",
+            "A conforming refusal with reason capacity_exceeded, registered by ER -02: the responder states a "
+            "limit of its own. UNKNOWN, never WITHHELD: it says nothing about the evidence or the policy.",
+            ["§6.3", "§8.1 capacity_exceeded", "§9.1", "P-65"],
+            refusal(req_c, "capacity_exceeded", "2026-10-12T00:00:11Z"), ref_props(),
+            "refusal-capacity_exceeded"))
+        out.append(refusal_case(
+            "request-unauthenticated",
+            "A conforming refusal with reason request_unauthenticated, registered by ER -02: the request's "
+            "authentication did not verify, a property of the request. UNKNOWN.",
+            ["§6.3", "§8.1 request_unauthenticated", "§9.1", "P-65"],
+            refusal(req_c, "request_unauthenticated", "2026-10-12T00:00:11Z"), ref_props(),
+            "refusal-request_unauthenticated"))
+        req_v0 = encode(J, request("2026-10-12T00:00:50Z/c0", ART, ANCHOR1, profile="evidence-interop/0"))
+        ref_v0 = refusal(req_v0, "capacity_exceeded", "2026-10-12T00:00:51Z")
+        out.append({
+            "id": "capacity-exceeded-under-v0",
+            "description": "The same reason answering a request that asks for evidence-interop/0, checked by a "
+                           "verifier that implements both identifiers. evidence-interop/0 pins ER -01, where "
+                           "capacity_exceeded is unregistered: reason_registered FAIL, a response received and "
+                           "failed, UNKNOWN.",
+            "cites": ["§3.3 step 2", "§6.3", "§9.1", "§8.1 refusal not PASS", "P-21", "P-65"],
+            "pins": pins(EVAL, vpolicy=verification_policy(profiles_implemented=sorted([PROFILE, OTHER_PROFILE]))),
+            "inputs": {"request": octets(J, req_v0), "replies": [reply("http", ref_v0, J)]},
+            "expected": {
+                "request_digest": shx(req_v0),
+                "replies": [{"message_type": "refusal", "properties": ref_props(reason_registered="FAIL"),
+                             "requirements": {"r-record": mapped("refusal-failed")},
+                             "claim": {"evidence": [ref(shx(ref_v0))], "proofs": []}}],
+            },
+        })
 
     absence_body = {"outcome": "recorded_absence", "recorded_at": "2026-10-12T00:01:10Z",
                     "request_digest": shx(req_c), "route": "peer:example-responder",
@@ -730,14 +807,14 @@ def exchange_cases() -> list[dict]:
         })
 
     env_v1 = envelope(req_c, ART, ANCHOR1, ARTIFACT, MATERIAL1, "2026-10-12T00:00:11Z", J,
-                      profile="evidence-interop/1")
+                      profile=OTHER_PROFILE)
     out.append({
         "id": "unsupported-version-mismatch",
-        "description": "Request C asks for evidence-interop/0; the envelope names evidence-interop/1. The "
+        "description": f"Request C asks for {PROFILE}; the envelope names {OTHER_PROFILE}. The "
                        "verifier implements both, so only the mismatch rule of §3.3 step 5 applies: "
                        "profile_version FAIL and every other envelope property NOT_CHECKED; §8.1 row 2.",
         "cites": ["§3.3 step 5", "§7.2", "§8.1 row 2", "P-56"],
-        "pins": pins(EVAL, vpolicy=verification_policy(profiles_implemented=[PROFILE, "evidence-interop/1"])),
+        "pins": pins(EVAL, vpolicy=verification_policy(profiles_implemented=sorted([PROFILE, OTHER_PROFILE]))),
         "inputs": {"request": octets(J, req_c), "replies": [reply("http", env_v1, J)]},
         "expected": {
             "request_digest": shx(req_c),
@@ -763,14 +840,15 @@ def exchange_cases() -> list[dict]:
             "set_properties": {"caller_invariance": "NOT_CHECKED"},
         },
     })
-    req_v1 = encode(J, request("2026-10-12T00:00:30Z/v1", ART, ANCHOR1, profile="evidence-interop/1"))
+    other_nonce = f"2026-10-12T00:00:30Z/v{1 - VERSION}"
+    req_v1 = encode(J, request(other_nonce, ART, ANCHOR1, profile=OTHER_PROFILE))
     env_v1b = envelope(req_v1, ART, ANCHOR1, ARTIFACT, MATERIAL1, "2026-10-12T00:00:31Z", J,
-                       profile="evidence-interop/1")
+                       profile=OTHER_PROFILE)
     out.append({
         "id": "unsupported-version-unimplemented",
-        "description": "A request and envelope under evidence-interop/1, checked by a verifier that "
-                       "implements only evidence-interop/0. profile_version NOT_CHECKED, every other "
-                       "property NOT_CHECKED, never checked under v0 rules; §8.1 row 4.",
+        "description": f"A request and envelope under {OTHER_PROFILE}, checked by a verifier that "
+                       f"implements only {PROFILE}. profile_version NOT_CHECKED, every other "
+                       f"property NOT_CHECKED, never checked under v{VERSION} rules; §8.1 row 4.",
         "cites": ["§3.3 step 5", "§7.2", "§8.1 row 4"],
         "pins": pins(EVAL),
         "inputs": {"request": octets(J, req_v1), "replies": [reply("http", env_v1b, J)]},
@@ -1143,7 +1221,8 @@ def lifecycle_cases() -> list[dict]:
 # Cases: carriage over the native stream, A2A and MCP (§11.4, §11.4.8)
 # ---------------------------------------------------------------------------
 
-MANIFEST = {"bindings": ["a2a", "evidence-request/1", "mcp"], "drafts": ["draft-mih-agent-evidence-request-01"],
+def manifest() -> dict:
+    return {"bindings": ["a2a", "evidence-request/1", "mcp"], "drafts": [ER_DRAFT],
             "profiles": [PROFILE], "subject_forms": ["record"]}
 
 
@@ -1197,9 +1276,9 @@ def carriage_cases() -> list[dict]:
     e_a2a_reser = envelope(r, ART, ANCHOR1, reserialized, MATERIAL1, "2026-10-12T00:00:13Z", C)
     e_mcp_rehash = envelope(r, ART, ANCHOR1, ARTIFACT, MATERIAL1, "2026-10-12T00:00:14Z", C,
                             request_digest=json_digest(req_obj))
-    card_entry = {"uri": EXT_URI, "description": "Evidence request exchange, profile evidence-interop/0.",
-                  "required": False, "params": MANIFEST}
-    mcp_manifest = {"resultType": "complete", "content": [], "isError": False, "structuredContent": MANIFEST}
+    card_entry = {"uri": EXT_URI, "description": f"Evidence request exchange, profile {PROFILE}.",
+                  "required": False, "params": manifest()}
+    mcp_manifest = {"resultType": "complete", "content": [], "isError": False, "structuredContent": manifest()}
     cites = ["§11.4.1", "§11.4.4", "§11.4.5", "§11.4.7", "§11.4.8"]
     ok = {"message_type": "envelope", "properties": env_props(),
           "requirements": {"r-record": mapped("envelope-7")},
@@ -1300,7 +1379,7 @@ def carriage_cases() -> list[dict]:
         case("carriage-manifest-count-member",
              "§11.4.8: the A2A extension params add a count member. manifest_form FAIL for that copy; "
              "manifest_consistency FAIL against the evidence_manifest result.",
-             carried(None, None, None, {"a2a_extension": dict(card_entry, params=dict(MANIFEST, record_count=42)),
+             carried(None, None, None, {"a2a_extension": dict(card_entry, params=dict(manifest(), record_count=42)),
                                         "mcp_evidence_manifest": mcp_manifest}),
              {}, [], {"caller_invariance": "NOT_CHECKED"},
              {"manifest_properties": {"a2a_extension": {"manifest_form": "FAIL"},
@@ -1344,7 +1423,7 @@ FACTS_CONTRACT = {
     ],
 }
 FACTS_IDS = [r["id"] for r in FACTS_CONTRACT["requirements"]]
-FACTS_STATUS = ("Conformance vectors for the requirement facts evidence-interop/0 copies into the claim "
+FACTS_STATUS = (f"Conformance vectors for the requirement facts {PROFILE} copies into the claim "
                 "(§8.3). Every key is a test key derived from a public seed; never use one for anything else.")
 
 
@@ -1494,13 +1573,22 @@ def build() -> dict[str, bytes]:
     return files
 
 
-# Each set: its builder and default output directory.
-SETS = {"interop-profile-v0": (build, DEFAULT_OUT), "requirement-facts": (build_facts, FACTS_OUT)}
+# Each set: its builder and default output directory. The main set keeps its v0 name under --set.
+def sets() -> dict:
+    return {"interop-profile-v0": (build, DEFAULT_OUT), "requirement-facts": (build_facts, FACTS_OUT)}
+
+
+def use_profile(version: int) -> None:
+    """Switch the identifier, names and output directories this module writes."""
+    global FACTS_STATUS
+    globals().update(_names(version))  # exactly the module-level names above
+    FACTS_STATUS = (f"Conformance vectors for the requirement facts {PROFILE} copies into the claim "
+                    "(§8.3). Every key is a test key derived from a public seed; never use one for anything else.")
 
 
 def write(out: Path, set_name: str = "interop-profile-v0") -> None:
     out.mkdir(parents=True, exist_ok=True)
-    for name, data in SETS[set_name][0]().items():
+    for name, data in sets()[set_name][0]().items():
         (out / name).write_bytes(data)
     lines = [f"{shx(p.read_bytes())}  {p.name}"
              for p in sorted(out.iterdir()) if p.is_file() and p.name != "SHA256SUMS"]
@@ -1509,10 +1597,13 @@ def write(out: Path, set_name: str = "interop-profile-v0") -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
-    parser.add_argument("--set", choices=sorted(SETS), default="interop-profile-v0")
+    parser.add_argument("--set", choices=sorted(sets()), default="interop-profile-v0")
+    parser.add_argument("--profile", type=int, choices=(0, 1), default=0,
+                        help="the profile revision: 0 (frozen) or 1")
     parser.add_argument("--out", type=Path, help="default: the set's directory under vectors/")
     args = parser.parse_args()
-    write(args.out or SETS[args.set][1], args.set)
+    use_profile(args.profile)
+    write(args.out or sets()[args.set][1], args.set)
 
 
 if __name__ == "__main__":

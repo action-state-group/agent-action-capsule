@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """The evidence-interop/0 conformance vectors, checked from their inputs alone.
 
+``test_interop_profile_v1_vectors.py`` runs this module again with ``_PROFILE_VERSION`` 1, for the
+evidence-interop/1 corpora and ``spec/interop-profile-v1.md``; every version-dependent name below
+derives from that one value.
+
 Nothing here imports the generator. Every digest, signature and encoding is recomputed from the
 octets each case carries: JSON through this library's RFC 8785 ``jcs``, CBOR through a strict
 decoder written here (definite lengths, shortest heads, sorted keys, no duplicates), MMR proofs
@@ -32,21 +36,29 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from agent_action_capsule.canonical import jcs
 
 ROOT = Path(__file__).resolve().parents[2]
-VECTORS = ROOT / "vectors" / "interop-profile-v0"
+VERSION = globals().get("_PROFILE_VERSION", 0)
+V = f"v{VERSION}"
+VECTORS = ROOT / "vectors" / f"interop-profile-{V}"
+SPEC = ROOT / "spec" / f"interop-profile-{V}.md"
 # Each set the generator writes, by its --set name: its directory and its root manifest key.
-SETS = {"interop-profile-v0": (VECTORS, "interop_profile_v0"),
-        "requirement-facts": (ROOT / "vectors" / "interop-profile-v0-requirement-facts",
-                              "interop_profile_v0_requirement_facts")}
+SETS = {"interop-profile-v0": (VECTORS, f"interop_profile_{V}"),
+        "requirement-facts": (ROOT / "vectors" / f"interop-profile-{V}-requirement-facts",
+                              f"interop_profile_{V}_requirement_facts")}
 GENERATOR = ROOT / "python" / "scripts" / "generate_interop_profile_v0_vectors.py"
 HAND_WRITTEN = ("README.md",)
 DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
 CASES = DATA["cases"]
-PROFILE = "evidence-interop/0"
+PROFILE = f"evidence-interop/{VERSION}"
+# §3.3 step 2: a request with no profile asks for evidence-interop/0, in both revisions.
+DEFAULT_PROFILE = "evidence-interop/0"
 EXT_URI = "https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"
 TIME = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 REASONS = {"not_authorized", "no_such_subject", "coverage_unsatisfiable", "derivation_unsupported",
            "policy_declined", "deadline_unmet", "request_malformed", "retention_expired"}
+# §9.1 of each revision: v0 pins ER -01's eight tokens, v1 ER -02's ten.
+REASONS_BY_PROFILE = {"evidence-interop/0": frozenset(REASONS),
+                      "evidence-interop/1": frozenset(REASONS | {"capacity_exceeded", "request_unauthenticated"})}
 KINDS = ("cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof")
 # The Evidence Contract projection [EC contractResult] and §8.1.
 PROJECTION = {"SATISFIED": "SATISFIED", "NOT_FOUND": "GAP", "NOT_COMMITTED": "GAP", "WITHHELD": "GAP",
@@ -353,7 +365,7 @@ class Verifier:
         others = ("envelope_signature", "responder_trust", "responder_key_current", "issued_at_form",
                   "request_binding", "subject_binding", "artifact_digest", "verification_binding",
                   "anchor_match", "anchor_inclusion")
-        asked = req.get("profile", PROFILE)
+        asked = req.get("profile", DEFAULT_PROFILE)
         if "profile" not in env:
             props["profile_version"] = "NOT_PRESENT"
         elif env["profile"] != asked:
@@ -424,7 +436,18 @@ class Verifier:
         return rows
 
     # ---- §6.3, §7.3: refusal ----
-    def refusal_props(self, ref: dict, req_octets: bytes) -> dict:
+    def reasons(self, req: dict) -> frozenset:
+        """§6.3, §9.1: a refusal is checked against the tokens of the identifier its request asks
+        for, or of every identifier implemented when that one is not."""
+        implemented = [p for p in self.vpolicy["profiles_implemented"] if p in REASONS_BY_PROFILE]
+        if self.m == "reasons-of-the-latest":
+            return REASONS_BY_PROFILE[max(implemented)]
+        asked = req.get("profile", DEFAULT_PROFILE)
+        if asked in implemented:
+            return REASONS_BY_PROFILE[asked]
+        return frozenset().union(*(REASONS_BY_PROFILE[p] for p in implemented))
+
+    def refusal_props(self, ref: dict, req_octets: bytes, req: dict) -> dict:
         st = lambda ok: "PASS" if ok else "FAIL"  # noqa: E731
         body = {k: ref[k] for k in ("issued_at", "reason", "request_digest")}
         return {
@@ -432,7 +455,7 @@ class Verifier:
             "responder_trust": st(ref["key_id"] in self.policy["responder_keys"] or self.m == "refusal-trust-skipped"),
             "responder_key_current": "NOT_CHECKED",
             "request_binding": st(ref["request_digest"] == shx(req_octets)),
-            "reason_registered": st(ref["reason"] in REASONS),
+            "reason_registered": st(ref["reason"] in self.reasons(req)),
             "issued_at_form": st(isinstance(ref.get("issued_at"), str) and TIME.match(ref["issued_at"])),
         }
 
@@ -460,7 +483,7 @@ class Verifier:
                                            "digest": inc["digest"]}]
             return out
         if "reason" in obj and "artifact_digest" not in obj:
-            props = self.refusal_props(obj, req_octets)
+            props = self.refusal_props(obj, req_octets, req)
             return {"message_type": "refusal", "properties": props,
                     "_row": self.refusal_row(props, obj["reason"]),
                     "claim": {"evidence": [{"digest_alg": "SHA-256", "digest": shx(data)}], "proofs": []}}
@@ -914,7 +937,7 @@ def test_expected_statuses_are_derived_from_the_inputs(case):
 
 # Each mutant is a plausible verifier defect; at least one case must expose it.
 MUTANTS = {
-    "version-ignored": "checks an envelope under v0 rules whatever profile it names (§3.3 step 5)",
+    "version-ignored": f"checks an envelope under {V} rules whatever profile it names (§3.3 step 5)",
     "binding-skipped": "never compares request_digest with the retained request octets (§7.2)",
     "invariance-ignored": "does not apply §8.1 row 1 when caller_invariance FAILs",
     "is-check-as-supports": "maps a failed native check under the requirement that IS it to row 6",
@@ -926,6 +949,9 @@ MUTANTS = {
     "is-error-is-transport": "classifies by MCP isError instead of the reply octets (§11.4.5)",
     "absence-key-id-unsigned": "checks an absence record's sig over the refusal's signing input, key_id left out (§6.4)",
 }
+if VERSION >= 1:
+    MUTANTS["reasons-of-the-latest"] = ("checks every refusal against the newest identifier's tokens, whatever "
+                                        "its request asks for (§6.3, §9.1)")
 
 
 @pytest.mark.parametrize("mutant", sorted(MUTANTS))
@@ -989,6 +1015,8 @@ ROW_TRIPLES = {
     "refusal-no_such_subject": ("NOT_FOUND", "GAP", "not_evaluable"),
     "refusal-withheld": ("WITHHELD", "GAP", "not_evaluable"),
     "refusal-deadline_or_malformed": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
+    "refusal-capacity_exceeded": ("UNKNOWN", "UNKNOWN", "not_evaluable"),  # v1
+    "refusal-request_unauthenticated": ("UNKNOWN", "UNKNOWN", "not_evaluable"),  # v1
     "refusal-failed": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
     "absence": ("UNKNOWN", "UNKNOWN", "not_evaluable"),
 }
@@ -1054,7 +1082,7 @@ def test_contract_pin_shape():
     assert shx(c["document_jcs"].encode()) == c["contract_digest"]
     assert c["contract_ref"] == f"{c['document']['id']}@{c['document']['version']}"
     assert HEX64.match(c["schema"]["sha256"]) and c["schema"]["name"] == "evidence-contract-v0.json"
-    ec_row = next(line for line in (ROOT / "spec" / "interop-profile-v0.md").read_text(encoding="utf-8")
+    ec_row = next(line for line in SPEC.read_text(encoding="utf-8")
                   .splitlines() if line.startswith("| EC |"))
     assert c["schema"]["sha256"] in ec_row, "the recorded schema is the one the profile pins as EC"
     for r in c["document"]["requirements"]:
@@ -1077,7 +1105,7 @@ def test_every_case_pins_policy_contract_time_and_cites(case):
 
 
 def test_section_10_1_bytes_are_reused():
-    profile = (ROOT / "spec" / "interop-profile-v0.md").read_text(encoding="utf-8")
+    profile = SPEC.read_text(encoding="utf-8")
     valid = next(c for c in CASES if c["id"] == "valid-exchange")
     assert valid["inputs"]["request"]["octets_text"] in profile
     env = strict_json(valid["inputs"]["replies"][0]["octets_text"])
@@ -1116,7 +1144,8 @@ def test_carriage_moves_one_octet_string():
 def _generate(out: Path, set_name: str) -> None:
     for name in HAND_WRITTEN:
         shutil.copyfile(SETS[set_name][0] / name, out / name)
-    subprocess.run([sys.executable, str(GENERATOR), "--set", set_name, "--out", str(out)], check=True)
+    subprocess.run([sys.executable, str(GENERATOR), "--set", set_name, "--profile", str(VERSION), "--out", str(out)],
+                   check=True)
 
 
 @pytest.mark.parametrize("set_name", sorted(SETS))

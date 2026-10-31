@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Reference verifier for the Minimum Evidence Interoperability Profile, ``evidence-interop/0``
-(``spec/interop-profile-v0.md``).
+(``spec/interop-profile-v0.md``) and ``evidence-interop/1`` (``spec/interop-profile-v1.md``). Each
+exchange is checked under the identifier it names; v1 differs in its refusal reasons (§9.1, §8.1).
 
 - :class:`InteropVerifier` checks evidence-request exchanges: per-property statuses with the
   method used (§7), ``caller_invariance`` across every envelope held, ``native_check`` of a
@@ -21,6 +22,8 @@ from ._common import (
     NOT_PRESENT,
     PASS,
     PROFILE_ID,
+    PROFILE_IDS,
+    PROFILE_V1,
     STATUSES,
     PropertyReport,
     TrustPolicy,
@@ -40,7 +43,7 @@ from .exchange import (
 from .lifecycle import HeldRecord, LifecycleResult, evaluate_lifecycle
 
 __all__ = [
-    "PROFILE_ID", "PASS", "FAIL", "NOT_PRESENT", "NOT_CHECKED", "INCONCLUSIVE", "STATUSES",
+    "PROFILE_ID", "PROFILE_V1", "PROFILE_IDS", "PASS", "FAIL", "NOT_PRESENT", "NOT_CHECKED", "INCONCLUSIVE", "STATUSES",
     "PropertyReport", "TrustPolicy", "VerificationPolicy",
     "InteropVerifier", "Exchange", "Message", "ForeignObject", "ReplyResult", "RequirementResult",
     "ExchangeResult", "VerificationResult",

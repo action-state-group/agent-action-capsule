@@ -24,7 +24,7 @@ from ._common import (
     NOT_CHECKED,
     NOT_PRESENT,
     PASS,
-    PROFILE_ID,
+    PROFILE_IDS,
     PropertyReport,
     TrustPolicy,
     ceil_seconds,
@@ -146,8 +146,8 @@ def _form_problems(r: Mapping[str, Any]) -> list[str]:
     """§11.1.2 and §11.1.3, as ``acceptance_form`` checks them."""
     out = []
     state = r.get("state")
-    if r.get("profile") != PROFILE_ID:
-        out.append("profile is not evidence-interop/0")
+    if not member_of(r.get("profile"), PROFILE_IDS):
+        out.append("profile is not evidence-interop/0 or evidence-interop/1")
     if state not in STATES:
         out.append("state is not one of the four tokens, exact case")
     for name in ("contract_ref",):
@@ -200,7 +200,7 @@ def evaluate_acceptance(
     *,
     session: bool = False,
     form_ii_objects: Sequence[Any] = (),
-    profiles_implemented: frozenset = frozenset({PROFILE_ID}),
+    profiles_implemented: frozenset = PROFILE_IDS,
     read_execution_record: Callable[[bytes], ExecutionRecord | None] = read_fixture_execution_record,
 ) -> AcceptanceResult:
     """The §11.1.8 finding for one contract version and one transaction.
@@ -224,7 +224,7 @@ def evaluate_acceptance(
     if len({json_value_digest(i) for i in ids}) != len(ids):
         raise ValueError("two requirements share one id; the contract version is not evaluated (§11.3.7)")
     contract_ref = contract_ref_of(contract)
-    implemented = profiles_implemented & {PROFILE_ID}
+    implemented = profiles_implemented & PROFILE_IDS
 
     held: dict[str, dict] = {}  # by record digest: two copies of one record are one record
     unreadable: list = []
