@@ -260,20 +260,20 @@ Internet-Draft            Agent Action Capsules             October 2026
    neither small order (the eight points whose order divides 8), if the
    scalar S is below the group order L, and if the cofactorless equation
    [S]B = R + [k]A of [RFC8032], Section 5.1.7, holds.  It rejects the
-   signature if any condition fails.  [RFC8032] permits verifiers to
-   differ on these inputs, and a small-order A or R lets a key holder
-   produce a signature that a lenient verifier accepts as the key's own.
-   This section fixes the cofactorless equation, so a key of mixed order
-   is read the same way by every strict verifier.  A conformance vector
-   set is maintained at vectors/cross-language/cll-ed25519-vectors.json
-   in this document's source repository.  This section does not by
-   itself make any signature in this document strict: the Producer
-   Envelope check (Section 6) is not yet stated to be, and a document
-   that requires strictness says so where it names the signature.
+   signature if any condition fails.  [RFC8032] fixes the decoding rules
+   and the bound on S, and leaves open which of its two verification
+   equations a verifier uses and so how it treats points of small order.
+   A lenient verifier accepts, for a small-order A, a signature over any
+   message that anyone can produce, and, for a small-order R, a
+   signature that other verifiers refuse.  This section fixes the
+   cofactorless equation, so a key of mixed order is read the same way
+   by every strict verifier.  A conformance vector set is maintained at
+   vectors/cross-language/cll-ed25519-vectors.json in this document's
+   source repository.  This section does not by itself make any
+   signature in this document strict: the Producer Envelope check
+   (Section 6) is not yet stated to be, and a document that requires
+   strictness says so where it names the signature.
 
-   A committed payload digest, including agent_input_digest,
-   agent_output_digest, response_digest, and evidence_digest, is the
-   lowercase-hex SHA-256 digest of UTF8(JCS(value)) for the entire JSON
 
 
 
@@ -282,6 +282,9 @@ Mih                        Expires 4 May 2027                   [Page 5]
 Internet-Draft            Agent Action Capsules             October 2026
 
 
+   A committed payload digest, including agent_input_digest,
+   agent_output_digest, response_digest, and evidence_digest, is the
+   lowercase-hex SHA-256 digest of UTF8(JCS(value)) for the entire JSON
    value being committed.  JCS property sorting applies recursively to
    every object in that value.  A producer or verifier MUST NOT apply an
    object-member allow-list, replacer array, or other key-filtering
@@ -324,10 +327,7 @@ Internet-Draft            Agent Action Capsules             October 2026
 
                                  Table 1
 
-   The unprotected header map MUST be empty in a bare Producer Envelope.
-   The signature MUST be a 64-byte Ed25519 signature over the COSE
-   Sig_structure with context Signature1, the encoded protected map, an
-   empty external AAD, and the attached payload.
+
 
 
 
@@ -337,6 +337,11 @@ Mih                        Expires 4 May 2027                   [Page 6]
 
 Internet-Draft            Agent Action Capsules             October 2026
 
+
+   The unprotected header map MUST be empty in a bare Producer Envelope.
+   The signature MUST be a 64-byte Ed25519 signature over the COSE
+   Sig_structure with context Signature1, the encoded protected map, an
+   empty external AAD, and the attached payload.
 
    Every CBOR data item of a Producer Envelope, including each item
    inside the protected-header byte string, MUST have a definite length
@@ -382,11 +387,6 @@ Internet-Draft            Agent Action Capsules             October 2026
    Transparency Service therefore MUST NOT treat a bare Producer
    Envelope as an RFC 9943 Signed Statement.
 
-   To make a Capsule ID transparent, a registrar creates a distinct RFC
-   9943 Signed Statement whose attached payload is the same raw 32-byte
-   Capsule ID and whose content type is application/agent-action-
-   capsule-id.  That registration statement MUST satisfy every RFC 9943
-
 
 
 Mih                        Expires 4 May 2027                   [Page 7]
@@ -394,6 +394,10 @@ Mih                        Expires 4 May 2027                   [Page 7]
 Internet-Draft            Agent Action Capsules             October 2026
 
 
+   To make a Capsule ID transparent, a registrar creates a distinct RFC
+   9943 Signed Statement whose attached payload is the same raw 32-byte
+   Capsule ID and whose content type is application/agent-action-
+   capsule-id.  That registration statement MUST satisfy every RFC 9943
    protected-header requirement, including CWT iss and sub.  The
    returned Receipt binds the registration statement to the service's
    append-only log.  It does not replace or modify any Producer Envelope
@@ -436,10 +440,6 @@ Internet-Draft            Agent Action Capsules             October 2026
    meaning, never acceptance.  Every registry check in this profile is
    performable from the Capsule's own bytes and the registry contents
    alone.
-
-
-
-
 
 
 
@@ -3341,8 +3341,10 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-05
 
    *  Strict Ed25519: the conditions of a strict verification are
       defined once (A and R canonical and not of small order, S below L,
-      the cofactorless equation) for documents that require it; the
-      Producer Envelope check is not yet changed (Section 2).
+      the cofactorless equation) for documents that require it.  The
+      Producer Envelope check (Section 6) is not yet strict; a later
+      revision makes it so, and the definition does not apply to it
+      until then (Section 2).
 
    *  Producer Envelope encoding: every CBOR data item of a Producer
       Envelope, including those inside the protected-header byte string,
@@ -3351,9 +3353,7 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-05
       header is a map, and the payload and signature are byte strings; a
       verifier rejects any violation (Section 3.1).
 
-   *  Wire version unchanged: a producer conforming to this revision
-      still emits "draft-mih-scitt-agent-action-capsule-05", and
-      verifier acceptance of spec_version is unchanged (Section 5.1).
+
 
 
 
@@ -3361,6 +3361,10 @@ Mih                        Expires 4 May 2027                  [Page 60]
 
 Internet-Draft            Agent Action Capsules             October 2026
 
+
+   *  Wire version unchanged: a producer conforming to this revision
+      still emits "draft-mih-scitt-agent-action-capsule-05", and
+      verifier acceptance of spec_version is unchanged (Section 5.1).
 
 Appendix B.  Changes from draft-mih-scitt-agent-action-capsule-04
 
@@ -3402,6 +3406,18 @@ Appendix B.  Changes from draft-mih-scitt-agent-action-capsule-04
       and effect_attestation host_served_observed, equal in grade to
       runtime_claimed (Section 5.3).
 
+
+
+
+
+
+
+
+Mih                        Expires 4 May 2027                  [Page 61]
+
+Internet-Draft            Agent Action Capsules             October 2026
+
+
    *  Cross-record references: {digest_alg, digest} is stated
       normatively as a reference's sole identity, with a non-normative
       rationale ("Why the digest is the identity"); policy references
@@ -3410,13 +3426,6 @@ Appendix B.  Changes from draft-mih-scitt-agent-action-capsule-04
 
    *  Cross-algorithm re-anchoring of an anchored root is specified
       (Section 5.4.2).
-
-
-
-Mih                        Expires 4 May 2027                  [Page 61]
-
-Internet-Draft            Agent Action Capsules             October 2026
-
 
    *  Assurance: a confirmed effect whose binding does not hold derives
       effect_mode dispatched_unconfirmed; chained derives from the
@@ -3451,15 +3460,6 @@ Author's Address
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
-
-
-
-
-
-
-
-
-
 
 
 
