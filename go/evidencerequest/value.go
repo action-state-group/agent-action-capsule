@@ -52,7 +52,8 @@ func IsDigest(s string) bool { return hex64.MatchString(s) }
 // maxCBORNesting bounds how deep a received CBOR value may nest: the limit
 // every reader shares, the JSON limit (vectors/cbor-nesting/, #504), so a
 // request reads the same in its JSON and CBOR bindings. An array, a map or a
-// tag around an item is one level, as fxamacker counts them.
+// tag around an item is one level; fxamacker's own limit counts arrays and
+// maps but a tag only when it wraps a tag, so cborNestsTooDeep checks first.
 const maxCBORNesting = canonical.MaxNestingDepth
 
 // errNotWellFormed marks a received map that is not well formed (§5.2): a
@@ -203,6 +204,9 @@ var strictCBOR = func() cbor.DecMode {
 // need not be deterministic: a request digest is over the octets as
 // received, never over a re-encoding (ERV digest.json).
 func DecodeCBOR(data []byte) (any, error) {
+	if cborNestsTooDeep(data) {
+		return nil, fmt.Errorf("%w: nested more than %d levels deep", errNotWellFormed, canonical.MaxNestingDepth)
+	}
 	var raw any
 	if err := strictCBOR.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("%w: %v", errNotWellFormed, err)
