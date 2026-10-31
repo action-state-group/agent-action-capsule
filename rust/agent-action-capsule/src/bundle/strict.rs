@@ -311,9 +311,18 @@ pub fn verify_bundle_strict(value: &Value, options: &StrictOptions) -> StrictVer
                 &Value::from(signed.mmr_size),
                 &Value::String(signed.log_id.clone()),
             );
+        } else if checkpoint.status == "fail" {
+            // A signed checkpoint the stated copies contradict anchors nothing
+            // (vectors/bundle/strict neg-producer-selected-*-log-id*).
+            membership = if certificate.contains_key("non_record_leaves") {
+                ClaimResult::fail(vec!["completeness_certificate_invalid".to_string()])
+            } else {
+                withheld(vec!["checkpoint_unverified".to_string()])
+            };
         }
-        // Otherwise the plain reading stands: each proof against the stated
-        // checkpoint, withheld below unless it failed, as for a range Bundle.
+        // Without a signed checkpoint the plain reading stands: each proof
+        // against the stated checkpoint, withheld below unless it failed, as
+        // for a range Bundle.
     }
     if signed.is_none() {
         interval = unanchored(interval);

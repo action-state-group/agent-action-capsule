@@ -214,11 +214,22 @@ func VerifyStrict(value interface{}, opts StrictOptions) StrictResult {
 		// The certificate binds the producer's selection, not an interval: the
 		// interval proof cannot be read, each record's own proof still can.
 		result.IntervalCoverage = ClaimResult{Status: "withheld", Findings: []string{"selection_not_checkable"}}
-		if authenticated {
+		switch {
+		case authenticated:
 			result.PerRecordMembership = selectedMembership(bundle, signed.Root, signed.MMRSize, signed.LogID)
+		case checkpointClaim.Status == "fail":
+			// A signed checkpoint the stated copies contradict anchors nothing
+			// (vectors/bundle/strict neg-producer-selected-*-log-id*).
+			certificate, _ := bundle["completeness_certificate"].(map[string]interface{})
+			if _, carriesLeaves := certificate["non_record_leaves"]; carriesLeaves {
+				result.PerRecordMembership = ClaimResult{Status: "fail", Findings: []string{"completeness_certificate_invalid"}}
+			} else {
+				result.PerRecordMembership = ClaimResult{Status: "withheld", Findings: []string{"checkpoint_unverified"}}
+			}
 		}
-		// Otherwise the plain reading stands: each proof against the stated
-		// checkpoint, withheld below unless it failed, as for a range Bundle.
+		// Without a signed checkpoint the plain reading stands: each proof
+		// against the stated checkpoint, withheld below unless it failed, as
+		// for a range Bundle.
 	}
 	if !authenticated {
 		result.IntervalCoverage = unanchored(result.IntervalCoverage)

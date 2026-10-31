@@ -71,18 +71,24 @@ func Verified(result VerificationResult) bool {
 }
 
 // VerifyBundleForPage verifies value as the TypeScript context does (bundle.ts
-// buildVerifiedBundleContext): the plain result of VerifyBundle, except that
-// for a producer selection the strict checks did not reject, interval
-// coverage and per-record membership are the strict readings (VerifyStrict).
-// The plain checks do not know a producer selection and read it as an
-// interval; an INVALID selection keeps the plain reading, so Verified stays
-// false for it.
+// buildVerifiedBundleContext, readSelection): the plain result of
+// VerifyBundle, except that for a producer selection the strict checks did
+// not reject, interval coverage and per-record membership are the strict
+// readings (VerifyStrict). Since Bundle -02 the plain checks also read a
+// selection, against the stated checkpoint; a selection the strict checks
+// call INVALID keeps its plain claims with per-record membership failed, so
+// Verified stays false for it.
 func VerifyBundleForPage(value interface{}) VerificationResult {
 	result := VerifyBundle(value)
-	if strict := VerifyStrict(value, StrictOptions{}); strict.Verdict != VerdictInvalid &&
-		producerSelection(strict.VerificationResult) {
+	strict := VerifyStrict(value, StrictOptions{})
+	switch {
+	case strict.Verdict != VerdictInvalid && producerSelection(strict.VerificationResult):
 		result.IntervalCoverage = strict.IntervalCoverage
 		result.PerRecordMembership = strict.PerRecordMembership
+	case producerSelection(result):
+		// No findings: Verified never reads this failure as records the
+		// certificate left unbound.
+		result.PerRecordMembership = ClaimResult{Status: "fail", Findings: []string{}}
 	}
 	return result
 }

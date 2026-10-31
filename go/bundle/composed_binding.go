@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
-	"github.com/action-state-group/agent-action-capsule/go/witness"
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 )
 
 // The controller_binding join basis (draft-mih-zhang-agent-disclosure-bundle-02,
@@ -162,7 +162,7 @@ func bindingSignatures(record map[string]interface{}, input []byte) bool {
 		public, errKey := hex.DecodeString(keys[i].(string))
 		signature, errSig := hex.DecodeString(entry["sig"].(string))
 		if errKey != nil || errSig != nil ||
-			!witness.VerifyEd25519Strict(ed25519.PublicKey(public), input, signature) {
+			!ed25519strict.Verify(ed25519.PublicKey(public), input, signature) {
 			return false
 		}
 	}
@@ -185,7 +185,7 @@ func revocationRevokes(statement map[string]interface{}, digest string, keys []i
 	input, ok := signingInput(statement, "sig")
 	public, _ := hex.DecodeString(statement["key_id"].(string))
 	signature, _ := hex.DecodeString(sig)
-	if !ok || !witness.VerifyEd25519Strict(ed25519.PublicKey(public), input, signature) {
+	if !ok || !ed25519strict.Verify(ed25519.PublicKey(public), input, signature) {
 		return false
 	}
 	return !revokedAt.After(times[0]) || !revokedAt.After(times[1])

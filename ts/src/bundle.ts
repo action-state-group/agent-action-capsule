@@ -591,8 +591,17 @@ async function strict(
         checkpoint.signed.mmr_size,
         checkpoint.signed.log_id,
       );
-    // Otherwise the plain reading stands: each proof against the stated
-    // checkpoint, withheld below unless it failed, as for a range Bundle.
+    else if (checkpoint.claim.status === "fail")
+      // A signed checkpoint the stated copies contradict anchors nothing
+      // (vectors/bundle/strict neg-producer-selected-*-log-id*).
+      perRecordMembership =
+        object(bundle.completeness_certificate) &&
+        "non_record_leaves" in bundle.completeness_certificate
+          ? fail("completeness_certificate_invalid")
+          : { status: "withheld", findings: ["checkpoint_unverified"] };
+    // Without a signed checkpoint the plain reading stands: each proof
+    // against the stated checkpoint, withheld below unless it failed, as for
+    // a range Bundle.
   }
   if (!authenticated) {
     intervalCoverage = unanchored(intervalCoverage);
@@ -1830,30 +1839,39 @@ function deepFreeze<T>(value: T): T {
 }
 
 /**
- * The plain result as the viewer reads it. The plain checks do not know a
- * producer-selected Bundle (`completeness.selection`, which the Bundle draft
- * does not define), so they read its selection as an interval and fail per-
- * record membership. When the strict checks read the Bundle as a selection
- * (`interval_coverage` carries `selection_not_checkable`), the viewer reads
+ * The plain result as the viewer reads it. When the strict checks read the
+ * Bundle as a producer selection (`interval_coverage` carries
+ * `selection_not_checkable`) and do not call it INVALID, the viewer reads
  * interval coverage and per-record membership as they do, so the page, its
  * render gate and its check lists agree with the strict verdict (#361).
- * Every other claim is the plain one, and an INVALID selection is read
- * plainly.
+ * Every other claim is the plain one.
+ *
+ * Since Bundle -02 the plain checks also read a selection, each proof against
+ * the stated checkpoint. A page shows a selection only on the strict reading:
+ * one the strict checks call INVALID, or that a page without Ed25519 cannot
+ * check strictly, keeps its plain claims with per-record membership failed,
+ * so the page refuses it as it did before -02.
  */
 function readSelection(
   plain: BundleVerificationResult,
   strict: StrictBundleVerificationResult | undefined,
 ): BundleVerificationResult {
-  // Only for a selection the strict checks did not reject: an INVALID one
-  // keeps the plain reading, which refuses it as it always has, so this
-  // never lets the page show a Bundle it refused before.
-  return strict !== undefined &&
+  if (
+    strict !== undefined &&
     strict.strict.verdict !== "INVALID" &&
     isProducerSelection(strict)
+  )
+    return {
+      ...plain,
+      intervalCoverage: strict.intervalCoverage,
+      perRecordMembership: strict.perRecordMembership,
+    };
+  return isProducerSelection(plain)
     ? {
         ...plain,
-        intervalCoverage: strict.intervalCoverage,
-        perRecordMembership: strict.perRecordMembership,
+        // No findings: the page's gate never reads this failure as records
+        // the certificate left unbound (membershipProvenOrUnbound).
+        perRecordMembership: { status: "fail", findings: [] },
       }
     : plain;
 }
