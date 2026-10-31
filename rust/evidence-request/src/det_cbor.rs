@@ -15,9 +15,131 @@
 //!
 //! These hold at every depth, inside members this crate ignores too.
 
-/// The deepest nesting checked. A -00 request nests three deep; the CBOR
-/// parser that runs first stops well before this.
-const MAX_DEPTH: usize = 512;
+/// The deepest nesting read: 128 levels, an array, a map or a tag around an
+/// item being one level, the JSON limit (`vectors/cbor-nesting/`, #504), so a
+/// request reads the same in both bindings.
+pub(crate) const MAX_NESTING: usize = 128;
+
+/// Decode one CBOR value from `reader` under [`MAX_NESTING`]. ciborium's own
+/// recursion limit does not count a bignum tag (2 or 3) around a short byte
+/// string, so [`nests_too_deep`] checks first.
+pub(crate) fn decode_value(reader: &mut &[u8]) -> Option<ciborium::Value> {
+    if nests_too_deep(reader) {
+        return None;
+    }
+    ciborium::de::from_reader_with_recursion_limit(reader, MAX_NESTING).ok()
+}
+
+/// Whether the first CBOR data item in `data` nests more than [`MAX_NESTING`]
+/// levels (an array, a map or a tag around an item is one level). It walks
+/// the heads without recursion; input it cannot walk reports `false` and is
+/// left to the decoder to refuse.
+pub(crate) fn nests_too_deep(data: &[u8]) -> bool {
+    const INDEFINITE: u64 = u64::MAX;
+    // (children left, counts as a level)
+    let mut stack: Vec<(u64, bool)> = Vec::new();
+    let mut levels = 0usize;
+    let mut pos = 0usize;
+    // One item finished: close every frame it finishes. True when the root is done.
+    fn complete(stack: &mut Vec<(u64, bool)>, levels: &mut usize) -> bool {
+        while let Some(top) = stack.last_mut() {
+            if top.0 == u64::MAX {
+                return false;
+            }
+            top.0 -= 1;
+            if top.0 != 0 {
+                return false;
+            }
+            if top.1 {
+                *levels -= 1;
+            }
+            stack.pop();
+        }
+        true
+    }
+    while pos < data.len() {
+        let initial = data[pos];
+        pos += 1;
+        if initial == 0xff {
+            match stack.last() {
+                Some(&(INDEFINITE, level)) => {
+                    if level {
+                        levels -= 1;
+                    }
+                    stack.pop();
+                    if complete(&mut stack, &mut levels) {
+                        return false;
+                    }
+                    continue;
+                }
+                _ => return false,
+            }
+        }
+        let (major, info) = (initial >> 5, initial & 31);
+        let mut indefinite = false;
+        let arg = match info {
+            0..=23 => u64::from(info),
+            24..=27 => {
+                let width = 1usize << (info - 24);
+                let Some(bytes) = data.get(pos..pos + width) else {
+                    return false;
+                };
+                pos += width;
+                bytes.iter().fold(0u64, |a, b| (a << 8) | u64::from(*b))
+            }
+            31 if (2..=5).contains(&major) => {
+                indefinite = true;
+                0
+            }
+            _ => return false,
+        };
+        match major {
+            0 | 1 | 7 => {
+                if complete(&mut stack, &mut levels) {
+                    return false;
+                }
+            }
+            2 | 3 => {
+                if indefinite {
+                    stack.push((INDEFINITE, false));
+                    continue;
+                }
+                let Some(end) = usize::try_from(arg).ok().and_then(|n| pos.checked_add(n)) else {
+                    return false;
+                };
+                if end > data.len() {
+                    return false;
+                }
+                pos = end;
+                if complete(&mut stack, &mut levels) {
+                    return false;
+                }
+            }
+            _ => {
+                levels += 1;
+                if levels > MAX_NESTING {
+                    return true;
+                }
+                let children = match major {
+                    5 => arg.saturating_mul(2),
+                    6 => 1,
+                    _ => arg,
+                };
+                if indefinite {
+                    stack.push((INDEFINITE, true));
+                } else if children == 0 {
+                    levels -= 1;
+                    if complete(&mut stack, &mut levels) {
+                        return false;
+                    }
+                } else {
+                    stack.push((children, true));
+                }
+            }
+        }
+    }
+    false
+}
 
 /// The largest integer accepted: 2^53 - 1.
 const MAX_INTEGER: u64 = (1 << 53) - 1;
@@ -104,11 +226,11 @@ impl Reader<'_> {
     }
 
     fn item(&mut self, depth: usize) -> Result<(), &'static str> {
-        if depth > MAX_DEPTH {
-            return Err("nested too deeply");
-        }
         let start = self.at;
         let (major, argument) = self.head()?;
+        if (4..=6).contains(&major) && depth >= MAX_NESTING {
+            return Err("nested too deeply");
+        }
         match major {
             0 if argument <= MAX_INTEGER => Ok(()),
             0 => Err("an integer above 2^53 - 1"),
@@ -256,8 +378,30 @@ mod tests {
     }
 
     #[test]
+    fn nesting_is_counted_exactly() {
+        let repeat = |unit: &[u8], n: usize, tail: &[u8]| [unit.repeat(n), tail.to_vec()].concat();
+        let limit = super::MAX_NESTING;
+        for unit in [&[0xd9u8, 0x03, 0xe8][..], &[0x81], &[0xc2]] {
+            let tail: &[u8] = if unit == [0xc2] {
+                &[0x41, 0x01]
+            } else {
+                &[0xf6]
+            };
+            assert!(!super::nests_too_deep(&repeat(unit, limit, tail)));
+            assert!(super::nests_too_deep(&repeat(unit, limit + 1, tail)));
+        }
+        let indefinite = |n: usize| [vec![0x9fu8; n], vec![0xffu8; n]].concat();
+        assert!(!super::nests_too_deep(&indefinite(limit)));
+        assert!(super::nests_too_deep(&indefinite(limit + 1)));
+        // An indefinite string is no level, and input that cannot be walked is left to the decoder.
+        assert!(!super::nests_too_deep(&[0x7f, 0x61, 0x61, 0xff]));
+        assert!(!super::nests_too_deep(&[0x81]));
+        assert!(!super::nests_too_deep(&[]));
+    }
+
+    #[test]
     fn nesting_is_bounded() {
-        let mut deep = vec![0x81; super::MAX_DEPTH + 2];
+        let mut deep = vec![0x81; super::MAX_NESTING + 1];
         deep.push(0x00);
         assert_eq!(check(&deep), Err("nested too deeply"));
     }

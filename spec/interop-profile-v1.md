@@ -315,6 +315,12 @@ Conventions section of its unposted working revision
 (`spec/draft-mih-scitt-agent-action-capsule-06.md`); that revision is not pinned here, and the
 requirement above is this profile's own [P-12].
 
+A CBOR item received under this profile, other than a COSE Receipt (§6.2.2 bounds those at 16 levels),
+MUST likewise be rejected as not well-formed [P-12] when it is nested more than 128 levels deep; 128
+levels are read. Each array, map or tag around an item is one more level, so `[]` is one level and
+`[[]]` two. This is the JSON bound, so one request reads the same in its JSON and CBOR bindings.
+`vectors/cbor-nesting/` is its conformance set.
+
 ## 6. Messages, and what binds them
 
 ### 6.1 Request

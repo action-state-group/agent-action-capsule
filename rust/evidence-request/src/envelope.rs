@@ -535,8 +535,8 @@ pub fn parse_reply(octets: &[u8], binding: Binding) -> Result<Reply, ReplyError>
         Binding::Json => Item::from_json_octets(octets)?,
         Binding::Cbor => {
             crate::det_cbor::check_reply(octets).map_err(ReplyError::Encoding)?;
-            let value: ciborium::Value = ciborium::from_reader(octets)
-                .map_err(|_| ReplyError::Encoding("not well-formed CBOR"))?;
+            let value = crate::det_cbor::decode_value(&mut &octets[..])
+                .ok_or(ReplyError::Encoding("not well-formed CBOR"))?;
             Item::from_cbor(&value).ok_or(ReplyError::Encoding("not the profile's data model"))?
         }
     };

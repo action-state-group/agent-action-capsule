@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"unicode/utf8"
+
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 )
 
 // The strict CBOR decoder a verifier reads received objects with (profile
@@ -45,7 +47,9 @@ func (d cborDecoded) wellFormed() bool { return !d.duplicateKeys && !d.irregular
 
 var errCBOR = errors.New("not one CBOR data item of the supported data model")
 
-const maxCBORDepth = 64
+// maxCBORDepth is the levels a received CBOR item may nest: an array, a map or a
+// tag around an item is one level, the JSON limit (vectors/cbor-nesting/, #504).
+const maxCBORDepth = canonical.MaxNestingDepth
 
 type cborState struct {
 	data          []byte
@@ -101,12 +105,15 @@ func decodeCBOR(data []byte, generic bool) (cborDecoded, error) {
 }
 
 func (st *cborState) item(i, depth int) (any, int, error) {
-	if depth > maxCBORDepth || i >= len(st.data) {
+	if i >= len(st.data) {
 		return nil, 0, errCBOR
 	}
 	initial := st.data[i]
 	major, info := initial>>5, initial&31
 	i++
+	if major >= 4 && major <= 6 && depth >= maxCBORDepth {
+		return nil, 0, errCBOR
+	}
 	if major == 7 && info >= 25 && info <= 27 {
 		width := 1 << (info - 24)
 		if i+width > len(st.data) {

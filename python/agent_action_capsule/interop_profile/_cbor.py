@@ -18,6 +18,8 @@ from __future__ import annotations
 import struct
 from typing import Any
 
+from ..canonical import MAX_NESTING_DEPTH
+
 __all__ = ["CborError", "Tag", "Decoded", "decode", "encode_head"]
 
 
@@ -68,12 +70,10 @@ class _State:
         self.data, self.dup, self.det, self.odd, self.short = data, False, True, False, True
 
 
-_MAX_DEPTH = 64
-
-
+# A container at ``depth`` (the levels around it) is level ``depth + 1``: an array, a map or a
+# tag is one level, as in JSON, so one request reads the same in both bindings (#504,
+# vectors/cbor-nesting/).
 def _item(st: _State, i: int, depth: int) -> tuple[Any, int]:
-    if depth > _MAX_DEPTH:
-        raise CborError("nesting too deep")
     data = st.data
     if i >= len(data):
         raise CborError("truncated")
@@ -112,6 +112,8 @@ def _item(st: _State, i: int, depth: int) -> tuple[Any, int]:
             return chunk.decode("utf-8"), i + arg
         except UnicodeDecodeError as exc:
             raise CborError("text string is not UTF-8") from exc
+    if major >= 4 and major <= 6 and depth >= MAX_NESTING_DEPTH:
+        raise CborError("nesting too deep")
     if major == 4:
         out = []
         for _ in range(arg):

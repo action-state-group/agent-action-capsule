@@ -102,6 +102,7 @@ GENERATORS = (
     # Appends to the capsule manifest.
     "generate_negative_zero_vectors.py",
     "generate_json_nesting_vectors.py",
+    "generate_cbor_nesting_vectors.py",
 )
 
 
