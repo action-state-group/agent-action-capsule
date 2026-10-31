@@ -43,6 +43,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import history_frame
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from generate_interop_profile_v0_vectors import (
@@ -677,10 +678,43 @@ def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+def check_frame(all_cases: list[dict]) -> None:
+    """HF §6.3: the instance's counting table and wording pack (``spec/history-frame/``) match the
+    definitions and what these vectors emit, and every case's acceptance is HF §4.5's rule."""
+    table, pack = history_frame.load(HISTORY_PROFILE)
+    assert table["units"] == UNITS and table["labels"] == LABELS, "counting table: units, labels"
+    assert table["properties"] == {"standard": STANDARD_PROPS, "detailed": DETAILED_PROPS}, "counting table: properties"
+    members = table["definition_members"]
+    for d, absent in ((standard_definition(), "recipient"), (detailed_definition(), "period_policy")):
+        assert sorted(d) == sorted(m for m in members if m != absent), f"counting table: {d['level']} members"
+        assert all(d[k] == v for k, v in table["definition_fixed"].items()), "counting table: definition values"
+        assert d["level"] in table["levels"]
+        for m in d["members"]:
+            assert set(m) <= set(table["member_entry"]), "counting table: member entry"
+            assert {u["unit"] for u in m["units"]} <= set(UNITS), "counting table: member units"
+            assert set(m.get("claims", {})) <= set(table["member_claims"]), "counting table: member claims"
+    assert sorted(POLICY) == sorted(table["period_policy"]) and POLICY["suppression"] in table["suppression"]
+    s = pack["strings"]
+    for _, shown_as, _ in (PEER_CONFIRMED, ONE_SIDED, REDUNDANT, NOT_JOINABLE, PEER_UNTRUSTED):
+        assert shown_as in s.values(), f"wording pack: {shown_as!r}"
+    for c in all_cases:
+        e = c["expected"]
+        for x in e.get("shows", {}).get("exchanges", []):
+            assert x["shown_as"] in s.values() and x["derived"] in LABELS, c["id"]
+        if "history_properties" in e:
+            ok = (e["exchange"]["accepted"]
+                  and history_frame.accepted(e["history_properties"], table["may_be_not_checked"])
+                  and "FAIL" not in e["coverage"]["properties"].values())
+            assert e["accepted"] is ok, c["id"]
+        if e.get("message_type") == "refusal" and c["id"] == "refused-detailed-other-requester":
+            assert e["reason"] == "policy_declined", "HF §4.9: the instance's non-recipient refusal"
+
+
 def build() -> dict[str, bytes]:
     all_cases = cases()
     ids = [c["id"] for c in all_cases]
     assert len(ids) == len(set(ids)), "duplicate case id"
+    check_frame(all_cases)
     corpus = {
         "set": SET,
         "status": STATUS,

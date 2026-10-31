@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any
 
 import generate_personal_history_basic_v0_vectors as history_vectors
+import history_frame
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from generate_interop_profile_v0_vectors import EC_SCHEMA, KINDS, PROFILE, jcs, json_digest, sha, shx
@@ -538,10 +539,38 @@ def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+def check_frame(run: dict, all_cases: list[dict]) -> None:
+    """HF §6.3: the instance's counting table (``spec/history-frame/``) matches the definition and
+    what these vectors emit, and every case's acceptance and every claim's count are HF §4.5's rule."""
+    table, _ = history_frame.load(HISTORY)
+    assert table["properties"] == HISTORY_PROPS, "counting table: properties"
+    assert table["claim_properties"] == CLAIM_PROPS, "counting table: claim properties"
+    d = definition(json.loads(run["definitions"]["basic"]))
+    assert sorted(d) == sorted(table["definition_members"]), "counting table: definition members"
+    assert all(d[k] == v for k, v in table["definition_fixed"].items()), "counting table: definition values"
+    assert table["predicate_table"] == {"name": PREDICATES["name"], "digest": PREDICATES_DIGEST}
+    assert [s["source"] for s in table["sources"]] == SOURCES, "counting table: sources"
+    assert d["holder_role"] in table["holder_roles"], "counting table: holder role"
+    kinds = {k["record_type"] for k in table["record_kinds"]}
+    for c in all_cases:
+        e = c["expected"]
+        ok = all(x["accepted"] for x in e["exchanges"]) and history_frame.accepted(
+            e["history_properties"], table["may_be_not_checked"])
+        assert e["accepted"] is ok, c["id"]
+        for claim in e["claims"] or []:
+            assert claim["counts"] is history_frame.accepted(claim["properties"],
+                                                             table["claim_may_be_not_checked"]), c["id"]
+            assert claim["deal_binding"] in table["deal_bindings"], c["id"]
+        if ok:
+            for x in c["inputs"]["exchanges"]:
+                assert {r["record_type"] for r in artifact_of(decode(x["reply"]))["records"]} <= kinds, c["id"]
+
+
 def build(run: dict, run_sha256: str) -> dict[str, bytes]:
     all_cases = cases(run)
     ids = [c["id"] for c in all_cases]
     assert len(ids) == len(set(ids)), "duplicate case id"
+    check_frame(run, all_cases)
     run_ref = {"path": "personal-history-basic-v0/responder-run.json", "sha256": run_sha256}
     labels = {**history_vectors.SEED_LABELS, **SEED_LABELS}
     corpus = {

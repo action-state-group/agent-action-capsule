@@ -29,6 +29,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import history_frame
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from generate_interop_profile_v0_vectors import (
@@ -408,10 +409,39 @@ def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+def check_frame(run: dict, all_cases: list[dict]) -> None:
+    """HF §6.3: the instance's counting table and wording pack (``spec/history-frame/``) match the
+    run's definition and what these vectors emit, and every case's acceptance is HF §4.5's rule."""
+    table, pack = history_frame.load(HISTORY)
+    assert table["properties"] == HISTORY_PROPS, "counting table: properties"
+    basic = json.loads(run["definitions"]["basic"])
+    assert sorted(basic) == sorted(table["definition_members"]), "counting table: definition members"
+    assert all(basic[k] == v for k, v in table["definition_fixed"].items()), "counting table: definition values"
+    s = pack["strings"]
+    assert (s["deal_state.failed_step"], s["deal_state.completed_only"], s["deal_state.no_step"]) == (
+        FAILED, COMPLETED, NO_STEP), "wording pack: deal states"
+    positive = next(c for c in all_cases if c["id"] == "history-basic")
+    for e in positive["inputs"]["exchanges"]:
+        a = artifact_of(decode(e["reply"]))
+        assert sorted(a) == sorted(table["artifact_members"]), "counting table: artifact members"
+        assert {r["record_type"] for r in a["records"]} <= set(table["record_kinds"]), "counting table: kinds"
+    for c in all_cases:
+        e = c["expected"]
+        if "history_properties" in e:
+            ok = all(x["accepted"] for x in e["exchanges"]) and history_frame.accepted(
+                e["history_properties"], table["may_be_not_checked"])
+            assert e["accepted"] is ok, c["id"]
+            if ok:
+                assert set(e["deal_states"]["counts"]) == {FAILED, COMPLETED, NO_STEP}, c["id"]
+    refused = next(c for c in all_cases if c["id"] == "refused-other-requester")
+    assert refused["expected"]["reason"] == "not_authorized", "HF §4.9: the instance's non-recipient refusal"
+
+
 def build(run: dict, run_sha256: str) -> dict[str, bytes]:
     all_cases = cases(run)
     ids = [c["id"] for c in all_cases]
     assert len(ids) == len(set(ids)), "duplicate case id"
+    check_frame(run, all_cases)
     corpus = {
         "set": SET,
         "status": STATUS,

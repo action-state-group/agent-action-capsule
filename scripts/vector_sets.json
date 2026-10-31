@@ -30,6 +30,7 @@
   "vectors/standard-history-v0/": {"python": ["test_standard_history_v0_vectors.py"], "go": ["./standardhistory"]},
   "vectors/inference-service-history-v0/": {"python": ["test_inference_service_history_v0_vectors.py"]},
   "vectors/inference-service-history-v0-interop-v1/": {"python": ["test_inference_service_history_v0_interop_v1_vectors.py"]},
+  "vectors/history-frame-v0/": {"python": ["test_history_frame_v0_vectors.py"]},
   "vectors/evidence-result/": {"ts": ["result-root.test.ts", "result-revision.test.ts"], "go": ["./evidenceresult"]},
   "vectors/judge/": {},
   "vectors/evidence-dataset/": {"go": ["./evidenceplan"]},

@@ -1,0 +1,15 @@
+{
+  "document": "wording_pack",
+  "frame": "history-frame/0",
+  "instance": "inference-service-history/0",
+  "language": "en",
+  "strings": {
+    "card.no_witness": "no witness named",
+    "exchange.not_joinable": "not joinable",
+    "exchange.one_sided": "one-sided",
+    "exchange.peer_confirmed": "peer-confirmed; not corroborating (independence not established)",
+    "exchange.peer_untrusted": "peer half not verified under a trusted key",
+    "exchange.redundant": "redundant, not corroborating",
+    "session.ordering_not_established": "agreement present; ordering not established"
+  }
+}

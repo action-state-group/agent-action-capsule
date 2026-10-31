@@ -24,6 +24,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import history_frame
+
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "standard-history-v0"
 SET = "aac-standard-history-v0"
@@ -363,10 +365,33 @@ def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+def check_frame(all_cases: list) -> None:
+    """HF §6.3: the instance's counting table (``spec/history-frame/``) matches what these vectors
+    emit, and every case's ``standard`` is HF §4.5's acceptance rule under the table's list."""
+    table, _ = history_frame.load("standard_history/1")
+    assert table["properties"] == list(PROPERTIES), "counting table: properties"
+    assert table["card_members"] == list(PERSON_3M), "counting table: card members"
+    t = table["tallies"]
+    for name in ("in_window", "class_missing", "outcomes", "roles", "happened", "disputes"):
+        assert t[name] == list(PERSON_3M[name]), f"counting table: tally {name}"
+    assert t["band"] == list(PERSON_3M["bands"][0]), "counting table: band tally"
+    raised = PERSON_3M["disputes"]["raised"]
+    assert t["dispute"] == list(raised), "counting table: dispute tally"
+    assert t["by_outcome"] == list(raised["by_outcome"]) and t["by_forum"] == list(raised["by_forum"])
+    every_deal = [d for c in all_cases for d in c["inputs"].get("deals", [])]
+    assert all(set(d) <= set(table["inputs"]["deal_entry"]) for d in every_deal), "counting table: deal entry"
+    assert {d["counterparty_class"] for d in every_deal if "counterparty_class" in d} <= set(
+        table["inputs"]["counterparty_class"]), "counting table: counterparty_class"
+    for c in all_cases:
+        statuses = c["expected"]["properties"]
+        assert c["expected"]["standard"] is history_frame.accepted(statuses, table["may_be_not_checked"]), c["id"]
+
+
 def build() -> dict:
     all_cases = cases()
     ids = [c["id"] for c in all_cases]
     assert len(ids) == len(set(ids)), "duplicate case id"
+    check_frame(all_cases)
     corpus = {"set": SET, "status": STATUS, "spec": SPEC, "properties": list(PROPERTIES),
               "count": len(all_cases), "cases": all_cases}
     files = {"vectors.json": _dump(corpus)}

@@ -22,12 +22,13 @@ This revision defines two History levels:
 
 The personal-agent History profile (`spec/personal-agent-history-profile-v0.md`) is a sibling host
 profile. The two families are separate subjects. They compose only by an explicit, evidence-backed
-link between their keys, never by being shown together.
+link between their keys, never by being shown together (`spec/history-frame-v0.md` §4.7).
 
 The Standard History derivation `standard_history/1` (`spec/standard-history-v0.md`) is a separate
 derivation with its own purpose: one card that counts a holder's deals over a window ending at any
-anchor, with no period floor. It is not this profile's Standard level, and this revision does not
-reconcile the two. A node that serves this profile's Standard Histories serves no
+anchor, with no period floor. It is not this profile's Standard level. Both are instances of the
+History frame (`spec/history-frame-v0.md`), which unifies their frame and keeps this profile's
+period rules (§6) as its own; it does not reconcile their counts. A node that serves this profile's Standard Histories serves no
 `standard_history/1` card under the same key (§6.1 item 8). Their labels do not map onto each
 other: `stamped_by_both` there is not `peer_confirmed` here. The two documents number their open
 points (SH-n) independently.
@@ -46,6 +47,7 @@ History properties (§8.3) and what a verifier shows (§8.5).
 | IP | `spec/interop-profile-v1.md` (`evidence-interop/1`) | the request (§6.1), the envelope and its signing input (§6.2), signed refusals (§6.3), recipient-specific disclosures as definition-digest derivations (§6.5), the coverage declaration, its properties and issuer independence (§6.7), the per-property statuses (§7), the result mapping (§8), the acceptance record and its session scope (§11.1), lifecycle statements (§11.2), carriage and discovery (§11.4) |
 | ER | `draft-mih-agent-evidence-request` -02 | the `full_history` and `range` subject forms [ER §3.1], what a record carries [ER §3.1.1], derivation by definition digest [ER §3.3], the signed refusal [ER §4.2], caller invariance [ER §5], derivation-scoped disclosure [ER §8], the history card `history_card/1` [ER §8.1] |
 | RES | `spec/evidence-result-v0.md` | claim, sufficiency and verdict |
+| HF | `spec/history-frame-v0.md` | the History frame: its rules (§4), its parameters (§3), and this profile's counting table and wording pack (§5, §6.1) |
 
 Section numbers for ER are those of the rendered `.txt` of the -02 revision, which IP also pins.
 A requirement
@@ -73,6 +75,48 @@ this profile outputs none. A requester MAY read a History or a history card as a
 admission policy. That policy filters: it decides for each candidate node on its own whether, and
 on what terms, to admit it, and never ranks candidate nodes or compares them with each other. The
 History stays the node's statement, not the requester's conclusion.
+
+## Instance of the History frame
+
+This profile, `inference-service-history/0`, is an instance of the History frame (HF), with its
+two levels as the two ISH columns of HF §6.1. This section names its values; it changes no
+member, value, identifier, digest or vector of this profile, and neither of the example
+definitions' digests (§9).
+
+- **Parameters** (HF §3), Standard level: `identification` `definition_digest` (§4.1); `level`
+  `recipient_free` (§3); `subject_form` `full_history` (§2); `coverage_kind` `stream_interval`,
+  rule `all_records`, carried as `definition_and_artifact` (§4.2); `aggregation` `periods` (§6);
+  `answer_anchor` `period_boundary` (§6.1 item 2); `streams` `one`; `embeds` `history_card/1`
+  (§5.2); `stated_by` `responder` (§7.1); `claims` `none` (§8.1); `interop_pin`
+  `evidence-interop/1`, with `evidence-interop/0` per request; `non_recipient_refusal` `none`;
+  `policy_digest` `period_policy_jcs` (§6.1 item 7); `container` `none`. Detailed level: the same,
+  except `level` `recipient_specific`, `coverage_kind` `holder_selected` carried in the
+  `definition`, `aggregation` `per_exchange` (§7.2), `answer_anchor` `any_checkpoint`,
+  `stated_by` `verifier` (§7.2), `non_recipient_refusal` `policy_declined` (§8.4) and
+  `policy_digest` `none`.
+- **Counting table:** `spec/history-frame/inference-service-history-0-table.json`, digest
+  `3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057`: the definition frame and its
+  fixed values (§4.1), the member entry, the units (§5.1), the labels from weakest to strongest
+  (§7.1), the verdict counts (§5.3), the period policy's members and the suppression reasons (§6),
+  the artifact and exchange-entry members (§8.2, §7.2), and the History properties of each level
+  (§8.3), none of which may be `NOT_CHECKED`. A host's own definition still carries its members'
+  `reads`, `units` and `claims`, as §4.1 says.
+- **Wording pack:** `spec/history-frame/inference-service-history-0-pack.json`, digest
+  `693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82`: how each exchange is shown
+  (§7.2), "no witness named" (§5.2) and "agreement present; ordering not established" (§10). The
+  labels `self_reported`, `peer_confirmed` and `corroborated` are checked by `labels` (§7.3), so
+  they are counting-table strings, never pack strings (HF §5.3). A `claims.label` is a host
+  definition's member, not this profile's wording.
+- **Pinning.** The definitions' `profile`, `inference-service-history/0`, pins both documents'
+  bytes (HF §5.4): any change to either is `inference-service-history/1`. Neither digest is a
+  member of a definition, so no definition digest moves. Where a document and this text
+  disagree, HF §6.3 applies.
+- **Frame rules.** One node key (HF §4.1), one anchor (HF §4.2), envelope acceptance (HF §4.3,
+  §8.1 here), History properties outside the IP §8 mapping (HF §4.4), acceptance (HF §4.5), units
+  and no ordering (HF §4.6), composition by key link (HF §4.7), differencing (HF §4.8, which
+  restates §6.1 item 8), the non-recipient refusal (HF §4.9), discovery (HF §4.10), labels
+  (HF §4.11) and coverage (HF §4.12) are the frame's. This profile states each again where it
+  applies them.
 
 ## 1. Conventions
 
@@ -443,7 +487,8 @@ recorded the answer [SH-6].
 
 A label MUST NOT be stronger than what §7.1 and §7.2 derive [SH-6]. The History property `labels`
 is `FAIL` when any count is labelled other than `self_reported`, or when any exchange entry's label
-is stronger than the label its halves support. A valid envelope signature never makes a label.
+is stronger than the label its halves support. A valid envelope signature never makes a label
+[HF §4.11].
 
 ## 8. Answers and acceptance
 
@@ -522,7 +567,8 @@ The node refuses with a signed refusal [IP §6.3]:
   authenticating it: `policy_declined` [IP §6.3, §6.5 item 4]. A Detailed definition is a template
   plus a recipient, so anyone can compute the digest for a candidate recipient; `not_authorized`
   would tell them the node holds a Detailed History for that party. The node gives the same token
-  for a digest it does not hold, where it would otherwise answer `derivation_unsupported`;
+  for a digest it does not hold, where it would otherwise answer `derivation_unsupported`
+  [HF §4.9];
 - a History whose required member cannot be served: the refusal the member's own derivation
   would give, and never a History with the member dropped.
 

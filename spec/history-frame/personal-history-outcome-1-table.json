@@ -1,0 +1,46 @@
+{
+  "document": "counting_table",
+  "frame": "history-frame/0",
+  "instance": "personal_history_outcome/1",
+  "definition_members": ["name", "kind", "subject_form", "selection", "reads", "coverage_declaration", "holder_role",
+                         "sources", "predicates", "recipient"],
+  "definition_fixed": {
+    "name": "personal_history_outcome/1",
+    "kind": "projection",
+    "subject_form": "correlation",
+    "reads": ["commit_alg", "committed_at", "consent", "deal_commitment", "epistemic_type", "event_time_claim",
+              "outcome", "record_type"],
+    "predicates": "b5c7fe64bd1b4978aeef89cbc3bd9ecc23c2a57a48202a3d8d29e713ef4abfdc"
+  },
+  "holder_roles": ["seller", "buyer"],
+  "record_kinds": [
+    {"record_type": "step_completed", "carries": []},
+    {"record_type": "step_failed", "carries": []},
+    {"record_type": "outcome_recorded", "carries": ["outcome"]},
+    {"record_type": "judge_consent", "carries": ["consent"]}
+  ],
+  "sources": [
+    {"source": "counterparty_half", "members": ["evidence"]},
+    {"source": "holder_record", "members": []},
+    {"source": "judge_verdict", "members": ["evidence"]},
+    {"source": "native_object", "members": ["evidence", "adapter", "adapter_predicate"]}
+  ],
+  "predicate_table": {"name": "outcome_predicates/1",
+                      "digest": "b5c7fe64bd1b4978aeef89cbc3bd9ecc23c2a57a48202a3d8d29e713ef4abfdc"},
+  "deal_bindings": ["carried", "holder_only"],
+  "units": ["selected_deals", "records", "claims"],
+  "properties": ["definition_form", "definition_binding", "predicate_binding", "coverage_declaration_form",
+                 "selection_coverage", "single_signer", "single_anchor", "artifact_form", "record_kinds"],
+  "may_be_not_checked": [],
+  "claim_properties": {
+    "counterparty_half": ["outcome_form", "outcome_source_allowed", "outcome_evidence", "half_signature",
+                          "half_signer_trust", "half_subject", "half_states", "issuer_independence"],
+    "holder_record": ["outcome_form", "outcome_source_allowed"],
+    "judge_verdict": ["outcome_form", "outcome_source_allowed", "outcome_evidence", "judge_signature",
+                      "judge_signer_trust", "judge_subject", "judge_grounds", "consent_precedes_judgment",
+                      "judge_verdict_allowed"],
+    "native_object": ["outcome_form", "outcome_source_allowed", "outcome_evidence", "adapter_predicate_maps",
+                      "native_check"]
+  },
+  "claim_may_be_not_checked": ["issuer_independence"]
+}
