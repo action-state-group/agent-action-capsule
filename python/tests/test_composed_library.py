@@ -254,3 +254,15 @@ def test_an_unserializable_sig_is_malformed_under_ed25519_and_unimplemented_othe
             m["digest"] = bundle_digest(m["bundle"])
     block["composed_digest"] = c.composed_digest(block)
     assert _verify(container, case, [record]).joins[0].result == "not_derivable"
+    # Still held to -02's form: an empty nonce is malformed whatever the key types.
+    record["nonce"] = ""
+    container = copy.deepcopy(case["container"])
+    block = _block(container)
+    block["joins"][0]["identifier_digest"] = hashlib.sha256(
+        c.jcs({k: v for k, v in record.items() if k != "sigs"})
+    ).hexdigest()
+    for m in block["members"]:
+        if "bundle" in m:
+            m["digest"] = bundle_digest(m["bundle"])
+    block["composed_digest"] = c.composed_digest(block)
+    assert _verify(container, case, [record]).joins[0].derived == "unjoined"

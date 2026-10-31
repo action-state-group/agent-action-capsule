@@ -451,4 +451,7 @@ fn an_unserializable_sig_is_malformed_under_ed25519_and_unimplemented_otherwise(
     assert_eq!(derive_with(&record).0.as_deref(), Some("unjoined"));
     record["key_types"] = json!(["ed25519", "x-example-type"]);
     assert_eq!(derive_with(&record).1, "not_derivable");
+    // Still held to -02's form: an empty nonce is malformed whatever the key types.
+    record["nonce"] = json!("");
+    assert_eq!(derive_with(&record).0.as_deref(), Some("unjoined"));
 }

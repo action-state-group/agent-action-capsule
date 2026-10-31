@@ -390,4 +390,7 @@ func TestControllerBindingUnserializableSig(t *testing.T) {
 	record["key_types"] = []interface{}{"ed25519", "x-example-type"}
 	require.True(t, bindingForm(record))
 	require.False(t, implemented(record))
+	// Still held to -02's form: an empty nonce is malformed whatever the key types.
+	record["nonce"] = ""
+	require.False(t, bindingForm(record))
 }

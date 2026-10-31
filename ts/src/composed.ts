@@ -663,7 +663,20 @@ async function bindingReport(
         types.length === 2 &&
         isString(types[0]) &&
         isString(types[1]));
-    return { wellFormed: shaped && !ed25519Keys(record) };
+    if (!shaped || ed25519Keys(record)) return { wellFormed: false };
+    // Not implemented, but still held to -02's form: read it with each sig
+    // replaced by a string, which no other rule looks at.
+    const standin: Obj = { ...record };
+    if (Array.isArray(record.sigs))
+      standin.sigs = record.sigs.map((e: unknown) =>
+        object(e) && Object.hasOwn(e, "sig") ? { ...e, sig: "" } : e,
+      );
+    try {
+      jcs(standin);
+    } catch {
+      return { wellFormed: false };
+    }
+    return bindingReport(standin, times, statements);
   }
   const report = await verifyBinding(octets, times, {
     revocations: statements,

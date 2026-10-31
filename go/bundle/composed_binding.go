@@ -81,7 +81,36 @@ func bindingReport(record map[string]interface{}, times []time.Time, statements 
 		// The digest above matched, so only sigs can be unserializable (a float or an
 		// integer beyond 2^53 where a sig-hex belongs): malformed under ed25519 keys,
 		// which -02 holds to sig-hex, and merely not implemented under any other.
-		return controllerbinding.Report{}, keyTypesWellFormed(record) && !ed25519Keys(record)
+		if !keyTypesWellFormed(record) || ed25519Keys(record) {
+			return controllerbinding.Report{}, false
+		}
+		// Not implemented, but still held to -02's form: read it with each sig
+		// replaced by a string, which no other rule looks at.
+		standin := make(map[string]interface{}, len(record))
+		for k, v := range record {
+			standin[k] = v
+		}
+		if sigs, ok := record["sigs"].([]interface{}); ok {
+			replaced := make([]interface{}, len(sigs))
+			for i, raw := range sigs {
+				replaced[i] = raw
+				if entry, ok := raw.(map[string]interface{}); ok {
+					copied := make(map[string]interface{}, len(entry))
+					for k, v := range entry {
+						copied[k] = v
+					}
+					if _, has := copied["sig"]; has {
+						copied["sig"] = ""
+					}
+					replaced[i] = copied
+				}
+			}
+			standin["sigs"] = replaced
+		}
+		if _, err := canonical.JCS(standin); err != nil {
+			return controllerbinding.Report{}, false
+		}
+		return bindingReport(standin, times, statements)
 	}
 	report = controllerbinding.Verify(octets, times, controllerbinding.Options{Revocations: statements})
 	if types, typed := record["key_types"]; typed {

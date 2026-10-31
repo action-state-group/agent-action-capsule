@@ -250,5 +250,10 @@ describe("composed controller_binding join: -02's own rules", () => {
     expect(
       (await derive(await sealed(record), [record])).joins[0]!.result,
     ).toBe("not_derivable");
+    // Still held to -02's form: an empty nonce is malformed whatever the key types.
+    record.nonce = "";
+    expect(
+      (await derive(await sealed(record), [record])).joins[0]!.derived,
+    ).toBe("unjoined");
   });
 });

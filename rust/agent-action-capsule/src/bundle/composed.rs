@@ -1186,7 +1186,23 @@ fn binding_report(
         let shaped = record.get("key_types").is_none_or(
             |t| matches!(t, Value::Array(l) if l.len() == 2 && l.iter().all(Value::is_string)),
         );
-        return (None, shaped && !ed25519_keys(record));
+        if !shaped || ed25519_keys(record) {
+            return (None, false);
+        }
+        // Not implemented, but still held to -02's form: read it with each sig
+        // replaced by a string, which no other rule looks at.
+        let mut standin = record.clone();
+        if let Some(Value::Array(sigs)) = standin.get_mut("sigs") {
+            for entry in sigs.iter_mut() {
+                if let Some(e) = entry.as_object_mut().filter(|e| e.contains_key("sig")) {
+                    e.insert("sig".into(), json!(""));
+                }
+            }
+        }
+        if canonical::jcs(&Value::Object(standin.clone())).is_err() {
+            return (None, false);
+        }
+        return binding_report(&standin, times, statements);
     };
     let report = verify_at(&octets, times, statements);
     if let Some(types) = record.get("key_types") {

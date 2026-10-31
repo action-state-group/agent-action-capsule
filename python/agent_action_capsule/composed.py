@@ -566,7 +566,21 @@ def _binding_report(record: Mapping[str, Any], times: list, statements: list):
         shaped = "key_types" not in record or (
             isinstance(types, list) and len(types) == 2 and all(isinstance(t, str) for t in types)
         )
-        return cb.Report(), shaped and not _ed25519_keys(record)
+        if not shaped or _ed25519_keys(record):
+            return cb.Report(), False
+        # Not implemented, but still held to -02's form: read it with each sig
+        # replaced by a string, which no other rule looks at.
+        standin = dict(record)
+        sigs = record.get("sigs")
+        if isinstance(sigs, list):
+            standin["sigs"] = [
+                {**e, "sig": ""} if isinstance(e, Mapping) and "sig" in e else e for e in sigs
+            ]
+        try:
+            jcs(standin)
+        except _DIGEST_ERRORS:
+            return cb.Report(), False
+        return _binding_report(standin, times, statements)
     report = cb.verify(octets, times, cb.Options(revocations=statements))
     if "key_types" in record:
         types = record["key_types"]
