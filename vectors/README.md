@@ -73,7 +73,12 @@ same-commit files in CI.
   (`evidence-interop/0`): the exchange, a carried foreign object, the acceptance
   record, lifecycle links and carriage over A2A and MCP, each pinning its trust
   policy, verification policy, contract version and evaluation time;
-  `python/scripts/generate_interop_profile_v0_vectors.py` regenerates them.
+  `python/scripts/generate_interop_profile_v0_vectors.py` regenerates them. Frozen with
+  `evidence-interop/0`.
+- `interop-profile-v1/` and `interop-profile-v1-requirement-facts/`: the same cases for
+  `spec/interop-profile-v1.md` (`evidence-interop/1`, ER -02), plus the two -02 refusal reasons
+  and `capacity_exceeded` answering a request for `evidence-interop/0`;
+  `python/scripts/generate_interop_profile_v0_vectors.py --profile 1` regenerates them.
 - `personal-history-basic-v0/`: the acceptance run of
   `spec/personal-agent-history-profile-v0.md` §6.4 (Basic level): one History answered by an
   IP responder at a pinned commit (`responder-run.json`, reproduced by `producer/main.go`), the

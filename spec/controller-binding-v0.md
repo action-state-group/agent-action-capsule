@@ -27,6 +27,13 @@ what a verifier reports (§7), and the proposed `controller_binding` join basis 
 | BIP-340 | Bitcoin Improvement Proposal 340, "Schnorr Signatures for secp256k1" | x-only public keys and signature verification, for the `bip340` key type (§3.3, §4.1) |
 | NIP-01 | Nostr Implementation Possibilities 01, "Basic protocol flow description" | the event, its serialization and its id, for the `bip340` key type (§4.1) |
 
+**Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
+`spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
+frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). The IP sections it cites (§5.1,
+§5.2, §6.7.4, §7.1) are the same in `evidence-interop/1`, which changes only the ER pin, the refusal
+reasons and their mapping (IP v1 P-65). Re-pinning to `evidence-interop/1` is a revision of this
+profile.
+
 **Does not define:** any identity, account or naming scheme; any identity provider; any registry of
 keys, controllers or organizations; any trust policy; how two key holders meet to sign; or what a
 relying party should conclude from a binding.

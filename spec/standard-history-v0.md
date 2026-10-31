@@ -37,6 +37,13 @@ the deal entry and the counting rules (§5), the card and its members (§4), the
 | SR | `draft-mih-agent-settlement-records` -00 | the amount triple (`value`, `assetCode`, `assetScale`) ("Amounts"), the counterparty half citation ("Citations Between Legs") |
 | RES | `spec/evidence-result-v0.md` | the claim verdict `met`, `not_met`, `not_evaluable`, `out_of_scope` (§4) and the grade `self-attested` (§1) |
 
+**Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
+`spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
+frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). The IP sections it cites (§5.2,
+§6.1, §6.2, §7.1, §11.2) are the same in `evidence-interop/1`, which changes only the ER pin, the
+refusal reasons and their mapping (IP v1 P-65), and its requests name `evidence-interop/0`.
+Re-pinning to `evidence-interop/1` is a revision of this profile.
+
 **Does not define:** any record format of a deal, any disclosure policy format (it reads two
 members of one, §5.1), who may receive a card, any trust policy, any ordering, score or grade of
 holders, deals or counterparties, or what a recipient should conclude. It does not change

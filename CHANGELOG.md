@@ -16,6 +16,20 @@ Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their o
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Interop profile `evidence-interop/1` (`spec/interop-profile-v1.md`, AAC#479): `evidence-interop/0`
+  with Evidence Request re-pinned from -01 to -02 as posted (archive SHA-256 to be filled in when -02
+  is posted). §9.1 lists ten refusal reasons, and §8.1 maps `capacity_exceeded` and
+  `request_unauthenticated` to `UNKNOWN`, never `WITHHELD`. Load shedding is `capacity_exceeded`,
+  so `policy_declined` and `not_authorized` are statements about policy. A refusal's reason is
+  checked against the tokens of the identifier its request asks for. -02 §4.7 (unavailable-window
+  statements) is deferred (P-66); adopting it later most likely takes `evidence-interop/2`.
+  `spec/interop-profile-v0.md` and its corpora are unchanged and frozen at 1456285. New corpora
+  `vectors/interop-profile-v1/` (58 cases) and `vectors/interop-profile-v1-requirement-facts/`
+  (2), from the same generator with `--profile 1`. The six host profiles that cite
+  `evidence-interop/0` each state that they stay on it. Python `interop_profile` and Go
+  `evidencerequest` verify both identifiers (`PROFILE_IDS`, `Profiles`); Python
+  `evidence_request.sign_envelope` takes `profile`, and Go `ParseRequest` accepts a /1 request and
+  `Refusal.ConformingUnder` checks a refusal under a given identifier (`Conforming` stays /0's).
 - Evidence Request -02 refusal reasons `capacity_exceeded` (a limit of the responder's own: load, a
   size limit, a full replay cache, a transient fault) and `request_unauthenticated` (a requester
   authentication a deployment profile defines does not verify) (AAC#478, Mesh-LLM/capsules-plugin#114).

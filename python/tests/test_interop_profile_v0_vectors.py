@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The evidence-interop/0 conformance vectors, checked from their inputs alone.
+"""The evidence-interop/0 conformance vectors (``vectors/interop-profile-v0/`` and
+``vectors/interop-profile-v0-requirement-facts/``), checked from their inputs alone.
 
 ``test_interop_profile_v1_vectors.py`` runs this module again with ``_PROFILE_VERSION`` 1, for the
 evidence-interop/1 corpora and ``spec/interop-profile-v1.md``; every version-dependent name below

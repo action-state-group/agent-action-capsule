@@ -51,6 +51,14 @@ Section numbers for ER are those of the rendered `.txt` of the -01 revision, whi
 A requirement
 written `[IP §6.5]` is taken from IP; `[SH-n]` marks one this profile adds.
 
+**Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
+`spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
+frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). `evidence-interop/1` changes two
+things this profile uses, the refusal reasons (IP v1 §9.1) and their mapping (IP v1 §8.1), and the
+requests and envelopes of its vectors name `evidence-interop/0`. Under `evidence-interop/0` a node
+that sheds load refuses `policy_declined`, as ER -01 allows. Re-pinning to `evidence-interop/1` is a
+revision of this profile.
+
 **Does not define:** any record format, any identity scheme, any trust policy, who may receive a
 History, or what a recipient should conclude. It defines no figure that combines units, labels or
 nodes, and no score, rank or ordering of nodes, providers or exchanges, and a verifier that follows

@@ -19,8 +19,9 @@ import (
 )
 
 // The exchange cases of vectors/interop-profile-v0 and
-// vectors/interop-profile-v0-requirement-facts, and of their v1 sets, each set with its own
-// contract, run through the Verifier
+// vectors/interop-profile-v0-requirement-facts, and of the v1 sets
+// vectors/interop-profile-v1 and vectors/interop-profile-v1-requirement-facts,
+// each set with its own contract, run through the Verifier
 // from their inputs alone, and the result is compared with each case's
 // whole expected block, as python/tests/test_interop_profile_verifier.py
 // compares the Python reference verifier's. The carriage, acceptance and
