@@ -21,10 +21,11 @@ CPB      = draft-mih-sokolov-scitt-payload-binding-00
 BUNDLE   = draft-mih-zhang-agent-disclosure-bundle-01
 EVREQ    = draft-mih-agent-evidence-request-02
 EVIDENCELAYER = draft-mih-agent-evidence-layer-00
+SETTLEMENT = draft-mih-agent-settlement-records-01
 XML2RFC  ?= $(shell command -v xml2rfc)
 KDRFC    ?= $(shell command -v kramdown-rfc || ruby -e 'puts Gem.bindir + "/kramdown-rfc"')
 
-.PHONY: all bilateral cpb bundle evreq evidencelayer clean idnits idnits-evreq rebuild refresh-refs check
+.PHONY: all bilateral cpb bundle evreq evidencelayer settlement clean idnits idnits-evreq rebuild refresh-refs check
 
 all: $(DRAFT).xml $(DRAFT).txt $(BUNDLE).xml $(BUNDLE).txt $(EVREQ).xml $(EVREQ).txt $(EVIDENCELAYER).xml $(EVIDENCELAYER).txt
 
@@ -70,6 +71,8 @@ evreq: $(EVREQ).xml $(EVREQ).txt
 
 evidencelayer: $(EVIDENCELAYER).xml $(EVIDENCELAYER).txt
 
+settlement: $(SETTLEMENT).xml $(SETTLEMENT).txt
+
 # md -> v2 xml -> v3 xml (committed artifact is v3)
 $(DRAFT).xml: $(DRAFT).md
 	$(KDRFC) $(DRAFT).md > .$(DRAFT).v2.xml
@@ -108,6 +111,12 @@ $(EVIDENCELAYER).xml: $(EVIDENCELAYER).md
 	sed '/<!-- ##markdown-source:/,/-->/d' .$(EVIDENCELAYER).v3.xml > $(EVIDENCELAYER).xml
 	@rm -f .$(EVIDENCELAYER).v2.xml .$(EVIDENCELAYER).v3.xml
 
+$(SETTLEMENT).xml: $(SETTLEMENT).md
+	$(KDRFC) $(SETTLEMENT).md > .$(SETTLEMENT).v2.xml
+	$(XML2RFC) --v2v3 .$(SETTLEMENT).v2.xml -o .$(SETTLEMENT).v3.xml
+	sed '/<!-- ##markdown-source:/,/-->/d' .$(SETTLEMENT).v3.xml > $(SETTLEMENT).xml
+	@rm -f .$(SETTLEMENT).v2.xml .$(SETTLEMENT).v3.xml
+
 # v3 xml -> text
 $(DRAFT).txt: $(DRAFT).xml
 	$(XML2RFC) --text --v3 $(DRAFT).xml -o $(DRAFT).txt
@@ -127,6 +136,9 @@ $(EVREQ).txt: $(EVREQ).xml
 $(EVIDENCELAYER).txt: $(EVIDENCELAYER).xml
 	$(XML2RFC) --text --v3 $(EVIDENCELAYER).xml -o $(EVIDENCELAYER).txt
 
+$(SETTLEMENT).txt: $(SETTLEMENT).xml
+	$(XML2RFC) --text --v3 $(SETTLEMENT).xml -o $(SETTLEMENT).txt
+
 idnits: $(DRAFT).txt
 	npx --yes @ietf-tools/idnits $(DRAFT).txt
 
@@ -137,4 +149,4 @@ check:
 	python3 check_verdict_class_refs.py
 
 clean:
-	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml .$(EVREQ).v2.xml .$(EVREQ).v3.xml .$(EVIDENCELAYER).v2.xml .$(EVIDENCELAYER).v3.xml
+	rm -f .$(DRAFT).v2.xml .$(BILATERAL).v2.xml .$(CPB).v2.xml .$(BUNDLE).v2.xml .$(EVREQ).v2.xml .$(EVREQ).v3.xml .$(EVIDENCELAYER).v2.xml .$(EVIDENCELAYER).v3.xml .$(SETTLEMENT).v2.xml .$(SETTLEMENT).v3.xml

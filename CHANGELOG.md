@@ -23,6 +23,12 @@ has not yet.
   less for its depth alone, with `vectors/json-nesting/` as its conformance set.
   `spec/interop-profile-v1.md` §5.2, `VECTORS.md` and the vector README and manifest cite it.
   Nothing is posted until the -06 cut; the wire value stays `draft-mih-scitt-agent-action-capsule-05`.
+- The settlement draft cites the JSON nesting limit: the in-tree working revision
+  `spec/draft-mih-agent-settlement-records-01.md` (cut from the posted -00, built by `make settlement`)
+  says leg records and JSON digests are subject to the capsule profile's 128-level limit, which a
+  verifier applies to each leg record before any settlement check, and cites capsule draft -06. The
+  `settlement` member's `version` stays `"0"`; `vectors/settlement/` and the implementations still cite
+  -00. Nothing is posted until AAC -06 is.
 
 ## go 0.18.0 — 2026-10-31
 
