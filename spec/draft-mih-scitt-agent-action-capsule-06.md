@@ -209,14 +209,17 @@ and empty objects participate when present. JSON floating-point values are
 forbidden in digest-bearing material, and integers outside the IEEE-754 safe
 range MUST be represented as decimal strings.
 
-JSON text under this profile, including a Capsule and every value a
-committed payload digest covers, nests objects and arrays at most 128
-levels deep. Each object or array inside another is one more level, so
+A JSON text or value under this profile, including a Capsule and every
+value a committed payload digest covers, nests objects and arrays at most
+128 levels deep. Each object or array inside another is one more level, so
 `[]` is one level and `[[]]` two. A producer MUST NOT emit or digest a
-deeper value. A verifier MUST reject deeper text as not well-formed, before
-any check, and MUST NOT reject text nested 128 levels or fewer for its
-depth alone. A conformance vector set for this bound is maintained at
-`vectors/json-nesting/` in this document's source repository.
+deeper value. A verifier MUST reject a deeper text or value as malformed
+input, before any check, and MUST NOT reject a text or value nested 128
+levels or fewer for its depth alone. {{RFC8259}}, Section 9, permits a
+parser to limit nesting depth; this profile fixes the limit so that every
+verifier reads the same input the same way. A conformance vector set for
+this bound is maintained at `vectors/json-nesting/` in this document's
+source repository.
 
 A committed payload digest, including `agent_input_digest`,
 `agent_output_digest`, `response_digest`, and `evidence_digest`, is the
@@ -1258,7 +1261,9 @@ Capsule JSON, the registry contents
 ({{registries}}), and — for the chain checks — the producer's store of
 Capsules; no other input is needed. A verifier MUST return a structured
 result, never throw; a single `ok` boolean gates trust in every other
-reported field; findings are reported in a fixed order.
+reported field; findings are reported in a fixed order. A Capsule nested
+deeper than the bound in {{conventions}} is rejected before check 1, and
+its result is not `ok`.
 
 1. Structural: REQUIRED fields present and typed; `format_version` is exactly
    the string `"4"`; `canonicalization_id` is exactly the string `"jcs"`; and
@@ -1909,10 +1914,14 @@ documentation so deployers can audit admission without reading implementation co
 This appendix is non-normative. RFC Editor: please remove this appendix
 before publication.
 
-* JSON nesting: JSON text under this profile nests at most 128 levels; a
-  producer emits nothing deeper, and a verifier rejects deeper text as not
-  well-formed and never rejects text 128 levels deep or less for its depth
-  alone ({{conventions}}).
+* JSON nesting: a JSON text or value under this profile nests at most 128
+  levels; a producer emits or digests nothing deeper, and a verifier
+  rejects deeper input as malformed before any check and never rejects
+  input 128 levels deep or less for its depth alone ({{conventions}},
+  {{verification}}).
+* Wire version unchanged: a producer conforming to this revision still
+  emits "draft-mih-scitt-agent-action-capsule-05", and verifier acceptance
+  of `spec_version` is unchanged ({{identity}}).
 
 # Changes from draft-mih-scitt-agent-action-capsule-04 {#changes-from-04}
 

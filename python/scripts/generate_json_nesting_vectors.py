@@ -151,8 +151,8 @@ def write(out: Path) -> None:
     text = dumps(doc)
     (out / "cases.json").write_text(text, encoding="utf-8")
     manifest = {
-        "spec": None,
-        "provenance": "implementation limit (#498); no specification states one",
+        "spec": "spec/draft-mih-scitt-agent-action-capsule-06.md",
+        "provenance": "spec-derived",
         "generator": "python/scripts/generate_json_nesting_vectors.py",
         "files": [{
             "path": "cases.json",

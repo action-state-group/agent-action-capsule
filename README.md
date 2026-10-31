@@ -39,8 +39,8 @@ denied Capsule is affirmative evidence that a gate worked.
 
 The authoritative version of the draft is the one on the
 [Datatracker](https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/);
-`-05` is the current posted revision. The `.md` here is the editor's source
-from which it is built.
+`-05` is the current posted revision, built from its frozen `.md`. The
+editor's source is the unposted `-06` working revision.
 
 ## Quickstart — try the reference verifier
 

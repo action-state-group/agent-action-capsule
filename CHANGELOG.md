@@ -18,11 +18,11 @@ has not yet.
 
 - The capsule draft states the JSON nesting limit (AAC#498): the in-tree working revision
   `spec/draft-mih-scitt-agent-action-capsule-06.md` (cut from the posted -05, `spec/Makefile` now
-  gates it) says in Conventions that JSON text nests at most 128 levels, a verifier rejects deeper
-  text as not well-formed and never rejects text 128 levels deep or less for its depth alone, with
-  `vectors/json-nesting/` as its conformance set. `spec/interop-profile-v1.md` §5.2 and the vector
-  README cite it. Nothing is posted until the -06 cut; the wire value stays
-  `draft-mih-scitt-agent-action-capsule-05`.
+  gates it) says in Conventions that a JSON text or value nests at most 128 levels, a verifier
+  rejects deeper input as malformed before Class 1 check 1 and never rejects input 128 levels deep or
+  less for its depth alone, with `vectors/json-nesting/` as its conformance set.
+  `spec/interop-profile-v1.md` §5.2, `VECTORS.md` and the vector README and manifest cite it.
+  Nothing is posted until the -06 cut; the wire value stays `draft-mih-scitt-agent-action-capsule-05`.
 
 ## go 0.18.0 — 2026-10-31
 
