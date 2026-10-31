@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their own Unreleased
+Not in any tag yet: the changes after `ts/v0.11.0`. The Rust crates keep their own Unreleased
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
@@ -33,46 +33,6 @@ has not yet.
   `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on whether the
   runtime's WebCrypto, which varies by version, refuses these; the helper moves from
   `cose-receipt.ts` to `ed25519-strict.ts`. Honest signatures verify as before. (#448)
-- Security, strict Ed25519 on every trusted-key path: each Ed25519 check under a pinned,
-  registered or trusted key now uses the strict rule of #447 (A and R canonical and not of small
-  order, S < L, then the cofactorless check), so a small-order key no longer verifies a forgery
-  over any message. Go: the interop profile's envelope, refusal and acceptance signatures, the
-  CLL checkpoint (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`) and the
-  settlement `wrapped_resigned` check; the strict helper moves from `witness` to
-  `internal/ed25519strict`. Python: `interop_profile` (every signature it checks),
-  `evidence_request` (which already refused a small-order key, and now also a small-order or
-  non-canonical R and S >= L), the settlement `wrapped_resigned` check and `verify --transparent`
-  (the Signed Statement under the issuer key and each receipt under the log key); the helper
-  moves from `witness` to `agent_action_capsule._ed25519_strict`. TypeScript: the settlement
-  `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on the runtime's
-  WebCrypto for this; the helper moves from `cose-receipt.ts` to `ed25519-strict.ts`. Honest
-  signatures verify as before. The producer envelope and Go's Evidence Request -00
-  `VerifySignature` stay with #322. (#448)
-- **Breaking**, TypeScript (the next ts minor, 0.11.0): the two calibration readers read
-  `calibration-summary/v1` as `schemas/judge/calibration-summary-v1.json` defines it, and the cited
-  per-case ratings as `schemas/judge/human-rating-v1.json` does (AAC#446). New module
-  `calibration-summary` (`readCalibrationSummary`, `readHumanRating`) returns a record only when it
-  matches its schema exactly and every count has `k <= n`; a record with a stored rate or any other
-  member the schema lacks reads as not matching. The outcome-report model's `calibration` is now
-  `CalibrationReading[]`: one per `calibration` claim, with the summary it cites, its clauses' stated
-  agreement and drift, and the `human-rating/v1` records it cites (each digest read once). Each
-  clause's agreement is recomputed from those ratings and compared with the stated count
-  (`agreementCheck`: `matches`, `mismatch` only when the ratings contradict the stated count, or
-  `not_recomputable`); the stated count is never replaced, and `ratingsOutsideClauses` counts
-  ratings no clause counts. The recompute rests on reader conventions that neither the schemas nor
-  the judge record family spec state, pending evidencebook-skills#73 and #74: a rating is bound
-  to the requirement claim that cites its rated case, a `clause_ref` is read as that claim's
-  `requirement_ref`, a rating counts in k and n only when both its `label` and the judge's verdict
-  are `met` or `not_met` (agreeing when they are equal; `not_evaluable`, `out_of_scope` and any
-  other value on either side leave it out, as settled with Sherlock2), and the cited ratings are a
-  sample of a clause's cases, not all of them. `heldCount` (judge `met`, rater `not_met`) and
-  `addedCount` (judge `not_met`, rater `met`) are read from the bound ratings, each rating digest
-  counted once across claims.
-  `CalibrationWeek` and `CalibrationSample` are removed. The evidence graph's `calibration` node is
-  `{capsuleId, matchesSchema, summary}`, matched on `record_version`; `CalibrationCount`,
-  `calibrationCount`, `confusion`, `correctedRate` and `periodWindow` are removed. No reader computes
-  or stores a rate or percentage. capsule-viewer#121 adopts the new shapes. New devDependency
-  `ajv` 8.20.0, used only by the test that checks the fixtures against the schemas.
 - Go `evidencerequest.ParseRequestTime` refuses a time with more than nine fraction digits instead
   of truncating it to nanoseconds, as the Python and Rust readers already do (AAC#492).
 - Controller Binding v0: a using profile may declare a revocation list complete (AAC#482,
@@ -264,6 +224,54 @@ has not yet.
   and it is the case where the `cross_language binding` vector test's node key is not named
   (exit 1). Go: `Binds` documents that it reports membership only; a caller that needs the key's
   role reads `Claim` and `Delegator` (#468). No behavior change.
+
+## ts 0.11.0 — 2026-10-31
+
+Tag `ts/v0.11.0`.
+
+- **Breaking**, TypeScript: the two calibration readers read
+  `calibration-summary/v1` as `schemas/judge/calibration-summary-v1.json` defines it, and the cited
+  per-case ratings as `schemas/judge/human-rating-v1.json` does (AAC#446). New module
+  `calibration-summary` (`readCalibrationSummary`, `readHumanRating`) returns a record only when it
+  matches its schema exactly and every count has `k <= n`; a record with a stored rate or any other
+  member the schema lacks reads as not matching. The outcome-report model's `calibration` is now
+  `CalibrationReading[]`: one per `calibration` claim, with the summary it cites, its clauses' stated
+  agreement and drift, and the `human-rating/v1` records it cites (each digest read once). Each
+  clause's agreement is recomputed from those ratings and compared with the stated count
+  (`agreementCheck`: `matches`, `mismatch` only when the ratings contradict the stated count, or
+  `not_recomputable`); the stated count is never replaced, and `ratingsOutsideClauses` counts
+  ratings no clause counts. The recompute rests on reader conventions that neither the schemas nor
+  the judge record family spec state, pending evidencebook-skills#73 and #74: a rating is bound
+  to the requirement claim that cites its rated case, a `clause_ref` is read as that claim's
+  `requirement_ref`, a rating counts in k and n only when both its `label` and the judge's verdict
+  are `met` or `not_met` (agreeing when they are equal; `not_evaluable`, `out_of_scope` and any
+  other value on either side leave it out, as settled with Sherlock2), and the cited ratings are a
+  sample of a clause's cases, not all of them. `heldCount` (judge `met`, rater `not_met`) and
+  `addedCount` (judge `not_met`, rater `met`) are read from the bound ratings, each rating digest
+  counted once across claims.
+  `CalibrationWeek` and `CalibrationSample` are removed. The evidence graph's `calibration` node is
+  `{capsuleId, matchesSchema, summary}`, matched on `record_version`; `CalibrationCount`,
+  `calibrationCount`, `confusion`, `correctedRate` and `periodWindow` are removed. No reader computes
+  or stores a rate or percentage. capsule-viewer#121 adopts the new shapes. New devDependency
+  `ajv` 8.20.0, used only by the test that checks the fixtures against the schemas.
+
+- Security, strict Ed25519 on trusted-key paths: each Ed25519 check under a pinned, registered or
+  trusted key now uses the strict rule of #447 (A and R canonical and not of small order, S < L,
+  then the cofactorless check), so a small-order key no longer verifies a forgery over any message,
+  except the record-key paths left for #322 (Go `evidencerequest.VerifySignature` in `reply.go`, and
+  the Go, Rust, TypeScript and Python producer envelopes). Go: the
+  interop profile's envelope, refusal and acceptance signatures, the CLL checkpoint
+  (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`), controller-binding and
+  revocation signatures by an `ed25519` key, and the settlement `wrapped_resigned` check; the
+  helper moves from `witness` to `internal/ed25519strict`. Python: `interop_profile` (every
+  signature it checks), `evidence_request` (which already refused a small-order key, and whose
+  `cryptography` verify already refused a non-canonical R and S >= L; a small-order R is now
+  refused too), the settlement `wrapped_resigned` check and `verify --transparent` (the Signed
+  Statement under the issuer key and each receipt under the log key); the helper moves from
+  `witness` to `agent_action_capsule._ed25519_strict`. TypeScript: the settlement
+  `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on whether the
+  runtime's WebCrypto, which varies by version, refuses these; the helper moves from
+  `cose-receipt.ts` to `ed25519-strict.ts`. Honest signatures verify as before. (#448)
 
 ## go 0.16.0 — 2026-10-30
 
