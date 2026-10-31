@@ -29,6 +29,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import history_frame
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from generate_interop_profile_v0_vectors import (
@@ -408,10 +409,69 @@ def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+# HF §6.1: what the personal_history_basic/1 counting table and wording pack restate of the profile.
+DEFINITION_MEMBERS = ["name", "kind", "subject_form", "selection", "reads", "completeness", "recipient"]  # §4.1
+RECORD_KINDS = ["step_completed", "step_failed"]  # §3
+RECORD_ENTRY = ["digest", "leaf_index"]  # §4.3
+DEAL_STATES = [  # §5, in the order of FAILED, COMPLETED, NO_STEP
+    {"id": "failed_step", "when": "at least one record is step_failed"},
+    {"id": "completed_only", "when": "at least one record is step_completed, and none is step_failed"},
+    {"id": "no_step", "when": "neither"},
+]
+UNITS = ["selected_deals", "records"]  # §5
+PACK_STRINGS = {  # §5, §6.3
+    "coverage.completeness": "completeness not asserted",
+    "deal_state.completed_only": COMPLETED,
+    "deal_state.failed_step": FAILED,
+    "deal_state.no_step": NO_STEP,
+    "not_established": "not established",
+}
+
+
+def check_frame(run: dict, all_cases: list[dict]) -> None:
+    """HF §6.3: the instance's counting table and wording pack (``spec/history-frame/``) equal, member
+    for member, what this generator's constants, the run's definition and the cases give, and every
+    case's acceptance is HF §4.5's rule under the table's ``may_be_not_checked``."""
+    table, pack = history_frame.load(HISTORY)
+    basic = json.loads(run["definitions"]["basic"])
+    assert sorted(basic) == sorted(DEFINITION_MEMBERS), "definition members"
+    positive = next(c for c in all_cases if c["id"] == "history-basic")
+    artifacts = [artifact_of(decode(e["reply"])) for e in positive["inputs"]["exchanges"]]
+    assert {r["record_type"] for a in artifacts for r in a["records"]} <= set(RECORD_KINDS), "record kinds"
+    assert all(set(r) - set(basic["reads"]) == set(RECORD_ENTRY) for a in artifacts for r in a["records"])
+    accepted = [c["expected"]["history_properties"] for c in all_cases if c["expected"].get("accepted")]
+    expected_table = {
+        **history_frame.header("counting_table", HISTORY),
+        "definition_members": DEFINITION_MEMBERS,
+        "definition_fixed": {k: basic[k] for k in DEFINITION_MEMBERS if k not in ("selection", "recipient")},
+        "record_kinds": RECORD_KINDS,
+        "artifact_members": sorted(artifacts[0]),
+        "record_entry": RECORD_ENTRY,
+        "deal_states": DEAL_STATES,
+        "units": UNITS,
+        "properties": HISTORY_PROPS,
+        "may_be_not_checked": history_frame.not_checked_when_accepted(accepted, HISTORY_PROPS),
+    }
+    assert table == expected_table, "counting table differs from this generator"
+    assert pack == {**history_frame.header("wording_pack", HISTORY), "language": "en", "strings": PACK_STRINGS}, \
+        "wording pack differs from this generator"
+    for c in all_cases:
+        e = c["expected"]
+        if "history_properties" in e:
+            ok = all(x["accepted"] for x in e["exchanges"]) and history_frame.accepted(
+                e["history_properties"], table["may_be_not_checked"])
+            assert e["accepted"] is ok, c["id"]
+            if ok:
+                assert list(e["deal_states"]["counts"]) == [FAILED, COMPLETED, NO_STEP], c["id"]
+    refused = next(c for c in all_cases if c["id"] == "refused-other-requester")
+    assert refused["expected"]["reason"] == "not_authorized", "HF §4.9: the instance's non-recipient refusal"
+
+
 def build(run: dict, run_sha256: str) -> dict[str, bytes]:
     all_cases = cases(run)
     ids = [c["id"] for c in all_cases]
     assert len(ids) == len(set(ids)), "duplicate case id"
+    check_frame(run, all_cases)
     corpus = {
         "set": SET,
         "status": STATUS,

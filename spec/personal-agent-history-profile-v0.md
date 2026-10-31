@@ -14,7 +14,8 @@ of any deal. Outcome claims with source labels are the Outcome level,
 `personal_history_outcome/1`, defined in `spec/personal-agent-history-outcome-v0.md` (PA-9).
 
 A sibling host profile covers inference-service histories (IP §6.5 is the common mechanism). The
-two compose only by an explicit, evidence-backed link, never by being shown together.
+two compose only by an explicit, evidence-backed link, never by being shown together
+(`spec/history-frame-v0.md` §4.7).
 
 ## Dependency boundary
 
@@ -30,6 +31,7 @@ the acceptance rule (§6), the History container (§8.2), and the units a Histor
 | ER | `draft-mih-agent-evidence-request` -00 | the `correlation` and `exchange` subject forms [ER §3.1], derivation by definition digest [ER §3.3], caller invariance [ER §5], derivation-scoped disclosure [ER §8] |
 | EL | `draft-mih-agent-evidence-layer` -00 | the record header and its members, the epistemic types |
 | RES | `spec/evidence-result-v0.md` | claim, sufficiency and verdict |
+| HF | `spec/history-frame-v0.md` | the History frame: its rules (§4), its parameters (§3), and this level's counting table and wording pack (§5, §6.1) |
 
 Section numbers for ER and EL are those of the rendered `.txt` of the revision IP pins. A
 requirement written `[IP §6.5]` is taken from IP; `[PA-n]` marks one this profile adds.
@@ -44,6 +46,37 @@ this profile.
 **Does not define:** any record format, any identity scheme, any trust policy, who may receive a
 History, or what a recipient should conclude. It defines no figure that combines deals, records or
 steps, and no ordering of deals, holders or counterparties.
+
+## Instance of the History frame
+
+The Basic level, `personal_history_basic/1`, is an instance of the History frame (HF). This
+section names its values; it changes no member, value, identifier, digest or vector of this
+profile.
+
+- **Parameters** (HF §3; the PH column of HF §6.1): `identification` `definition_digest` (§4.2);
+  `level` `recipient_specific` (§4); `subject_form` `correlation` (§4.1); `coverage_kind`
+  `holder_selected`, carried as `completeness` (§2, PA-15); `aggregation` `per_deal` (§5);
+  `answer_anchor` `any_checkpoint`; `streams` `witnessed_tick` (§2, PA-14); `embeds` `none`;
+  `stated_by` `verifier` (§5); `claims` `none` (§6.1); `interop_pin` `evidence-interop/0`;
+  `non_recipient_refusal` `not_authorized` (§8.1); `policy_digest` `none`; `container` `one_file`
+  (§8.2).
+- **Counting table:** `spec/history-frame/personal-history-basic-1-table.json`, digest
+  `d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1`: the definition's members and
+  fixed values (§4.1), the record kinds (§3), the artifact form (§4.3), the deal states (§5), the
+  units selected deals and records (§5), and the History properties (§6.2), none of which may be
+  `NOT_CHECKED`.
+- **Wording pack:** `spec/history-frame/personal-history-basic-1-pack.json`, digest
+  `b3e4868affdaeede5eeadb0d909d4e4f665260d6a68a3c10896ab9a0abf6be60`: the deal-state strings of
+  §5, "not established" (§5) and "completeness not asserted" (§6.3).
+- **Pinning.** The definition's `name`, `personal_history_basic/1`, pins both documents' bytes
+  (HF §5.4): any change to either is `personal_history_basic/2`. Neither digest is a member of the
+  definition, so no definition digest moves. Where a document and this text disagree, HF §6.3
+  applies.
+- **Frame rules.** One holder key (HF §4.1), one anchor (HF §4.2), envelope acceptance (HF §4.3,
+  §6.1 here), History properties outside the IP §8 mapping (HF §4.4), acceptance (HF §4.5),
+  units and no ordering (HF §4.6), composition by key link (HF §4.7), the non-recipient refusal
+  (HF §4.9), discovery (HF §4.10) and coverage (HF §4.12) are the frame's. This profile states
+  each again where it applies them.
 
 ## 1. Conventions
 
@@ -247,7 +280,7 @@ octets. An envelope answering at the Basic level is accepted when:
 
 - `profile_version`, `envelope_signature`, `responder_trust`, `issued_at_form`,
   `request_binding`, `subject_binding`, `artifact_digest` and `anchor_match` are `PASS`;
-- `anchor_inclusion` is `NOT_CHECKED`. IP registers no verification-material kind for a
+- `anchor_inclusion` is `NOT_CHECKED` [HF §4.3]. IP registers no verification-material kind for a
   derivation's artifact, so a conforming verifier cannot run the check (IP §6.2, P-13). A History
   Basic answer carries no `verification` member. A later IP revision that registers such a kind
   turns this into `PASS` without changing this profile;
@@ -339,7 +372,8 @@ binds each answer to a request the recipient itself made.
 A responder answers a Basic level request only for the requester its definition names, after
 authenticating it [IP §6.5 item 4]. Any other requester is refused `not_authorized`, or
 `policy_declined` where the more specific token would disclose what the policy protects
-[IP §6.3]. Possessing a definition, a deal reference or a History grants nothing.
+[IP §6.3]. Either token maps to `WITHHELD` [IP §8.1; HF §4.9]. Possessing a definition, a deal
+reference or a History grants nothing.
 
 A discovery manifest never lists a Basic level definition, its identifier or its deal
 references [IP §11.4.3].
@@ -365,6 +399,11 @@ checked. Everything else in §6 is the same.
 - **Recipient binding is not secrecy.** The definition names its recipient, and the responder
   answers only that requester. A recipient can still forward what it received.
 - **Linkage.** Deal references and record digests are stable across Histories (§4.5).
+- **Refusals.** The identifier covers the selection and the recipient (§4.2), and deal references
+  are carried in the clear (§4.5), so a party that knows a whole selection, such as an earlier
+  recipient of it, can compute the identifier for a candidate recipient. A `not_authorized`
+  refusal can then tell it that the holder holds a History under that identifier. Where that
+  matters, the responder can refuse `policy_declined` instead, as §8.1 already allows (HF §4.9).
 - **What one key proves.** Every envelope verifies under the holder key. That does not prove the
   key's holder made the deals, because a record's identifier does not cover the signature it was
   sealed with, and the Basic level does not reveal those signatures.
@@ -374,8 +413,8 @@ checked. Everything else in §6 is the same.
   relies on completeness is never `SATISFIED` from a Basic level History [IP §6.7.3 item 4].
 - **Claimed times.** `event_time_claim` is the holder's agent's claim. `committed_at` is the time
   the holder's own stream assigned. Neither is a witnessed time; both are shown, separately.
-- **No ordering.** This profile defines no figure that orders or grades deals, holders or
-  counterparties, and a verifier that follows it shows none.
+- **No ordering.** As HF §4.6: this profile defines no figure that orders or grades deals,
+  holders or counterparties, and a verifier that follows it shows none.
 
 ## 10. Open points
 

@@ -1,0 +1,13 @@
+{
+  "set": "aac-history-frame-v0",
+  "status": "Conformance vectors for the informational History frame v0 (spec/history-frame-v0.md): the counting table and wording pack each instance pins, and their digests.",
+  "spec": "spec/history-frame-v0.md",
+  "generator": "python/scripts/generate_history_frame_v0_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "83d56c7d39947d05226d86bcf260f306f2d8a1b1e2c6bc815a91e33b44759e9a",
+      "count": 9
+    }
+  ]
+}

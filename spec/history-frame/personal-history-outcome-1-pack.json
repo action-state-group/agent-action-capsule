@@ -1,0 +1,11 @@
+{
+  "document": "wording_pack",
+  "frame": "history-frame/0",
+  "instance": "personal_history_outcome/1",
+  "language": "en",
+  "strings": {
+    "claims.per_source": "outcomes are shown per source and never combined",
+    "commitment.not_opened": "committed and not opened",
+    "predicate.no_claim": "not established"
+  }
+}

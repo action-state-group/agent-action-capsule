@@ -120,6 +120,11 @@ same-commit files in CI.
 - `inference-service-history-v0-interop-v1/`: the same cases under `evidence-interop/1`, plus
   `refused-capacity-exceeded` (a History the node declines for its own load, `UNKNOWN`);
   `python/scripts/generate_inference_service_history_v0_vectors.py --profile 1` regenerates them.
+- `history-frame-v0/`: the History frame `spec/history-frame-v0.md`: each instance's counting
+  table and wording pack with the digests the frame lists, and negatives for a mismatched pack
+  digest, a translated pack, a changed table, a pack carrying a checked string and a pack naming
+  another instance. Constructed; `python/scripts/generate_history_frame_v0_vectors.py`
+  regenerates them.
 - `adapters/x402/`: the x402 adapter declaration `spec/adapters/x402-v0.md`: a positive and a
   native-check-fails case for an `exact`/`eip3009` payment, with the wrapped objects' octets, the
   relying party's policy and recorded lookup, and the expected `native_check` reports. Constructed,

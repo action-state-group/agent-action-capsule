@@ -1,0 +1,13 @@
+{
+  "document": "wording_pack",
+  "frame": "history-frame/0",
+  "instance": "personal_history_basic/1",
+  "language": "en",
+  "strings": {
+    "coverage.completeness": "completeness not asserted",
+    "deal_state.completed_only": "with recorded completed steps only",
+    "deal_state.failed_step": "with a recorded failed step",
+    "deal_state.no_step": "with no recorded step",
+    "not_established": "not established"
+  }
+}

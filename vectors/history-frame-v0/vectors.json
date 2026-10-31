@@ -1,0 +1,1420 @@
+{
+  "set": "aac-history-frame-v0",
+  "status": "Conformance vectors for the informational History frame v0 (spec/history-frame-v0.md): the counting table and wording pack each instance pins, and their digests.",
+  "spec": "spec/history-frame-v0.md",
+  "frame": "history-frame/0",
+  "instances": [
+    {
+      "instance": "standard_history/1",
+      "table": "spec/history-frame/standard-history-1-table.json",
+      "pack": "spec/history-frame/standard-history-1-pack.json",
+      "table_digest": "31122b837d2bea44dd3f559ca90a69f666c146ebb3f1b4d9f7df1c1fd3d47c53",
+      "pack_digest": "dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74"
+    },
+    {
+      "instance": "personal_history_basic/1",
+      "table": "spec/history-frame/personal-history-basic-1-table.json",
+      "pack": "spec/history-frame/personal-history-basic-1-pack.json",
+      "table_digest": "d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1",
+      "pack_digest": "b3e4868affdaeede5eeadb0d909d4e4f665260d6a68a3c10896ab9a0abf6be60"
+    },
+    {
+      "instance": "personal_history_outcome/1",
+      "table": "spec/history-frame/personal-history-outcome-1-table.json",
+      "pack": "spec/history-frame/personal-history-outcome-1-pack.json",
+      "table_digest": "a332d408c5ea2566b8f650769f92044c1b075c028cfcd64b112b626fc7b7e97c",
+      "pack_digest": "00dce14b0bfdda0187b274727dd34d7b6a8bd5d5bf3884b934f6840604fc6d47"
+    },
+    {
+      "instance": "inference-service-history/0",
+      "table": "spec/history-frame/inference-service-history-0-table.json",
+      "pack": "spec/history-frame/inference-service-history-0-pack.json",
+      "table_digest": "3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057",
+      "pack_digest": "693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82"
+    }
+  ],
+  "properties": [
+    "table_binding",
+    "pack_binding",
+    "pack_form"
+  ],
+  "count": 9,
+  "cases": [
+    {
+      "id": "standard-history-as-pinned",
+      "description": "The counting table and wording pack of standard_history/1, as spec/history-frame/ holds them",
+      "sections": [
+        "§5",
+        "§6"
+      ],
+      "inputs": {
+        "instance": "standard_history/1",
+        "listed": {
+          "table": "31122b837d2bea44dd3f559ca90a69f666c146ebb3f1b4d9f7df1c1fd3d47c53",
+          "pack": "dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "standard_history/1",
+          "inputs": {
+            "deal_entry": [
+              "deal",
+              "agreed_at",
+              "counterparty_class",
+              "role",
+              "amount",
+              "outcome",
+              "happened",
+              "disputes"
+            ],
+            "dispute_entry": [
+              "side",
+              "outcome",
+              "forum"
+            ],
+            "counterparty_class": [
+              "person_agent",
+              "business_agent",
+              "shop_preauth"
+            ],
+            "not_counted": [
+              "shop_preauth"
+            ],
+            "record_kinds": [
+              "receipt_document"
+            ]
+          },
+          "card_members": [
+            "derivation",
+            "holder_kind",
+            "controller_class",
+            "anchor",
+            "since",
+            "window",
+            "policy",
+            "in_window",
+            "class_missing",
+            "outcomes",
+            "bands",
+            "roles",
+            "happened",
+            "disputes"
+          ],
+          "tallies": {
+            "in_window": [
+              "of",
+              "counted",
+              "not_counted"
+            ],
+            "class_missing": [
+              "of",
+              "count"
+            ],
+            "outcomes": [
+              "of",
+              "held",
+              "did_not_hold",
+              "undecided"
+            ],
+            "band": [
+              "currency",
+              "decade",
+              "of",
+              "held",
+              "did_not_hold",
+              "undecided"
+            ],
+            "roles": [
+              "of",
+              "provided",
+              "bought"
+            ],
+            "happened": [
+              "of",
+              "stamped_by_both",
+              "receipt_only",
+              "no_record"
+            ],
+            "disputes": [
+              "raised",
+              "received"
+            ],
+            "dispute": [
+              "of",
+              "by_outcome",
+              "by_forum"
+            ],
+            "by_outcome": [
+              "of",
+              "open",
+              "for",
+              "against",
+              "split",
+              "no_finding",
+              "withdrawn"
+            ],
+            "by_forum": [
+              "of",
+              "auto",
+              "network",
+              "rail",
+              "external"
+            ]
+          },
+          "units": [
+            "deals",
+            "disputes"
+          ],
+          "properties": [
+            "card_form",
+            "counts_integral",
+            "denominator",
+            "window_from_policy",
+            "as_of",
+            "counts_recompute"
+          ],
+          "may_be_not_checked": [
+            "window_from_policy",
+            "as_of",
+            "counts_recompute"
+          ]
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "standard_history/1",
+          "language": "en",
+          "strings": {
+            "count.of": "{count} of {of}",
+            "counts.cover": "the counts cover counted deals in the stated window",
+            "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
+            "deals.not_counted": "deals in the window not counted",
+            "deals.undecided": "counted deals without a decided outcome"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "PASS",
+          "pack_form": "PASS"
+        },
+        "accepted": true,
+        "fails": []
+      }
+    },
+    {
+      "id": "personal-history-basic-as-pinned",
+      "description": "The counting table and wording pack of personal_history_basic/1, as spec/history-frame/ holds them",
+      "sections": [
+        "§5",
+        "§6"
+      ],
+      "inputs": {
+        "instance": "personal_history_basic/1",
+        "listed": {
+          "table": "d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1",
+          "pack": "b3e4868affdaeede5eeadb0d909d4e4f665260d6a68a3c10896ab9a0abf6be60"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "personal_history_basic/1",
+          "definition_members": [
+            "name",
+            "kind",
+            "subject_form",
+            "selection",
+            "reads",
+            "completeness",
+            "recipient"
+          ],
+          "definition_fixed": {
+            "name": "personal_history_basic/1",
+            "kind": "projection",
+            "subject_form": "correlation",
+            "reads": [
+              "committed_at",
+              "epistemic_type",
+              "event_time_claim",
+              "record_type"
+            ],
+            "completeness": "not_asserted"
+          },
+          "record_kinds": [
+            "step_completed",
+            "step_failed"
+          ],
+          "artifact_members": [
+            "anchor",
+            "derivation",
+            "evidence_stream",
+            "records",
+            "subject"
+          ],
+          "record_entry": [
+            "digest",
+            "leaf_index"
+          ],
+          "deal_states": [
+            {
+              "id": "failed_step",
+              "when": "at least one record is step_failed"
+            },
+            {
+              "id": "completed_only",
+              "when": "at least one record is step_completed, and none is step_failed"
+            },
+            {
+              "id": "no_step",
+              "when": "neither"
+            }
+          ],
+          "units": [
+            "selected_deals",
+            "records"
+          ],
+          "properties": [
+            "definition_form",
+            "definition_binding",
+            "selection_coverage",
+            "single_signer",
+            "single_anchor",
+            "artifact_form",
+            "record_kinds"
+          ],
+          "may_be_not_checked": []
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "personal_history_basic/1",
+          "language": "en",
+          "strings": {
+            "coverage.completeness": "completeness not asserted",
+            "deal_state.completed_only": "with recorded completed steps only",
+            "deal_state.failed_step": "with a recorded failed step",
+            "deal_state.no_step": "with no recorded step",
+            "not_established": "not established"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "PASS",
+          "pack_form": "PASS"
+        },
+        "accepted": true,
+        "fails": []
+      }
+    },
+    {
+      "id": "personal-history-outcome-as-pinned",
+      "description": "The counting table and wording pack of personal_history_outcome/1, as spec/history-frame/ holds them",
+      "sections": [
+        "§5",
+        "§6"
+      ],
+      "inputs": {
+        "instance": "personal_history_outcome/1",
+        "listed": {
+          "table": "a332d408c5ea2566b8f650769f92044c1b075c028cfcd64b112b626fc7b7e97c",
+          "pack": "00dce14b0bfdda0187b274727dd34d7b6a8bd5d5bf3884b934f6840604fc6d47"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "personal_history_outcome/1",
+          "definition_members": [
+            "name",
+            "kind",
+            "subject_form",
+            "selection",
+            "reads",
+            "coverage_declaration",
+            "holder_role",
+            "sources",
+            "predicates",
+            "recipient"
+          ],
+          "definition_fixed": {
+            "name": "personal_history_outcome/1",
+            "kind": "projection",
+            "subject_form": "correlation",
+            "reads": [
+              "commit_alg",
+              "committed_at",
+              "consent",
+              "deal_commitment",
+              "epistemic_type",
+              "event_time_claim",
+              "outcome",
+              "record_type"
+            ],
+            "predicates": "b5c7fe64bd1b4978aeef89cbc3bd9ecc23c2a57a48202a3d8d29e713ef4abfdc"
+          },
+          "holder_roles": [
+            "seller",
+            "buyer"
+          ],
+          "record_kinds": [
+            {
+              "record_type": "step_completed",
+              "carries": []
+            },
+            {
+              "record_type": "step_failed",
+              "carries": []
+            },
+            {
+              "record_type": "outcome_recorded",
+              "carries": [
+                "outcome"
+              ]
+            },
+            {
+              "record_type": "judge_consent",
+              "carries": [
+                "consent"
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "source": "counterparty_half",
+              "members": [
+                "evidence"
+              ]
+            },
+            {
+              "source": "holder_record",
+              "members": []
+            },
+            {
+              "source": "judge_verdict",
+              "members": [
+                "evidence"
+              ]
+            },
+            {
+              "source": "native_object",
+              "members": [
+                "evidence",
+                "adapter",
+                "adapter_predicate"
+              ]
+            }
+          ],
+          "predicate_table": {
+            "name": "outcome_predicates/1",
+            "digest": "b5c7fe64bd1b4978aeef89cbc3bd9ecc23c2a57a48202a3d8d29e713ef4abfdc"
+          },
+          "deal_bindings": [
+            "carried",
+            "holder_only"
+          ],
+          "units": [
+            "selected_deals",
+            "records",
+            "claims"
+          ],
+          "properties": [
+            "definition_form",
+            "definition_binding",
+            "predicate_binding",
+            "coverage_declaration_form",
+            "selection_coverage",
+            "single_signer",
+            "single_anchor",
+            "artifact_form",
+            "record_kinds"
+          ],
+          "may_be_not_checked": [],
+          "claim_properties": {
+            "counterparty_half": [
+              "outcome_form",
+              "outcome_source_allowed",
+              "outcome_evidence",
+              "half_signature",
+              "half_signer_trust",
+              "half_subject",
+              "half_states",
+              "issuer_independence"
+            ],
+            "holder_record": [
+              "outcome_form",
+              "outcome_source_allowed"
+            ],
+            "judge_verdict": [
+              "outcome_form",
+              "outcome_source_allowed",
+              "outcome_evidence",
+              "judge_signature",
+              "judge_signer_trust",
+              "judge_subject",
+              "judge_grounds",
+              "consent_precedes_judgment",
+              "judge_verdict_allowed"
+            ],
+            "native_object": [
+              "outcome_form",
+              "outcome_source_allowed",
+              "outcome_evidence",
+              "adapter_predicate_maps",
+              "native_check"
+            ]
+          },
+          "claim_may_be_not_checked": [
+            "issuer_independence"
+          ]
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "personal_history_outcome/1",
+          "language": "en",
+          "strings": {
+            "claims.per_source": "outcomes are shown per source and never combined",
+            "commitment.not_opened": "committed and not opened",
+            "predicate.no_claim": "not established"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "PASS",
+          "pack_form": "PASS"
+        },
+        "accepted": true,
+        "fails": []
+      }
+    },
+    {
+      "id": "inference-service-history-as-pinned",
+      "description": "The counting table and wording pack of inference-service-history/0, as spec/history-frame/ holds them",
+      "sections": [
+        "§5",
+        "§6"
+      ],
+      "inputs": {
+        "instance": "inference-service-history/0",
+        "listed": {
+          "table": "3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057",
+          "pack": "693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "inference-service-history/0",
+          "definition_members": [
+            "profile",
+            "name",
+            "kind",
+            "level",
+            "embeds",
+            "subjects",
+            "members",
+            "reads",
+            "excludes",
+            "coverage_declaration",
+            "period_policy",
+            "recipient",
+            "spec"
+          ],
+          "definition_fixed": {
+            "profile": "inference-service-history/0",
+            "kind": "projection",
+            "embeds": [
+              "history_card/1"
+            ],
+            "subjects": [
+              "full_history"
+            ]
+          },
+          "levels": [
+            "standard",
+            "detailed"
+          ],
+          "member_entry": [
+            "name",
+            "required",
+            "derivation",
+            "reads",
+            "units",
+            "claims"
+          ],
+          "member_claims": [
+            "asserted_by",
+            "label",
+            "where"
+          ],
+          "units": [
+            "exchanges_served",
+            "exchanges_requested",
+            "exchanges_unattributed",
+            "checkpoints",
+            "witness_receipts",
+            "referee_verdicts",
+            "records"
+          ],
+          "labels": [
+            "self_reported",
+            "peer_confirmed",
+            "corroborated"
+          ],
+          "verdict_counts": [
+            "corroborated",
+            "contradicted",
+            "inconclusive",
+            "not_comparable"
+          ],
+          "period_policy": [
+            "epoch",
+            "length_s",
+            "min_length_s",
+            "floor",
+            "suppression"
+          ],
+          "suppression": [
+            "complementary"
+          ],
+          "suppressed_reasons": [
+            "below_floor",
+            "complementary"
+          ],
+          "artifact_members": [
+            "anchor",
+            "derivation",
+            "subject",
+            "evidence_stream",
+            "declared",
+            "history_card",
+            "history_card_digest",
+            "coverage_declaration"
+          ],
+          "exchange_entry": [
+            "client_nonce",
+            "half",
+            "peer_half",
+            "unit",
+            "label"
+          ],
+          "properties": {
+            "standard": [
+              "definition_form",
+              "definition_binding",
+              "artifact_form",
+              "history_card_content",
+              "units",
+              "labels",
+              "period_alignment",
+              "period_anchor",
+              "period_floor"
+            ],
+            "detailed": [
+              "definition_form",
+              "definition_binding",
+              "artifact_form",
+              "history_card_content",
+              "units",
+              "labels"
+            ]
+          },
+          "may_be_not_checked": []
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "inference-service-history/0",
+          "language": "en",
+          "strings": {
+            "card.no_witness": "no witness named",
+            "exchange.not_joinable": "not joinable",
+            "exchange.one_sided": "one-sided",
+            "exchange.peer_confirmed": "peer-confirmed; not corroborating (independence not established)",
+            "exchange.peer_untrusted": "peer half not verified under a trusted key",
+            "exchange.redundant": "redundant, not corroborating",
+            "session.ordering_not_established": "agreement present; ordering not established"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "PASS",
+          "pack_form": "PASS"
+        },
+        "accepted": true,
+        "fails": []
+      }
+    },
+    {
+      "id": "pack-digest-mismatch",
+      "description": "The inference-service pack with \"one-sided\" made \"peer-confirmed\": a label stronger than its evidence, so a pack whose digest is not the listed one",
+      "sections": [
+        "§5.3",
+        "§6.2"
+      ],
+      "inputs": {
+        "instance": "inference-service-history/0",
+        "listed": {
+          "table": "3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057",
+          "pack": "693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "inference-service-history/0",
+          "definition_members": [
+            "profile",
+            "name",
+            "kind",
+            "level",
+            "embeds",
+            "subjects",
+            "members",
+            "reads",
+            "excludes",
+            "coverage_declaration",
+            "period_policy",
+            "recipient",
+            "spec"
+          ],
+          "definition_fixed": {
+            "profile": "inference-service-history/0",
+            "kind": "projection",
+            "embeds": [
+              "history_card/1"
+            ],
+            "subjects": [
+              "full_history"
+            ]
+          },
+          "levels": [
+            "standard",
+            "detailed"
+          ],
+          "member_entry": [
+            "name",
+            "required",
+            "derivation",
+            "reads",
+            "units",
+            "claims"
+          ],
+          "member_claims": [
+            "asserted_by",
+            "label",
+            "where"
+          ],
+          "units": [
+            "exchanges_served",
+            "exchanges_requested",
+            "exchanges_unattributed",
+            "checkpoints",
+            "witness_receipts",
+            "referee_verdicts",
+            "records"
+          ],
+          "labels": [
+            "self_reported",
+            "peer_confirmed",
+            "corroborated"
+          ],
+          "verdict_counts": [
+            "corroborated",
+            "contradicted",
+            "inconclusive",
+            "not_comparable"
+          ],
+          "period_policy": [
+            "epoch",
+            "length_s",
+            "min_length_s",
+            "floor",
+            "suppression"
+          ],
+          "suppression": [
+            "complementary"
+          ],
+          "suppressed_reasons": [
+            "below_floor",
+            "complementary"
+          ],
+          "artifact_members": [
+            "anchor",
+            "derivation",
+            "subject",
+            "evidence_stream",
+            "declared",
+            "history_card",
+            "history_card_digest",
+            "coverage_declaration"
+          ],
+          "exchange_entry": [
+            "client_nonce",
+            "half",
+            "peer_half",
+            "unit",
+            "label"
+          ],
+          "properties": {
+            "standard": [
+              "definition_form",
+              "definition_binding",
+              "artifact_form",
+              "history_card_content",
+              "units",
+              "labels",
+              "period_alignment",
+              "period_anchor",
+              "period_floor"
+            ],
+            "detailed": [
+              "definition_form",
+              "definition_binding",
+              "artifact_form",
+              "history_card_content",
+              "units",
+              "labels"
+            ]
+          },
+          "may_be_not_checked": []
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "inference-service-history/0",
+          "language": "en",
+          "strings": {
+            "card.no_witness": "no witness named",
+            "exchange.not_joinable": "not joinable",
+            "exchange.one_sided": "peer-confirmed",
+            "exchange.peer_confirmed": "peer-confirmed; not corroborating (independence not established)",
+            "exchange.peer_untrusted": "peer half not verified under a trusted key",
+            "exchange.redundant": "redundant, not corroborating",
+            "session.ordering_not_established": "agreement present; ordering not established"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "FAIL",
+          "pack_form": "PASS"
+        },
+        "accepted": false,
+        "fails": [
+          "pack_binding"
+        ]
+      }
+    },
+    {
+      "id": "pack-translated-in-place",
+      "description": "A translation of the Basic level pack offered as its pack: a translation binds nothing (§5.3), so its digest is not the listed one",
+      "sections": [
+        "§5.3",
+        "§6.2"
+      ],
+      "inputs": {
+        "instance": "personal_history_basic/1",
+        "listed": {
+          "table": "d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1",
+          "pack": "b3e4868affdaeede5eeadb0d909d4e4f665260d6a68a3c10896ab9a0abf6be60"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "personal_history_basic/1",
+          "definition_members": [
+            "name",
+            "kind",
+            "subject_form",
+            "selection",
+            "reads",
+            "completeness",
+            "recipient"
+          ],
+          "definition_fixed": {
+            "name": "personal_history_basic/1",
+            "kind": "projection",
+            "subject_form": "correlation",
+            "reads": [
+              "committed_at",
+              "epistemic_type",
+              "event_time_claim",
+              "record_type"
+            ],
+            "completeness": "not_asserted"
+          },
+          "record_kinds": [
+            "step_completed",
+            "step_failed"
+          ],
+          "artifact_members": [
+            "anchor",
+            "derivation",
+            "evidence_stream",
+            "records",
+            "subject"
+          ],
+          "record_entry": [
+            "digest",
+            "leaf_index"
+          ],
+          "deal_states": [
+            {
+              "id": "failed_step",
+              "when": "at least one record is step_failed"
+            },
+            {
+              "id": "completed_only",
+              "when": "at least one record is step_completed, and none is step_failed"
+            },
+            {
+              "id": "no_step",
+              "when": "neither"
+            }
+          ],
+          "units": [
+            "selected_deals",
+            "records"
+          ],
+          "properties": [
+            "definition_form",
+            "definition_binding",
+            "selection_coverage",
+            "single_signer",
+            "single_anchor",
+            "artifact_form",
+            "record_kinds"
+          ],
+          "may_be_not_checked": []
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "personal_history_basic/1",
+          "language": "fr",
+          "strings": {
+            "coverage.completeness": "exhaustivité non affirmée",
+            "deal_state.completed_only": "avec des étapes achevées enregistrées seulement",
+            "deal_state.failed_step": "avec une étape échouée enregistrée",
+            "deal_state.no_step": "sans étape enregistrée",
+            "not_established": "non établi"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "FAIL",
+          "pack_form": "PASS"
+        },
+        "accepted": false,
+        "fails": [
+          "pack_binding"
+        ]
+      }
+    },
+    {
+      "id": "table-digest-mismatch",
+      "description": "The standard_history/1 table with a share member added to a tally",
+      "sections": [
+        "§5.2",
+        "§6.2"
+      ],
+      "inputs": {
+        "instance": "standard_history/1",
+        "listed": {
+          "table": "31122b837d2bea44dd3f559ca90a69f666c146ebb3f1b4d9f7df1c1fd3d47c53",
+          "pack": "dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "standard_history/1",
+          "inputs": {
+            "deal_entry": [
+              "deal",
+              "agreed_at",
+              "counterparty_class",
+              "role",
+              "amount",
+              "outcome",
+              "happened",
+              "disputes"
+            ],
+            "dispute_entry": [
+              "side",
+              "outcome",
+              "forum"
+            ],
+            "counterparty_class": [
+              "person_agent",
+              "business_agent",
+              "shop_preauth"
+            ],
+            "not_counted": [
+              "shop_preauth"
+            ],
+            "record_kinds": [
+              "receipt_document"
+            ]
+          },
+          "card_members": [
+            "derivation",
+            "holder_kind",
+            "controller_class",
+            "anchor",
+            "since",
+            "window",
+            "policy",
+            "in_window",
+            "class_missing",
+            "outcomes",
+            "bands",
+            "roles",
+            "happened",
+            "disputes"
+          ],
+          "tallies": {
+            "in_window": [
+              "of",
+              "counted",
+              "not_counted"
+            ],
+            "class_missing": [
+              "of",
+              "count"
+            ],
+            "outcomes": [
+              "of",
+              "held",
+              "did_not_hold",
+              "undecided",
+              "held_share"
+            ],
+            "band": [
+              "currency",
+              "decade",
+              "of",
+              "held",
+              "did_not_hold",
+              "undecided"
+            ],
+            "roles": [
+              "of",
+              "provided",
+              "bought"
+            ],
+            "happened": [
+              "of",
+              "stamped_by_both",
+              "receipt_only",
+              "no_record"
+            ],
+            "disputes": [
+              "raised",
+              "received"
+            ],
+            "dispute": [
+              "of",
+              "by_outcome",
+              "by_forum"
+            ],
+            "by_outcome": [
+              "of",
+              "open",
+              "for",
+              "against",
+              "split",
+              "no_finding",
+              "withdrawn"
+            ],
+            "by_forum": [
+              "of",
+              "auto",
+              "network",
+              "rail",
+              "external"
+            ]
+          },
+          "units": [
+            "deals",
+            "disputes"
+          ],
+          "properties": [
+            "card_form",
+            "counts_integral",
+            "denominator",
+            "window_from_policy",
+            "as_of",
+            "counts_recompute"
+          ],
+          "may_be_not_checked": [
+            "window_from_policy",
+            "as_of",
+            "counts_recompute"
+          ]
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "standard_history/1",
+          "language": "en",
+          "strings": {
+            "count.of": "{count} of {of}",
+            "counts.cover": "the counts cover counted deals in the stated window",
+            "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
+            "deals.not_counted": "deals in the window not counted",
+            "deals.undecided": "counted deals without a decided outcome"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "FAIL",
+          "pack_binding": "PASS",
+          "pack_form": "PASS"
+        },
+        "accepted": false,
+        "fails": [
+          "table_binding"
+        ]
+      }
+    },
+    {
+      "id": "pack-carries-checked-string",
+      "description": "The inference-service pack showing a one-sided exchange as peer_confirmed, a label its table lists and its labels property checks",
+      "sections": [
+        "§5.3",
+        "§6.2"
+      ],
+      "inputs": {
+        "instance": "inference-service-history/0",
+        "listed": {
+          "table": "3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057",
+          "pack": "693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "inference-service-history/0",
+          "definition_members": [
+            "profile",
+            "name",
+            "kind",
+            "level",
+            "embeds",
+            "subjects",
+            "members",
+            "reads",
+            "excludes",
+            "coverage_declaration",
+            "period_policy",
+            "recipient",
+            "spec"
+          ],
+          "definition_fixed": {
+            "profile": "inference-service-history/0",
+            "kind": "projection",
+            "embeds": [
+              "history_card/1"
+            ],
+            "subjects": [
+              "full_history"
+            ]
+          },
+          "levels": [
+            "standard",
+            "detailed"
+          ],
+          "member_entry": [
+            "name",
+            "required",
+            "derivation",
+            "reads",
+            "units",
+            "claims"
+          ],
+          "member_claims": [
+            "asserted_by",
+            "label",
+            "where"
+          ],
+          "units": [
+            "exchanges_served",
+            "exchanges_requested",
+            "exchanges_unattributed",
+            "checkpoints",
+            "witness_receipts",
+            "referee_verdicts",
+            "records"
+          ],
+          "labels": [
+            "self_reported",
+            "peer_confirmed",
+            "corroborated"
+          ],
+          "verdict_counts": [
+            "corroborated",
+            "contradicted",
+            "inconclusive",
+            "not_comparable"
+          ],
+          "period_policy": [
+            "epoch",
+            "length_s",
+            "min_length_s",
+            "floor",
+            "suppression"
+          ],
+          "suppression": [
+            "complementary"
+          ],
+          "suppressed_reasons": [
+            "below_floor",
+            "complementary"
+          ],
+          "artifact_members": [
+            "anchor",
+            "derivation",
+            "subject",
+            "evidence_stream",
+            "declared",
+            "history_card",
+            "history_card_digest",
+            "coverage_declaration"
+          ],
+          "exchange_entry": [
+            "client_nonce",
+            "half",
+            "peer_half",
+            "unit",
+            "label"
+          ],
+          "properties": {
+            "standard": [
+              "definition_form",
+              "definition_binding",
+              "artifact_form",
+              "history_card_content",
+              "units",
+              "labels",
+              "period_alignment",
+              "period_anchor",
+              "period_floor"
+            ],
+            "detailed": [
+              "definition_form",
+              "definition_binding",
+              "artifact_form",
+              "history_card_content",
+              "units",
+              "labels"
+            ]
+          },
+          "may_be_not_checked": []
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "inference-service-history/0",
+          "language": "en",
+          "strings": {
+            "card.no_witness": "no witness named",
+            "exchange.not_joinable": "not joinable",
+            "exchange.one_sided": "peer_confirmed",
+            "exchange.peer_confirmed": "peer-confirmed; not corroborating (independence not established)",
+            "exchange.peer_untrusted": "peer half not verified under a trusted key",
+            "exchange.redundant": "redundant, not corroborating",
+            "session.ordering_not_established": "agreement present; ordering not established"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "FAIL",
+          "pack_form": "FAIL"
+        },
+        "accepted": false,
+        "fails": [
+          "pack_binding",
+          "pack_form"
+        ]
+      }
+    },
+    {
+      "id": "pack-for-another-instance",
+      "description": "The standard_history/1 pack naming the Basic level as its instance",
+      "sections": [
+        "§5.3",
+        "§6.2"
+      ],
+      "inputs": {
+        "instance": "standard_history/1",
+        "listed": {
+          "table": "31122b837d2bea44dd3f559ca90a69f666c146ebb3f1b4d9f7df1c1fd3d47c53",
+          "pack": "dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "standard_history/1",
+          "inputs": {
+            "deal_entry": [
+              "deal",
+              "agreed_at",
+              "counterparty_class",
+              "role",
+              "amount",
+              "outcome",
+              "happened",
+              "disputes"
+            ],
+            "dispute_entry": [
+              "side",
+              "outcome",
+              "forum"
+            ],
+            "counterparty_class": [
+              "person_agent",
+              "business_agent",
+              "shop_preauth"
+            ],
+            "not_counted": [
+              "shop_preauth"
+            ],
+            "record_kinds": [
+              "receipt_document"
+            ]
+          },
+          "card_members": [
+            "derivation",
+            "holder_kind",
+            "controller_class",
+            "anchor",
+            "since",
+            "window",
+            "policy",
+            "in_window",
+            "class_missing",
+            "outcomes",
+            "bands",
+            "roles",
+            "happened",
+            "disputes"
+          ],
+          "tallies": {
+            "in_window": [
+              "of",
+              "counted",
+              "not_counted"
+            ],
+            "class_missing": [
+              "of",
+              "count"
+            ],
+            "outcomes": [
+              "of",
+              "held",
+              "did_not_hold",
+              "undecided"
+            ],
+            "band": [
+              "currency",
+              "decade",
+              "of",
+              "held",
+              "did_not_hold",
+              "undecided"
+            ],
+            "roles": [
+              "of",
+              "provided",
+              "bought"
+            ],
+            "happened": [
+              "of",
+              "stamped_by_both",
+              "receipt_only",
+              "no_record"
+            ],
+            "disputes": [
+              "raised",
+              "received"
+            ],
+            "dispute": [
+              "of",
+              "by_outcome",
+              "by_forum"
+            ],
+            "by_outcome": [
+              "of",
+              "open",
+              "for",
+              "against",
+              "split",
+              "no_finding",
+              "withdrawn"
+            ],
+            "by_forum": [
+              "of",
+              "auto",
+              "network",
+              "rail",
+              "external"
+            ]
+          },
+          "units": [
+            "deals",
+            "disputes"
+          ],
+          "properties": [
+            "card_form",
+            "counts_integral",
+            "denominator",
+            "window_from_policy",
+            "as_of",
+            "counts_recompute"
+          ],
+          "may_be_not_checked": [
+            "window_from_policy",
+            "as_of",
+            "counts_recompute"
+          ]
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "personal_history_basic/1",
+          "language": "en",
+          "strings": {
+            "count.of": "{count} of {of}",
+            "counts.cover": "the counts cover counted deals in the stated window",
+            "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
+            "deals.not_counted": "deals in the window not counted",
+            "deals.undecided": "counted deals without a decided outcome"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "FAIL",
+          "pack_form": "FAIL"
+        },
+        "accepted": false,
+        "fails": [
+          "pack_binding",
+          "pack_form"
+        ]
+      }
+    }
+  ]
+}

@@ -36,6 +36,7 @@ the deal entry and the counting rules (§5), the card and its members (§4), the
 | EL | `draft-mih-agent-evidence-layer` -00 | the record header, its `record_type` and its correlation identifier, the epistemic types |
 | SR | `draft-mih-agent-settlement-records` -00 | the amount triple (`value`, `assetCode`, `assetScale`) ("Amounts"), the counterparty half citation ("Citations Between Legs") |
 | RES | `spec/evidence-result-v0.md` | the claim verdict `met`, `not_met`, `not_evaluable`, `out_of_scope` (§4) and the grade `self-attested` (§1) |
+| HF | `spec/history-frame-v0.md` | the History frame: its rules (§4), its parameters (§3), and this derivation's counting table and wording pack (§5, §6.1) |
 
 **Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
 `spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
@@ -49,6 +50,36 @@ members of one, §5.1), who may receive a card, any trust policy, any ordering, 
 holders, deals or counterparties, or what a recipient should conclude. It does not change
 `history_card/1` [ER "The History Card"], the Basic level `personal_history_basic/1` or the
 Outcome level `personal_history_outcome/1`.
+
+## Instance of the History frame
+
+`standard_history/1` is an instance of the History frame (HF). This section names its values; it
+changes no member, value, identifier or vector of this document.
+
+- **Parameters** (HF §3; the SH column of HF §6.1): `identification` `token`; `level`
+  `recipient_free` (§3); `subject_form` `full_history`; `coverage_kind` `policy_window`, carried as
+  `instance_text`: a card covers every deal of the holder's book at the anchor whose `agreed_at`
+  is in the window the policy sets (§5.1), completeness is not asserted, and the card carries no
+  coverage member; `aggregation` `window`; `answer_anchor` `any_checkpoint`; `streams` `one`;
+  `embeds` `receipt_beside` (§3 "Inclusion": no `history_card/1` is carried); `stated_by`
+  `responder` (§2); `claims` `none`;
+  `interop_pin` `evidence-interop/0`; `non_recipient_refusal` `none`; `policy_digest`
+  `policy_octets` (§5.1); `container` `none`.
+- **Counting table:** `spec/history-frame/standard-history-1-table.json`, digest
+  `31122b837d2bea44dd3f559ca90a69f666c146ebb3f1b4d9f7df1c1fd3d47c53`: the deal entry (§5.2), the
+  card members and tallies (§4), the units deals and disputes, the card properties (§6), and the
+  properties that may be `NOT_CHECKED`: `window_from_policy`, `as_of` and `counts_recompute`.
+- **Wording pack:** `spec/history-frame/standard-history-1-pack.json`, digest
+  `dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74`: the display strings of §6
+  "What a verifier shows".
+- **Pinning.** `standard_history/1` pins both documents' bytes (HF §5.4): any change to either is
+  `standard_history/2`. Where a document and this text disagree, HF §6.3 applies.
+- **Frame rules.** One holder key per card (HF §4.1), envelope acceptance (HF §4.3), card
+  properties outside the IP §8 mapping (HF §4.4), acceptance (HF §4.5: a standard card, §6), no
+  score, grade, ratio or ordering (HF §4.6) and differencing (HF §4.8; §9 "Differencing") are the
+  frame's, and this document states each again where it applies them. Composition only by an
+  evidence-backed key link (HF §4.7) is the frame's rule, which this document did not state
+  before: cards under two holder keys compose only by such a link, never by being shown together.
 
 ## 1. Conventions
 
@@ -277,7 +308,8 @@ A verifier reports these properties of a card, in the IP §7.1 vocabulary [SH-1]
 | `counts_recompute` | every count of the card equals the count §5 derives from the deal entries, under the policy's window. `NOT_CHECKED` without the deal entries, the policy or the anchor, or when `card_form`, `counts_integral` or `denominator` is not `PASS` | the deal entries of every deal the stream holds at the anchor |
 
 A card is a **standard card** when every property is `PASS` or `NOT_CHECKED`, and `card_form`,
-`counts_integral` and `denominator` are `PASS`. A verifier that does not hold the deal entries
+`counts_integral` and `denominator` are `PASS`: HF §4.5's rule, with `window_from_policy`, `as_of`
+and `counts_recompute` as the properties that may be `NOT_CHECKED`. A verifier that does not hold the deal entries
 reports `counts_recompute` `NOT_CHECKED` and shows the counts as the holder's statement under the
 holder key, not as recomputed. A property `FAIL` means the card is not a standard card: a
 verifier shows none of its counts.
@@ -367,6 +399,14 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 - **Small counts.** A card with few deals in a band, or one dispute, can still tell a recipient
   who knows one of the deals something about it. The window and the bands are the holder's
   control, through the policy.
+- **Differencing.** A card counts over a window that ends at any anchor, with no floor (§5.1).
+  Two cards at consecutive anchors can be subtracted, and the difference can isolate one deal:
+  a recipient that holds both learns about the deals that entered or left the window between
+  them, even though each card alone shows deals only in aggregate. This document sets no floor
+  and no period rule (HF-1). A holder key that also serves Standard Histories under
+  `inference-service-history/0` serves no `standard_history/1` card: a holder that serves both
+  under the same key is out of conformance by ISH's text already
+  (`spec/inference-service-history-profile-v0.md` §6.1 item 8; HF §4.8).
 - **Same bytes for every requester.** A card is recipient-free (§3): two requesters who compare
   their cards learn only that they asked the same holder at the same anchor. A recipient that does
   not hold the policy cannot check the window (§6 `window_from_policy` `NOT_CHECKED`), so a card
@@ -374,14 +414,14 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 - **The holder's statement.** The holder key signs the counts. Without deal entries a recipient
   cannot recompute them (§6). A valid signature never shows that the counts are right, only that
   the holder stated them.
-- **No grading.** This document defines no score, grade, ratio or ordering, and a verifier that
-  follows it shows none.
+- **No grading.** As HF §4.6: this document defines no score, grade, ratio or ordering, and a
+  verifier that follows it shows none.
 
 ## 10. Open points
 
 | # | Point |
 |---|---|
-| SH-1 | The card properties (§6) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping, as PH's PA-10. |
+| SH-1 | The card properties (§6) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping, as PH's PA-10. The History frame states this for every instance (HF §4.4). |
 | SH-2 | Filling the deal entry (§5.2) from a host's records: which record gives `agreed_at`, `role` and `amount`, and which claim is a deal's outcome claim. A host profile states its mapping, as `spec/deal-reconcile-contract-v0.md` §4.2 does for a half. |
 | SH-3 | Handing a recipient what `counts_recompute` needs: the Results and records the deal entries are read from, without disclosing more than the recipient may see. Until a carriage is defined, a recipient's verifier reports `counts_recompute` `NOT_CHECKED`. ER asks a derivation's result to be re-derivable by the requester; this revision meets that only with that material. |
 | SH-4 | Checking the anchor's witness receipt against a card: needs a verification-material kind for a derivation's artifact (IP P-13), as PH's PA-13. |

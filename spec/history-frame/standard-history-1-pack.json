@@ -1,0 +1,13 @@
+{
+  "document": "wording_pack",
+  "frame": "history-frame/0",
+  "instance": "standard_history/1",
+  "language": "en",
+  "strings": {
+    "count.of": "{count} of {of}",
+    "counts.cover": "the counts cover counted deals in the stated window",
+    "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
+    "deals.not_counted": "deals in the window not counted",
+    "deals.undecided": "counted deals without a decided outcome"
+  }
+}

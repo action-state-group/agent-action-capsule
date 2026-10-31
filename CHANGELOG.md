@@ -51,6 +51,58 @@ has not yet.
   `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on whether the
   runtime's WebCrypto, which varies by version, refuses these; the helper moves from
   `cose-receipt.ts` to `ed25519-strict.ts`. Honest signatures verify as before. (#448)
+- Security, strict Ed25519 on every trusted-key path: each Ed25519 check under a pinned,
+  registered or trusted key now uses the strict rule of #447 (A and R canonical and not of small
+  order, S < L, then the cofactorless check), so a small-order key no longer verifies a forgery
+  over any message. Go: the interop profile's envelope, refusal and acceptance signatures, the
+  CLL checkpoint (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`) and the
+  settlement `wrapped_resigned` check; the strict helper moves from `witness` to
+  `internal/ed25519strict`. Python: `interop_profile` (every signature it checks),
+  `evidence_request` (which already refused a small-order key, and now also a small-order or
+  non-canonical R and S >= L), the settlement `wrapped_resigned` check and `verify --transparent`
+  (the Signed Statement under the issuer key and each receipt under the log key); the helper
+  moves from `witness` to `agent_action_capsule._ed25519_strict`. TypeScript: the settlement
+  `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on the runtime's
+  WebCrypto for this; the helper moves from `cose-receipt.ts` to `ed25519-strict.ts`. Honest
+  signatures verify as before. The producer envelope and Go's Evidence Request -00
+  `VerifySignature` stay with #322. (#448)
+- **Breaking**, TypeScript (the next ts minor, 0.11.0): the two calibration readers read
+  `calibration-summary/v1` as `schemas/judge/calibration-summary-v1.json` defines it, and the cited
+  per-case ratings as `schemas/judge/human-rating-v1.json` does (AAC#446). New module
+  `calibration-summary` (`readCalibrationSummary`, `readHumanRating`) returns a record only when it
+  matches its schema exactly and every count has `k <= n`; a record with a stored rate or any other
+  member the schema lacks reads as not matching. The outcome-report model's `calibration` is now
+  `CalibrationReading[]`: one per `calibration` claim, with the summary it cites, its clauses' stated
+  agreement and drift, and the `human-rating/v1` records it cites (each digest read once). Each
+  clause's agreement is recomputed from those ratings and compared with the stated count
+  (`agreementCheck`: `matches`, `mismatch` only when the ratings contradict the stated count, or
+  `not_recomputable`); the stated count is never replaced, and `ratingsOutsideClauses` counts
+  ratings no clause counts. The recompute rests on reader conventions that neither the schemas nor
+  the judge record family spec state, pending evidencebook-skills#73 and #74: a rating is bound
+  to the requirement claim that cites its rated case, a `clause_ref` is read as that claim's
+  `requirement_ref`, a rating counts in k and n only when both its `label` and the judge's verdict
+  are `met` or `not_met` (agreeing when they are equal; `not_evaluable`, `out_of_scope` and any
+  other value on either side leave it out, as settled with Sherlock2), and the cited ratings are a
+  sample of a clause's cases, not all of them. `heldCount` (judge `met`, rater `not_met`) and
+  `addedCount` (judge `not_met`, rater `met`) are read from the bound ratings, each rating digest
+  counted once across claims.
+  `CalibrationWeek` and `CalibrationSample` are removed. The evidence graph's `calibration` node is
+  `{capsuleId, matchesSchema, summary}`, matched on `record_version`; `CalibrationCount`,
+  `calibrationCount`, `confusion`, `correctedRate` and `periodWindow` are removed. No reader computes
+  or stores a rate or percentage. capsule-viewer#121 adopts the new shapes. New devDependency
+  `ajv` 8.20.0, used only by the test that checks the fixtures against the schemas.
+- One History frame (`spec/history-frame-v0.md`, AAC#452): the rules every History shares, a
+  closed set of fifteen frame parameters, and per instance a counting table and a wording pack
+  pinned by digest (`spec/history-frame/`). Standard History (`standard_history/1`), the
+  Personal-Agent History Basic and Outcome levels (`personal_history_basic/1`,
+  `personal_history_outcome/1`) and Inference-Service History (`inference-service-history/0`) are
+  restated as its instances. The period rules stay Inference-Service History's own. No identifier,
+  definition digest or vector changes; SH §9 gains a "Differencing" note, and SH now states the
+  frame's composition rule (separate subjects compose only by an evidence-backed key link), which
+  it did not state before. New
+  `vectors/history-frame-v0/` (9 cases: the four instances' documents, a mismatched pack digest
+  and four other negatives), and the four instance generators assert that the documents match what
+  they emit.
 - Controller Binding v0: a using profile may declare a revocation list complete (AAC#482,
   `spec/controller-binding-v0.md` §5.1, §6.1, §9.4, §12; CB-1 narrowed). Additive: with no
   declaration every result is as before.

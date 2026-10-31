@@ -25,6 +25,7 @@
     "standard_history_v0": "standard-history-v0/manifest.json",
     "inference_service_history_v0": "inference-service-history-v0/manifest.json",
     "inference_service_history_v0_interop_v1": "inference-service-history-v0-interop-v1/manifest.json",
+    "history_frame_v0": "history-frame-v0/manifest.json",
     "evidence_layer_padding": "evidence-layer/padding/manifest.json",
     "bundle_strict": "bundle/strict/manifest.json",
     "bundle_fragment": "bundle/fragment/manifest.json",

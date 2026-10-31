@@ -1,0 +1,32 @@
+{
+  "document": "counting_table",
+  "frame": "history-frame/0",
+  "instance": "inference-service-history/0",
+  "definition_members": ["profile", "name", "kind", "level", "embeds", "subjects", "members", "reads", "excludes",
+                         "coverage_declaration", "period_policy", "recipient", "spec"],
+  "definition_fixed": {
+    "profile": "inference-service-history/0",
+    "kind": "projection",
+    "embeds": ["history_card/1"],
+    "subjects": ["full_history"]
+  },
+  "levels": ["standard", "detailed"],
+  "member_entry": ["name", "required", "derivation", "reads", "units", "claims"],
+  "member_claims": ["asserted_by", "label", "where"],
+  "units": ["exchanges_served", "exchanges_requested", "exchanges_unattributed", "checkpoints", "witness_receipts",
+            "referee_verdicts", "records"],
+  "labels": ["self_reported", "peer_confirmed", "corroborated"],
+  "verdict_counts": ["corroborated", "contradicted", "inconclusive", "not_comparable"],
+  "period_policy": ["epoch", "length_s", "min_length_s", "floor", "suppression"],
+  "suppression": ["complementary"],
+  "suppressed_reasons": ["below_floor", "complementary"],
+  "artifact_members": ["anchor", "derivation", "subject", "evidence_stream", "declared", "history_card",
+                       "history_card_digest", "coverage_declaration"],
+  "exchange_entry": ["client_nonce", "half", "peer_half", "unit", "label"],
+  "properties": {
+    "standard": ["definition_form", "definition_binding", "artifact_form", "history_card_content", "units", "labels",
+                 "period_alignment", "period_anchor", "period_floor"],
+    "detailed": ["definition_form", "definition_binding", "artifact_form", "history_card_content", "units", "labels"]
+  },
+  "may_be_not_checked": []
+}
