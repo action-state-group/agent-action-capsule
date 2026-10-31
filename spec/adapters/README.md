@@ -75,7 +75,7 @@ verdict `not_evaluable`, never `met` or `not_met`.
 
 The digests below are of the files at the commits named, and change with any later edit. Compute
 a digest from the committed bytes, for example
-`git show dbde399111f13ae880e388c7117fd5991c61456a:spec/adapters/x402-v0.md | shasum -a 256`.
+`git cat-file blob dbde399111f13ae880e388c7117fd5991c61456a:spec/adapters/x402-v0.md | shasum -a 256`. `git show` can apply a text conversion filter and give other bytes.
 
 | Declaration | `id` | Where | Commit | `digest` |
 |---|---|---|---|---|
