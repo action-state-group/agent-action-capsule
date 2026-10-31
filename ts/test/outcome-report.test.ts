@@ -341,12 +341,15 @@ type CalibrationRecords = { summary: Obj; ratings: Obj[] };
  * met, rater met), task-11 (judge not_met, rater met) and task-17 (judge met,
  * rater not_met), so agreement is 1 of 3, one held and one added.
  * `extraSummary` makes the claim cite a second summary record too;
- * `citeTwice` makes it cite every record twice.
+ * `citeTwice` makes it cite every record twice. `secondClaimSummary` adds a
+ * second `calibration` claim, after the first, citing that summary and the
+ * same ratings.
  */
 async function calibrationModel(
   edit?: (records: CalibrationRecords) => void,
   extraSummary?: Obj,
   citeTwice = false,
+  secondClaimSummary?: Obj,
 ): Promise<ReturnType<typeof buildOutcomeReportModel>> {
   const source = fixture("outcome-report-bundle.json");
   const records = fixture("calibration-records.json") as CalibrationRecords;
@@ -364,7 +367,17 @@ async function calibrationModel(
       rating,
     ]),
   ];
-  for (const [alias, payload] of cited) {
+  const ratingAliases = cited.filter(([alias]) =>
+    alias.startsWith("cal-rating-"),
+  );
+  const secondCited: [string, Obj][] =
+    secondClaimSummary === undefined
+      ? []
+      : [["cal-summary-second", secondClaimSummary], ...ratingAliases];
+  for (const [alias, payload] of [
+    ...cited,
+    ...secondCited.slice(0, secondClaimSummary === undefined ? 0 : 1),
+  ]) {
     (source.records as Obj[]).push({ capsule_id: alias });
     (source.disclosures as Obj)[alias] = { agent_input: payload };
   }
@@ -385,7 +398,27 @@ async function calibrationModel(
     proofs: [],
     presentation: { kind: "disclosure", status: "SATISFIED", evidence },
   };
-  const allClaims = [...claims, calClaim];
+  const secondEvidence = secondCited.map(([alias]) => ({
+    digest_alg: "SHA-256",
+    digest: alias,
+  }));
+  const allClaims = [
+    ...claims,
+    calClaim,
+    ...(secondClaimSummary === undefined
+      ? []
+      : [
+          {
+            ...calClaim,
+            id: "cal::2026-W39-second",
+            evidence: secondEvidence,
+            presentation: {
+              ...calClaim.presentation,
+              evidence: secondEvidence,
+            },
+          },
+        ]),
+  ];
   (source.disclosures as Obj).result = {
     agent_input: {
       ...resultDoc,
@@ -442,6 +475,50 @@ it("reads the cited calibration-summary/v1 record and its human ratings, and the
   expect(model.addedCount).toBe(1);
   // No reader computes or stores a rate: every figure is an integer k of n.
   expect(JSON.stringify(model.calibration)).not.toMatch(/\d\.\d|%/u);
+});
+
+it.each(["not_evaluable", "out_of_scope", "unsure"])(
+  "leaves a rating labelled %s out of k and n, and out of held, so it cannot cause a mismatch",
+  async (label) => {
+    const model = await calibrationModel((records) => {
+      // task-17: judge met. With the label counted, 1 of 3 would contradict
+      // the stated 1 of 2.
+      records.ratings[2]!.label = label;
+      (records.summary.clauses as Obj[])[0]!.agreement = { k: 1, n: 2 };
+    });
+    const reading = model.calibration[0]!;
+    expect(reading.ratings[2]!.judged?.verdict).toBe("met");
+    expect(reading.ratings[2]!.agrees).toBeUndefined();
+    expect(reading.clauses[0]!.recomputedAgreement).toEqual({ k: 1, n: 2 });
+    expect(reading.clauses[0]!.agreementCheck).toBe("matches");
+    expect(model.heldCount).toBe(0);
+    expect(model.addedCount).toBe(1);
+  },
+);
+
+it("counts a rating cited by two calibration claims once in held and added", async () => {
+  const records = fixture("calibration-records.json") as CalibrationRecords;
+  const model = await calibrationModel(undefined, undefined, false, {
+    ...records.summary,
+    record_id: "cal-example-org-2026-W39-second",
+  });
+  expect(model.calibration).toHaveLength(2);
+  expect(model.calibration.every((r) => r.ratings.length === 3)).toBe(true);
+  expect(model.heldCount).toBe(1);
+  expect(model.addedCount).toBe(1);
+});
+
+it("sorts a reading whose summary does not match after the schema-valid ones", async () => {
+  const records = fixture("calibration-records.json") as CalibrationRecords;
+  const model = await calibrationModel(undefined, undefined, false, {
+    ...records.summary,
+    record_id: "cal-example-org-2026-W39-second",
+    corrected_rate: { k: 1, n: 3 },
+  });
+  expect(model.calibration.map((r) => [r.claim.id, r.state])).toEqual([
+    ["cal::2026-W39", "read"],
+    ["cal::2026-W39-second", "not_matching"],
+  ]);
 });
 
 it("reads a claim that cites two calibration summaries as ambiguous, and counts nothing from it", async () => {

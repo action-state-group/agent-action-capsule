@@ -423,9 +423,12 @@ export interface OutcomeReportRunInfo {
  *   report). `human-rating/v1` itself names no clause.
  * - Clause: a summary clause's `clause_ref` is read as that claim's
  *   `requirement_ref`. Section 8 does not say what `clause_ref` cites.
- * - Counting: every bound rating counts in n, whatever its `label`, and it
- *   agrees only when `label` equals the judge's verdict. The schema leaves
- *   `label` open and does not say how a label such as `unsure` counts.
+ * - Counting (pending evidencebook-skills#74; settled with Sherlock2 for
+ *   this reader): only a rating labelled `met` or `not_met` counts, in both
+ *   k and n, and it agrees when its `label` equals the judge's verdict.
+ *   `not_evaluable` (the live form of the sampling spec's `unsure`, which
+ *   that spec drops from numerator and denominator), `out_of_scope` and any
+ *   other label are left out. The schema leaves `label` open.
  * - Population: the cited ratings are read as a sample of the cases behind
  *   a clause's counts, not the whole population. Section 8 does not say they
  *   are all of them, so fewer ratings than the stated n is never a mismatch.
@@ -447,7 +450,7 @@ export interface CalibrationRating {
     readonly requirementRef: string;
     readonly verdict: string;
   };
-  /** The rating's `label` equals the judge's verdict (the counting convention above); present only with `judged`. */
+  /** The rating's `label` equals the judge's verdict; present only with `judged` and a counted label (`met` or `not_met`, the counting convention above). */
   readonly agrees?: boolean;
 }
 
@@ -474,7 +477,7 @@ export type CalibrationAgreementCheck =
   | "not_recomputable";
 
 export interface CalibrationClause extends CalibrationClauseTally {
-  /** The bound ratings whose requirement_ref is this clause_ref (the clause convention above): n of them, k agreeing. Present whenever at least one is bound and every cited rating is bound; even then it is not a replacement for the stated count. */
+  /** The bound ratings with a counted label whose requirement_ref is this clause_ref (the clause and counting conventions above): n of them, k agreeing. Present whenever at least one such rating exists and every cited rating is bound; even then it is not a replacement for the stated count. */
   readonly recomputedAgreement?: KOfN;
   readonly agreementCheck: CalibrationAgreementCheck;
 }
@@ -1511,6 +1514,9 @@ function judgedCase(
     : undefined;
 }
 
+/** The rating labels that count in a clause's k and n (the counting convention above). */
+const COUNTED_LABELS: ReadonlySet<string> = new Set(["met", "not_met"]);
+
 function buildCalibration(result: ResultRoot): CalibrationReading[] {
   const readings: CalibrationReading[] = [];
   for (const claim of result.claims) {
@@ -1537,7 +1543,12 @@ function buildCalibration(result: ResultRoot): CalibrationReading[] {
           rating,
           ...(judged === undefined
             ? {}
-            : { judged, agrees: rating.label === judged.verdict }),
+            : {
+                judged,
+                ...(COUNTED_LABELS.has(rating.label)
+                  ? { agrees: rating.label === judged.verdict }
+                  : {}),
+              }),
         });
       }
     }
@@ -1571,7 +1582,9 @@ function buildCalibration(result: ResultRoot): CalibrationReading[] {
     const clauses = summary.clauses.map((tally): CalibrationClause => {
       const bound = recomputable
         ? ratings.filter(
-            (entry) => entry.judged!.requirementRef === tally.clauseRef,
+            (entry) =>
+              entry.judged!.requirementRef === tally.clauseRef &&
+              COUNTED_LABELS.has(entry.rating.label),
           )
         : [];
       if (bound.length === 0)
@@ -1604,12 +1617,17 @@ function buildCalibration(result: ResultRoot): CalibrationReading[] {
       clauses,
     });
   }
-  readings.sort(
-    (a, b) =>
-      (a.summary?.computedAt ?? "").localeCompare(
-        b.summary?.computedAt ?? "",
-      ) || a.summaryDigest.localeCompare(b.summaryDigest),
-  );
+  // Readings with a schema-valid summary first, by computed_at then digest;
+  // not-matching and ambiguous readings after them, in claim order (the sort
+  // is stable).
+  readings.sort((a, b) => {
+    if (a.summary === undefined || b.summary === undefined)
+      return Number(a.summary === undefined) - Number(b.summary === undefined);
+    return (
+      a.summary.computedAt.localeCompare(b.summary.computedAt) ||
+      a.summaryDigest.localeCompare(b.summaryDigest)
+    );
+  });
   return readings;
 }
 
@@ -1617,7 +1635,8 @@ function buildCalibration(result: ResultRoot): CalibrationReading[] {
  * From the cited human ratings bound to a judged claim, in readings whose
  * summary matches its schema -- never from the claims' own verdicts alone,
  * which is where "resolved" is recomputed from above. held: the judge said
- * met and the rater did not; added: the rater said met and the judge did not.
+ * met and the rater said not_met; added: the rater said met and the judge did
+ * not. A rating cited by more than one claim counts once (by its digest).
  */
 function heldAndAdded(readings: readonly CalibrationReading[]): {
   held: number;
@@ -1625,11 +1644,13 @@ function heldAndAdded(readings: readonly CalibrationReading[]): {
 } {
   let held = 0,
     added = 0;
+  const seen = new Set<string>();
   for (const reading of readings) {
     if (reading.state !== "read") continue;
-    for (const { rating, judged } of reading.ratings) {
-      if (judged === undefined) continue;
-      if (judged.verdict === "met" && rating.label !== "met") held += 1;
+    for (const { digest, rating, judged } of reading.ratings) {
+      if (judged === undefined || seen.has(digest)) continue;
+      seen.add(digest);
+      if (judged.verdict === "met" && rating.label === "not_met") held += 1;
       else if (judged.verdict !== "met" && rating.label === "met") added += 1;
     }
   }
