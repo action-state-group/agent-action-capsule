@@ -13,9 +13,9 @@ import { Ed25519UnavailableError, verifyBundle } from "../src/bundle.js";
 import {
   HDR_GRADE,
   spkiKeyType,
-  strictEd25519,
   verifyCoseReceipt,
 } from "../src/cose-receipt.js";
+import { strictEd25519 } from "../src/ed25519-strict.js";
 import {
   concat,
   hexToBytes,

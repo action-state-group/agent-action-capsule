@@ -90,6 +90,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
+from ._ed25519_strict import verify_strict
 from .canonical import jcs
 from .interop_profile import _cbor
 from .interop_profile import cll as _cll
@@ -1288,35 +1289,12 @@ def sign_refusal(
     )
 
 
-# The y coordinates (mod p) of the eight small-order points of edwards25519:
-# the identity (1), order 2 (p - 1), order 4 (0) and order 8 (Y8, p - Y8).
-# Either sign of x gives the same set.
-_P25519 = (1 << 255) - 19
-_Y8 = int.from_bytes(bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"), "little")
-_SMALL_ORDER_Y = frozenset({0, 1, _P25519 - 1, _Y8, _P25519 - _Y8})
-
-
-def _small_order(key: bytes) -> bool:
-    """True for a public key encoding a small-order point, canonically or not.
-    Such a key "verifies" signatures over any message, so it is refused, as
-    strict verification (RFC 8032 with a small-order check) does."""
-    y = int.from_bytes(key, "little") & ((1 << 255) - 1)
-    return y % _P25519 in _SMALL_ORDER_Y
-
-
 def _ed25519_verifies(key_hex: Any, sig_hex: Any, body: bytes) -> bool:
+    """Strict Ed25519 (:mod:`._ed25519_strict`): a small-order or
+    non-canonical key or R, or S >= L, never verifies."""
     if not _is_hex_of_len(key_hex, 32) or not _is_hex_of_len(sig_hex, 64):
         return False
-    if _small_order(bytes.fromhex(key_hex)):
-        return False
-    from cryptography.exceptions import InvalidSignature
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-
-    try:
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(key_hex)).verify(bytes.fromhex(sig_hex), body)
-    except (InvalidSignature, ValueError):
-        return False
-    return True
+    return verify_strict(bytes.fromhex(key_hex), body, bytes.fromhex(sig_hex))
 
 
 def verify_refusal_offline(refusal: Refusal) -> bool:

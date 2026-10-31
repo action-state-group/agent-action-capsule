@@ -19,6 +19,7 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 	"github.com/fxamacker/cbor/v2"
 )
 
@@ -419,7 +420,7 @@ func verifySignature(alg int64, key crypto.PublicKey, message, signature []byte)
 	switch alg {
 	case algEdDSA:
 		public, isEd25519 := key.(ed25519.PublicKey)
-		return isEd25519 && verifyEd25519Strict(public, message, signature)
+		return isEd25519 && ed25519strict.Verify(public, message, signature)
 	case algES256:
 		public, isECDSA := key.(*ecdsa.PublicKey)
 		if !isECDSA || len(signature) != 64 {

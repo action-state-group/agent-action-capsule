@@ -610,8 +610,9 @@ def test_offline_the_whole_corpus_opens_no_socket(monkeypatch):
 
 
 def test_verifier_imports():
-    """Stdlib, the package's own canonical module and ``cryptography`` only: nothing from the
-    vector generator, evidencebook or any other company code, and no clock or network module."""
+    """Stdlib, the package's own canonical and strict Ed25519 modules and ``cryptography`` only:
+    nothing from the vector generator, evidencebook or any other company code, and no clock or
+    network module."""
     # An explicit allowlist (``sys.stdlib_module_names`` needs Python 3.10; CI also runs 3.9).
     allowed = {"__future__", "base64", "binascii", "collections", "dataclasses", "datetime", "hashlib", "json",
                "re", "struct", "typing", "cryptography"}
@@ -622,7 +623,7 @@ def test_verifier_imports():
                 names = [a.name for a in node.names]
             elif isinstance(node, ast.ImportFrom):
                 if node.level:
-                    assert node.level == 1 or node.module == "canonical", f"{path.name}: {ast.dump(node)}"
+                    assert node.level == 1 or node.module in ("canonical", "_ed25519_strict"), f"{path.name}: {ast.dump(node)}"
                     continue
                 names = [node.module]
             else:

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Security, settlement: the `wrapped_resigned` check verifies a wrapped JWS
+  under the leg key with dalek's `verify_strict`, not `verify`, so a
+  small-order key (such as the identity key's forgery, R the identity and
+  S = 0) or a small-order R no longer counts as a signature by that key, as
+  in Go, Python and TypeScript. dalek's `verify` already refused a
+  non-canonical R (#448).
+
 ## 0.5.0 — 2026-10-30
 
 Tag `crates/agent-action-capsule-v0.5.0`.

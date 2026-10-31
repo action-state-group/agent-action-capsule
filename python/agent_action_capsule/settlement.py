@@ -33,6 +33,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
+from ._ed25519_strict import verify_strict
 from .verify import verify
 
 __all__ = [
@@ -290,20 +291,18 @@ def _envelope_key(capsule: dict) -> str | None:
 
 
 def _jws_verifies(octets: bytes, public_hex: str) -> bool:
-    from cryptography.exceptions import InvalidSignature
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-
+    """Whether ``octets`` are a compact JWS whose Ed25519 signature verifies,
+    strictly, under the hex key."""
     # An SD-JWT is the issuer-signed JWS, then "~" and any disclosures: only
     # the part before the first "~" is signed.
     parts = octets.split(b"~", 1)[0].split(b".")
     if len(parts) != 3:
         return False
     try:
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_hex)).verify(
-            _b64u_decode(parts[2].decode("ascii")), parts[0] + b"." + parts[1])
-        return True
-    except (InvalidSignature, ValueError, UnicodeDecodeError):
+        key, signature = bytes.fromhex(public_hex), _b64u_decode(parts[2].decode("ascii"))
+    except (ValueError, UnicodeDecodeError):
         return False
+    return verify_strict(key, parts[0] + b"." + parts[1], signature)
 
 
 def _wrapped_failures(s: dict, kid: str | None, objects: dict[str, bytes]) -> list[str]:

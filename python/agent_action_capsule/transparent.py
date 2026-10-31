@@ -30,6 +30,7 @@ from scitt_cose import (  # type: ignore
 )
 
 from . import VerificationResult, verify
+from ._ed25519_strict import strict_encoding
 from .media_types import CAPSULE_ID_MEDIA_TYPE
 
 
@@ -54,6 +55,32 @@ def _read(path: str) -> bytes:
     return Path(path).read_bytes()
 
 
+def _eddsa_not_strict(cose: bytes, key_pem: bytes) -> bool:
+    """True when ``cose`` is a COSE_Sign1 signed EdDSA (-8) under the Ed25519
+    ``key_pem`` and its signature fails strict Ed25519's conditions on A, R
+    and S. ``scitt_cose`` verifies with ``cryptography``, which accepts a
+    small-order key, and a small-order key verifies a forged signature over
+    any message. Anything this cannot read is left to ``scitt_cose``."""
+    import cbor2
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_pem_public_key
+
+    try:
+        key = load_pem_public_key(key_pem)
+        outer = cbor2.loads(cose)
+        value = outer.value if isinstance(outer, cbor2.CBORTag) else outer
+        protected = cbor2.loads(value[0]) if value[0] else {}
+        signature = value[3]
+    except Exception:  # noqa: BLE001 -- scitt_cose has already judged what it could read
+        return False
+    # scitt_cose (checked at 0.5.0) verifies an Ed25519 key only under alg -8
+    # (EdDSA) and raises for any other alg, so -8 is the only case to check.
+    if not isinstance(key, Ed25519PublicKey) or not isinstance(protected, dict) or protected.get(1) != -8:
+        return False
+    raw = key.public_bytes(Encoding.Raw, PublicFormat.Raw)
+    return not (isinstance(signature, bytes) and strict_encoding(raw, signature))
+
+
 def verify_transparent(
     *,
     statement_path: str,
@@ -73,6 +100,8 @@ def verify_transparent(
     parsed = parse_signed_statement(msg, public_key_pem=issuer_key)  # never raises
     report.signature_verified = parsed.get("signature_verified")
     report.content_type = parsed.get("content_type")
+    if report.signature_verified is True and _eddsa_not_strict(msg, issuer_key):
+        report.signature_verified = False
 
     if report.signature_verified is not True:
         report.attestation_tier = "signature-invalid"
@@ -94,6 +123,9 @@ def verify_transparent(
         verified = False
         for r in receipts:
             res = verify_receipt(r, leaf_entry_hex=leaf_entry_hex, log_public_key_pem=log_key)
+            if res.ok and _eddsa_not_strict(r, log_key):
+                report.substrate_errors.append("receipt EdDSA signature is not strict Ed25519")
+                continue
             if res.ok:
                 verified = True
                 break

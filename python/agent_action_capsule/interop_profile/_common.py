@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
+from .._ed25519_strict import verify_strict
 from ..canonical import jcs
 from ._cbor import Tag
 
@@ -335,15 +336,11 @@ def _load_ed25519() -> Any:
 
 
 def ed25519_verify(key: bytes, signature: bytes, message: bytes) -> bool:
-    """True when ``signature`` is a valid Ed25519 signature by ``key`` over ``message`` (RFC 8032)."""
-    public_cls, invalid = _load_ed25519()
-    if len(key) != 32 or len(signature) != 64:
-        return False
-    try:
-        public_cls.from_public_bytes(key).verify(signature, message)
-    except (invalid, ValueError):
-        return False
-    return True
+    """True when ``signature`` is a valid Ed25519 signature by ``key`` over ``message`` (RFC 8032),
+    under strict Ed25519: A and R canonical and not of small order, and S < L. Every key checked
+    here is one the trust policy accepts, and a small-order key would verify any message."""
+    _load_ed25519()
+    return verify_strict(key, message, signature)
 
 
 def ed25519_verify_hex(key_hex: Any, sig_hex: Any, message: bytes) -> bool:
