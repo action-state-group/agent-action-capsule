@@ -22,11 +22,13 @@ credential. CB §10 lists the cases:
 - ``key_types`` holding one token (form ``FAIL``) and naming an unlisted token (signatures
   ``NOT_CHECKED``, and a revocation by that key does not apply);
 - a valid binding that names neither half's key: it does not bind the pair;
-- a revocation list a using profile declared complete (CB §5.1): one that counts (revocation
-  ``PASS``), one that holds a statement by a key the binding does not bind (ignored, ``PASS``), one
-  that holds a statement that applies (``FAIL``), and ones that do not count: stale, past the
-  freshness bound, dated after the evaluation time, for another binding, with another digest, and
-  not a JSON array (``NOT_CHECKED``).
+- a revocation list a using profile declared complete (CB §5.1): ones that count (revocation
+  ``PASS``), including one under a ``max_age`` of 10^10 seconds and one that holds a statement by a
+  key the binding does not bind (ignored); ones that hold a statement that applies (``FAIL``), under
+  a declaration that counts and under a malformed one; and ones that do not count
+  (``NOT_CHECKED``): stale, past the freshness bound, dated after the evaluation time, for another
+  binding, with another digest, not a JSON array, and malformed declarations (an extra member, a
+  ``max_age`` that is negative, fractional or 2^53, and an ``as_of`` that names no calendar date).
 
 It states every expected status by hand from CB §6 and §7 and IP §6.7.4. Each case cites the
 sections it comes from. Nothing here imports or runs a verifier. The credential and its method are
@@ -224,15 +226,16 @@ LIST_MAX_AGE = 86400
 
 
 def declared(record: dict, statements: list[dict] | None = None, *, as_of: str = LIST_AS_OF,
-             max_age: int = LIST_MAX_AGE, binding: str | None = None, digest: str | None = None,
-             text: str | None = None) -> dict:
+             max_age: Any = LIST_MAX_AGE, binding: str | None = None, digest: str | None = None,
+             text: str | None = None, extra: dict | None = None) -> dict:
     """A revocation list (a JSON array of statements, CB §5.1) and its declaration. ``binding``,
-    ``digest`` and ``text`` replace the binding digest, the list digest and the list's octets."""
+    ``digest`` and ``text`` replace the binding digest, the list digest and the list's octets;
+    ``extra`` adds members."""
     octets_text = text if text is not None else jcs(statements or [])
     return {"declaration": {"profile": LIST_PROFILE, "asserted_by": LIST_ASSERTED_BY,
                             "binding": binding or binding_digest(record),
                             "list_digest": digest or shx(octets_text.encode()),
-                            "as_of": as_of, "max_age": max_age},
+                            "as_of": as_of, "max_age": max_age, **(extra or {})},
             "media_type": J, "octets_text": octets_text}
 
 
@@ -524,6 +527,27 @@ def cases() -> list[dict]:
 
     listed("complete-list-not-an-array", "A declared list whose octets are a JSON object, not an array",
            r, declared(r, text=jcs({"statements": []})), False, "NOT_CHECKED")
+
+    listed("complete-list-large-max-age",
+           "A list declared complete three days before E under a max_age of 10^10 seconds",
+           r, declared(r, as_of="2026-10-16T00:00:00Z", max_age=10**10), True, "PASS")
+
+    # CB §5.1: a declaration not in its form does not count; the list's entries are still read.
+    sig = {"sig": "00" * 64}
+    listed("complete-list-extra-member", "A declaration with a seventh member, sig",
+           r, declared(r, extra=sig), False, "NOT_CHECKED")
+
+    for cid, value, what in [("complete-list-max-age-negative", -1, "negative"),
+                             ("complete-list-max-age-fractional", 86400.5, "fractional"),
+                             ("complete-list-max-age-too-large", 2**53, "2^53, above 2^53 - 1")]:
+        listed(cid, f"A declaration whose max_age is {what}", r, declared(r, max_age=value), False, "NOT_CHECKED")
+
+    listed("complete-list-as-of-malformed", "A declaration whose as_of names no calendar date (30 February)",
+           r, declared(r, as_of="2026-02-30T00:00:00Z"), False, "NOT_CHECKED")
+
+    listed("complete-list-malformed-revoked",
+           "A malformed declaration beside a list that holds a statement by a bound key before the halves",
+           r, declared(r, [revocation(r, "producer-b", "2026-10-12T00:00:00Z")], extra=sig), False, "FAIL")
     return out
 
 

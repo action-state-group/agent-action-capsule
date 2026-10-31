@@ -87,7 +87,14 @@ def is_hex64(v: Any) -> bool:
 
 
 def is_time(v: Any) -> bool:
-    return isinstance(v, str) and TIME.fullmatch(v) is not None
+    """IP §5.2: a time in the form, naming a real calendar instant."""
+    if not (isinstance(v, str) and TIME.fullmatch(v)):
+        return False
+    try:
+        datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return False
+    return True
 
 
 def ed25519_ok(key_hex: Any, sig_hex: Any, data: bytes) -> bool:
@@ -242,6 +249,8 @@ class Rules:
     list_digest: bool = True                # §5.1: list_digest is the list's octets' digest
     list_entries_read: bool = True          # §5.1: the list's entries are received statements
     list_unreadable_fails: bool = False     # §9.4: a list that cannot be read gives NOT_CHECKED, never FAIL
+    list_max_age_overflows: bool = False    # §5.1: max_age up to 2^53 - 1 seconds, as a 64-bit nanosecond Duration overflows
+    list_form_drops_entries: bool = False   # §5.1: a malformed declaration's list entries are still received
 
 
 SPEC = Rules()
@@ -331,17 +340,25 @@ def list_entries(case: dict) -> list | None:
     return value if isinstance(value, list) else None
 
 
+def declaration_form_ok(d: Any) -> bool:
+    """CB §5.1: exactly the six members, each in its form."""
+    return (isinstance(d, dict) and set(d) == DECLARATION_MEMBERS and isinstance(d["profile"], str)
+            and isinstance(d["asserted_by"], str) and is_hex64(d["binding"]) and is_hex64(d["list_digest"])
+            and is_time(d["as_of"]) and type(d["max_age"]) is int and 0 <= d["max_age"] <= MAX_CREATED_AT)
+
+
 def declaration_counts(r: dict, case: dict, times: list[str], rules: Rules) -> bool:
-    """CB §5.1: whether the declaration beside the list counts for this binding, at T and E."""
+    """CB §5.1: whether the declaration beside the list counts for this binding, at T and E. With
+    no T it does not."""
     rl = case["inputs"].get("revocation_list")
-    if rl is None:
+    if rl is None or not times:
         return False
     d = rl["declaration"]
-    if not (isinstance(d, dict) and set(d) == DECLARATION_MEMBERS and isinstance(d["profile"], str)
-            and isinstance(d["asserted_by"], str) and is_hex64(d["binding"]) and is_hex64(d["list_digest"])
-            and is_time(d["as_of"]) and type(d["max_age"]) is int and 0 <= d["max_age"] <= MAX_CREATED_AT):
+    if not declaration_form_ok(d):
         return False
     if list_entries(case) is None:
+        return False
+    if rules.list_max_age_overflows and d["max_age"] * 10**9 > 2**63 - 1:
         return False
     evaluated = case["pins"]["evaluation_time"]
     return ((d["binding"] == digest_of(r) or not rules.list_names_binding)
@@ -356,7 +373,9 @@ def revocation_status(r: dict, case: dict, times: list[str], rules: Rules) -> st
     if not rules.revocation:
         return "NOT_CHECKED"
     statements = [parse(o["octets_text"]) for o in case["inputs"].get("revocations", [])]
-    if rules.list_entries_read:
+    rl = case["inputs"].get("revocation_list")
+    if rules.list_entries_read and not (rules.list_form_drops_entries and rl is not None
+                                        and not declaration_form_ok(rl["declaration"])):
         statements += [e for e in list_entries(case) or [] if isinstance(e, dict)]
     for s in statements:
         if revocation_applies(s, r, rules) and (not rules.revocation_from_revoked_at
@@ -373,8 +392,10 @@ def list_report(r: dict, case: dict, times: list[str], rules: Rules) -> dict:
     """CB §6.1: the declaration, reported as the method of a PASS."""
     rl = case["inputs"]["revocation_list"]
     d = rl["declaration"]
-    return {"profile": d.get("profile"), "asserted_by": d.get("asserted_by"),
-            "list_digest": sha(rl["octets_text"].encode()), "as_of": d.get("as_of"),
+    def text(name: str) -> str:  # as delivered; empty when not a text string
+        return d.get(name) if isinstance(d.get(name), str) else ""
+    return {"profile": text("profile"), "asserted_by": text("asserted_by"),
+            "list_digest": sha(rl["octets_text"].encode()), "as_of": text("as_of"),
             "counts": declaration_counts(r, case, times, rules)}
 
 
@@ -464,7 +485,7 @@ def comparable(expected: dict) -> dict:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 35
+    assert DATA["count"] == len(CASES) == 42
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     for case in CASES:
         assert case["pins"]["contract_digest"] == DATA["contract"]["contract_digest"]
@@ -577,6 +598,8 @@ DEFECTS = {
     "the list digest is not checked": replace(SPEC, list_digest=False),
     "a declared list's statements are not read": replace(SPEC, list_entries_read=False),
     "an unreadable list gives FAIL": replace(SPEC, list_unreadable_fails=True),
+    "max_age as nanoseconds in 64 bits": replace(SPEC, list_max_age_overflows=True),
+    "a malformed declaration drops the list's entries": replace(SPEC, list_form_drops_entries=True),
 }
 
 
@@ -605,7 +628,20 @@ def test_revocation_is_pass_only_under_a_declaration_that_counts():
         elif status == "PASS":
             assert listed["counts"], case["id"]
         elif not listed["counts"]:
-            assert status == "NOT_CHECKED", case["id"]
+            assert status == "NOT_CHECKED" or list_entries(case), case["id"]  # FAIL only by an entry
+
+
+def test_no_time_no_declaration_counts():
+    """CB §5.1: with no T asked about, a declaration does not count."""
+    case = next(c for c in CASES if c["id"] == "complete-list")
+    r = parse(case["inputs"]["binding"]["octets_text"])
+    assert declaration_counts(r, case, [], SPEC) is False
+    assert declaration_counts(r, case, [h for h in (parse(o["octets_text"])["issued_at"]
+                                                    for o in case["inputs"]["halves"])], SPEC) is True
+
+
+def test_is_time_needs_a_calendar_date():
+    assert is_time("2026-02-28T00:00:00Z") and not is_time("2026-02-30T00:00:00Z")
 
 
 def test_a_declared_list_never_changes_whether_a_binding_applies_unless_a_statement_does():

@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -346,25 +347,48 @@ func TestPairIndependence(t *testing.T) {
 	assert.Equal(t, "same key", *got.Reason)
 }
 
-// declaredList is a revocation list over the given statements and a
-// declaration that counts for a binding with this digest at during, with E
-// exactly max_age after as_of.
-func declaredList(digest string, statements ...[]byte) *cb.RevocationList {
+// listFixture is a revocation list over some statements and a declaration
+// that counts for a binding at during, with E exactly max_age after as_of.
+type listFixture struct {
+	decl map[string]any
+	list []byte
+	at   time.Time
+}
+
+func declaredList(digest string, statements ...[]byte) *listFixture {
 	list := []byte("[" + string(bytes.Join(statements, []byte(","))) + "]")
 	sum := sha256.Sum256(list)
-	return &cb.RevocationList{
-		Declaration: cb.Declaration{Profile: "test profile", AssertedBy: "test run", Binding: digest,
-			ListDigest: hex.EncodeToString(sum[:]), AsOf: "2026-10-15T00:00:00Z", MaxAge: 3600},
-		List:        list,
-		EvaluatedAt: time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC),
+	return &listFixture{
+		decl: map[string]any{"profile": "test profile", "asserted_by": "test run", "binding": digest,
+			"list_digest": hex.EncodeToString(sum[:]), "as_of": "2026-10-15T00:00:00Z", "max_age": er.JSONNumber("3600")},
+		list: list,
+		at:   time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC),
 	}
+}
+
+func (f *listFixture) rl(t *testing.T) *cb.RevocationList {
+	t.Helper()
+	// encoding/json, not JCS: a malformed declaration may hold a float.
+	decl := map[string]any{}
+	for k, v := range f.decl {
+		if n, ok := v.(er.JSONNumber); ok {
+			v = json.Number(n)
+		}
+		decl[k] = v
+	}
+	encoded, err := json.Marshal(decl)
+	require.NoError(t, err)
+	return &cb.RevocationList{Declaration: encoded, List: f.list, EvaluatedAt: f.at}
 }
 
 func TestRevocationList(t *testing.T) {
 	r := signed(t, unsigned())
 	record, digest := jcs(t, r), digestOf(t, r)
-	verify := func(l *cb.RevocationList, revocations ...[]byte) cb.Report {
-		return cb.Verify(record, during, cb.Options{RevocationList: l, Revocations: revocations})
+	verify := func(f *listFixture, revocations ...[]byte) cb.Report {
+		return cb.Verify(record, during, cb.Options{RevocationList: f.rl(t), Revocations: revocations})
+	}
+	status := func(f *listFixture, revocations ...[]byte) string {
+		return verify(f, revocations...).Properties[cb.PropertyRevocation]
 	}
 
 	report := verify(declaredList(digest))
@@ -376,54 +400,89 @@ func TestRevocationList(t *testing.T) {
 	assert.Nil(t, cb.Verify(record, during, cb.Options{}).RevocationList, "no list, no report")
 
 	late := declaredList(digest)
-	late.EvaluatedAt = late.EvaluatedAt.Add(time.Second)
-	assert.Equal(t, er.StatusNotChecked, verify(late).Properties[cb.PropertyRevocation], "a second past max_age")
+	late.at = late.at.Add(time.Second)
+	assert.Equal(t, er.StatusNotChecked, status(late), "a second past max_age")
 	assert.False(t, verify(late).RevocationList.Counts)
+	assert.Equal(t, "the evaluation time is more than max_age after as_of", verify(late).RevocationList.Reason)
+
+	// max_age is compared in seconds: a bound past time.Duration's range does
+	// not overflow.
+	for _, maxAge := range []string{"10000000000", "9007199254740991"} {
+		long := declaredList(digest)
+		long.decl["max_age"] = er.JSONNumber(maxAge)
+		long.at = time.Date(2300, 1, 1, 0, 0, 0, 0, time.UTC)
+		assert.Equal(t, er.StatusPass, status(long), maxAge)
+	}
+	short := declaredList(digest)
+	short.decl["max_age"] = er.JSONNumber("10000000000")
+	short.at = time.Unix(time.Date(2026, 10, 15, 0, 0, 0, 0, time.UTC).Unix()+10000000000+1, 0).UTC()
+	assert.Equal(t, er.StatusNotChecked, status(short), "one second past a max_age of 1e10")
 
 	early := declaredList(digest)
-	early.Declaration.AsOf = "2026-10-14T23:59:59Z"
-	early.Declaration.MaxAge = 86400
-	assert.Equal(t, er.StatusNotChecked, verify(early).Properties[cb.PropertyRevocation], "as_of before T")
+	early.decl["as_of"], early.decl["max_age"] = "2026-10-14T23:59:59Z", er.JSONNumber("86400")
+	assert.Equal(t, er.StatusNotChecked, status(early), "as_of before T")
 
 	future := declaredList(digest)
-	future.EvaluatedAt = time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
-	assert.Equal(t, er.StatusNotChecked, verify(future).Properties[cb.PropertyRevocation], "as_of after E")
+	future.at = time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, er.StatusNotChecked, status(future), "as_of after E")
 
-	other := declaredList(strings.Repeat("0", 64))
-	assert.Equal(t, er.StatusNotChecked, verify(other).Properties[cb.PropertyRevocation], "another binding")
+	assert.Equal(t, er.StatusNotChecked, status(declaredList(strings.Repeat("0", 64))), "another binding")
 
 	tampered := declaredList(digest)
-	tampered.List = []byte("[ ]")
-	assert.Equal(t, er.StatusNotChecked, verify(tampered).Properties[cb.PropertyRevocation], "another list")
+	tampered.list = []byte("[ ]")
+	assert.Equal(t, er.StatusNotChecked, status(tampered), "another list")
 
 	object := declaredList(digest)
-	object.List = []byte(`{"statements":[]}`)
-	sum := sha256.Sum256(object.List)
-	object.Declaration.ListDigest = hex.EncodeToString(sum[:])
-	assert.Equal(t, er.StatusNotChecked, verify(object).Properties[cb.PropertyRevocation], "not an array")
+	object.list = []byte(`{"statements":[]}`)
+	sum := sha256.Sum256(object.list)
+	object.decl["list_digest"] = hex.EncodeToString(sum[:])
+	assert.Equal(t, er.StatusNotChecked, status(object), "not an array")
 
-	malformed := declaredList(digest)
-	malformed.Declaration.MaxAge = -1
-	assert.Equal(t, er.StatusNotChecked, verify(malformed).Properties[cb.PropertyRevocation], "max_age below 0")
+	for name, change := range map[string]func(map[string]any){
+		"max_age below 0":   func(d map[string]any) { d["max_age"] = er.JSONNumber("-1") },
+		"max_age 1.5":       func(d map[string]any) { d["max_age"] = er.JSONNumber("1.5") },
+		"max_age 2^53":      func(d map[string]any) { d["max_age"] = er.JSONNumber("9007199254740992") },
+		"max_age as text":   func(d map[string]any) { d["max_age"] = "3600" },
+		"an extra member":   func(d map[string]any) { d["sig"] = "00" },
+		"a missing member":  func(d map[string]any) { delete(d, "profile") },
+		"as_of not a date":  func(d map[string]any) { d["as_of"] = "2026-02-30T00:00:00Z" },
+		"asserted_by bool":  func(d map[string]any) { d["asserted_by"] = true },
+		"binding uppercase": func(d map[string]any) { d["binding"] = strings.ToUpper(digest) },
+	} {
+		malformed := declaredList(digest)
+		change(malformed.decl)
+		got := verify(malformed)
+		assert.Equal(t, er.StatusNotChecked, got.Properties[cb.PropertyRevocation], name)
+		assert.False(t, got.RevocationList.Counts, name)
+		assert.NotEmpty(t, got.RevocationList.Reason, name)
+		assert.True(t, got.Applies(), name)
+	}
+	notJSON := cb.Verify(record, during, cb.Options{RevocationList: &cb.RevocationList{
+		Declaration: []byte("{"), List: []byte("[]"), EvaluatedAt: during[0]}})
+	assert.Equal(t, er.StatusNotChecked, notJSON.Properties[cb.PropertyRevocation], "a declaration that is not JSON")
 
 	// An entry that applies is a revocation whether or not the declaration
 	// counts, and one delivered beside a list that counts still is.
 	revoking := revocationBy(t, keyA, digest, "2026-10-14T00:00:00Z")
-	assert.Equal(t, er.StatusFail, verify(declaredList(digest, revoking)).Properties[cb.PropertyRevocation])
+	assert.Equal(t, er.StatusFail, status(declaredList(digest, revoking)))
 	stale := declaredList(digest, revoking)
-	stale.Declaration.AsOf = "2026-10-01T00:00:00Z"
-	assert.Equal(t, er.StatusFail, verify(stale).Properties[cb.PropertyRevocation], "a list that does not count")
-	assert.Equal(t, er.StatusFail, verify(declaredList(digest), revoking).Properties[cb.PropertyRevocation])
+	stale.decl["as_of"] = "2026-10-01T00:00:00Z"
+	assert.Equal(t, er.StatusFail, status(stale), "a list that does not count")
+	broken := declaredList(digest, revoking)
+	broken.decl["sig"] = "00"
+	assert.Equal(t, er.StatusFail, status(broken), "a malformed declaration")
+	assert.Equal(t, er.StatusFail, status(declaredList(digest), revoking))
 	assert.False(t, verify(declaredList(digest), revoking).Applies())
 
 	// An entry that does not apply is ignored.
 	ignored := declaredList(digest, revocationBy(t, keyC, digest, "2026-10-14T00:00:00Z"),
 		revocationBy(t, keyA, digest, "2026-10-16T00:00:00Z"), []byte(`"text"`))
-	assert.Equal(t, er.StatusPass, verify(ignored).Properties[cb.PropertyRevocation])
+	assert.Equal(t, er.StatusPass, status(ignored))
 
-	// With no time asked about, no list counts.
-	none := cb.Verify(record, nil, cb.Options{RevocationList: declaredList(digest)})
+	// With no time asked about, no list counts (CB §5.1).
+	none := cb.Verify(record, nil, cb.Options{RevocationList: declaredList(digest).rl(t)})
 	assert.Equal(t, er.StatusNotChecked, none.Properties[cb.PropertyRevocation])
+	assert.Equal(t, "no time T was asked about", none.RevocationList.Reason)
 }
 
 func TestParseDeclaration(t *testing.T) {

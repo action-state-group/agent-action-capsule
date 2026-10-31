@@ -75,7 +75,7 @@ func readCorpus(t *testing.T) corpus {
 	require.NoError(t, err)
 	var c corpus
 	require.NoError(t, json.Unmarshal(data, &c))
-	require.Len(t, c.Cases, 35)
+	require.Len(t, c.Cases, 42)
 	return c
 }
 
@@ -133,11 +133,11 @@ func runCase(t *testing.T, c vectorCase, credentialMethod string) (cb.Report, [2
 		opts.Credential = []byte(c.Inputs.Credential.OctetsText)
 	}
 	if l := c.Inputs.RevocationList; l != nil {
-		declaration, err := cb.ParseDeclaration(l.Declaration)
-		require.NoError(t, err, "every vector declaration is well formed")
+		// The declaration goes in as received: one not in its form does not
+		// count, and the list's entries are still read (CB §5.1).
 		evaluated, err := time.Parse(time.RFC3339, c.Pins.EvaluationTime)
 		require.NoError(t, err)
-		opts.RevocationList = &cb.RevocationList{Declaration: declaration, List: []byte(l.OctetsText),
+		opts.RevocationList = &cb.RevocationList{Declaration: l.Declaration, List: []byte(l.OctetsText),
 			EvaluatedAt: evaluated}
 	}
 	for _, m := range c.Pins.VerificationPolicy.CredentialMethods {
@@ -160,6 +160,10 @@ func TestVectors(t *testing.T) {
 			assert.Equal(t, want.BindsPair, report.BindsPair(keys[0], keys[1]))
 			assert.Equal(t, want.Applies, report.AppliesTo(keys[0], keys[1]))
 			assert.Equal(t, want.Proves, report.Proves)
+			if got := report.RevocationList; got != nil {
+				assert.Equal(t, got.Counts, got.Reason == "", "a reason exactly when it does not count")
+				got.Reason = "" // a diagnostic, not part of the vectors
+			}
 			assert.Equal(t, want.RevocationList, report.RevocationList)
 			assert.Equal(t, c.Expected.IssuerIndependence, cb.PairIndependence(keys[0], keys[1], report))
 

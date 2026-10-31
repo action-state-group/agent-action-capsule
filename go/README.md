@@ -77,11 +77,14 @@ entries. Both are at parity with the Python reference
 (spec `controller-binding-v0.md`, CB) as received, at the times asked about:
 its form, both signatures over the one signing input, its window, the
 revocation statements in `opts.Revocations`, and a revocation list a using
-profile declared complete in `opts.RevocationList` (CB section 5.1; read the
-declaration with `controllerbinding.ParseDeclaration`). It reports the CB
-section 6.1 properties, the claim type, the two keys, what the binding proves
-and, with a list, `Report.RevocationList`: the declaration's profile, asserting
-party, `as_of`, the list's digest and whether the declaration counts.
+profile declared complete in `opts.RevocationList` (CB section 5.1). The
+declaration goes in as the JSON object received; one that is not in its form
+does not count, and the list's entries are still read. Take it only through
+the using profile's own channel, never from the party presenting the evidence:
+it is unsigned. It reports the CB section 6.1 properties, the claim type, the
+two keys, what the binding proves and, with a list, `Report.RevocationList`: the
+declaration's profile, asserting party and `as_of` as delivered, the list's
+digest, whether the declaration counts and, when it does not, a `reason`.
 `Report.AppliesTo(a, b)` says whether it applies to a pair (CB section 6.2),
 and `controllerbinding.PairIndependence` gives the pair's
 `issuer_independence` (CB section 7 item 4): `FAIL`, redundant, when a
@@ -98,7 +101,10 @@ text), `credential` (its text), `key` (a key the binding must name, such as
 a node's evidence key) and `revocation_list`. That is an object with
 `declaration` (the CB section 5.1 declaration, a JSON object), `list` (the
 list's text as received) and optionally `evaluated_at` (the evaluation time;
-the current time when absent). Stdout is the report as JSON with `applies`.
+the current time when absent). A declaration that is a JSON object but not in
+its form is reported with `counts` false and a `reason`; only one that is not a
+JSON object, or stdin that is not well formed (such as a duplicate member), is
+exit 2. Stdout is the report as JSON with `applies`.
 
 | Exit | Meaning |
 |---|---|

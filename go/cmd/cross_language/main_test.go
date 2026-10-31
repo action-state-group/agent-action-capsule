@@ -134,7 +134,7 @@ func bindingCases(t *testing.T) []bindingCase {
 		Cases []bindingCase `json:"cases"`
 	}
 	require.NoError(t, json.Unmarshal(data, &vectors))
-	require.Len(t, vectors.Cases, 35)
+	require.Len(t, vectors.Cases, 42)
 	return vectors.Cases
 }
 
@@ -188,7 +188,11 @@ func TestBindingVectors(t *testing.T) {
 			}
 			code, report, _ := runBinding(t, input)
 			if c.Expected.Binding.RevocationList != nil {
-				require.Equal(t, c.Expected.Binding.RevocationList, report["revocation_list"])
+				got := report["revocation_list"].(map[string]any)
+				_, hasReason := got["reason"]
+				require.Equal(t, got["counts"] == false, hasReason, "a reason exactly when it does not count")
+				delete(got, "reason") // a diagnostic, not part of the vectors
+				require.Equal(t, c.Expected.Binding.RevocationList, got)
 			} else {
 				require.NotContains(t, report, "revocation_list")
 			}
@@ -272,8 +276,9 @@ func TestBindingRefusesInput(t *testing.T) {
 			declaration + `,"list":"[]","sig":"x"}}`,
 		"a list given as an array": `{"binding":"{}","at":["2026-10-15T00:00:00Z"],"revocation_list":{"declaration":` +
 			declaration + `,"list":[]}}`,
-		"a declaration missing max_age": `{"binding":"{}","at":["2026-10-15T00:00:00Z"],"revocation_list":{"declaration":` +
-			strings.Replace(declaration, `,"max_age":60`, ``, 1) + `,"list":"[]"}}`,
+		"a declaration as text": `{"binding":"{}","at":["2026-10-15T00:00:00Z"],"revocation_list":{"declaration":"x","list":"[]"}}`,
+		"a declaration with a duplicate member": `{"binding":"{}","at":["2026-10-15T00:00:00Z"],"revocation_list":{"declaration":` +
+			strings.Replace(declaration, `{`, `{"profile":"q",`, 1) + `,"list":"[]"}}`,
 		"a fractional evaluated_at": `{"binding":"{}","at":["2026-10-15T00:00:00Z"],"revocation_list":{"declaration":` +
 			declaration + `,"list":"[]","evaluated_at":"2026-10-15T00:00:00.5Z"}}`,
 		"lone surrogate":     `{"binding":"\ud800","at":["2026-10-15T00:00:00Z"]}`,
@@ -341,4 +346,46 @@ func TestBindingRevocationListDefaultsToNow(t *testing.T) {
 	recent := time.Now().UTC().Add(-time.Minute).Format("2006-01-02T15:04:05Z")
 	assert.Equal(t, "PASS", run(recent, 86400)["properties"].(map[string]any)["controller_binding_revocation"])
 	assert.Equal(t, "NOT_CHECKED", run("2026-10-19T00:00:00Z", 60)["properties"].(map[string]any)["controller_binding_revocation"])
+}
+
+// A declaration that is a JSON object but not in its form does not count:
+// the binding is still checked, and the report says why (CB §5.1).
+func TestBindingMalformedDeclarationDoesNotCount(t *testing.T) {
+	var c bindingCase
+	for _, candidate := range bindingCases(t) {
+		if candidate.ID == "complete-list-revoked" {
+			c = candidate
+		}
+	}
+	require.NotNil(t, c.Inputs.RevocationList)
+	var at []any
+	for _, h := range c.Inputs.Halves {
+		var half struct {
+			IssuedAt string `json:"issued_at"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(h.OctetsText), &half))
+		at = append(at, half.IssuedAt)
+	}
+	declaration := map[string]any{}
+	for k, v := range c.Inputs.RevocationList.Declaration {
+		declaration[k] = v
+	}
+	delete(declaration, "max_age")
+	run := func(list string) (int, map[string]any) {
+		code, report, errText := runBinding(t, map[string]any{"binding": c.Inputs.Binding.OctetsText, "at": at,
+			"revocation_list": map[string]any{"declaration": declaration, "list": list,
+				"evaluated_at": c.Pins.EvaluationTime}})
+		require.NotEqual(t, 2, code, errText)
+		return code, report
+	}
+	code, report := run("[]")
+	require.Equal(t, 0, code, "the binding applies")
+	require.Equal(t, "NOT_CHECKED", report["properties"].(map[string]any)["controller_binding_revocation"])
+	listed := report["revocation_list"].(map[string]any)
+	require.Equal(t, false, listed["counts"])
+	require.NotEmpty(t, listed["reason"])
+
+	code, report = run(c.Inputs.RevocationList.OctetsText)
+	require.Equal(t, 1, code, "an entry that applies still revokes")
+	require.Equal(t, "FAIL", report["properties"].(map[string]any)["controller_binding_revocation"])
 }

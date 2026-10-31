@@ -233,25 +233,38 @@ with exactly these members.
 | `as_of` | a time: the list is asserted complete up to it |
 | `max_age` | an integer from 0 to 2^53 − 1: the profile's freshness bound, in seconds |
 
-The declaration **counts** for a binding at the times T and an evaluation time E when all of these
+**E** is the evaluation time: the time at which the verifier evaluates, as IP uses the term (the
+evaluation time its vectors pin, IP §11.5). A using profile MAY pin E, for example to the time of
+its run; otherwise E is the verifier's current time.
+
+The declaration **counts** for a binding at the times T and the evaluation time E when all of these
 hold, and otherwise it does not:
 
-- it has exactly the members above, each in its form;
+- it has exactly the members above, each in its form. One that does not is malformed;
 - `binding` is the binding's digest. A list for another binding says nothing about this one;
 - `list_digest` is the SHA-256 of the list's octets as received, and they are a JSON array;
-- `as_of` is not earlier than any T, so the list covers every statement dated at or before T that
-  was made by `as_of`;
-- `as_of` is not later than E, and E is at most `max_age` seconds after `as_of`.
+- at least one T is asked about, and `as_of` is not earlier than any T, so the list covers every
+  statement dated at or before T that was made by `as_of`. With no T, no declaration counts;
+- `as_of` is not later than E, and E is at most `max_age` seconds after `as_of`, compared in whole
+  seconds.
 
 Each entry of the list is a received statement (§5): one that applies is a revocation whether or
-not the declaration counts, and one that does not apply is ignored, as any received statement is.
+not the declaration counts, a malformed declaration included, and one that does not apply is
+ignored, as any received statement is.
 When the list's octets are not a JSON array, it has no entries, and the declaration does not count.
 
 A declaration that counts is the asserting party's statement, not the verifier's finding. It shows
 that no statement in the list applies at T, and nothing more. A statement made after `as_of`, even
 one whose `revoked_at` is earlier than T, can still withdraw the binding (§5), and the list does
-not exclude it. A declaration is not signed in this revision: the using profile is what makes it
-the asserting party's, as it makes the list's octets theirs by pinning them.
+not exclude it.
+
+A declaration is not signed in this revision, so whoever supplies a verifier's inputs could write
+any `asserted_by` and `max_age`. A verifier MUST take the declaration, `max_age` included, only
+through the using profile's own channel, as the profile pins it, and MUST NOT take it from the party
+presenting the evidence the binding is used for. It reports `asserted_by` as delivered by that
+channel, not as authenticated. The using profile is what makes the declaration the asserting
+party's, as it makes the list's octets theirs by pinning them. A signed declaration is still open
+(CB-1).
 
 ## 6. Binding properties
 
@@ -442,9 +455,11 @@ A declaration (§5.1) is only as good as the party the using profile names, and 
 check that the list is in fact complete. A false declaration changes no result a binding gives:
 `controller_binding_revocation` `PASS` and `NOT_CHECKED` both leave the binding applying (§6.2), so
 the pair is redundant either way. What it changes is what the verifier reports: that the asserting
-party stated no statement in the list applies. A declaration that does not count, or a list that
-cannot be read, gives `NOT_CHECKED`, never `FAIL`. Only a statement that applies gives `FAIL`, so a
-party that can corrupt a list's delivery cannot use it to stop a binding from applying.
+party stated no statement in the list applies, and a declaration taken from the wrong channel
+(§5.1) misattributes that statement without changing a verdict. A declaration that does not
+count, or a list that cannot be read, gives `NOT_CHECKED`, never `FAIL`. Only a statement that
+applies gives `FAIL`, so a party that can corrupt a list's delivery cannot use it to stop a binding
+from applying.
 
 ## 10. Vectors
 
@@ -453,7 +468,9 @@ The vectors are in `vectors/controller-binding-v0/`.
 `python/tests/test_controller_binding_v0_vectors.py` checks them. Each case is a pair of agreeing
 halves (the producer record of IP §11.5) plus a binding record, and some cases add revocation
 statements, a declared revocation list (§5.1) or a credential. They pin trust, verification policy,
-contract and evaluation time as IP §11.5 does. The evaluation time is E for a declaration (§5.1).
+contract and evaluation time as IP §11.5 does. A case with a declared list takes E (§5.1) from
+`pins.evaluation_time`, as a using profile may pin it, and delivers the declaration in its inputs,
+standing for the using profile's channel.
 
 These formats are fixed for the vectors only and are not registered:
 
@@ -499,6 +516,13 @@ These formats are fixed for the vectors only and are not registered:
 | `complete-list-other-binding` | the declaration names another binding of the same keys: does not count, `NOT_CHECKED` |
 | `complete-list-digest-mismatch` | `list_digest` is not the digest of the list delivered: does not count, `NOT_CHECKED` |
 | `complete-list-not-an-array` | the list's octets are a JSON object: it has no entries and does not count, `NOT_CHECKED`, never `FAIL` (§9.4) |
+| `complete-list-large-max-age` | `as_of` three days before E under a `max_age` of 10^10 seconds: counts, revocation `PASS`. A verifier compares in seconds, so no `max_age` up to 2^53 − 1 overflows |
+| `complete-list-extra-member` | the declaration has a seventh member, `sig`: it is malformed and does not count, `NOT_CHECKED` |
+| `complete-list-max-age-negative` | `max_age` is −1: malformed, `NOT_CHECKED` |
+| `complete-list-max-age-fractional` | `max_age` is 86400.5: malformed, `NOT_CHECKED` |
+| `complete-list-max-age-too-large` | `max_age` is 2^53: malformed, `NOT_CHECKED` |
+| `complete-list-as-of-malformed` | `as_of` is 30 February, which names no instant: malformed, `NOT_CHECKED` |
+| `complete-list-malformed-revoked` | a malformed declaration beside a list holding a statement by a bound key before the halves: the entry is still a received statement, revocation `FAIL`, the binding does not apply |
 
 No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it (IP P-60).
 

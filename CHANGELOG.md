@@ -29,15 +29,24 @@ has not yet.
     E is at most `max_age` after `as_of`. The `PASS` is reported as the asserting party's statement
     about that list, never as proof that no statement exists. Otherwise it is `NOT_CHECKED`, never
     `FAIL`; a statement in the list that applies is `FAIL` whether or not the declaration counts.
-  - `vectors/controller-binding-v0/`: nine new cases (`complete-list`,
+  - A malformed declaration does not count, and the list's entries are still received statements.
+    With no T, no declaration counts. E is the evaluation time, which a using profile may pin.
+    `max_age` is compared in whole seconds. The declaration is unsigned, so a verifier takes it only
+    through the using profile's own channel and reports `asserted_by` as delivered.
+  - `vectors/controller-binding-v0/`: sixteen new cases (`complete-list`,
     `complete-list-statement-by-other-key`, `complete-list-revoked`, `complete-list-stale`,
     `complete-list-past-max-age`, `complete-list-as-of-future`, `complete-list-other-binding`,
-    `complete-list-digest-mismatch`, `complete-list-not-an-array`), 35 in all; the first 26 are
-    unchanged.
+    `complete-list-digest-mismatch`, `complete-list-not-an-array`, `complete-list-large-max-age`,
+    `complete-list-extra-member`, `complete-list-max-age-negative`,
+    `complete-list-max-age-fractional`, `complete-list-max-age-too-large`,
+    `complete-list-as-of-malformed`, `complete-list-malformed-revoked`), 42 in all; the first 26
+    are unchanged.
   - Go: `controllerbinding` gains `Declaration`, `ParseDeclaration`, `RevocationList`
-    (`Options.RevocationList`) and `ListReport` (`Report.RevocationList`). `cross_language binding`
-    reads an optional `revocation_list` member (`declaration`, `list`, `evaluated_at`); its exit
-    codes are unchanged.
+    (`Options.RevocationList`, carrying the declaration's JSON object as received) and `ListReport`
+    (`Report.RevocationList`, with a diagnostic `reason` when the declaration does not count).
+    `cross_language binding` reads an optional `revocation_list` member (`declaration`, `list`,
+    `evaluated_at`); its exit codes are unchanged, and only a declaration that is not a JSON object
+    is exit 2.
 - Inference-Service History is written against `evidence-interop/1` (AAC#484): a node serves a
   History under /0 or /1, whichever the request names, and under /1 sheds load with
   `capacity_exceeded` (`UNKNOWN`) instead of `policy_declined` (`WITHHELD`). Its definitions,

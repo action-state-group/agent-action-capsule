@@ -161,8 +161,8 @@ func readBindingInput(raw []byte) ([]byte, []time.Time, string, controllerbindin
 }
 
 // readRevocationList reads the revocation_list member. A declaration that is
-// not in its form is bad input here, since the caller is the using profile
-// that wrote it; the verifier's own rule is that it does not count.
+// a JSON object but not in its form is passed on: it does not count, and the
+// report says why (CB §5.1). Only one that is not a JSON object is bad input.
 func readRevocationList(value any) (*controllerbinding.RevocationList, error) {
 	m, ok := value.(map[string]any)
 	if !ok {
@@ -178,11 +178,12 @@ func readRevocationList(value any) (*controllerbinding.RevocationList, error) {
 			return nil, fmt.Errorf("missing revocation_list member %q", name)
 		}
 	}
-	encoded, err := evidencerequest.EncodeJCS(m["declaration"])
-	if err != nil {
-		return nil, fmt.Errorf("declaration: %w", err)
+	if _, ok := m["declaration"].(map[string]any); !ok {
+		return nil, fmt.Errorf("declaration is not a JSON object")
 	}
-	declaration, err := controllerbinding.ParseDeclaration(encoded)
+	// encoding/json, not JCS: a malformed declaration may hold a float, which
+	// has no JCS form here. Number tokens are written as received.
+	declaration, err := json.Marshal(numbersAsTokens(m["declaration"]))
 	if err != nil {
 		return nil, fmt.Errorf("declaration: %w", err)
 	}
@@ -198,4 +199,26 @@ func readRevocationList(value any) (*controllerbinding.RevocationList, error) {
 		}
 	}
 	return &controllerbinding.RevocationList{Declaration: declaration, List: []byte(text), EvaluatedAt: evaluated}, nil
+}
+
+// numbersAsTokens turns the strict reader's number tokens into json.Number,
+// so encoding/json writes each as received.
+func numbersAsTokens(v any) any {
+	switch x := v.(type) {
+	case evidencerequest.JSONNumber:
+		return json.Number(x)
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, item := range x {
+			out[k] = numbersAsTokens(item)
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, item := range x {
+			out[i] = numbersAsTokens(item)
+		}
+		return out
+	}
+	return v
 }

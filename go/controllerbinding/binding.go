@@ -25,6 +25,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
@@ -141,69 +142,83 @@ var declarationMembers = []string{"profile", "asserted_by", "binding", "list_dig
 
 // ParseDeclaration reads a declaration (CB §5.1) from its JSON object: exactly
 // the six members, each in its form. An error means the declaration does not
-// count.
+// count. With an error, the returned Declaration still holds profile,
+// asserted_by and as_of where each is a text string, so the declaration can
+// be reported as delivered.
 func ParseDeclaration(octets []byte) (Declaration, error) {
 	value, err := evidencerequest.DecodeJSON(octets)
 	if err != nil {
-		return Declaration{}, err
+		return Declaration{}, fmt.Errorf("the declaration is not one JSON value: %w", err)
 	}
 	m, ok := value.(map[string]any)
-	if !ok || !hasMembers(m, declarationMembers) {
-		return Declaration{}, errors.New("a declaration is a JSON object with exactly " +
-			"profile, asserted_by, binding, list_digest, as_of and max_age")
+	if !ok {
+		return Declaration{}, errors.New("the declaration is not a JSON object")
 	}
 	var d Declaration
-	d.Profile, ok = m["profile"].(string)
-	if !ok {
-		return Declaration{}, errors.New("profile is not a text string")
+	d.Profile, _ = m["profile"].(string)
+	d.AssertedBy, _ = m["asserted_by"].(string)
+	d.AsOf, _ = m["as_of"].(string)
+	if !hasMembers(m, declarationMembers) {
+		return d, errors.New("the declaration does not have exactly " +
+			"profile, asserted_by, binding, list_digest, as_of and max_age")
 	}
-	if d.AssertedBy, ok = m["asserted_by"].(string); !ok {
-		return Declaration{}, errors.New("asserted_by is not a text string")
+	if _, ok := m["profile"].(string); !ok {
+		return d, errors.New("profile is not a text string")
+	}
+	if _, ok := m["asserted_by"].(string); !ok {
+		return d, errors.New("asserted_by is not a text string")
 	}
 	d.Binding, _ = m["binding"].(string)
 	d.ListDigest, _ = m["list_digest"].(string)
-	d.AsOf, _ = m["as_of"].(string)
+	if !evidencerequest.IsDigest(d.Binding) || !evidencerequest.IsDigest(d.ListDigest) {
+		return d, errors.New("binding or list_digest is not 64 lowercase hex characters")
+	}
+	if _, ok := instant(d.AsOf); !ok {
+		return d, errors.New("as_of is not a time")
+	}
+	// An integer token: ParseInt refuses a fraction, an exponent and text.
 	number, ok := m["max_age"].(evidencerequest.JSONNumber)
 	if !ok {
-		return Declaration{}, errors.New("max_age is not an integer")
+		return d, errors.New("max_age is not an integer")
 	}
-	if d.MaxAge, err = strconv.ParseInt(string(number), 10, 64); err != nil {
-		return Declaration{}, errors.New("max_age is not an integer")
+	maxAge, err := strconv.ParseInt(string(number), 10, 64)
+	if err != nil || maxAge < 0 || maxAge > maxCreatedAt {
+		return d, errors.New("max_age is not an integer from 0 to 2^53 - 1")
 	}
-	if !d.wellFormed() {
-		return Declaration{}, errors.New("binding or list_digest is not 64 lowercase hex characters, " +
-			"as_of is not a time, or max_age is outside 0 to 2^53 - 1")
-	}
+	d.MaxAge = maxAge
 	return d, nil
 }
 
-func (d Declaration) wellFormed() bool {
-	_, timeOK := instant(d.AsOf)
-	return evidencerequest.IsDigest(d.Binding) && evidencerequest.IsDigest(d.ListDigest) && timeOK &&
-		d.MaxAge >= 0 && d.MaxAge <= maxCreatedAt
-}
-
 // RevocationList is a revocation list (a JSON array of revocation statements)
-// with the declaration a using profile gave beside it (CB §5.1).
+// with the declaration a using profile gave beside it (CB §5.1). The caller
+// takes the declaration only through the using profile's own channel, never
+// from the party presenting the evidence: it is unsigned, and AssertedBy is
+// reported as delivered, not as authenticated.
 type RevocationList struct {
-	Declaration Declaration
+	// Declaration is the declaration's JSON object as received. One that is
+	// not in its form does not count, and the list's entries are still read.
+	Declaration []byte
 	// List is the list's octets as transmitted.
 	List []byte
-	// EvaluatedAt is the evaluation time E the freshness bound is checked at.
+	// EvaluatedAt is the evaluation time E the freshness bound is checked
+	// at; a using profile may pin it.
 	EvaluatedAt time.Time
 }
 
 // ListReport is how a verifier reports a declaration (CB §6.1): the method of
 // a revocation PASS, which it presents as AssertedBy's statement under
 // Profile that the list with ListDigest was complete as of AsOf. ListDigest is
-// the digest of the octets received. Counts says whether the declaration
-// counts for this binding at the times asked about.
+// the digest of the octets received; Profile, AssertedBy and AsOf are as
+// delivered, empty when not a text string. Counts says whether the
+// declaration counts for this binding at the times asked about, and Reason,
+// when it does not, why. Reason is a diagnostic, not part of the vectors.
 type ListReport struct {
 	Profile    string `json:"profile"`
 	AssertedBy string `json:"asserted_by"`
 	ListDigest string `json:"list_digest"`
 	AsOf       string `json:"as_of"`
 	Counts     bool   `json:"counts"`
+	Reason     string `json:"reason,omitempty"`
 }
 
 // Options are what the caller received beside the binding record, and how it
@@ -293,10 +308,7 @@ func Verify(record []byte, ts []time.Time, opts Options) Report {
 	}
 	report.Properties[PropertyRevocation] = revocation(report.BindingDigest, keys, types, ts, statements)
 	if l := opts.RevocationList; l != nil {
-		sum := sha256.Sum256(l.List)
-		report.RevocationList = &ListReport{Profile: l.Declaration.Profile, AssertedBy: l.Declaration.AssertedBy,
-			ListDigest: hex.EncodeToString(sum[:]), AsOf: l.Declaration.AsOf,
-			Counts: counts(*l, report.BindingDigest, ts)}
+		report.RevocationList = listReport(*l, report.BindingDigest, ts)
 		if report.RevocationList.Counts && report.Properties[PropertyRevocation] != evidencerequest.StatusFail {
 			report.Properties[PropertyRevocation] = evidencerequest.StatusPass
 		}
@@ -645,27 +657,49 @@ func listEntries(list []byte) (entries [][]byte, ok bool) {
 	return entries, true
 }
 
-// counts reports whether a declaration counts for the binding with this
-// digest at the times ts (CB §5.1).
-func counts(l RevocationList, digest string, ts []time.Time) bool {
-	d := l.Declaration
-	if !d.wellFormed() || d.Binding != digest || len(ts) == 0 {
-		return false
-	}
+// listReport reports the declaration, and whether it counts for the binding
+// with this digest at the times ts (CB §5.1).
+func listReport(l RevocationList, digest string, ts []time.Time) *ListReport {
 	sum := sha256.Sum256(l.List)
-	if hex.EncodeToString(sum[:]) != d.ListDigest {
-		return false
+	d, err := ParseDeclaration(l.Declaration)
+	report := &ListReport{Profile: d.Profile, AssertedBy: d.AssertedBy, ListDigest: hex.EncodeToString(sum[:]),
+		AsOf: d.AsOf}
+	report.Reason = whyNot(d, err, report.ListDigest, l, digest, ts)
+	report.Counts = report.Reason == ""
+	return report
+}
+
+// whyNot is why a declaration does not count (CB §5.1), or "" when it counts.
+func whyNot(d Declaration, err error, received string, l RevocationList, digest string, ts []time.Time) string {
+	if err != nil {
+		return err.Error()
+	}
+	if d.Binding != digest {
+		return "the declaration names another binding"
+	}
+	if d.ListDigest != received {
+		return "list_digest is not the digest of the list received"
 	}
 	if _, ok := listEntries(l.List); !ok {
-		return false
+		return "the list is not a JSON array"
+	}
+	if len(ts) == 0 {
+		return "no time T was asked about"
 	}
 	asOf, _ := instant(d.AsOf)
 	for _, t := range ts {
 		if asOf.Before(t) {
-			return false // the list does not cover a statement dated at or before T
+			return "as_of is earlier than a time asked about" // the list does not cover T
 		}
 	}
-	return !asOf.After(l.EvaluatedAt) && l.EvaluatedAt.Sub(asOf) <= time.Duration(d.MaxAge)*time.Second
+	if asOf.After(l.EvaluatedAt) {
+		return "as_of is later than the evaluation time"
+	}
+	// In whole seconds, so no max_age up to 2^53 - 1 overflows a Duration.
+	if l.EvaluatedAt.Unix()-asOf.Unix() > d.MaxAge {
+		return "the evaluation time is more than max_age after as_of"
+	}
+	return ""
 }
 
 func credentialOf(r map[string]any) Credential {

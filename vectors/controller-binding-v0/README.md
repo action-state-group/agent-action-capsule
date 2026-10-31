@@ -69,16 +69,16 @@ Never use one for anything else.
   - `binds_pair` and `applies` (CB §6.2). The credential never decides `applies`;
   - `proves` (CB §7 item 2): empty unless the form and signatures pass;
   - `revocation_list`, only where the case has one (CB §5.1, §6.1): the declaration's `profile`,
-    `asserted_by` and `as_of`, the SHA-256 of the list's octets as received, and whether the
-    declaration `counts`;
+    `asserted_by` and `as_of` as delivered (empty when not text), the SHA-256 of the list's octets
+    as received, and whether the declaration `counts`;
 - `issuer_independence` (CB §7 item 4, IP §6.7.4): `status`, `shown_as`, `reason` (`same key`,
   the binding's claim type and digest, or `null`), and `satisfied_becomes` for `r-corroborated`;
 - `fails`: the binding property each negative is there to fail.
 
 `controller_binding_revocation` is `NOT_CHECKED` in every case where no received statement applies
 before the halves and no declaration counts. No revocation source is registered (CB-1), so it is
-`PASS` only under a declaration that counts (CB §5.1): `complete-list` and
-`complete-list-statement-by-other-key`.
+`PASS` only under a declaration that counts (CB §5.1): `complete-list`,
+`complete-list-statement-by-other-key` and `complete-list-large-max-age`.
 
 `satisfied_becomes` states what IP §6.7.4 turns a `SATISFIED` `r-corroborated` into, for a verifier
 that can apply the requirement's condition. The requirement's `independence` text is opaque
@@ -124,6 +124,13 @@ already. No case reaches it, as in `vectors/coverage-declaration-v0/`.
 | `complete-list-other-binding` | the declaration names another binding: does not count | nothing | `FAIL`: redundant, by the binding |
 | `complete-list-digest-mismatch` | `list_digest` is not the list's: does not count | nothing | `FAIL`: redundant, by the binding |
 | `complete-list-not-an-array` | the list is a JSON object: no entries, does not count, revocation `NOT_CHECKED` | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-large-max-age` | `max_age` 10^10 seconds, `as_of` three days before E: counts, revocation `PASS`, applies | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-extra-member` | the declaration has a `sig` member: malformed, does not count | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-max-age-negative` | `max_age` −1: malformed, does not count | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-max-age-fractional` | `max_age` 86400.5: malformed, does not count | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-max-age-too-large` | `max_age` 2^53: malformed, does not count | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-as-of-malformed` | `as_of` 30 February: malformed, does not count | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-malformed-revoked` | a malformed declaration, and a list entry by a bound key before the halves: still a received statement | `controller_binding_revocation` | `NOT_CHECKED` |
 
 No case shows `issuer_independence` `PASS`. A binding never gives it (CB §7), and this revision
 registers no evidence that does (IP P-60).
@@ -142,8 +149,9 @@ registers no evidence that does (IP P-60).
 - A verifier that does not implement a binding method (`controller_binding_signatures`
   `NOT_CHECKED`).
 - Binding records or statements the verifier could not parse.
-- A malformed declaration (a missing member, or `max_age` out of range). It does not count, as
-  `complete-list-other-binding` does not.
+- A declaration missing a member, or whose `profile` or `asserted_by` is not text. These are
+  malformed as `complete-list-extra-member` is, and the Go tests cover them.
+- A declaration that is not a JSON object, and a case with no T. Neither counts (CB §5.1).
 - A `created_at` above 2^53 − 1. JSON with such an integer has no JCS form (IP §5.1), so the
   record cannot be carried as these vectors carry every input.
 - A `bip340` key bound to the key of the other half. Halves are signed with Ed25519, so no pair
