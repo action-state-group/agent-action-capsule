@@ -226,8 +226,8 @@ Where this document or a document that cites this section requires strict
 Ed25519 verification, a verifier accepts a signature only if the public key
 A and the signature's point R are each a canonical encoding ({{RFC8032}},
 Section 5.1.3: the y coordinate is below the field prime, and an x of zero
-does not carry the sign bit) and of neither small order (the eight points
-whose order divides 8), if the scalar S is below the group order L, and if
+does not carry the sign bit) and neither is of small order (the eight
+points whose order divides 8), if the scalar S is below the group order L, and if
 the cofactorless equation `[S]B = R + [k]A` of {{RFC8032}}, Section 5.1.7,
 holds. It rejects the signature if any condition fails. {{RFC8032}} fixes
 the decoding rules and the bound on S, and leaves open which of its two
