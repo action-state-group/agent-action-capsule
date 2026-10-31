@@ -262,8 +262,9 @@ Every CBOR data item of a Producer Envelope, including each item inside the
 protected-header byte string, MUST have a definite length and use preferred
 serialization ({{Section 4.1 of RFC8949}}): each integer, length, and tag
 argument in its shortest form, and each floating-point value in the shortest
-of the half-, single-, and double-precision forms that represents it exactly,
-with any NaN in half precision. Map keys MUST be unique; their order is not
+of the half-, single-, and double-precision forms that represents it exactly.
+Going beyond that section, every NaN MUST be encoded in half precision, so
+a NaN whose payload does not fit in half precision cannot appear. Map keys MUST be unique; their order is not
 constrained. The outermost tag 18 is the only CBOR tag in a Producer
 Envelope. The unprotected header MUST be a map, and the payload and signature
 MUST be byte strings; `null` and `undefined` do not stand in for them. A

@@ -320,16 +320,16 @@ Internet-Draft            Agent Action Capsules             October 2026
    and use preferred serialization (Section 4.1 of [RFC8949]): each
    integer, length, and tag argument in its shortest form, and each
    floating-point value in the shortest of the half-, single-, and
-   double-precision forms that represents it exactly, with any NaN in
-   half precision.  Map keys MUST be unique; their order is not
-   constrained.  The outermost tag 18 is the only CBOR tag in a Producer
-   Envelope.  The unprotected header MUST be a map, and the payload and
-   signature MUST be byte strings; null and undefined do not stand in
-   for them.  A verifier MUST reject an envelope that violates this
-   paragraph, so a given protected-header byte string, payload, and
-   signature have exactly one acceptable encoding.
-
-
+   double-precision forms that represents it exactly.  Going beyond that
+   section, every NaN MUST be encoded in half precision, so a NaN whose
+   payload does not fit in half precision cannot appear.  Map keys MUST
+   be unique; their order is not constrained.  The outermost tag 18 is
+   the only CBOR tag in a Producer Envelope.  The unprotected header
+   MUST be a map, and the payload and signature MUST be byte strings;
+   null and undefined do not stand in for them.  A verifier MUST reject
+   an envelope that violates this paragraph, so a given protected-header
+   byte string, payload, and signature have exactly one acceptable
+   encoding.
 
 
 

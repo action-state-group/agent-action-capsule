@@ -23,11 +23,6 @@ has not yet.
   less for its depth alone, with `vectors/json-nesting/` as its conformance set.
   `spec/interop-profile-v1.md` §5.2, `VECTORS.md` and the vector README and manifest cite it.
   Nothing is posted until the -06 cut; the wire value stays `draft-mih-scitt-agent-action-capsule-05`.
-- The capsule draft states the Producer Envelope CBOR encoding rule (AAC#258): -06's Producer Envelope
-  wire profile says every CBOR data item, protected-header contents included, has a definite length and
-  preferred serialization, map keys are unique, the outermost tag 18 is the only tag, the unprotected
-  header is a map and the payload and signature are byte strings, and a verifier rejects any violation.
-  Python, Go, TypeScript and Rust already enforce it (AAC#256); `vectors/producer-envelope/` pins it.
 
 ## go 0.18.0 — 2026-10-31
 
