@@ -171,14 +171,15 @@ figure across labels or periods.
 
 No instance defines a score, a grade, a ratio, a rate, a share, a mean or an ordering of subjects,
 deals, exchanges or counterparties, and a verifier that follows an instance shows and outputs
-none. A History stays the subject key's statement, never a requester's conclusion about it.
+none, except a count bar as below. A History stays the subject key's statement, never a requester's conclusion about it.
 
 **A count bar.** An instance may allow a verifier to draw the parts of one of its tallies as one
 bar, the lengths of its segments the parts' counts out of the tally's `of`. The bar adds no figure:
 each part is shown with its count and the tally's `of` as above, and the bar is not labelled, worded
 or coloured as a rate, a share, a score or a grade, is not ordered to rank, and is never drawn
-across two tallies. A segment's colour says which part it is, never how good. An instance that
-does not allow a bar shows none.
+across two tallies. A segment's colour identifies which part it is; the colours carry no ranking and
+no label of good or bad. A tally whose `of` is 0 is drawn as no bar. An instance that does not allow
+a bar shows none.
 
 ### 4.7 Composition only by an evidence-backed key link
 

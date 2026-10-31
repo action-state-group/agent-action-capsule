@@ -333,10 +333,10 @@ requires. `undecided` is drawn in a tone that is neither the colour of `held` no
 `did_not_hold`. No other tally of the card is drawn as a bar, and the bar never replaces the counts.
 
 **The witness line.** A verifier that holds the anchor's witness receipt beside the card may say
-that the card's snapshot was witnessed, with the receipt's time, only when it ran
-`anchor_inclusion` and the property is `PASS`. While `anchor_inclusion` is `NOT_CHECKED` (§10 SH-4)
-it may say that the holder's log names a witness receipt, as the holder's statement, or say nothing
-about a witness. It never says that a witness saw or checked the snapshot on a check it did not run.
+that the card's snapshot was witnessed, with the receipt's time, only when it ran `anchor_inclusion`
+and the property is `PASS`. While `anchor_inclusion` is `NOT_CHECKED` (§10 SH-4) it may say that a
+witness receipt came with the card, not checked against it, or say nothing about a witness. It never
+says that a witness saw or checked the snapshot on a check it did not run.
 
 **Vectors.** `vectors/standard-history-v0/` holds positive cards, among them a window across a
 year end, a sub-unit deal with a negative decade and a zero amount, and negatives each failing the
