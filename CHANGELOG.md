@@ -16,6 +16,18 @@ Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their o
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Evidence Request -02 refusal reasons `capacity_exceeded` (a limit of the responder's own: load, a
+  size limit, a full replay cache, a transient fault) and `request_unauthenticated` (a requester
+  authentication a deployment profile defines does not verify) (AAC#478, Mesh-LLM/capsules-plugin#114).
+  Load shedding refuses `capacity_exceeded`, not `policy_declined`, so `policy_declined` and
+  `not_authorized` are statements about policy; `capacity_exceeded` is never a retention breach and
+  `request_unauthenticated` is a property of the request. New corpus
+  `vectors/evidence-request/refusal-02.json` (11 cases). Go `evidencerequest` and Python
+  `agent_action_capsule.evidence_request` register both tokens (`RefusalReasons`,
+  `REFUSAL_REASONS`) and classify them under a retention commitment; both read the new corpus. The
+  interop profile still lists the eight -01 tokens until it re-pins to -02 as posted (AAC#479), so
+  the profile checks keep the eight: Go `Refusal.Conforming` and `VerifyFor` refuse a refusal
+  with either new token, while `CheckRefusal` (the ER-level check) accepts it.
 - Evidence Request -02 (`spec/draft-mih-agent-evidence-request-02.md`, dated 2026-10-30, not
   posted), cut from the posted -01; `spec/Makefile` `EVREQ` builds -02. New §4.7 "Unavailable-Window
   Statements" (AAC#473): a responder MAY seal a signed, registered statement that it was unavailable

@@ -114,15 +114,17 @@ const (
 )
 
 // ClassifyRefusal classifies a refusal with reason against a commitment.
-// Inside until, only the four reasons about the request or the responder's
-// capability are consistent with the promise; any other refusal breaches it
-// (ERV A9). After until, retention_expired is correct and no_such_subject is
+// Inside until, only the reasons about the request or the responder's
+// capability are consistent with the promise, and capacity_exceeded is never
+// a breach (-02: flooding must not manufacture one); any other refusal
+// breaches it (ERV A9). After until, retention_expired is correct and no_such_subject is
 // the wrong token (ERV A10).
 func ClassifyRefusal(commitment CommitmentState, reason string) string {
-	aboutTheRequest := slices.Contains([]string{ReasonNotAuthorized, ReasonCoverageUnsatisfiable, ReasonDerivationUnsupported, ReasonRequestMalformed}, reason)
+	consistent := slices.Contains([]string{ReasonNotAuthorized, ReasonCoverageUnsatisfiable, ReasonDerivationUnsupported,
+		ReasonRequestMalformed, ReasonRequestUnauthenticated, ReasonCapacityExceeded}, reason)
 	switch commitment {
 	case CommitmentInForce:
-		if aboutTheRequest {
+		if consistent {
 			return RetentionNoBreach
 		}
 		return RetentionBreach

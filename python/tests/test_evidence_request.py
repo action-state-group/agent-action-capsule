@@ -136,8 +136,10 @@ def test_registry_strings_are_the_modules():
     assert er.DRAFT == REGISTRY["draft"]
     assert er.SUBJECT_FORMS == tuple(REGISTRY["subject_forms"])
     assert er.COVERAGE_MEMBERS == tuple(REGISTRY["coverage_members"])
-    assert er.REFUSAL_REASONS == frozenset(REGISTRY["refusal_reasons"])
-    assert len(REGISTRY["refusal_reasons"]) == 8
+    # registry.json is the -00 registry; -02 adds two (refusal-02.json).
+    reasons_02 = json.loads((VECTORS / "refusal-02.json").read_text(encoding="utf-8"))["refusal_reasons"]
+    assert reasons_02[:8] == REGISTRY["refusal_reasons"] and len(REGISTRY["refusal_reasons"]) == 8
+    assert er.REFUSAL_REASONS == frozenset(reasons_02)
     assert er.OUTCOMES == tuple(REGISTRY["outcomes"])
     assert er.REQUEST_STATES == tuple(REGISTRY["request_states"])
     assert er.SUBPROTOCOL == REGISTRY["subprotocol"]
@@ -318,6 +320,28 @@ def test_invariance_vector(case):
     for o in case["observations"]:
         assert hashlib.sha256(bytes.fromhex(o["artifact_hex"])).hexdigest() == o["artifact_digest"]
     assert er.compare_observations(observations) == case["expect"]["invariance"]
+
+
+# --- refusal-02.json ---------------------------------------------------------------------------
+
+
+@_params("refusal-02")
+def test_refusal_02_vector(case):
+    """The -02 reasons as this module checks and classifies them; the load-shedding and mapping
+    cases state requirements no function here decides."""
+    expect, facts = case["expect"], case.get("facts", {})
+    if "refusal" in case:
+        check = er.check_refusal(case["refusal"])
+        assert (check.signature_valid, check.reason_registered, check.conformant) == (
+            expect["signature"] == "valid", expect["reason_registered"], expect["conformant"])
+    elif "commitment" in facts:
+        assert er.classify_refusal(facts["commitment"], facts["refusal_reason"]) == expect["classification"]
+
+
+def test_refusal_02_cases_are_all_read():
+    # The parametrized test above checks the cases it recognizes; a renamed key would skip one.
+    cases = _cases("refusal-02")
+    assert sum("refusal" in c or "commitment" in c.get("facts", {}) for c in cases) == 7
 
 
 # --- retention.json -----------------------------------------------------------------------------

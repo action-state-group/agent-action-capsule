@@ -38,6 +38,16 @@ var statusProjection = map[string]string{
 	"CONTRADICTED": "GAP", "INSUFFICIENT": "INSUFFICIENT", "UNKNOWN": "UNKNOWN",
 }
 
+// profileRefusalReasons are the eight tokens §9.1 lists: the -00 and -01
+// registry. The profile pins ER -01, so the two -02 additions
+// (capacity_exceeded, request_unauthenticated) are not registered under it
+// and no §8.1 row maps them, until it re-pins to -02 (AAC#479). Conforming
+// and the Verifier's reason_registered read it.
+var profileRefusalReasons = []string{
+	ReasonNotAuthorized, ReasonNoSuchSubject, ReasonCoverageUnsatisfiable, ReasonDerivationUnsupported,
+	ReasonPolicyDeclined, ReasonDeadlineUnmet, ReasonRequestMalformed, ReasonRetentionExpired,
+}
+
 // The §8.1 rows, by the label the conformance vectors give them, and the
 // status each contributes.
 var rowStatus = map[string]string{
@@ -543,7 +553,7 @@ func (v *Verifier) refusalProperties(ref map[string]any, received receivedValue,
 		props["request_binding"] = report("request_binding", passIf(ref["request_digest"] == Digest(requestOctets)), method, "")
 	}
 	reason, _ := ref["reason"].(string)
-	props["reason_registered"] = report("reason_registered", passIf(isText(ref["reason"]) && slices.Contains(RefusalReasons, reason)),
+	props["reason_registered"] = report("reason_registered", passIf(isText(ref["reason"]) && slices.Contains(profileRefusalReasons, reason)),
 		"exactly one token of the ER §13 registry, exact case (§9.1, ERV A13)", "")
 	method = "§5.2 time form"
 	if !present(ref, "issued_at") {

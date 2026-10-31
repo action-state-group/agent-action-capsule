@@ -79,7 +79,10 @@ func (r Refusal) Verify() error {
 // VerifyFor authenticates the refusal as the answer of the responder whose
 // key is responderKey (lowercase hex) to the request whose digest is
 // requestDigest: the key and the digest must be those, the signature must
-// verify, and the refusal must conform.
+// verify, and the refusal must conform. Conforming is the profile's check, so
+// a refusal with one of the two -02 reasons is ErrInvalid here until the
+// profile re-pins (AAC#479); a caller that reads ER -02 alone uses
+// CheckRefusal.
 func (r Refusal) VerifyFor(responderKey, requestDigest string) error {
 	if r.KeyID != responderKey || r.RequestDigest != requestDigest {
 		return fmt.Errorf("%w: refusal is not for this request under the pinned responder key", ErrInvalid)
@@ -96,10 +99,12 @@ func (r Refusal) VerifyFor(responderKey, requestDigest string) error {
 // Conforming reports whether a verified refusal is a conforming one: exactly
 // one registered reason, exact case, and well-formed members (profile §7.2
 // reason_registered, issued_at_form). issued_at is the profile's seconds
-// form (§5.2); CheckRefusal reads it as the request draft alone does.
+// form (§5.2); CheckRefusal reads it as the request draft alone does. The
+// reasons are the profile's eight (§9.1), not the ten of ER -02, until the
+// profile re-pins (AAC#479).
 func (r Refusal) Conforming() bool {
 	_, timeOK := ParseProfileTime(r.IssuedAt)
-	return slices.Contains(RefusalReasons, r.Reason) && timeOK && IsDigest(r.RequestDigest)
+	return slices.Contains(profileRefusalReasons, r.Reason) && timeOK && IsDigest(r.RequestDigest)
 }
 
 // Value is the refusal's wire value.

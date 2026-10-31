@@ -118,6 +118,8 @@ __all__ = [
     "REASON_DEADLINE_UNMET",
     "REASON_REQUEST_MALFORMED",
     "REASON_RETENTION_EXPIRED",
+    "REASON_CAPACITY_EXCEEDED",
+    "REASON_REQUEST_UNAUTHENTICATED",
     "REFUSAL_REASONS",
     "OUTCOMES",
     "REQUEST_STATES",
@@ -188,9 +190,14 @@ REASON_POLICY_DECLINED = "policy_declined"
 REASON_DEADLINE_UNMET = "deadline_unmet"
 REASON_REQUEST_MALFORMED = "request_malformed"
 REASON_RETENTION_EXPIRED = "retention_expired"
+#: -02: a limit of the responder's own (load, size, a transient fault).
+REASON_CAPACITY_EXCEEDED = "capacity_exceeded"
+#: -02: a requester authentication a deployment profile defines does not verify.
+REASON_REQUEST_UNAUTHENTICATED = "request_unauthenticated"
 
-#: The eight registered refusal reasons (§4.2, §13). Matching is exact: a
-#: different case, or a token such as ``no_such_record``, is not registered.
+#: The registered refusal reasons (§4.2, §13): the eight of -00 and the two
+#: -02 adds. Matching is exact: a different case, or a token such as
+#: ``no_such_record``, is not registered.
 REFUSAL_REASONS = frozenset(
     {
         REASON_NOT_AUTHORIZED,
@@ -201,6 +208,8 @@ REFUSAL_REASONS = frozenset(
         REASON_DEADLINE_UNMET,
         REASON_REQUEST_MALFORMED,
         REASON_RETENTION_EXPIRED,
+        REASON_CAPACITY_EXCEEDED,
+        REASON_REQUEST_UNAUTHENTICATED,
     }
 )
 
@@ -524,7 +533,8 @@ class Resolution:
 
 class Decline(Exception):
     """Raised by :meth:`EvidenceStore.artifact` to refuse instead of serving,
-    for example ``policy_declined`` for a subject larger than the node serves.
+    for example ``capacity_exceeded`` for a subject larger than the node serves
+    (-02 §11: a size limit is the responder's own, not policy).
     ``reason`` must be a registered token; :func:`answer` signs the refusal."""
 
     def __init__(self, reason: str, message: str = ""):
@@ -1388,8 +1398,15 @@ def compare_observations(observations: Iterable[tuple[str, bytes]]) -> str:
     return "holds" if len({bytes(artifact) for _, artifact in pairs}) <= 1 else "violated"
 
 
-_ABOUT_THE_REQUEST = frozenset(
-    {REASON_NOT_AUTHORIZED, REASON_COVERAGE_UNSATISFIABLE, REASON_DERIVATION_UNSUPPORTED, REASON_REQUEST_MALFORMED}
+_KEEPS_THE_PROMISE = frozenset(
+    {
+        REASON_NOT_AUTHORIZED,
+        REASON_COVERAGE_UNSATISFIABLE,
+        REASON_DERIVATION_UNSUPPORTED,
+        REASON_REQUEST_MALFORMED,
+        REASON_REQUEST_UNAUTHENTICATED,
+        REASON_CAPACITY_EXCEEDED,
+    }
 )
 
 
@@ -1397,8 +1414,9 @@ def classify_refusal(commitment: str, reason: str) -> str:
     """How a refusal with ``reason`` stands against a retention commitment (§9)
     that is ``"in_force"``, ``"lapsed"`` or ``"none"``.
 
-    Inside ``until`` only the four reasons about the request or the
-    responder's capability keep the promise (``"no_breach"``); any other is a
+    Inside ``until`` only the reasons about the request or the responder's
+    capability keep the promise (``"no_breach"``), and ``capacity_exceeded``
+    is never a breach (-02: flooding must not manufacture one); any other is a
     ``"breach"`` (A9). After it, ``retention_expired`` is ``"correct"``,
     ``no_such_subject`` the ``"wrong_token"`` (a lapsed promise must not read
     as never held), and the rest ``"no_breach"`` (A10).
@@ -1406,7 +1424,7 @@ def classify_refusal(commitment: str, reason: str) -> str:
     if commitment == "none":
         return "no_commitment"
     if commitment == "in_force":
-        return "no_breach" if reason in _ABOUT_THE_REQUEST else "breach"
+        return "no_breach" if reason in _KEEPS_THE_PROMISE else "breach"
     if commitment == "lapsed":
         if reason == REASON_RETENTION_EXPIRED:
             return "correct"

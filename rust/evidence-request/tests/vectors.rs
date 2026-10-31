@@ -1,8 +1,8 @@
 //! The draft-mih-agent-evidence-request-00 conformance vectors, read in place
 //! from this repository's `vectors/evidence-request/`: every case of every
 //! -00 corpus. The -01 corpora (`carries.json`, `categories.json`,
-//! `carriage.json`) and the -02 corpus (`unavailable-window.json`) no test
-//! here reads yet. The files are checked against that directory's
+//! `carriage.json`) and the -02 corpus `unavailable-window.json` no test
+//! here reads yet; of -02, `refusal-02.json` is read. The files are checked against that directory's
 //! `SHA256SUMS` before any case is read.
 
 use ed25519_dalek::SigningKey;
@@ -79,7 +79,16 @@ fn registry_strings_match() {
         .iter()
         .map(|v| v.as_str().unwrap())
         .collect();
-    assert_eq!(reasons, Reason::ALL.map(Reason::token));
+    // registry.json is the -00 registry; -02 adds two (refusal-02.json).
+    let refusal_02 = load("refusal-02.json");
+    let added: Vec<&str> = refusal_02["refusal_reasons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .skip(reasons.len())
+        .collect();
+    assert_eq!([reasons, added].concat(), Reason::ALL.map(Reason::token));
     let forms: Vec<&str> = registry["subject_forms"]
         .as_array()
         .unwrap()
@@ -478,4 +487,58 @@ fn retention_corpus() {
             }
         }
     }
+}
+
+#[test]
+fn refusal_02_corpus() {
+    let corpus = load("refusal-02.json");
+    let registered: Vec<&str> = corpus["refusal_reasons"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert_eq!(registered, Reason::ALL.map(Reason::token));
+    let mut read = 0;
+    for case in cases(&corpus) {
+        let id = s(case, "id");
+        let expect = &case["expect"];
+        let facts = &case["facts"];
+        if case.get("refusal").is_some() {
+            let result = check(&case["refusal"]);
+            assert_eq!(
+                result.signature_valid,
+                s(expect, "signature") == "valid",
+                "{id}: signature"
+            );
+            assert_eq!(
+                result.reason_registered,
+                expect["reason_registered"].as_bool().unwrap(),
+                "{id}: registered"
+            );
+            assert_eq!(
+                result.conformant,
+                expect["conformant"].as_bool().unwrap(),
+                "{id}: conformant"
+            );
+            read += 1;
+        } else if let Some(commitment) = facts["commitment"].as_str() {
+            let commitment = match commitment {
+                "in_force" => Commitment::InForce,
+                "lapsed" => Commitment::Lapsed,
+                other => panic!("{id}: unknown commitment {other}"),
+            };
+            let reason = Reason::from_token(s(facts, "refusal_reason")).unwrap();
+            assert_eq!(
+                classify_refusal(commitment, reason).token(),
+                s(expect, "classification"),
+                "{id}"
+            );
+            read += 1;
+        }
+        // The load-shedding and status-mapping cases state what the text
+        // requires of a responder or a deployment; no function here decides
+        // them.
+    }
+    assert_eq!(read, 7);
 }
