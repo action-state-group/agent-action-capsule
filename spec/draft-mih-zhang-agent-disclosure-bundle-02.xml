@@ -1304,8 +1304,9 @@ and <tt>custody_domain</tt>. Sort in ascending order of <tt>id</tt>.</t>
 <tt>state</tt>, plus whichever of <tt>pointer</tt>, <tt>identifier_digest</tt> and <tt>compare</tt>
 the join carries (absent members stay absent, never <tt>null</tt>). Sort in
 ascending order of <tt>members[0]</tt>, then <tt>members[1]</tt>, then <tt>basis</tt>, then
-<tt>pointer</tt> (the empty string when absent). <tt>compare</tt> keeps its carried
-order. Use <tt>[]</tt> when the block has no <tt>joins</tt>.</t>
+<tt>pointer</tt>, where a join without <tt>pointer</tt> sorts before every join with
+one, including a <tt>pointer</tt> that is the empty string. <tt>compare</tt> keeps
+its carried order. Use <tt>[]</tt> when the block has no <tt>joins</tt>.</t>
                 </li>
                 <li>
                   <t><tt>not_requested</tt>: the block's <tt>not_requested</tt> sorted ascending, or <tt>[]</tt>
@@ -2027,7 +2028,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 1624?>
+    <?line 1625?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
@@ -2092,6 +2093,11 @@ derives <tt>one_sided</tt>; a <tt>controller_binding</tt> join derives from the 
 signed its checkpoint, and is <tt>not_derivable</tt> without one. Security
 Considerations: no history. Privacy Considerations: a cleared history's
 checkpoint is signed by the cleared stream's key.</t>
+        </li>
+        <li>
+          <t><tt>composed/v1</tt> composed digest: a join without <tt>pointer</tt> sorts before every
+join with one, including a <tt>pointer</tt> that is the empty string. -01 sorted
+the two alike, so their carried order changed the digest.</t>
         </li>
         <li>
           <t>Cites Evidence Request -01 and, informatively, Evidence Layer -00 and the

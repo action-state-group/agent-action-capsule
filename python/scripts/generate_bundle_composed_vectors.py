@@ -35,6 +35,12 @@ Cases:
   certificate and a signed COSE checkpoint of their own log (the composer's,
   each responder's), so the strict verdict of each, and the full verdict, is
   ``VALID``.
+* ``missing-member-beside-absence``: one artifact member declared missing,
+  the other an absence, the join declared ``one_sided``: ``not_derivable``,
+  because one of its artifact members is declared missing.
+* ``join-order-pointer-absent-first``: two ``same_interval`` joins on one
+  pair, one with ``pointer`` ``""`` and one without, carried in that order;
+  the digest input lists the join without ``pointer`` first (-02).
 
 Output: ``vectors/bundle/composed/`` (or ``--out DIR``). The run is a pure
 function of this file: no clock, no randomness (Ed25519 is deterministic).
@@ -339,7 +345,7 @@ def digest_input(block: dict) -> dict:
     observers = sorted(({k: o[k] for k in ("id", "role", "custody_domain")} for o in block.get("observers", [])),
                        key=lambda o: o["id"])
     joins = sorted(({k: j[k] for k in _JOIN_DIGEST_FIELDS if k in j} for j in block.get("joins", [])),
-                   key=lambda j: (j["members"][0], j["members"][1], j["basis"], j.get("pointer", "")))
+                   key=lambda j: (j["members"][0], j["members"][1], j["basis"], "pointer" in j, j.get("pointer", "")))
     return {
         "kind": KIND,
         "members": members,
@@ -638,11 +644,91 @@ def case_agree_with_checkpoints() -> dict:
     }
 
 
+def case_missing_beside_absence() -> dict:
+    members, observers = two_responders()
+    request_digest = members[1]["request_digest"]
+    absence = {"request_digest": request_digest, "window": {"from": t(0), "to": t(20)}}
+    members[1] = {"id": "responder-b", "observer": "obs-b", "request_digest": request_digest,
+                  "outcome": "absence", "digest": sha256_hex(jcs(absence)), "absence": absence}
+    comp = block(members, observers, [join("responder-a", "responder-b", "one_sided")], missing=["responder-a"])
+    digest, preimage = composed_digest(comp)
+    return {
+        "id": "missing-member-beside-absence",
+        "section": [S_MEMBERS, S_JOINS, S_CLOSURE],
+        "description": "responder-a's artifact Evidence Bundle is declared missing and responder-b reports an "
+                       "absence. The producer declares the join one_sided. A join one of whose artifact members "
+                       "is declared missing is not_derivable, whatever the other member is, so the verifier "
+                       "reports not_derivable, never a derived one_sided.",
+        "container": container(comp),
+        "expect": {
+            "composed_digest": digest,
+            "canonical_preimage": preimage,
+            "status": "withheld",
+            "members": {
+                "responder-a": {"outcome": "artifact", "body": "declared_missing", "digest": "not_shown",
+                                "claims": None},
+                "responder-b": {"outcome": "absence", "body": "carried", "digest": "reproduced",
+                                "claims": None},
+            },
+            "composition_closure": {"status": "withheld", "finding": "declared_incomplete",
+                                    "missing": ["responder-a"]},
+            "joins": [{"members": ["responder-a", "responder-b"], "declared": "one_sided", "derived": None,
+                       "result": "not_derivable"}],
+            "corroboration": [{"members": ["responder-a", "responder-b"], "result": "not_applicable"}],
+        },
+    }
+
+
+def case_join_order_pointer_absent_first() -> dict:
+    members, observers = two_responders()
+    pair = ["responder-a", "responder-b"]
+    # Carried with pointer "" first: the digest input puts the join without
+    # pointer first, so the carried order does not reach the digest.
+    joins = [
+        join("responder-a", "responder-b", "agree"),
+        {"members": pair, "basis": "same_interval", "pointer": "", "state": "agree"},
+        {"members": pair, "basis": "same_interval", "state": "unjoined"},
+    ]
+    comp = block(members, observers, joins)
+    digest, preimage = composed_digest(comp)
+    not_derivable = {"members": pair, "derived": None, "result": "not_derivable"}
+    return {
+        "id": "join-order-pointer-absent-first",
+        "section": [S_DIGEST, S_JOINS],
+        "description": "The agree composition with two more joins on one pair and one basis: one with pointer "
+                       "\"\" (the whole-document JSON Pointer), one without pointer, carried in that order. They "
+                       "are distinct joins. In the digest input (draft-mih-zhang-agent-disclosure-bundle-02) a "
+                       "join without pointer sorts before every join with one, so the canonical preimage lists "
+                       "the join without pointer first and the carried order does not change the composed "
+                       "digest. same_interval is a reserved basis, so both joins are not_derivable.",
+        "container": container(comp),
+        "expect": {
+            "composed_digest": digest,
+            "canonical_preimage": preimage,
+            "status": "withheld",
+            "members": {
+                "responder-a": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
+                                "claims": MEMBER_CLAIMS_DEPTH0},
+                "responder-b": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
+                                "claims": MEMBER_CLAIMS_DEPTH0},
+            },
+            "composition_closure": {"status": "pass", "missing": []},
+            "joins": [{"members": pair, "declared": "agree", "derived": "agree", "result": "derived_matches"},
+                      {**not_derivable, "declared": "agree"},
+                      {**not_derivable, "declared": "unjoined"}],
+            "corroboration": [{"members": pair, "result": "corroborating", "qualifier": "custody_declared"},
+                              {"members": pair, "result": "not_applicable"},
+                              {"members": pair, "result": "not_applicable"}],
+        },
+    }
+
+
 def cases() -> list[dict]:
     return [case_agree(), case_missing(), case_same_custody(),
             case_response("artifact-response-bound", "responder-a"),
             case_response("artifact-response-other-request", "responder-b"),
-            case_agree_with_checkpoints()]
+            case_agree_with_checkpoints(), case_missing_beside_absence(),
+            case_join_order_pointer_absent_first()]
 
 
 # ---------------------------------------------------------------------------

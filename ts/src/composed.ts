@@ -399,9 +399,12 @@ function parseJoin(raw: unknown, members: ReadonlySet<string>): Parsed<Join> {
   });
 }
 
-// go/bundle/composed.go:518-527
-const joinKey = (j: Join): string =>
-  `${j.members[0]}\u0000${j.members[1]}\u0000${j.basis}\u0000${j.pointer ?? ""}`;
+// go/bundle/composed.go joinKey: a join without pointer sorts before every
+// join with one (so before pointer ""), and distinct joins have distinct keys.
+const joinKey = (j: Join): string => {
+  const key = `${j.members[0]}\u0000${j.members[1]}\u0000${j.basis}`;
+  return j.pointer === undefined ? key : `${key}\u0000${j.pointer}`;
+};
 
 // go/bundle/composed.go:533-616
 function parseComposed(raw: unknown): Parsed<Block> {
@@ -448,8 +451,7 @@ function parseComposed(raw: unknown): Parsed<Block> {
   for (const [i, rawJoin] of (joinList ?? []).entries()) {
     const parsed = parseJoin(rawJoin, memberIds);
     if (!parsed.ok) return bad(`join:${i}:${parsed.reason}`);
-    let key = joinKey(parsed.value);
-    if (parsed.value.pointer === undefined) key += "\u0000absent";
+    const key = joinKey(parsed.value);
     if (seen.has(key)) return bad(`join_duplicate:${i}`);
     seen.add(key);
     joins.push(parsed.value);
@@ -798,14 +800,17 @@ async function derivedState(
 ): Promise<{ derived?: JoinState; differences: JoinDifference[] }> {
   const a = byId.get(j.members[0])!;
   const b = byId.get(j.members[1])!;
+  // A join with a declared-missing artifact member is not derivable, whatever
+  // its other member is.
+  if ([a, b].some((m) => m.outcome === "artifact" && missing.has(m.id)))
+    return { differences: [] };
   // An artifact member counts as having records unless its carried Bundle is
   // an empty-history Bundle, which shows no history.
   const withRecords: Member[] = [];
   const empty: Member[] = [];
   for (const m of [a, b]) {
     if (m.outcome !== "artifact") continue;
-    if (!missing.has(m.id) && m.body !== undefined && isEmptyHistory(m.body))
-      empty.push(m);
+    if (m.body !== undefined && isEmptyHistory(m.body)) empty.push(m);
     else withRecords.push(m);
   }
   if (withRecords.length === 0) return { derived: "unjoined", differences: [] };
@@ -815,8 +820,7 @@ async function derivedState(
     // controller_binding still derives against an empty-history member, from
     // the key that signed its checkpoint at that checkpoint's time.
     const full = withRecords[0]!;
-    if (missing.has(full.id) || j.pointer === undefined)
-      return { differences: [] };
+    if (j.pointer === undefined) return { differences: [] };
     const record = rootRecord(full);
     const checkpoint = checkpoints.get(empty[0]!.id);
     if (record === undefined || checkpoint === undefined)
@@ -830,7 +834,6 @@ async function derivedState(
     if (!derivable) return { differences: [] };
     return { derived: linked ? "one_sided" : "unjoined", differences: [] };
   }
-  if (missing.has(a.id) || missing.has(b.id)) return { differences: [] };
   const ra = rootRecord(a);
   const rb = rootRecord(b);
   if (ra === undefined || rb === undefined) return { differences: [] };

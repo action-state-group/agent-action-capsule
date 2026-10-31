@@ -1614,10 +1614,10 @@ Internet-Draft             AAC Evidence Bundle              October 2026
           state, plus whichever of pointer, identifier_digest and
           compare the join carries (absent members stay absent, never
           null).  Sort in ascending order of members[0], then
-          members[1], then basis, then pointer (the empty string when
-          absent). compare keeps its carried order.  Use [] when the
-          block has no joins.
-
+          members[1], then basis, then pointer, where a join without
+          pointer sorts before every join with one, including a pointer
+          that is the empty string. compare keeps its carried order.
+          Use [] when the block has no joins.
 
 
 
@@ -2342,10 +2342,10 @@ Internet-Draft             AAC Evidence Bundle              October 2026
       Considerations: no history.  Privacy Considerations: a cleared
       history's checkpoint is signed by the cleared stream's key.
 
-   *  Cites Evidence Request -01 and, informatively, Evidence Layer -00
-      and the Canonicalization Declaration -06.
-
-   Since -00:
+   *  composed/v1 composed digest: a join without pointer sorts before
+      every join with one, including a pointer that is the empty string.
+      -01 sorted the two alike, so their carried order changed the
+      digest.
 
 
 
@@ -2353,6 +2353,11 @@ Mih & Zhang                Expires 4 May 2027                  [Page 42]
 
 Internet-Draft             AAC Evidence Bundle              October 2026
 
+
+   *  Cites Evidence Request -01 and, informatively, Evidence Layer -00
+      and the Canonicalization Declaration -06.
+
+   Since -00:
 
    *  Countersignatures: defined the countersign/v1 countersignature
       entry, its statement, and its five check results; defined
@@ -2395,11 +2400,6 @@ Authors' Addresses
    Yiqun Zhang
    Independent
    Email: zhangyiqun9164@gmail.com
-
-
-
-
-
 
 
 

@@ -1239,8 +1239,9 @@ the member bodies are carried.
      `state`, plus whichever of `pointer`, `identifier_digest` and `compare`
      the join carries (absent members stay absent, never `null`). Sort in
      ascending order of `members[0]`, then `members[1]`, then `basis`, then
-     `pointer` (the empty string when absent). `compare` keeps its carried
-     order. Use `[]` when the block has no `joins`.
+     `pointer`, where a join without `pointer` sorts before every join with
+     one, including a `pointer` that is the empty string. `compare` keeps
+     its carried order. Use `[]` when the block has no `joins`.
    - `not_requested`: the block's `not_requested` sorted ascending, or `[]`
      when it has none.
 
@@ -1676,6 +1677,9 @@ Since -01:
   signed its checkpoint, and is `not_derivable` without one. Security
   Considerations: no history. Privacy Considerations: a cleared history's
   checkpoint is signed by the cleared stream's key.
+- `composed/v1` composed digest: a join without `pointer` sorts before every
+  join with one, including a `pointer` that is the empty string. -01 sorted
+  the two alike, so their carried order changed the digest.
 - Cites Evidence Request -01 and, informatively, Evidence Layer -00 and the
   Canonicalization Declaration -06.
 

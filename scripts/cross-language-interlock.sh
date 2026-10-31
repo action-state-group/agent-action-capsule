@@ -291,42 +291,44 @@ if test "${#mismatches[@]}" -gt 0; then
   exit 1
 fi
 
-# Evidence Bundle -02 composed/v1 controller_binding block: every implementation
-# derives each join of every vectors/bundle/composed-controller-binding case
-# (the binding record verified through that language's one binding verifier)
-# and prints the same JCS line.
-composed_cases="$repo/vectors/bundle/composed-controller-binding/vectors.json"
-composed_ids=$("$python_bin" -c '
-import json
-import sys
-
-for case in json.load(open(sys.argv[1]))["cases"]:
-    print(case["id"])
-' "$composed_cases")
+# Evidence Bundle composed/v1 block: every implementation verifies each case of
+# vectors/bundle/composed and vectors/bundle/composed-controller-binding (each
+# controller_binding record verified through that language's one binding
+# verifier) and prints the same JCS line.
 composed_input() {
   "$python_bin" -c '
 import json
 import sys
 
 case = next(c for c in json.load(open(sys.argv[1]))["cases"] if c["id"] == sys.argv[2])
-json.dump({k: case[k] for k in ("container", "controller_bindings", "binding_revocations")}, sys.stdout)
-' "$composed_cases" "$1"
+json.dump({k: case[k] for k in ("container", "controller_bindings", "binding_revocations") if k in case}, sys.stdout)
+' "$1" "$2"
 }
 composed_python() { "$python_bin" "$repo/python/scripts/cross_language.py" composed-verify; }
 composed_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/cross_language composed-verify); }
 composed_ts() { node "$repo/ts/dist/cross-language.js" composed-verify; }
 composed_rust() { rust_example composed-verify; }
 composed_mismatches=()
-for id in $composed_ids; do
-  composed_input "$id" > "$work/composed-input.json"
-  composed_python < "$work/composed-input.json" > "$work/composed-python.out"
-  for consumer in go ts rust; do
-    "composed_$consumer" < "$work/composed-input.json" > "$work/composed-$consumer.out"
-    if cmp -s "$work/composed-python.out" "$work/composed-$consumer.out"; then
-      printf 'composed/v1 controller_binding %s: %s agrees with python\n' "$id" "$consumer"
-    else
-      composed_mismatches+=("composed/v1 controller_binding $id: $consumer differs from python")
-    fi
+for set in composed composed-controller-binding; do
+  composed_cases="$repo/vectors/bundle/$set/vectors.json"
+  composed_ids=$("$python_bin" -c '
+import json
+import sys
+
+for case in json.load(open(sys.argv[1]))["cases"]:
+    print(case["id"])
+' "$composed_cases")
+  for id in $composed_ids; do
+    composed_input "$composed_cases" "$id" > "$work/composed-input.json"
+    composed_python < "$work/composed-input.json" > "$work/composed-python.out"
+    for consumer in go ts rust; do
+      "composed_$consumer" < "$work/composed-input.json" > "$work/composed-$consumer.out"
+      if cmp -s "$work/composed-python.out" "$work/composed-$consumer.out"; then
+        printf 'composed/v1 %s %s: %s agrees with python\n' "$set" "$id" "$consumer"
+      else
+        composed_mismatches+=("composed/v1 $set $id: $consumer differs from python")
+      fi
+    done
   done
 done
 if test "${#composed_mismatches[@]}" -gt 0; then
