@@ -13,7 +13,7 @@ import {
   CborMap,
   CborTag,
   type CborValue,
-  decodeStrictCbor,
+  decodeReceiptItem,
   HDR_CWT_CLAIMS,
   HDR_GRADE,
   spkiKeyType,
@@ -816,7 +816,6 @@ const P256_SPKI_PREFIX =
   "3059301306072a8648ce3d020106082a8648ce3d03010703420004";
 const MAX_ANCHOR_RECEIPT_OCTETS = 10 * 1024 * 1024;
 const MAX_ANCHOR_PROOFS = 16;
-const MAX_ANCHOR_DEPTH = 16;
 const MAX_ANCHOR_TREE_SIZE = 1n << 62n;
 // Labels below this are private use (RFC 9052 section 16.4).
 const PRIVATE_LABEL = -65536n;
@@ -830,43 +829,6 @@ interface AnchorReceipt {
     readonly path: readonly Uint8Array[];
   }[];
   readonly time: number | null;
-}
-
-/** One CBOR item under the §6.2.2 rules: decodeStrictCbor's, with no float,
- * no simple value but false, true and null, no tag but an outer 18 when
- * `topTag`, and no item more than 16 levels deep. Throws otherwise. */
-function strictAnchorItem(data: Uint8Array, topTag: boolean): CborValue {
-  const value = decodeStrictCbor(data);
-  const walk = (item: CborValue, depth: number): void => {
-    if (depth > MAX_ANCHOR_DEPTH) throw new SyntaxError("nested too deep");
-    if (typeof item === "bigint" && item < -(1n << 63n))
-      throw new SyntaxError("an integer below -2^63");
-    if (item instanceof CborTag) {
-      if (!(depth === 0 && topTag && item.tag === 18n))
-        throw new SyntaxError("a tag other than the outer tag 18");
-      walk(item.value, depth + 1);
-    } else if (Array.isArray(item)) {
-      for (const inner of item as readonly CborValue[]) walk(inner, depth + 1);
-    } else if (item instanceof CborMap) {
-      for (const [key, inner] of item.entries) {
-        if (typeof key !== "bigint" && typeof key !== "string")
-          throw new SyntaxError("a map key that is not an integer or text");
-        walk(key, depth + 1);
-        walk(inner, depth + 1);
-      }
-    } else if (
-      !(
-        item === null ||
-        typeof item === "boolean" ||
-        typeof item === "bigint" ||
-        typeof item === "string" ||
-        item instanceof Uint8Array
-      )
-    )
-      throw new SyntaxError("a float or a simple value");
-  };
-  walk(value, 0);
-  return value;
 }
 
 function anchorPathLength(size: bigint, index: bigint): number {
@@ -886,7 +848,7 @@ function parseAnchorReceipt(receipt: Uint8Array): AnchorReceipt | null {
   try {
     if (receipt.length === 0 || receipt.length > MAX_ANCHOR_RECEIPT_OCTETS)
       return null;
-    const outer = strictAnchorItem(receipt, true);
+    const outer = decodeReceiptItem(receipt, true);
     if (
       !(outer instanceof CborTag) ||
       outer.tag !== 18n ||
@@ -904,7 +866,7 @@ function parseAnchorReceipt(receipt: Uint8Array): AnchorReceipt | null {
       signature.length !== 64
     )
       return null;
-    const headers = strictAnchorItem(protectedBytes, false);
+    const headers = decodeReceiptItem(protectedBytes, false);
     if (!(headers instanceof CborMap)) return null;
     let time: number | null = null;
     for (const [label, value] of headers.entries) {
@@ -938,7 +900,7 @@ function parseAnchorReceipt(receipt: Uint8Array): AnchorReceipt | null {
     const proofs = [];
     for (const blob of raw as readonly CborValue[]) {
       if (!(blob instanceof Uint8Array)) return null;
-      const proof = strictAnchorItem(blob, false);
+      const proof = decodeReceiptItem(blob, false);
       if (!Array.isArray(proof) || proof.length !== 3) return null;
       const [size, index, path] = proof as readonly CborValue[];
       if (

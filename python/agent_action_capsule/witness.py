@@ -259,13 +259,74 @@ def checkpoint_digest(signed: Mapping[str, Any]) -> str:
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def _receipt_encoding_error(receipt: bytes) -> str | None:
+    """The receipt encoding rule of profile v1 §6.2.2, which the strict Bundle
+    check shares (vectors/bundle/strict/README.md "COSE Receipts"): at most
+    10,485,760 octets, and the COSE_Sign1, its protected header and each
+    inclusion-proof blob one CBOR item under ``_strict``. A receipt that meets
+    it reads the same in every language, whatever scitt-cose version runs
+    the signature and proof checks after it."""
+    from .interop_profile._cbor import Tag
+
+    if not 0 < len(receipt) <= _MAX_RECEIPT_OCTETS:
+        return "receipt size is invalid"
+    try:
+        outer = _strict(receipt, top_tag=True)
+        parts = outer.value if isinstance(outer, Tag) else None
+        if not isinstance(parts, list) or len(parts) != 4:
+            return None  # the shape check reports it
+        if isinstance(parts[0], bytes) and parts[0]:
+            _strict(parts[0])
+        vdp = parts[1].get(396) if isinstance(parts[1], dict) else None
+        proofs = vdp.get(-1) if isinstance(vdp, dict) else None
+        for blob in proofs if isinstance(proofs, list) else []:
+            if isinstance(blob, bytes):
+                _strict(blob)
+    except _NotTheForm as exc:
+        return f"receipt rejected by the receipt encoding rule: {exc}"
+    return None
+
+
+_UNDERSTOOD_LABELS = (1, 2, 15, 395)  # alg, crit, CWT_Claims, vds
+
+
+def _crit_error(receipt: bytes) -> str | None:
+    """RFC 9052 §3.1 for a receipt that met the encoding rule: a protected
+    ``crit`` (2) is a non-empty array of labels present in the protected
+    header and among those this check processes. Checked here rather than
+    left to scitt-cose, whose understood set differs by version."""
+    try:
+        protected_bytes = _strict(receipt, top_tag=True).value[0]
+        headers = _strict(protected_bytes) if protected_bytes else {}
+    except Exception:  # noqa: BLE001 -- the shape check reports an unreadable receipt
+        return None
+    if not isinstance(headers, dict) or 2 not in headers:
+        return None
+    labels = headers[2]
+    if not isinstance(labels, list) or not labels:
+        return "crit (label 2) must be a non-empty array"
+    for label in labels:
+        # type(), not isinstance: true would equal the alg label 1.
+        if type(label) not in (int, str):
+            return "crit lists a label that is not an integer or text"
+        if label not in headers:
+            return "crit lists a header absent from the protected header"
+        if type(label) is not int or label not in _UNDERSTOOD_LABELS:
+            return "crit marks a header this verifier does not understand"
+    return None
+
+
 def _receipt_shape_error(receipt: bytes, key_pem: bytes | str | None = None) -> str | None:
     """Refuse what ``scitt_cose.verify_receipt`` would read differently from
-    this profile: a receipt must be a tag-18 COSE_Sign1 with a detached
-    (``nil``) payload, so its signature covers the rebuilt Merkle root, and its
-    protected ``vds`` (label 395) must be 1, RFC9162_SHA256."""
+    this profile: a receipt must meet the receipt encoding rule, be a tag-18
+    COSE_Sign1 with a detached (``nil``) payload, so its signature covers the
+    rebuilt Merkle root, and its protected ``vds`` (label 395) must be 1,
+    RFC9162_SHA256."""
     import cbor2
 
+    encoding = _receipt_encoding_error(receipt) or _crit_error(receipt)
+    if encoding is not None:
+        return encoding
     try:
         outer = cbor2.loads(receipt)
         if not isinstance(outer, cbor2.CBORTag) or outer.tag != 18:
@@ -312,31 +373,24 @@ def _grade(result: Any) -> str | None:
     return _GRADES.get(label) if isinstance(label, str) else None
 
 
-def _integer_key(mapping: dict, key: int, default: Any) -> Any:
-    """``mapping``'s value under the CBOR integer ``key``. A float or boolean
-    key that Python hashes equal (``6.0``, ``True`` for 1) is another key, as
-    the other languages read it."""
-    return next((v for k, v in mapping.items() if type(k) is int and k == key), default)
-
-
 def _registration_time(receipt: bytes) -> tuple[int | None, str | None]:
     """The ``iat`` (claim 6) of a verified COSE Receipt's protected CWT claims
     (label 15), as ``(time, None)``, or ``(None, reason)``. Read only after the
     signature verified: only the protected header is signed."""
-    import cbor2
-
     try:
-        protected_bytes = cbor2.loads(receipt).value[0]
-        protected = cbor2.loads(protected_bytes) if protected_bytes else {}
+        protected_bytes = _strict(receipt, top_tag=True).value[0]
+        protected = _strict(protected_bytes) if protected_bytes else {}
     except Exception:  # noqa: BLE001 -- a verified receipt decodes; never raise
         return None, "iat_invalid"
+    # The receipt encoding rule leaves only integer and text keys, so no
+    # float or boolean key can stand for 15 or 6.
     absent = object()
-    claims = _integer_key(protected, _CWT_CLAIMS_LABEL, absent)
+    claims = protected.get(_CWT_CLAIMS_LABEL, absent)
     if claims is absent:
         return None, "iat_absent"
     if not isinstance(claims, dict):
         return None, "iat_invalid"
-    iat = _integer_key(claims, _CWT_IAT, absent)
+    iat = claims.get(_CWT_IAT, absent)
     if iat is absent:
         return None, "iat_absent"
     if type(iat) is not int or not 0 <= iat <= _MAX_IAT:

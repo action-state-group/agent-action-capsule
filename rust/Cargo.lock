@@ -18,7 +18,6 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "p256",
- "scitt-cose-receipt",
  "serde",
  "serde_json",
  "sha2",
@@ -745,23 +744,6 @@ dependencies = [
  "ring",
  "rustls-pki-types",
  "untrusted",
-]
-
-[[package]]
-name = "scitt-cose-receipt"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f421a6d04a661b68ffcab1d999a79564e3f4b71c188fedacceac7e95e505d5ce"
-dependencies = [
- "coset",
- "ecdsa",
- "ed25519-dalek",
- "hex",
- "p256",
- "serde",
- "serde_json",
- "sha2",
- "thiserror",
 ]
 
 [[package]]

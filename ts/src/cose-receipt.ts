@@ -1,9 +1,8 @@
 // Offline verification of a COSE Receipt (RFC 9942 shape, RFC 9162 SHA-256
-// inclusion proof) under one pinned key: the part of scitt-cose's
-// `verify_receipt` (scitt_cose/receipt.py, rust/scitt-cose/src/receipt.rs)
-// that witness receipts need. Only `vds` 1 (RFC9162_SHA256), EdDSA and ES256,
-// and a detached payload, as the Rust verifier accepts. WebCrypto only, so it
-// runs wherever SubtleCrypto does.
+// inclusion proof) under one pinned key, as vectors/bundle/strict/README.md
+// "COSE Receipts" states it: decoded under the receipt encoding rule of
+// profile v1 §6.2.2, `vds` 1 (RFC9162_SHA256), EdDSA or ES256, and a detached
+// payload. WebCrypto only, so it runs wherever SubtleCrypto does.
 
 import { strictEd25519 } from "./ed25519-strict.js";
 import { sha256Hex } from "./json.js";
@@ -32,7 +31,8 @@ const MAX_MESSAGE_BYTES = 10 * 1024 * 1024;
 const MAX_INCLUSION_PROOFS = 16;
 const MAX_AUDIT_PATH = 64;
 const MAX_TREE_SIZE = 1n << 62n;
-const MAX_DEPTH = 32;
+/** The deepest nesting the receipt encoding rule allows (profile v1 §6.2.2). */
+const MAX_RECEIPT_DEPTH = 16;
 
 /** A decoded CBOR item. Integers are bigints, floats are numbers. */
 export type CborValue =
@@ -71,24 +71,56 @@ export class CborSimple {
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 /**
- * Decode one CBOR item under the deterministic-encoding rules scitt-cose's
- * `strict_decode` applies: definite lengths, the shortest form of every
- * argument and float, no repeated map key and no trailing bytes. Map order is
- * not checked.
+ * Decode one CBOR item under the receipt encoding rule of profile v1 §6.2.2,
+ * which the strict Bundle check and the anchor check share: no trailing
+ * bytes, definite lengths, the shortest form of every argument, no repeated
+ * map key, integers from -2^63 to 2^64 - 1, integer or text map keys, valid
+ * UTF-8, no float, no simple value but false, true and null, no tag but an
+ * outer 18 when `topTag`, and at most 16 levels. Map order is not checked.
+ * Throws otherwise.
  */
-export function decodeStrictCbor(data: Uint8Array): CborValue {
-  return decodeCbor(data, true);
+export function decodeReceiptItem(
+  data: Uint8Array,
+  topTag: boolean,
+): CborValue {
+  const value = decodeCbor(data);
+  const walk = (item: CborValue, depth: number): void => {
+    if (typeof item === "bigint" && item < -(1n << 63n))
+      throw new SyntaxError("an integer below -2^63");
+    if (item instanceof CborTag) {
+      if (!(depth === 0 && topTag && item.tag === COSE_SIGN1_TAG))
+        throw new SyntaxError("a tag other than the outer tag 18");
+      walk(item.value, depth + 1);
+    } else if (Array.isArray(item)) {
+      for (const inner of item as readonly CborValue[]) walk(inner, depth + 1);
+    } else if (item instanceof CborMap) {
+      for (const [key, inner] of item.entries) {
+        if (typeof key !== "bigint" && typeof key !== "string")
+          throw new SyntaxError("a map key that is not an integer or text");
+        walk(key, depth + 1);
+        walk(inner, depth + 1);
+      }
+    } else if (
+      !(
+        item === null ||
+        typeof item === "boolean" ||
+        typeof item === "bigint" ||
+        typeof item === "string" ||
+        item instanceof Uint8Array
+      )
+    )
+      throw new SyntaxError("a float or a simple value");
+  };
+  walk(value, 0);
+  return value;
 }
 
 /**
- * Decode one CBOR item. With `shortest`, every length is definite and every
- * argument and float in its shortest form. Without it (an inclusion-proof
- * blob, which both scitt-cose verifiers decode with a plain decoder:
- * Python's `_decode_inclusion_proof` uses cbor2, Rust uses ciborium), a
- * non-shortest argument or float and indefinite-length strings, arrays and
- * maps are accepted. Unique map keys and no trailing bytes hold either way.
+ * Decode one CBOR item: definite lengths, every argument and float in its
+ * shortest form, unique map keys, no trailing bytes, and at most
+ * MAX_RECEIPT_DEPTH levels. decodeReceiptItem adds the rest of the rule.
  */
-function decodeCbor(data: Uint8Array, shortest: boolean): CborValue {
+function decodeCbor(data: Uint8Array): CborValue {
   let offset = 0;
   const byte = (): number => {
     const value = data[offset++];
@@ -109,12 +141,13 @@ function decodeCbor(data: Uint8Array, shortest: boolean): CborValue {
       throw new SyntaxError("indefinite or reserved CBOR length");
     let value = 0n;
     for (let i = 0; i < width; i += 1) value = (value << 8n) | BigInt(byte());
-    if (shortest && value < [24n, 1n << 8n, 1n << 16n, 1n << 32n][add - 24]!)
+    if (value < [24n, 1n << 8n, 1n << 16n, 1n << 32n][add - 24]!)
       throw new SyntaxError("CBOR argument is not in its shortest form");
     return value;
   };
   const item = (depth: number): CborValue => {
-    if (depth > MAX_DEPTH) throw new SyntaxError("CBOR nesting too deep");
+    if (depth > MAX_RECEIPT_DEPTH)
+      throw new SyntaxError("CBOR nesting too deep");
     const first = byte(),
       major = first >>> 5,
       add = first & 31;
@@ -135,57 +168,12 @@ function decodeCbor(data: Uint8Array, shortest: boolean): CborValue {
       if (add === 25) return halfFloat(view.getUint16(0));
       const value = add === 26 ? view.getFloat32(0) : view.getFloat64(0);
       if (
-        shortest &&
-        (Number.isNaN(value) ||
-          fitsHalf(value) ||
-          (add === 27 && Math.fround(value) === value))
+        Number.isNaN(value) ||
+        fitsHalf(value) ||
+        (add === 27 && Math.fround(value) === value)
       )
         throw new SyntaxError("CBOR float is not in its shortest form");
       return value;
-    }
-    // Lenient mode reads indefinite-length strings, arrays and maps, as
-    // cbor2 and ciborium do: items until the 0xff break.
-    if (!shortest && add === 31 && major >= 2 && major <= 5) {
-      const atBreak = (): boolean => {
-        if (data[offset] !== 0xff) return false;
-        offset += 1;
-        return true;
-      };
-      if (major === 2 || major === 3) {
-        // Each chunk is a definite-length string of the same major type.
-        const chunks: Uint8Array[] = [];
-        while (!atBreak()) {
-          const head = byte();
-          if (head >>> 5 !== major || (head & 31) === 31)
-            throw new SyntaxError("invalid indefinite-length string chunk");
-          chunks.push(take(argument(head & 31)));
-        }
-        const joined = new Uint8Array(
-          chunks.reduce((sum, chunk) => sum + chunk.length, 0),
-        );
-        let at = 0;
-        for (const chunk of chunks) {
-          if (major === 3) utf8.decode(chunk); // each chunk is valid UTF-8
-          joined.set(chunk, at);
-          at += chunk.length;
-        }
-        return major === 2 ? joined : utf8.decode(joined);
-      }
-      if (major === 4) {
-        const out: CborValue[] = [];
-        while (!atBreak()) out.push(item(depth + 1));
-        return out;
-      }
-      const entries: [CborValue, CborValue][] = [],
-        keys = new Set<string>();
-      while (!atBreak()) {
-        const key = item(depth + 1),
-          identity = identityOf(key);
-        if (keys.has(identity)) throw new SyntaxError("duplicate CBOR map key");
-        keys.add(identity);
-        entries.push([key, item(depth + 1)]);
-      }
-      return new CborMap(entries);
     }
     const length = argument(add);
     if (major === 0) return length;
@@ -302,7 +290,7 @@ function inclusionProof(blob: Uint8Array): {
   index: bigint;
   path: Uint8Array[];
 } {
-  const value = decodeCbor(blob, false);
+  const value = decodeReceiptItem(blob, false);
   if (!Array.isArray(value) || value.length !== 3)
     throw new SyntaxError(
       "inclusion proof must be [tree_size, leaf_index, [path]]",
@@ -394,7 +382,7 @@ export async function verifyCoseReceipt(
   });
   try {
     if (receipt.length > MAX_MESSAGE_BYTES) return fail("receipt too large");
-    const outer = decodeStrictCbor(receipt);
+    const outer = decodeReceiptItem(receipt, true);
     if (
       !(outer instanceof CborTag) ||
       outer.tag !== COSE_SIGN1_TAG ||
@@ -413,7 +401,7 @@ export async function verifyCoseReceipt(
         "receipt payload is attached; a receipt's payload must be detached",
       );
     const headers = protectedBytes.length
-      ? decodeStrictCbor(protectedBytes)
+      ? decodeReceiptItem(protectedBytes, false)
       : new CborMap([]);
     if (!(headers instanceof CborMap))
       return fail("protected header is not a map");

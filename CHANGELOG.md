@@ -28,6 +28,26 @@ has not yet.
   accepted, while scitt-cose, Python and TypeScript refuse it; only null (`0xf6`) is detached. The
   Rust crate had the same gap and is fixed too. New strict vector `neg-witness-cll-undefined-payload`
   (`vectors/bundle/strict/`, now 74 cases).
+- One stated decoding rule for COSE Receipts (AAC#520). `vectors/bundle/strict/README.md` "COSE
+  Receipts" said only that decoding "follows the scitt-cose verifiers", and the four languages
+  decided 37 of 62 single-encoding test receipts differently. The strict Bundle check now decodes
+  the COSE_Sign1, its protected header and each inclusion proof under the receipt encoding rule of
+  `spec/interop-profile-v1.md` §6.2.2, which the anchor check already used: definite lengths,
+  shortest arguments, no repeated key, integer or text keys, valid UTF-8, no float, no simple value
+  but false, true and null, no tag but the outer 18, at most 16 levels. The README also states the
+  10,485,760-octet and 16-proof limits, that a header label the check does not read is ignored
+  whatever its value, provided the receipt meets the encoding rule (only the labels listed there
+  are read for decisions), and the `crit` rule; §6.2.2 adds the UTF-8 words and that no array or map is
+  limited in length below the octet limit. Changed outcomes: a receipt with a float, a tag, a bignum
+  or a non-shortest inclusion proof now fails, so `pos-witness-registration-time-invalid` (a float
+  `iat`) and `pos-witness-registration-time-float-claim-key` are now
+  `neg-witness-registration-time-float-iat` and `neg-witness-registration-time-float-claim-key`,
+  INVALID: RFC 8392 allows a float NumericDate; this profile does not. Go: `VerifyCOSEReceipt` decodes with the shared `strictReceiptItem` (the lenient proof
+  decoding is gone), and Go's decoding no longer stops at 131,072 array items or map pairs, in both
+  checks. TypeScript: `verifyCoseReceipt` decodes with the new `decodeReceiptItem` (the lenient path
+  is gone). Python: the receipt check runs the rule and the `crit` check before scitt-cose, whose
+  reading and understood labels differ by version. 25 new strict vectors (`vectors/bundle/strict/`,
+  now 99 cases).
 
 ## go 0.18.0 — 2026-10-31
 
