@@ -25,6 +25,9 @@ document, so its output compares byte for byte with the Go and Rust adapters.
   listed log keys trusted. ``failed`` is null when both pass, else the first
   check that did not: ``envelope``, ``inclusion``, ``consistency`` or
   ``other``. Each failure's reason goes to stderr as ``id: reason``.
+- ``unavailable``: the cases of ``unavailable-window.json`` (-02 §4.7) to, per
+  statement case, ``{id, recognized, why, registration_time}`` and, per
+  display case, ``{id, state, shown_as, covered_by, labels}``.
 """
 import json
 import sys
@@ -154,9 +157,36 @@ def check_cll(doc):
     return out
 
 
+def _receipts(receipts):
+    return [er.RegistrationReceipt(r["time"], r["accepted"]) for r in receipts]
+
+
+def unavailable(cases):
+    out = []
+    for case in cases:
+        if case["kind"] == "statement":
+            reading = er.recognize_unavailable_window(case["statement"], _receipts(case["receipts"]),
+                                                      case["responder_key"])
+            out.append({"id": case["id"], "recognized": reading.recognized, "why": reading.why,
+                        "registration_time": reading.registration_time})
+            continue
+        absence = case["absence"]
+        state = er.record_outcome(absence["received"], window_open=absence["closed_at"] is None,
+                                  refusal=er.RefusalCheck(True, True, True))
+        shown = er.display_absence(
+            state, [(s["id"], s["statement"], _receipts(s["receipts"])) for s in case["statements"]],
+            responder_key=case["responder_key"], sent_at=absence["sent_at"], closed_at=absence["closed_at"])
+        labels = {sid: {"reason_class": label.reason_class, "registration_time": label.registration_time,
+                        "stated_afterwards": label.stated_afterwards, "stated_period": list(label.stated_period)}
+                  for sid, label in shown.labels.items()}
+        out.append({"id": case["id"], "state": shown.state, "shown_as": shown.shown_as,
+                    "covered_by": list(shown.covered_by), "labels": labels})
+    return out
+
+
 def main() -> int:
     commands = {"classify": classify, "refuse": refuse, "verify": verify, "envelope": envelope,
-                "check-envelope": check_envelope, "check-cll": check_cll}
+                "check-envelope": check_envelope, "check-cll": check_cll, "unavailable": unavailable}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
         print("usage: evidence_request_interlock.py " + "|".join(commands), file=sys.stderr)
         return 2

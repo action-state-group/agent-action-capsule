@@ -25,7 +25,7 @@ import (
 // repository's vectors/evidence-request. Every expected result there was
 // written from draft-mih-agent-evidence-request-00, never from an
 // implementation. Each corpus test requires the corpus's full case count,
-// and TestVectorChecksums requires those counts to total the manifest's 125.
+// and TestVectorChecksums requires those counts to total the manifest's 171.
 func vectorDir(t *testing.T) string {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
@@ -37,6 +37,7 @@ func vectorDir(t *testing.T) string {
 var corpusCounts = map[string]int{
 	"request.json": 33, "resolution.json": 19, "digest.json": 7, "refusal.json": 22,
 	"outcomes.json": 13, "invariance.json": 6, "retention.json": 25, "refusal-02.json": 11,
+	"unavailable-window.json": 35,
 }
 
 func readVector(t *testing.T, name string) []byte {
@@ -100,8 +101,8 @@ func TestVectorChecksums(t *testing.T) {
 			assert.Equal(t, 1, entry.Count)
 		}
 	}
-	require.Len(t, corpusCounts, 8)
-	assert.Equal(t, 136, total)
+	require.Len(t, corpusCounts, 9)
+	assert.Equal(t, 171, total)
 }
 
 // TestRegistryVector: the strings the draft fixes are this package's.

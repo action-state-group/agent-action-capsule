@@ -632,3 +632,75 @@ def test_a_refusal_frame_may_carry_any_integer_in_an_unknown_member():
 def test_issued_at_is_whole_second_utc():
     now = er._now_iso()
     assert er.parse_utc(now) is not None and "." not in now
+
+
+# --- unavailable-window statements (-02 §4.7) ---------------------------------------
+
+
+def _statement(signer: _Signer = PRIMARY, **members) -> dict:
+    body = {"start": "2026-10-29T10:00:00Z", "end": "2026-10-29T10:40:00Z", "reason_class": "flood"}
+    body.update(members)
+    body = {k: v for k, v in body.items() if v is not None}
+    sig, key_id = signer.sign(er.jcs({k: body[k] for k in er.UNAVAILABLE_SIGNED_MEMBERS if k in body}))
+    return {**body, "key_id": key_id, "sig": sig}
+
+
+def _accepted(*times: str) -> list:
+    return [er.RegistrationReceipt(t, True) for t in times]
+
+
+def test_an_unavailable_window_ending_before_it_starts_is_malformed():
+    st = _statement(start="2026-10-29T10:40:00Z", end="2026-10-29T10:39:59Z")
+    reading = er.recognize_unavailable_window(st, _accepted("2026-10-29T10:06:00Z"), PRIMARY.key_id)
+    assert reading == er.StatementReading(False, "malformed")
+    # A fraction is the deadline representation too, and orders as an instant.
+    st = _statement(start="2026-10-29T10:00:00.5Z", end="2026-10-29T10:00:00.25Z")
+    assert er.recognize_unavailable_window(st, _accepted(NOW), PRIMARY.key_id).why == "malformed"
+
+
+def test_an_unavailable_window_reason_outside_the_closed_list_is_malformed():
+    for reason in ("ddos", "Outage", "", None, 7):
+        st = _statement(reason_class=reason)
+        reading = er.recognize_unavailable_window(st, _accepted("2026-10-29T10:06:00Z"), PRIMARY.key_id)
+        assert reading.why == "malformed", reason
+    assert er.recognize_unavailable_window(["not", "a", "map"], [], PRIMARY.key_id).why == "malformed"
+
+
+def test_only_an_accepted_receipt_that_attests_a_time_registers_a_statement():
+    st = _statement()
+    for receipts in ([], [er.RegistrationReceipt("2026-10-29T10:06:00Z", False)],
+                     [er.RegistrationReceipt("not a time", True)]):
+        assert er.recognize_unavailable_window(st, receipts, PRIMARY.key_id).why == "not_registered"
+    receipts = [er.RegistrationReceipt("2026-10-29T09:00:00Z", False),
+                *_accepted("2026-10-29T10:30:00Z", "2026-10-29T10:06:00Z")]
+    assert er.recognize_unavailable_window(st, receipts, PRIMARY.key_id) == er.StatementReading(
+        True, None, "2026-10-29T10:06:00Z")
+
+
+def test_an_unavailable_window_under_a_small_order_key_is_not_the_responders():
+    identity = "01" + "00" * 31
+    st = {"start": "2026-10-29T10:00:00Z", "end": "2026-10-29T10:40:00Z", "reason_class": "flood",
+          "key_id": identity, "sig": identity + "00" * 32}
+    assert er.recognize_unavailable_window(st, _accepted(NOW), identity).why == "not_signed_by_responder"
+
+
+def test_a_statement_registered_after_the_window_closes_is_stated_afterwards():
+    statements = [("late", _statement(), _accepted("2026-10-29T10:20:01Z")),
+                  ("at-close", _statement(reason_class="outage"), _accepted("2026-10-29T10:20:00Z"))]
+    shown = er.display_absence("recorded_absence", statements, responder_key=PRIMARY.key_id,
+                               sent_at="2026-10-29T10:10:00Z", closed_at="2026-10-29T10:20:00Z")
+    assert shown.shown_as == er.UNAVAILABLE_SHOWN_AS
+    assert shown.covered_by == ("late", "at-close")
+    assert shown.labels["late"].stated_afterwards and not shown.labels["at-close"].stated_afterwards
+    assert shown.labels["late"].stated_period == ("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z")
+
+
+def test_only_a_recorded_absence_is_covered():
+    statements = [("s1", _statement(), _accepted("2026-10-29T10:06:00Z"))]
+    for state in ("pending", "refusal", "refusal_nonconformant", "artifact_verified"):
+        shown = er.display_absence(state, statements, responder_key=PRIMARY.key_id,
+                                   sent_at="2026-10-29T10:10:00Z", closed_at="2026-10-29T10:20:00Z")
+        assert shown == er.AbsenceDisplay(state, state, (), {}), state
+    with pytest.raises(ValueError):
+        er.display_absence("recorded_absence", statements, responder_key=PRIMARY.key_id,
+                           sent_at="2026-10-29T10:10:00Z", closed_at=None)

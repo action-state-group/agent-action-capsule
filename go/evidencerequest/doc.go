@@ -11,9 +11,11 @@
 // request digest over the octets as received, exact-match resolution over a
 // View of a responder's holdings, signed refusals and envelopes, reply
 // parsing, the three-state outcome discipline, retention commitments,
-// caller invariance, and the Merkle Mountain Range checks of the
-// Checkpointed Local Log material. Building artifacts, holding evidence and
-// carrying messages over a transport belong to the caller.
+// caller invariance, ER -02 §4.7 unavailable-window statements (which a
+// reader recognizes, and how it shows an absence one covers), and the
+// Merkle Mountain Range checks of the Checkpointed Local Log material.
+// Building artifacts, holding evidence and carrying messages over a
+// transport belong to the caller.
 //
 // The conformance vectors in vectors/evidence-request of this repository are
 // the package's tests. ERV An names ambiguity n in their README.

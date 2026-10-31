@@ -32,6 +32,9 @@ must agree on, and the responder's decision logic:
   :func:`classify_refusal`, :func:`classify_absence` and
   :func:`commitment_well_formed`: the three-state discipline, caller
   invariance and retention commitments, as a requester or auditor applies them.
+* :func:`recognize_unavailable_window` and :func:`display_absence`: -02 §4.7
+  unavailable-window statements, which ones a reader recognizes and how it
+  shows an absence one covers.
 
 **Wire shapes.** -00 leaves several shapes open; this module follows the
 readings the conformance vectors in ``vectors/evidence-request/`` document
@@ -90,6 +93,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
+from . import _ed25519_strict
 from ._ed25519_strict import verify_strict
 from .canonical import jcs
 from .interop_profile import _cbor
@@ -163,6 +167,15 @@ __all__ = [
     "classify_refusal",
     "classify_absence",
     "commitment_well_formed",
+    "UNAVAILABLE_REASON_CLASSES",
+    "UNAVAILABLE_SHOWN_AS",
+    "UNAVAILABLE_SIGNED_MEMBERS",
+    "RegistrationReceipt",
+    "StatementReading",
+    "StatementLabel",
+    "AbsenceDisplay",
+    "recognize_unavailable_window",
+    "display_absence",
 ]
 
 DRAFT = "draft-mih-agent-evidence-request-00"
@@ -1450,3 +1463,144 @@ def commitment_well_formed(commitment: Any) -> bool:
     except RequestError:
         return False
     return subject.form in ("record", "exchange", "range")
+
+
+# --- unavailable-window statements (-02 §4.7) ------------------------------------------
+
+#: The closed list of reason classes (-02 §4.7). Not a registry: it changes
+#: only with a revision of the draft.
+UNAVAILABLE_REASON_CLASSES = ("flood", "maintenance", "outage", "other_declared")
+
+#: How a reader shows an absence a statement covers (-02 §4.7 item 1).
+UNAVAILABLE_SHOWN_AS = "no answer; holder states unavailability"
+
+#: The statement members the signature covers, in the vectors' profile: those
+#: of these present, in RFC 8785 form (-02 §4.7 item 3 leaves the format to
+#: the deployment; ``unavailable-window.json`` ``signature_profile``).
+UNAVAILABLE_SIGNED_MEMBERS = ("end", "reason_class", "start")
+
+
+@dataclass(frozen=True)
+class RegistrationReceipt:
+    """One receipt on a checkpoint whose coverage includes a statement: the
+    time it attests, and whether it comes from a transparency service the
+    reader accepts as independent of the responder. Which services a reader
+    accepts is reader policy; a service the responder operates or controls is
+    never one (-02 §4.7)."""
+
+    time: str
+    accepted: bool
+
+
+@dataclass(frozen=True)
+class StatementReading:
+    """Whether a reader recognizes an unavailable-window statement. When it
+    does, ``why`` is ``None`` and ``registration_time`` is the earliest time an
+    accepted receipt attests, as that receipt spells it. When not, ``why`` is
+    ``"malformed"``, ``"not_signed_by_responder"`` or ``"not_registered"``, and
+    the reader treats the statement as if it did not exist."""
+
+    recognized: bool
+    why: str | None = None
+    registration_time: str | None = None
+
+
+def recognize_unavailable_window(statement: Any, receipts: Iterable[RegistrationReceipt],
+                                 responder_key: str) -> StatementReading:
+    """Read one unavailable-window statement (-02 §4.7) as a reader holding
+    ``receipts`` for it, for the responder whose key is ``responder_key``
+    (lowercase hex of the raw Ed25519 key a response would be authenticated
+    by).
+
+    It is malformed unless ``reason_class`` is one of
+    :data:`UNAVAILABLE_REASON_CLASSES` exactly and ``start`` and ``end`` are
+    RFC 3339 UTC times with ``end`` not earlier than ``start``. It is signed
+    by the responder when ``key_id`` is ``responder_key`` and ``sig`` is a
+    strict Ed25519 signature under it over :data:`UNAVAILABLE_SIGNED_MEMBERS`.
+    It is registered when at least one accepted receipt attests a time. Other
+    members are ignored and are never the reason. Needs the ``cryptography``
+    package (the ``envelope`` extra)."""
+    if not isinstance(statement, Mapping):
+        return StatementReading(False, "malformed")
+    start, end = parse_utc(statement.get("start")), parse_utc(statement.get("end"))
+    reason_class = statement.get("reason_class")
+    if (not isinstance(reason_class, str) or reason_class not in UNAVAILABLE_REASON_CLASSES or start is None
+            or end is None or end < start):
+        return StatementReading(False, "malformed")
+    key_id, sig = statement.get("key_id"), statement.get("sig")
+    if key_id != responder_key or not _is_hex_of_len(key_id, 32) or not _is_hex_of_len(sig, 64):
+        return StatementReading(False, "not_signed_by_responder")
+    body = jcs({k: statement[k] for k in UNAVAILABLE_SIGNED_MEMBERS if k in statement})
+    if not _ed25519_strict.verify_strict(bytes.fromhex(key_id), body, bytes.fromhex(sig)):
+        return StatementReading(False, "not_signed_by_responder")
+    attested = [(parse_utc(r.time), r.time) for r in receipts if r.accepted]
+    attested = [(instant, text) for instant, text in attested if instant is not None]
+    if not attested:
+        return StatementReading(False, "not_registered")
+    return StatementReading(True, registration_time=min(attested)[1])
+
+
+@dataclass(frozen=True)
+class StatementLabel:
+    """What a reader shows for one statement covering an absence (-02 §4.7
+    items 1 to 3): its reason class, its stated period from ``start`` to
+    ``end``, its registration time, and whether that time is later than the
+    close of the absence's waiting window ("stated afterwards"). It is the
+    responder's own statement, never proof that it was attacked or flooded."""
+
+    reason_class: str
+    registration_time: str
+    stated_afterwards: bool
+    stated_period: tuple[str, str]
+
+
+@dataclass(frozen=True)
+class AbsenceDisplay:
+    """How a reader shows a recorded state beside the statements it holds.
+    ``covered_by`` lists the ids of the covering statements in the order
+    given, and ``labels`` maps each to its :class:`StatementLabel`."""
+
+    state: str
+    shown_as: str
+    covered_by: tuple[str, ...]
+    labels: Mapping[str, StatementLabel]
+
+
+def display_absence(state: str, statements: Iterable[tuple[str, Any, Iterable[RegistrationReceipt]]], *,
+                    responder_key: str, sent_at: str | None = None,
+                    closed_at: str | None = None) -> AbsenceDisplay:
+    """How a reader shows the request recorded as ``state`` (a
+    :func:`record_outcome` state) beside ``statements``, each an ``(id,
+    statement, receipts)`` triple with distinct ids (-02 §4.7).
+
+    Only a ``"recorded_absence"`` can be covered: any other state, a refusal
+    or a pending request among them, is shown as itself and no statement
+    covers it. For an absence, ``sent_at`` and ``closed_at`` are its waiting
+    window, RFC 3339 UTC times (:class:`ValueError` otherwise). A statement
+    covers it when :func:`recognize_unavailable_window` recognizes it for
+    ``responder_key`` and its period, both ends included, shares an instant
+    with the window, both ends included. A covered absence is shown as
+    :data:`UNAVAILABLE_SHOWN_AS` with a label per covering statement; one with
+    no covering statement as ``"recorded_absence"``. The absence record and
+    its retention classification (:func:`classify_absence`) are unchanged."""
+    if state != "recorded_absence":
+        return AbsenceDisplay(state, state, (), {})
+    opened, closed = parse_utc(sent_at), parse_utc(closed_at)
+    if opened is None or closed is None:
+        raise ValueError("a recorded absence needs sent_at and closed_at as RFC 3339 UTC times")
+    covered_by, labels = [], {}
+    for statement_id, statement, receipts in statements:
+        reading = recognize_unavailable_window(statement, receipts, responder_key)
+        if not reading.recognized:
+            continue
+        if parse_utc(statement["start"]) > closed or parse_utc(statement["end"]) < opened:
+            continue
+        covered_by.append(statement_id)
+        labels[statement_id] = StatementLabel(
+            reason_class=statement["reason_class"],
+            registration_time=reading.registration_time,
+            stated_afterwards=parse_utc(reading.registration_time) > closed,
+            stated_period=(statement["start"], statement["end"]),
+        )
+    shown_as = UNAVAILABLE_SHOWN_AS if covered_by else "recorded_absence"
+    return AbsenceDisplay(state, shown_as, tuple(covered_by), labels)

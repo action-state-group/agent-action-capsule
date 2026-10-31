@@ -14,6 +14,7 @@ refusal, or the requester's own record that nothing arrived.
 | `outcome` | the one state an interaction is recorded as; a signed refusal is never an absence, and silence is never a refusal |
 | `invariance` | caller invariance: the same subject under the same anchor gives the same bytes |
 | `retention` | retention commitments and the breach table |
+| `unavailable_window` (unreleased) | -02 §4.7 unavailable-window statements: which ones a reader recognizes (well formed, signed by the responder, registered by an accepted receipt), and how it shows an absence one covers |
 | `receipt` (0.0.3) | check RFC 9162 Ed25519 receipt form and authenticate any matching inclusion proof under a pinned service key |
 | `envelope` (0.2.0) | the interop profile's artifact envelope (`evidence-interop/0` §6.2): sign it, encode it in either binding, read a reply as carried, and accept it as a responder's answer to your request |
 | `cll_material` (0.2.0, feature `cll`) | check the Checkpointed Local Log verification material an envelope carries (profile §6.2.1, `anchor_inclusion`) |

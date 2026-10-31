@@ -24,6 +24,10 @@
 // old_peaks_hex. failed is null when both pass, else the first check that did
 // not: envelope, inclusion or consistency. It never exits 1 on a failed check:
 // it reports each one, and its reason on stderr as id: reason.
+//
+// unavailable reads the cases of unavailable-window.json (ER -02 §4.7) and
+// writes {id, recognized, why, registration_time} for each statement case
+// and {id, state, shown_as, covered_by, labels} for each display case.
 package main
 
 import (
@@ -47,7 +51,7 @@ func (s seedSigner) Sign(_ context.Context, message []byte) ([]byte, error) {
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: evidencerequest_interlock classify|refuse|verify|envelope|check-envelope|check-cll")
+		fmt.Fprintln(os.Stderr, "usage: evidencerequest_interlock classify|refuse|verify|envelope|check-envelope|check-cll|unavailable")
 		os.Exit(2)
 	}
 	var out any
@@ -132,6 +136,11 @@ func main() {
 		}
 		if err = json.NewDecoder(os.Stdin).Decode(&doc); err == nil {
 			out, err = checkCLL(doc.Cases)
+		}
+	case "unavailable":
+		var cases []unavailableCase
+		if err = json.NewDecoder(os.Stdin).Decode(&cases); err == nil {
+			out, err = unavailable(cases)
 		}
 	default:
 		err = fmt.Errorf("unknown command %q", os.Args[1])

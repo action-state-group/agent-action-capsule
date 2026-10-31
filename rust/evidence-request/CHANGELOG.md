@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **`unavailable_window`**: ER -02 §4.7 unavailable-window statements. `recognize` reads a
+  statement for a responder key and the receipts held for it: a `ReasonClass` from the closed list,
+  `start` <= `end`, a `verify_strict` signature over the RFC 8785 form of `end`, `reason_class` and
+  `start`, and at least one accepted `RegistrationReceipt`. It gives the registration time, the
+  earliest accepted receipt's, or why the statement is `Ignored` (`malformed`,
+  `not_signed_by_responder`, `not_registered`). `display` shows a recorded absence beside the
+  statements held: covered by closed-interval overlap with the waiting window, shown as `SHOWN_AS`
+  with a `Label` per covering statement (class, stated period, registration time,
+  `stated_afterwards`). Any other state is shown as itself. `tests/vectors.rs` reads
+  `unavailable-window.json` (35 cases).
 - **`controller-binding` feature: Controller Binding v0** (`controller_binding`;
   `spec/controller-binding-v0.md`), the Rust sibling of Go's `controllerbinding`. `verify` reports
   a binding record's §6.1 properties (form, signatures, window, revocation, and the credential

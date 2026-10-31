@@ -16,6 +16,22 @@ Not in any tag yet: the changes after `python/v0.13.0`. The Rust crates keep the
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Evidence Request -02 §4.7 unavailable-window statements are read in Go, Python and Rust (AAC#477).
+  Go `evidencerequest.RecognizeUnavailableWindow` and Python
+  `evidence_request.recognize_unavailable_window` say whether a reader recognizes a statement (a
+  reason class from the closed list, `start` <= `end`, a strict Ed25519 signature by the responder
+  key over the RFC 8785 form of `end`, `reason_class` and `start`, and at least one accepted
+  receipt) and give its registration time, the earliest accepted receipt's, or why it is ignored
+  (`malformed`, `not_signed_by_responder`, `not_registered`). `DisplayAbsence` and
+  `display_absence` show a recorded absence beside the statements held: covered by closed-interval
+  overlap with the waiting window, shown as "no answer; holder states unavailability" with each
+  covering statement's class, stated period, registration time and `stated_afterwards`. Refusal,
+  pending and the retention classification are unchanged. Go and Rust now run every case of
+  `vectors/evidence-request/unavailable-window.json` (35), and the Python vector test calls the
+  library reader instead of its own copy. `scripts/evidence-request-interlock.sh` gains a step in
+  which Python, Go and Rust each report exactly the corpus's expectation for all 35 cases. Go's
+  strict Ed25519 check moves from `witness` to `internal/ed25519strict`, and Python's to
+  `agent_action_capsule._ed25519_strict`, so the witness and evidence-request readers share it.
 - Security, strict Ed25519 on trusted-key paths: each Ed25519 check under a pinned, registered or
   trusted key now uses the strict rule of #447 (A and R canonical and not of small order, S < L,
   then the cofactorless check), so a small-order key no longer verifies a forgery over any message,
