@@ -24,7 +24,7 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from .canonical import FloatInDigestError, UnsafeIntegerError, jcs
+from .canonical import FloatInDigestError, UnsafeIntegerError, jcs, loads_bounded
 
 __all__ = ["CATEGORY_STATUSES", "PROPERTIES", "GATING", "category_coverage_signing_input", "check_category_coverage"]
 
@@ -166,7 +166,7 @@ def _request(member: Mapping[str, Any], request: bytes | None) -> str:
     if "request_digest" in member and member["request_digest"] != hashlib.sha256(request).hexdigest():
         return FAIL
     try:
-        parsed = json.loads(request.decode("utf-8"), object_pairs_hook=_no_duplicates, parse_constant=_reject_constant)
+        parsed = loads_bounded(request.decode("utf-8"), object_pairs_hook=_no_duplicates, parse_constant=_reject_constant)
     except (UnicodeError, ValueError, TypeError, RecursionError):
         return NOT_CHECKED
     if _holds_lone_surrogate(parsed) or not isinstance(parsed, Mapping):
