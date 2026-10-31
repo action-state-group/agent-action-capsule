@@ -322,6 +322,22 @@ def test_invariance_vector(case):
     assert er.compare_observations(observations) == case["expect"]["invariance"]
 
 
+# --- refusal-02.json ---------------------------------------------------------------------------
+
+
+@_params("refusal-02")
+def test_refusal_02_vector(case):
+    """The -02 reasons as this module checks and classifies them; the load-shedding and mapping
+    cases state requirements no function here decides."""
+    expect, facts = case["expect"], case.get("facts", {})
+    if "refusal" in case:
+        check = er.check_refusal(case["refusal"])
+        assert (check.signature_valid, check.reason_registered, check.conformant) == (
+            expect["signature"] == "valid", expect["reason_registered"], expect["conformant"])
+    elif "commitment" in facts:
+        assert er.classify_refusal(facts["commitment"], facts["refusal_reason"]) == expect["classification"]
+
+
 # --- retention.json -----------------------------------------------------------------------------
 
 

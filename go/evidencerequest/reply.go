@@ -99,7 +99,7 @@ func (r Refusal) VerifyFor(responderKey, requestDigest string) error {
 // form (§5.2); CheckRefusal reads it as the request draft alone does.
 func (r Refusal) Conforming() bool {
 	_, timeOK := ParseProfileTime(r.IssuedAt)
-	return slices.Contains(RefusalReasons, r.Reason) && timeOK && IsDigest(r.RequestDigest)
+	return slices.Contains(profileRefusalReasons, r.Reason) && timeOK && IsDigest(r.RequestDigest)
 }
 
 // Value is the refusal's wire value.

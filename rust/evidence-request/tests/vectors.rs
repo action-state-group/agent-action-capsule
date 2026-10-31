@@ -516,6 +516,11 @@ fn refusal_02_corpus() {
                 expect["reason_registered"].as_bool().unwrap(),
                 "{id}: registered"
             );
+            assert_eq!(
+                result.conformant,
+                expect["conformant"].as_bool().unwrap(),
+                "{id}: conformant"
+            );
             read += 1;
         } else if let Some(commitment) = facts["commitment"].as_str() {
             let commitment = match commitment {

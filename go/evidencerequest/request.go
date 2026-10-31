@@ -40,9 +40,9 @@ const (
 // SubjectForms lists the six forms in code-point order.
 var SubjectForms = []SubjectKind{SubjectCheckpoints, SubjectCorrelation, SubjectExchange, SubjectFullHistory, SubjectRange, SubjectRecord}
 
-// Refusal reason tokens: the request draft's registry, verbatim (ER §13,
-// profile §9.1): the eight of -00, then the two -02 adds. No other token is
-// ever emitted.
+// Refusal reason tokens: the request draft's registry, verbatim (ER §13):
+// the eight of -00, which profile §9.1 lists, then the two -02 adds. No
+// other token is ever emitted.
 const (
 	ReasonNotAuthorized         = "not_authorized"
 	ReasonNoSuchSubject         = "no_such_subject"
