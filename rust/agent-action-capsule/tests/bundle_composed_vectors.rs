@@ -439,3 +439,16 @@ fn controller_binding_bundle_02_form_rules() {
         assert_eq!(derive_with(&record).0, None, "{name}");
     }
 }
+
+/// A sig that cannot be serialized (a float where a sig-hex belongs) is
+/// malformed under ed25519 keys and merely not implemented under a key type
+/// -02 does not define; the record's digest leaves sigs out, so it still
+/// matches its join.
+#[test]
+fn an_unserializable_sig_is_malformed_under_ed25519_and_unimplemented_otherwise() {
+    let mut record = linked_case()["controller_bindings"][0].clone();
+    record["sigs"][0]["sig"] = json!(1.5);
+    assert_eq!(derive_with(&record).0.as_deref(), Some("unjoined"));
+    record["key_types"] = json!(["ed25519", "x-example-type"]);
+    assert_eq!(derive_with(&record).1, "not_derivable");
+}

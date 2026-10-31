@@ -378,3 +378,16 @@ func bindingForm(record map[string]interface{}) bool {
 	_, wellFormed := bindingReport(record, nil, nil)
 	return wellFormed
 }
+
+// A sig that cannot be serialized (here a float) is malformed under ed25519
+// keys, which -02 holds to sig-hex, and merely not implemented under a key type
+// -02 does not define. The record's digest, which leaves sigs out, still
+// matches its join.
+func TestControllerBindingUnserializableSig(t *testing.T) {
+	record := cloneJSON(t, bindingCases(t)["controller-binding-linked"].ControllerBindings[0])
+	record["sigs"].([]interface{})[0].(map[string]interface{})["sig"] = 1.5
+	require.False(t, bindingForm(record))
+	record["key_types"] = []interface{}{"ed25519", "x-example-type"}
+	require.True(t, bindingForm(record))
+	require.False(t, implemented(record))
+}
