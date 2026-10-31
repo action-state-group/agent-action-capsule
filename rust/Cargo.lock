@@ -16,6 +16,7 @@ dependencies = [
  "checkpointed-local-log",
  "coset",
  "ed25519-dalek",
+ "evidence-request",
  "hex",
  "p256",
  "serde",

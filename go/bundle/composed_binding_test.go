@@ -360,3 +360,37 @@ func TestComposedControllerBindingSignedButMalformed(t *testing.T) {
 	composed = verifyBlock(t, c.Container, Options{ControllerBindings: []map[string]interface{}{swapped}})
 	require.Equal(t, "unjoined", composed.Joins[0].Derived)
 }
+
+// signingInput is the UTF-8 JCS of value without the member named omit.
+func signingInput(value map[string]interface{}, omit string) ([]byte, bool) {
+	rest := make(map[string]interface{}, len(value))
+	for k, v := range value {
+		if k != omit {
+			rest[k] = v
+		}
+	}
+	data, err := canonical.JCS(rest)
+	return data, err == nil
+}
+
+// bindingForm reports whether a record is well formed as -02 states it.
+func bindingForm(record map[string]interface{}) bool {
+	_, wellFormed := bindingReport(record, nil, nil)
+	return wellFormed
+}
+
+// A sig that cannot be serialized (here a float) is malformed under ed25519
+// keys, which -02 holds to sig-hex, and merely not implemented under a key type
+// -02 does not define. The record's digest, which leaves sigs out, still
+// matches its join.
+func TestControllerBindingUnserializableSig(t *testing.T) {
+	record := cloneJSON(t, bindingCases(t)["controller-binding-linked"].ControllerBindings[0])
+	record["sigs"].([]interface{})[0].(map[string]interface{})["sig"] = 1.5
+	require.False(t, bindingForm(record))
+	record["key_types"] = []interface{}{"ed25519", "x-example-type"}
+	require.True(t, bindingForm(record))
+	require.False(t, implemented(record))
+	// Still held to -02's form: an empty nonce is malformed whatever the key types.
+	record["nonce"] = ""
+	require.False(t, bindingForm(record))
+}

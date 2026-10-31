@@ -1,8 +1,17 @@
+import {
+  bindingAppliesTo,
+  parseRecordTime,
+  PROPERTY_FORM,
+  STATUS_PASS,
+  verifyBinding,
+  type BindingReport,
+  type Instant,
+} from "./controller-binding.js";
 import { isHex64, jcs, jsonDigest, sha256Hex } from "./json.js";
 
 /**
  * The `composed/v1` Evidence Bundle extension, verified
- * (draft-mih-zhang-agent-disclosure-bundle-01, "The composed/v1 Extension").
+ * (draft-mih-zhang-agent-disclosure-bundle-02, "The composed/v1 Extension").
  *
  * This is a port of the Go reference, `go/bundle/composed.go`, and reports
  * the same results with the same tokens: the recomputed composed digest,
@@ -32,6 +41,20 @@ export interface ComposedMemberClaims {
   readonly graphClosure: ComposedClaim;
   readonly intervalCoverage: ComposedClaim;
   readonly perRecordMembership: ComposedClaim;
+  /** Set for a well-formed empty-history Bundle: it shows no history. */
+  readonly history?: { readonly state: "none"; readonly since: string | null };
+}
+
+/**
+ * What a containing verifier is given beside the block: the Controller
+ * Binding records and revocation statements delivered beside the Bundle (not
+ * part of it), from which a `controller_binding` join is derived (draft -02,
+ * "Controller Binding Records"). A join whose record was not delivered is not
+ * derivable.
+ */
+export interface ComposedOptions {
+  readonly controllerBindings?: readonly Record<string, unknown>[];
+  readonly bindingRevocations?: readonly Record<string, unknown>[];
 }
 
 export interface ComposedClaim {
@@ -86,7 +109,8 @@ export interface ComposedJoinResult {
 export type RedundancyReason =
   | "same_observer"
   | "same_custody_domain"
-  | "same_key_id";
+  | "same_key_id"
+  | "controller_binding";
 
 export type CorroborationResult =
   | {
@@ -144,6 +168,12 @@ export type MemberBundleVerifier = (
   readonly graphClosure: ComposedClaim;
   readonly intervalCoverage: ComposedClaim;
   readonly perRecordMembership: ComposedClaim;
+  readonly history?: { readonly state: "none"; readonly since: string | null };
+  /** The signer and time of an empty-history-shaped Bundle's checkpoint. */
+  readonly emptyHistoryCheckpoint?: {
+    readonly keyId: string;
+    readonly timestamp: string;
+  };
 }>;
 
 type Obj = Record<string, unknown>;
@@ -167,6 +197,7 @@ const JOIN_BASES = new Set([
   "shared_artifact_digest",
   "issued_receipt",
   "same_interval",
+  "controller_binding",
 ]);
 const JOIN_STATES = new Set(["agree", "mismatch", "unjoined", "one_sided"]);
 
@@ -542,17 +573,263 @@ async function identifierMatches(
   return (await sha256Hex(utf8.encode(value.value))) === digest;
 }
 
-// go/bundle/composed.go:346-406
+/** The signer and time of an empty-history member's checkpoint. */
+type EmptyCheckpoint = {
+  readonly keyId: string;
+  readonly timestamp: string;
+};
+
+/**
+ * Whether a carried Bundle has the shape of an empty-history Bundle: an empty
+ * `records` list and no `root` (bundle.ts `emptyHistory`).
+ */
+const isEmptyHistory = (body: Obj): boolean =>
+  Array.isArray(body.records) &&
+  body.records.length === 0 &&
+  !Object.hasOwn(body, "root");
+
+/** One member's side of a controller_binding join. */
+interface BindingSide {
+  readonly key: string | undefined;
+  readonly at: Instant | undefined;
+}
+
+/** A root record's side: the key identifier `pointer` selects, and its timestamp. */
+function recordSide(record: Obj, pointer: string): BindingSide {
+  const resolved = resolvePointer(record, pointer);
+  return {
+    key: resolved.ok && isString(resolved.value) ? resolved.value : undefined,
+    at: parseRecordTime(record.timestamp),
+  };
+}
+
+/**
+ * Both bound keys are Ed25519 keys: `key_types` is absent, or names ed25519
+ * twice. -02 defines no other key type, so a record under one is skipped like
+ * a record under an unimplemented method.
+ */
+function ed25519Keys(record: Obj): boolean {
+  if (!Object.hasOwn(record, "key_types")) return true;
+  const types = record.key_types;
+  return (
+    Array.isArray(types) &&
+    types.length === 2 &&
+    types[0] === "ed25519" &&
+    types[1] === "ed25519"
+  );
+}
+
+/**
+ * Whether the record's method and key types are ones this verifier
+ * implements: a method -02 defines for the record's claim, and ed25519 keys.
+ */
+function implemented(record: Obj): boolean {
+  const want =
+    record.claim === "same_organization_credentialed"
+      ? "dual_signature_credential/0"
+      : "dual_signature/0";
+  return record.method === want && ed25519Keys(record);
+}
+
+const SIGNATURE_HEX = /^[0-9a-f]{128}$/u;
+
+/**
+ * Verify one delivered record through the one binding verifier,
+ * `controller-binding.ts`, at the given times. Returns the verifier's report
+ * and whether the record is well formed as -02 states it.
+ *
+ * -02 differs from Controller Binding v0 in two places, both applied here and
+ * nowhere else: an empty nonce is malformed, and a key type other than
+ * ed25519 is well formed without CB v0's rule for it (the 32-character bip340
+ * nonce), because -02 does not define that type.
+ */
+async function bindingReport(
+  record: Obj,
+  times: readonly Instant[],
+  statements: readonly Uint8Array[],
+): Promise<{ report?: BindingReport; wellFormed: boolean }> {
+  let octets: Uint8Array;
+  try {
+    octets = jcs(record);
+  } catch {
+    // The digest matched, so only sigs can be unserializable (a float or an
+    // integer beyond 2^53 where a sig-hex belongs): malformed under ed25519
+    // keys, which -02 holds to sig-hex, and merely not implemented under any
+    // other.
+    const types = record.key_types;
+    const shaped =
+      !Object.hasOwn(record, "key_types") ||
+      (Array.isArray(types) &&
+        types.length === 2 &&
+        isString(types[0]) &&
+        isString(types[1]));
+    if (!shaped || ed25519Keys(record)) return { wellFormed: false };
+    // Not implemented, but still held to -02's form: read it with each sig
+    // replaced by a string, which no other rule looks at.
+    const standin: Obj = { ...record };
+    if (Array.isArray(record.sigs))
+      standin.sigs = record.sigs.map((e: unknown) =>
+        object(e) && Object.hasOwn(e, "sig") ? { ...e, sig: "" } : e,
+      );
+    try {
+      jcs(standin);
+    } catch {
+      return { wellFormed: false };
+    }
+    return bindingReport(standin, times, statements);
+  }
+  const report = await verifyBinding(octets, times, {
+    revocations: statements,
+  });
+  if (Object.hasOwn(record, "key_types")) {
+    const list = record.key_types;
+    if (
+      !Array.isArray(list) ||
+      list.length !== 2 ||
+      !isString(list[0]) ||
+      !isString(list[1])
+    )
+      return { report, wellFormed: false };
+  }
+  if (!isString(record.nonce) || record.nonce === "")
+    return { report, wellFormed: false };
+  // Under ed25519 keys a sig is a sig-hex; -02 makes a record that fails this
+  // malformed, where CB v0 reads it as a signature that does not verify.
+  if (Array.isArray(record.sigs) && ed25519Keys(record))
+    for (const entry of record.sigs)
+      if (
+        !object(entry) ||
+        !isString(entry.sig) ||
+        !SIGNATURE_HEX.test(entry.sig)
+      )
+        return { report, wellFormed: false };
+  let formReport = report;
+  if (!ed25519Keys(record)) {
+    const subject: Obj = { ...record };
+    delete subject.key_types;
+    try {
+      formReport = await verifyBinding(jcs(subject), [], {});
+    } catch {
+      return { report, wellFormed: false };
+    }
+  }
+  return {
+    report,
+    wellFormed: formReport.properties[PROPERTY_FORM] === STATUS_PASS,
+  };
+}
+
+/**
+ * -02's binding digest: SHA-256 of the JCS of the record without `sigs`. A
+ * join names its record by it, so a record with another digest is skipped
+ * before any signature is checked.
+ */
+async function bindingDigest(
+  record: Record<string, unknown>,
+): Promise<string | undefined> {
+  const { sigs: _sigs, ...rest } = record;
+  try {
+    return await sha256Hex(jcs(rest));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The linkage of a controller_binding join between two sides. `derivable` is
+ * false when no delivered binding record has the join's identifier_digest, or
+ * when every one that does names a method or key type this verifier does not
+ * implement. Otherwise `linked` is true when one such record applies: well
+ * formed, signed by both bound keys, its keys exactly the two values
+ * `pointer` selects, in effect at both timestamps, and revoked by no
+ * delivered statement at or before either. The record checks are
+ * `controller-binding.ts`'s; only the join's reading of its report is here.
+ */
+async function controllerBindingLink(
+  j: Join,
+  a: BindingSide,
+  b: BindingSide,
+  options: ComposedOptions,
+): Promise<{ linked: boolean; derivable: boolean }> {
+  if (j.identifier === undefined) return { linked: false, derivable: false };
+  const times = a.at !== undefined && b.at !== undefined ? [a.at, b.at] : [];
+  const statements: Uint8Array[] = [];
+  for (const statement of options.bindingRevocations ?? [])
+    try {
+      statements.push(jcs(statement));
+    } catch {
+      /* a statement that cannot be serialized applies to nothing */
+    }
+  let derivable = false;
+  for (const record of options.controllerBindings ?? []) {
+    if (!object(record)) continue;
+    if ((await bindingDigest(record)) !== j.identifier) continue;
+    const { report, wellFormed } = await bindingReport(
+      record,
+      times,
+      statements,
+    );
+    if (!wellFormed) {
+      // A malformed record does not apply: the join derives, unjoined.
+      derivable = true;
+      continue;
+    }
+    if (!implemented(record)) continue;
+    derivable = true;
+    if (
+      report !== undefined &&
+      a.key !== undefined &&
+      b.key !== undefined &&
+      bindingAppliesTo(report, a.key, b.key)
+    )
+      return { linked: true, derivable: true };
+  }
+  return { linked: false, derivable };
+}
+
+// go/bundle/composed.go:346-406, with -02's controller_binding basis and
+// empty-history members.
 async function derivedState(
   j: Join,
   byId: ReadonlyMap<string, Member>,
   missing: ReadonlySet<string>,
+  checkpoints: ReadonlyMap<string, EmptyCheckpoint>,
+  options: ComposedOptions,
 ): Promise<{ derived?: JoinState; differences: JoinDifference[] }> {
   const a = byId.get(j.members[0])!;
   const b = byId.get(j.members[1])!;
-  const artifacts = [a, b].filter((m) => m.outcome === "artifact").length;
-  if (artifacts === 0) return { derived: "unjoined", differences: [] };
-  if (artifacts === 1) return { derived: "one_sided", differences: [] };
+  // An artifact member counts as having records unless its carried Bundle is
+  // an empty-history Bundle, which shows no history.
+  const withRecords: Member[] = [];
+  const empty: Member[] = [];
+  for (const m of [a, b]) {
+    if (m.outcome !== "artifact") continue;
+    if (!missing.has(m.id) && m.body !== undefined && isEmptyHistory(m.body))
+      empty.push(m);
+    else withRecords.push(m);
+  }
+  if (withRecords.length === 0) return { derived: "unjoined", differences: [] };
+  if (withRecords.length === 1) {
+    if (empty.length === 0 || j.basis !== "controller_binding")
+      return { derived: "one_sided", differences: [] };
+    // controller_binding still derives against an empty-history member, from
+    // the key that signed its checkpoint at that checkpoint's time.
+    const full = withRecords[0]!;
+    if (missing.has(full.id) || j.pointer === undefined)
+      return { differences: [] };
+    const record = rootRecord(full);
+    const checkpoint = checkpoints.get(empty[0]!.id);
+    if (record === undefined || checkpoint === undefined)
+      return { differences: [] };
+    const { linked, derivable } = await controllerBindingLink(
+      j,
+      recordSide(record, j.pointer),
+      { key: checkpoint.keyId, at: parseRecordTime(checkpoint.timestamp) },
+      options,
+    );
+    if (!derivable) return { differences: [] };
+    return { derived: linked ? "one_sided" : "unjoined", differences: [] };
+  }
   if (missing.has(a.id) || missing.has(b.id)) return { differences: [] };
   const ra = rootRecord(a);
   const rb = rootRecord(b);
@@ -576,6 +853,16 @@ async function derivedState(
         isString(vb.value) &&
         va.value === vb.value;
     }
+  } else if (j.basis === "controller_binding") {
+    if (j.pointer === undefined) return { differences: [] };
+    const link = await controllerBindingLink(
+      j,
+      recordSide(ra, j.pointer),
+      recordSide(rb, j.pointer),
+      options,
+    );
+    if (!link.derivable) return { differences: [] };
+    linked = link.linked;
   } else {
     // issued_receipt and same_interval are reserved: not derivable here.
     return { differences: [] };
@@ -625,6 +912,9 @@ function corroboration(
   const keyB = rootRecord(b)?.key_id;
   if (isString(keyA) && isString(keyB) && keyA === keyB)
     reasons.push("same_key_id");
+  // A controller_binding agreement is the bound keys' holders agreeing: their
+  // keys are not independent issuers (bundle -02).
+  if (j.basis === "controller_binding") reasons.push("controller_binding");
   if (reasons.length > 0)
     return {
       members: j.members,
@@ -645,6 +935,7 @@ async function verifyMember(
   m: Member,
   declaredMissing: boolean,
   verifyMemberBundle: MemberBundleVerifier,
+  checkpoints: Map<string, EmptyCheckpoint>,
 ): Promise<{
   member: ComposedMemberResult;
   closure: string[];
@@ -689,7 +980,12 @@ async function verifyMember(
       graphClosure: verification.graphClosure,
       intervalCoverage: verification.intervalCoverage,
       perRecordMembership: verification.perRecordMembership,
+      ...(verification.history === undefined
+        ? {}
+        : { history: verification.history }),
     };
+    if (verification.emptyHistoryCheckpoint !== undefined)
+      checkpoints.set(m.id, verification.emptyHistoryCheckpoint);
     // A carried response binds the artifact to the request it answered.
     if (m.response !== undefined) {
       if (m.response.request_digest !== m.requestDigest) {
@@ -757,6 +1053,7 @@ function sortedUnique(values: readonly string[]): string[] {
 export async function verifyComposed(
   raw: unknown,
   verifyMemberBundle: MemberBundleVerifier,
+  options: ComposedOptions = {},
 ): Promise<ComposedResult> {
   const parsed = parseComposed(raw);
   if (!parsed.ok)
@@ -793,10 +1090,16 @@ export async function verifyComposed(
   }
 
   const byId = new Map<string, Member>();
+  const checkpoints = new Map<string, EmptyCheckpoint>();
   const members: ComposedMemberResult[] = [];
   for (const m of block.members) {
     byId.set(m.id, m);
-    const result = await verifyMember(m, missing.has(m.id), verifyMemberBundle);
+    const result = await verifyMember(
+      m,
+      missing.has(m.id),
+      verifyMemberBundle,
+      checkpoints,
+    );
     members.push(result.member);
     closureFindings.push(...result.closure);
     failed.push(...result.failed);
@@ -825,7 +1128,13 @@ export async function verifyComposed(
   const joins: ComposedJoinResult[] = [];
   const corroborations: CorroborationResult[] = [];
   for (const j of block.joins) {
-    const { derived, differences } = await derivedState(j, byId, missing);
+    const { derived, differences } = await derivedState(
+      j,
+      byId,
+      missing,
+      checkpoints,
+      options,
+    );
     const result: ComposedJoinResult["result"] =
       derived === undefined
         ? "not_derivable"

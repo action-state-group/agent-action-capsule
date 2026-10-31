@@ -23,7 +23,7 @@ path = "src/lib.rs"
 default = []
 # Evidence Bundle v2. Off by default: checkpointed-local-log also carries an
 # HTTP witness client, which record verification does not need.
-bundle = ["dep:cll", "dep:base64", "dep:serde"]
+bundle = ["dep:cll", "dep:base64", "dep:serde", "dep:evidence-request"]
 # Strict Evidence Bundle verification (`bundle::verify_bundle_strict`) and
 # the witness receipt checks (`witness`).
 strict = ["bundle", "dep:p256"]
@@ -40,6 +40,9 @@ hex = "0.4"
 ed25519-dalek = "2"
 cll = { package = "checkpointed-local-log", version = "0.3.1", optional = true }
 base64 = { version = "0.22", optional = true }
+# The one Controller Binding v0 record verifier (`bundle`: the composed/v1
+# controller_binding join reads a binding record only through it).
+evidence-request = { version = "0.4.0", path = "../evidence-request", default-features = false, features = ["controller-binding"], optional = true }
 # Witness receipts (`strict`): the ECDSA P-256 keys and signatures of COSE
 # Receipts and of a Rekor entry's Signed Entry Timestamp. Receipts are decoded
 # by the crate's own strict CBOR reader.
@@ -76,4 +79,8 @@ required-features = ["settlement"]
 
 [[example]]
 name = "cross_language"
+required-features = ["strict"]
+
+[[test]]
+name = "bundle_composed_vectors"
 required-features = ["strict"]

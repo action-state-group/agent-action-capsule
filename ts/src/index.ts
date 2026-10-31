@@ -4,6 +4,7 @@ export * from "./bundle.js";
 export * from "./calibration-summary.js";
 export * from "./category-coverage.js";
 export * from "./composed.js";
+export * from "./controller-binding.js";
 export * from "./evidence-graph.js";
 export * from "./json.js";
 export * from "./model.js";

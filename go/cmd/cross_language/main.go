@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -30,7 +31,7 @@ import (
 	"github.com/action-state-group/checkpointed-local-log/go/cll"
 )
 
-const usage = "usage: cross_language seal|verify|signature|binding|bundle-produce <kind>|bundle-verify"
+const usage = "usage: cross_language seal|verify|signature|binding|bundle-produce <kind>|bundle-verify|composed-verify"
 
 func main() {
 	args := os.Args[1:]
@@ -39,6 +40,8 @@ func main() {
 		os.Exit(bundleProduce(args[1]))
 	case len(args) == 1 && args[0] == "bundle-verify":
 		os.Exit(bundleVerify())
+	case len(args) == 1 && args[0] == "composed-verify":
+		os.Exit(composedVerify(os.Stdin, os.Stdout, os.Stderr))
 	case len(args) == 1 && args[0] == "signature":
 		os.Exit(signature(os.Stdin, os.Stdout, os.Stderr))
 	case len(args) == 1 && args[0] == "binding":
@@ -298,4 +301,61 @@ func bundleVerify() int {
 	}
 	fmt.Println(bundle.VerifyStrict(value, bundle.StrictOptions{}).Verdict)
 	return 0
+}
+
+// composedVerify reads {container, controller_bindings, binding_revocations}
+// and prints the container's composed/v1 block as one JCS line: its status
+// and, per join, the declared and derived state, result and corroboration.
+// The Python, TypeScript and Rust adapters print the same line.
+func composedVerify(in io.Reader, out, errOut io.Writer) int {
+	decoder := json.NewDecoder(in)
+	decoder.UseNumber()
+	var input struct {
+		Container          interface{}              `json:"container"`
+		ControllerBindings []map[string]interface{} `json:"controller_bindings"`
+		BindingRevocations []map[string]interface{} `json:"binding_revocations"`
+	}
+	if err := decoder.Decode(&input); err != nil {
+		fmt.Fprintln(errOut, err)
+		return 2
+	}
+	result := bundle.VerifyBundleWithOptions(input.Container, bundle.Options{
+		ControllerBindings: input.ControllerBindings,
+		BindingRevocations: input.BindingRevocations,
+	})
+	for _, extension := range result.Extensions {
+		composed := extension.Composed
+		if composed == nil {
+			continue
+		}
+		joins := make([]interface{}, len(composed.Joins))
+		for i, join := range composed.Joins {
+			var derived, reason interface{}
+			if join.Derived != "" {
+				derived = join.Derived
+			}
+			if composed.Corroboration[i].Reason != "" {
+				reason = composed.Corroboration[i].Reason
+			}
+			joins[i] = map[string]interface{}{
+				"members": []interface{}{join.Members[0], join.Members[1]}, "declared": join.Declared,
+				"derived": derived, "result": join.Result,
+				"corroboration": composed.Corroboration[i].Result, "reason": reason,
+			}
+		}
+		findings := make([]interface{}, 0, len(composed.Findings))
+		for _, finding := range composed.Findings {
+			findings = append(findings, finding)
+		}
+		sort.Slice(findings, func(i, k int) bool { return findings[i].(string) < findings[k].(string) })
+		line, err := canonical.JCS(map[string]interface{}{"status": composed.Status, "findings": findings, "joins": joins})
+		if err != nil {
+			fmt.Fprintln(errOut, err)
+			return 2
+		}
+		fmt.Fprintf(out, "%s\n", line)
+		return 0
+	}
+	fmt.Fprintln(errOut, "no composed/v1 block")
+	return 1
 }
