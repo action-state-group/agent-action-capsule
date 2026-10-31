@@ -29,11 +29,15 @@ import argparse
 import base64
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ed25519_forgeries import IDENTITY, identity_r  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 # The identifier this run writes, and the one the version cases use as the other identifier.
@@ -171,7 +175,19 @@ PRIV = {name: Ed25519PrivateKey.from_private_bytes(sha(label.encode())) for name
 PUB = {name: k.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex() for name, k in PRIV.items()}
 
 
+# Strict Ed25519 negatives (/1 only, §5.2). "small-order" is the identity point as a public key, with the
+# signature R = identity, S = 0, which verifies over any message under a lenient verifier. "identity-r" is
+# the responder's own signature with R the identity point. Neither is a signature by an honest key under
+# strict verification.
+SMALL_ORDER_KEY = IDENTITY.hex()
+PUB["small-order"] = SMALL_ORDER_KEY
+
+
 def sign(name: str, message: bytes) -> str:
+    if name == "small-order":
+        return (IDENTITY + bytes(32)).hex()
+    if name == "identity-r":
+        return identity_r(PRIV["responder"], message).hex()
     return PRIV[name].sign(message).hex()
 
 
@@ -663,11 +679,11 @@ def exchange_cases() -> list[dict]:
         env_props(anchor_inclusion="FAIL")))
 
     def refusal_case(case_id: str, description: str, cites: list, data: bytes, props: dict, row: str,
-                     extra: dict | None = None) -> dict:
+                     extra: dict | None = None, policy: dict | None = None) -> dict:
         rep = {"message_type": "refusal", "properties": props, "requirements": {"r-record": mapped(row)},
                "claim": {"evidence": [ref(shx(data))], "proofs": []}}
         rep.update(extra or {})
-        return {"id": case_id, "description": description, "cites": cites, "pins": pins(EVAL),
+        return {"id": case_id, "description": description, "cites": cites, "pins": pins(EVAL, policy),
                 "inputs": {"request": octets(J, req_c), "replies": [reply("http", data, J)]},
                 "expected": {"request_digest": shx(req_c), "replies": [rep]}}
 
@@ -685,6 +701,39 @@ def exchange_cases() -> list[dict]:
         ["§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-54"],
         refusal(req_c, "no_such_subject", "2026-10-12T00:00:11Z", signer="impostor"),
         ref_props(refusal_signature="FAIL"), "refusal-failed"))
+    if VERSION >= 1:
+        strict = trust_policy(responder_keys=[PUB["responder"], SMALL_ORDER_KEY])
+        small = ("signed by a key of small order, the identity point, that the trust policy accepts, with R the "
+                 "identity point and S zero, which a lenient verifier accepts over any message. Strict Ed25519 "
+                 "(§5.2) refuses it: ")
+        ident = ("signed by the trusted responder's own key with R the identity point, a signature only that key "
+                 "holder can make and that a lenient verifier accepts. Strict Ed25519 (§5.2) refuses it: ")
+        out.append(envelope_case(
+            "envelope-small-order-key",
+            "Envelope C " + small + "envelope_signature FAIL, so anchor_inclusion is never run (§6.2.1 step 4). "
+            "responder_trust checks the named key against the policy and passes (reading P-54).",
+            ["§5.2", "§7.2 envelope_signature", "§6.2.1 step 4", "§8.1 row 2", "P-54", "P-68"],
+            envelope(req_c, ART, ANCHOR1, ARTIFACT, MATERIAL1, "2026-10-12T00:00:11Z", J, key="small-order"),
+            env_props(envelope_signature="FAIL", anchor_inclusion="NOT_CHECKED"), policy=strict))
+        out.append(envelope_case(
+            "envelope-identity-r",
+            "Envelope C " + ident + "envelope_signature FAIL, so anchor_inclusion is never run (§6.2.1 step 4).",
+            ["§5.2", "§7.2 envelope_signature", "§6.2.1 step 4", "§8.1 row 2", "P-68"],
+            envelope(req_c, ART, ANCHOR1, ARTIFACT, MATERIAL1, "2026-10-12T00:00:11Z", J, signer="identity-r"),
+            env_props(envelope_signature="FAIL", anchor_inclusion="NOT_CHECKED")))
+        out.append(refusal_case(
+            "forged-refusal-small-order-key",
+            "A refusal " + small + "refusal_signature FAIL; UNKNOWN. responder_trust checks the named key "
+            "against the policy and passes (reading P-54).",
+            ["§5.2", "§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-54", "P-68"],
+            refusal(req_c, "no_such_subject", "2026-10-12T00:00:11Z", key="small-order"),
+            ref_props(refusal_signature="FAIL"), "refusal-failed", policy=strict))
+        out.append(refusal_case(
+            "forged-refusal-identity-r",
+            "A refusal " + ident + "refusal_signature FAIL; UNKNOWN.",
+            ["§5.2", "§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-68"],
+            refusal(req_c, "no_such_subject", "2026-10-12T00:00:11Z", signer="identity-r"),
+            ref_props(refusal_signature="FAIL"), "refusal-failed"))
     out.append(refusal_case(
         "declined",
         "A conforming refusal with reason policy_declined. WITHHELD, which projects to GAP; the claim's "
@@ -1541,8 +1590,12 @@ def build() -> dict[str, bytes]:
         "profile": PROFILE,
         "spec": SPEC,
         "test_keys": {
-            "note": "TEST-ONLY. Each private key is the 32-byte Ed25519 seed SHA-256(seed_label).",
-            "keys": {name: {"seed_label": SEED_LABELS[name], "public": PUB[name]} for name in SEED_LABELS},
+            "note": "TEST-ONLY. Each private key is the 32-byte Ed25519 seed SHA-256(seed_label)." + (
+                " small-order is the identity point as a public key: it has no private key and its signatures "
+                "are forged (§5.2, P-68)." if VERSION >= 1 else ""),
+            "keys": {name: {"seed_label": SEED_LABELS[name], "public": PUB[name]} for name in SEED_LABELS}
+            | ({"small-order": {"seed_label": "none: the identity point, a key of small order", "public": SMALL_ORDER_KEY}}
+               if VERSION >= 1 else {}),
         },
         "contract": {
             "document": CONTRACT,

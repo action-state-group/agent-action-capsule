@@ -34,6 +34,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
+from agent_action_capsule._ed25519_strict import strict_encoding
 from agent_action_capsule.canonical import jcs
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -88,7 +89,10 @@ def d64(text: str) -> bytes:
     return base64.b64decode(text, validate=True)
 
 
-def verifies(key_hex: str, sig_hex: str, message: bytes) -> bool:
+def verifies(key_hex: str, sig_hex: str, message: bytes, *, strict: bool = True) -> bool:
+    """Ed25519; at /1 strict (§5.2) unless ``strict`` is False, for a foreign object's own check (§5.1)."""
+    if strict and VERSION >= 1 and not strict_encoding(bytes.fromhex(key_hex), bytes.fromhex(sig_hex)):
+        return False  # §5.2: strict Ed25519, P-68
     try:
         Ed25519PublicKey.from_public_bytes(bytes.fromhex(key_hex)).verify(bytes.fromhex(sig_hex), message)
         return True
@@ -412,7 +416,8 @@ class Verifier:
         header = strict_json(d64u(h).decode("utf-8"))
         if header.get("alg") != "EdDSA" or header.get("kid") not in self.policy["foreign_keys"]:
             return "FAIL"
-        return "PASS" if verifies(header["kid"], d64u(s).hex(), f"{h}.{p}".encode("ascii")) else "FAIL"
+        ok = verifies(header["kid"], d64u(s).hex(), f"{h}.{p}".encode("ascii"), strict=False)
+        return "PASS" if ok else "FAIL"
 
     def envelope_rows(self, props: dict, invariance_fail: bool, native: str | None) -> dict:
         req = self.required_ok(props)
@@ -1069,6 +1074,9 @@ def test_invariant_check_catches_its_mutant(mutation):
 
 def test_test_keys_derive_from_their_stated_seeds():
     for name, k in DATA["test_keys"]["keys"].items():
+        if name == "small-order":  # the identity point: a public key with no private key (§5.2)
+            assert k["public"] == "01" + "00" * 31
+            continue
         priv = Ed25519PrivateKey.from_private_bytes(sha(k["seed_label"].encode()))
         assert priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex() == k["public"], name
     assert "TEST-ONLY" in DATA["test_keys"]["note"]

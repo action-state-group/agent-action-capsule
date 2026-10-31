@@ -12,7 +12,7 @@ This is revision v1, identified as `evidence-interop/1` (§3.1). It is `evidence
 (`spec/interop-profile-v0.md`, frozen) with ER re-pinned from -01 to -02, the two refusal reasons
 -02 registers added to §9.1 and mapped in §8.1, -02's unavailable-window statements deferred, and
 a witness Receipt over an anchor added with its own check (§6.2.2), which changes no check of an
-exchange. P-65 to P-67 list every change. `evidence-interop/0` keeps its meaning: a responder or verifier
+exchange. P-65 to P-68 list every change. `evidence-interop/0` keeps its meaning: a responder or verifier
 that implements both checks each exchange under the identifier it names.
 
 This revision covers versions (§3), naming (§4), canonical bytes (§5), the digest and signature
@@ -295,7 +295,7 @@ signature verifies in both bindings.
 | Digest | SHA-256, 64 lowercase hexadecimal characters, a text string in both encodings | ERV A2 |
 | Time | RFC 3339 UTC with `Z`, seconds precision, no fractional part: `YYYY-MM-DDTHH:MM:SSZ` | ERV A5; P-12 |
 | Key identifier | the raw 32-byte Ed25519 public key, 64 lowercase hexadecimal characters | ERV A7 |
-| Signature | Ed25519 (RFC 8032), 64 bytes, 128 lowercase hexadecimal characters | ERV A7 |
+| Signature | Ed25519 (RFC 8032), 64 bytes, 128 lowercase hexadecimal characters, verified strictly (below) | ERV A7; P-68 |
 | Subject | a map with exactly one member, named by the form token: `null` for `full_history` and `checkpoints`, a digest for `record` and `exchange`, `[a, b]` (two unsigned integers, `a` ≤ `b`) for `range`, a text string for `correlation` | ERV A1, A6 |
 | Coverage | `{"expected_pin": <digest>}` or `{"min_freshness": <unsigned integer log size, or time>}` | ER §3.2; ERV A3 |
 | Derivation | a registered token with a `/N` suffix, or a 64-hex definition digest | ER §3.3; ERV A14 |
@@ -314,6 +314,19 @@ level and `[[]]` two. The bound is the same in every implementation of this prof
 Conventions section of its unposted working revision
 (`spec/draft-mih-scitt-agent-action-capsule-06.md`); that revision is not pinned here, and the
 requirement above is this profile's own [P-12].
+
+A signature under this profile is verified with strict Ed25519 [P-68]: the public key and the
+signature's R must each be a canonical encoding and not of small order, S must be below the group
+order, and the cofactorless equation must hold, as the capsule draft defines in the Conventions
+section of its unposted working revision (`spec/draft-mih-scitt-agent-action-capsule-06.md`).
+That revision is not pinned here either; the rule is this profile's own. A signature that fails
+it is a failed signature: for a response, the verifier reports the signature property for that
+object (for example `envelope_signature` or `refusal_signature`) as `FAIL`, and a signature by a key
+of small order under a trust policy that accepts the key is still `FAIL`. `vectors/interop-profile-v1/` holds four
+cases of it: `envelope-small-order-key`, `envelope-identity-r`, `forged-refusal-small-order-key`
+and `forged-refusal-identity-r`. The rule applies to every Ed25519 signature that a check of §6,
+§7.2 or §11 verifies, the Checkpointed Local Log checkpoint signature included; a signature inside a
+foreign object, which the profile only carries, is checked by that object's own check (§5.1).
 
 ## 6. Messages, and what binds them
 
@@ -3018,8 +3031,8 @@ Each is a requirement this profile adds that no pinned document states. Each is 
 a later draft revision.
 
 P-1 to P-64 are carried over from `evidence-interop/0`. Where one records how that revision came
-to be, as P-8, P-31 and P-64 do, it is kept as written. P-65 lists what v1 changes, and P-66 what
-it defers.
+to be, as P-8, P-31 and P-64 do, it is kept as written. P-65 lists what v1 changes, P-66 what
+it defers, and P-68 the strict Ed25519 rule.
 
 - **P-1** The profile identifier names one exact revision. Before first publication, filling a §11
   placeholder that only adds objects, rows and properties keeps it. Any byte-level change requires a new
@@ -3363,6 +3376,17 @@ it defers.
   and the envelope it signs; a witness countersignature [CLL §3.3 item 2]; a way for a Receipt to
   say that its witness checked continuity [CLL §3.2 item 2]; and any other Receipt profile than
   RFC9162_SHA256.
+- **P-68** Strict Ed25519 verification (§5.2). RFC 8032 leaves open which verification equation a verifier uses, and so how it treats a public key
+  or an R of small order. With a key of small order that a trust policy accepts, a signature exists that a lenient verifier accepts and a
+  strict one rejects, so two conforming verifiers could report the same exchange differently. The
+  profile therefore fixes one condition for every verifier. The rule is the capsule draft -06
+  Conventions rule, cited and not pinned, as for the nesting limit (P-12). It applies to every
+  signature that a check of §6, §7.2 or §11 verifies: the envelope and the refusal, the optional
+  requester signature of an absence record, the checkpoint signature behind `anchor_inclusion`, the
+  acceptance record and its receipt, the execution and producer records of §11.1 and §11.2, and the
+  lifecycle statement; the witness Receipt already says it (P-67). `evidence-interop/0` is frozen and states no rule. Left open: a signature inside a
+  foreign object, which that object's own check decides, and the Producer Envelope of a Capsule,
+  which the capsule draft does not yet make strict (#322).
 
 ## References
 

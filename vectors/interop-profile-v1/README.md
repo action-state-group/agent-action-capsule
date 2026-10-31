@@ -32,5 +32,13 @@ the expected values; all of it holds here unchanged.
     `evidence-interop/0`. Under v0 the token is unregistered, so `reason_registered` is `FAIL` and
     the reply is a response received and failed, `UNKNOWN`.
 
+- Four cases are strict Ed25519 negatives (§5.2, P-68). Each expects the signature property `FAIL`, which
+  a verifier that accepts the signature does not give:
+  - `envelope-small-order-key` and `forged-refusal-small-order-key`: the responder key is the identity
+    point (`small-order` in `test_keys`), which the case's trust policy accepts, with R the identity
+    point and S zero;
+  - `envelope-identity-r` and `forged-refusal-identity-r`: the trusted responder's own signature with R
+    the identity point.
+
 The key seed labels and log entry labels keep their `evidence-interop/0` text. They are labels,
 not identifiers: keeping them keeps the test keys and the §10.1 log of both revisions the same.
