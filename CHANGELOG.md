@@ -97,7 +97,9 @@ has not yet.
   Personal-Agent History Basic and Outcome levels (`personal_history_basic/1`,
   `personal_history_outcome/1`) and Inference-Service History (`inference-service-history/0`) are
   restated as its instances. The period rules stay Inference-Service History's own. No identifier,
-  definition digest or vector changes; SH §9 gains a "Differencing" note. New
+  definition digest or vector changes; SH §9 gains a "Differencing" note, and SH now states the
+  frame's composition rule (separate subjects compose only by an evidence-backed key link), which
+  it did not state before. New
   `vectors/history-frame-v0/` (9 cases: the four instances' documents, a mismatched pack digest
   and four other negatives), and the four instance generators assert that the documents match what
   they emit.
