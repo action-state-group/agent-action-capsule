@@ -23,6 +23,18 @@ has not yet.
   less for its depth alone, with `vectors/json-nesting/` as its conformance set.
   `spec/interop-profile-v1.md` §5.2, `VECTORS.md` and the vector README and manifest cite it.
   Nothing is posted until the -06 cut; the wire value stays `draft-mih-scitt-agent-action-capsule-05`.
+- The capsule draft states the Producer Envelope CBOR encoding rule (AAC#258): -06's Producer Envelope
+  wire profile says every CBOR data item, protected-header contents included, has a definite length and
+  preferred serialization (RFC 8949 §4.1), every NaN is in half precision, map keys are unique, the
+  outermost tag 18 is the only tag, the unprotected header is a map and the payload and signature are
+  byte strings, and a verifier rejects any violation. Python, Go, TypeScript and Rust already enforced
+  it (AAC#256); `vectors/producer-envelope/` pins it, and its README now cites -06.
+- The settlement draft cites the JSON nesting limit (AAC#518): the in-tree working revision
+  `spec/draft-mih-agent-settlement-records-01.md` (cut from the posted -00, built by `make settlement`)
+  says a leg record is subject to the capsule profile's 128-level limit, which a verifier applies to
+  each leg record before any settlement check, and cites capsule draft -06. The `settlement` member's
+  `version` stays `"0"`; `vectors/settlement/` and the implementations still cite -00. Nothing is
+  posted until capsule -06 is.
 - Go `witness.VerifyCOSEReceipt` refuses a COSE Receipt whose payload is CBOR undefined (`0xf7`)
   (AAC#519). fxamacker decodes undefined and null alike, so such a receipt was read as detached and
   accepted, while scitt-cose, Python and TypeScript refuse it; only null (`0xf6`) is detached. The
