@@ -1,7 +1,7 @@
 {
   "format_version": "1",
   "profile": "draft-mih-scitt-agent-action-capsule-04#producer-envelope",
-  "count": 47,
+  "count": 49,
   "cases": [
     {
       "name": "valid",
@@ -190,6 +190,14 @@
     {
       "name": "protected-alg-map-duplicate-keys",
       "description": "protected alg is a map whose two keys are one map with its entries in two orders"
+    },
+    {
+      "name": "outer-trailing-octet",
+      "description": "a valid envelope followed by one more CBOR item, the integer 0"
+    },
+    {
+      "name": "protected-trailing-octet",
+      "description": "signed protected-header byte string holding the protected map followed by the integer 0"
     }
   ]
 }
