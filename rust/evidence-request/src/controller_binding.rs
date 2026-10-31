@@ -23,10 +23,11 @@
 //! Records, statements and lists are read with a strict decoder: a
 //! duplicate member name, invalid UTF-8 or an unpaired surrogate makes them
 //! unreadable. Numbers are read as JSON numbers, so a `created_at` of `-1`
-//! is a signature that fails, not a record that cannot be read. A number
-//! that is not an integer has no RFC 8785 form here (`jcs`), so a record
-//! with one outside `sigs`, which is malformed anyway, reports no binding
-//! digest; Go's `controllerbinding` reports one.
+//! is a signature that fails, not a record that cannot be read. As in Go's
+//! `canonical.JCS`, a number that is not an integer, or an integer beyond
+//! ±(2^53 − 1), has no RFC 8785 form, so a record with one outside `sigs`
+//! (malformed anyway) reports no binding digest, and a statement with one
+//! outside `sig` does not apply.
 //!
 //! The conformance vectors in `vectors/controller-binding-v0/` are the
 //! module's tests (`tests/controller_binding_vectors.rs`).
@@ -435,7 +436,7 @@ pub fn verify(record: &[u8], times: &[UtcTime], opts: &Options) -> Report {
         report.properties.insert(PROPERTY_FORM, Status::Fail);
         return report;
     };
-    let signing_input = jcs::to_string(&Value::Object(without(&r, "sigs"))).ok();
+    let signing_input = canonical(&Value::Object(without(&r, "sigs")));
     report.binding_digest = signing_input.as_deref().map(sha256_hex);
     report.claim = r.get("claim").and_then(Value::as_str).map(str::to_owned);
     if let Some([Value::String(first), Value::String(second)]) =
@@ -506,6 +507,22 @@ pub fn verify(record: &[u8], times: &[UtcTime], opts: &Options) -> Report {
         }
     }
     report
+}
+
+/// UTF-8 of RFC 8785 JCS of `value`, or `None` when it has no form: a
+/// number that is not an integer, or an integer beyond ±(2^53 − 1), which
+/// Go's `canonical.JCS` refuses too (an implementation that writes it as a
+/// double would give other bytes).
+fn canonical(value: &Value) -> Option<String> {
+    fn safe(v: &Value) -> bool {
+        match v {
+            Value::Number(n) => n.as_i64().is_some_and(|i| i.unsigned_abs() <= MAX_INTEGER),
+            Value::Array(items) => items.iter().all(safe),
+            Value::Object(m) => m.values().all(safe),
+            _ => true,
+        }
+    }
+    safe(value).then(|| jcs::to_string(value).ok()).flatten()
 }
 
 fn sha256_hex(octets: impl AsRef<[u8]>) -> String {
@@ -782,7 +799,7 @@ fn revocation_status(
         let Some(index) = keys.iter().position(|k| s["key_id"] == *k) else {
             continue; // only a bound key revokes
         };
-        let Ok(signed) = jcs::to_string(&Value::Object(without(s, "sig"))) else {
+        let Some(signed) = canonical(&Value::Object(without(s, "sig"))) else {
             continue;
         };
         if !verify_sig(
@@ -867,9 +884,10 @@ fn why_not(
     if as_of > l.evaluated_at {
         return why("as_of is later than the evaluation time");
     }
-    // In whole seconds (CB §5.1). E is not before as_of here and max_age is
-    // at most 2^53 - 1, so neither side overflows an i64.
-    if l.evaluated_at.seconds - as_of.seconds > d.max_age as i64 {
+    // In whole seconds (CB §5.1). E is the caller's, so the difference may
+    // not fit an i64; one that does not is past any max_age.
+    let elapsed = l.evaluated_at.seconds.checked_sub(as_of.seconds);
+    if elapsed.is_none_or(|s| s > d.max_age as i64) {
         return why("the evaluation time is more than max_age after as_of");
     }
     None
@@ -1006,5 +1024,57 @@ mod tests {
             )
             .counts
         );
+    }
+
+    /// E is the caller's: E − as_of that does not fit an i64 is past any
+    /// max_age, with no panic and no wrap to a count.
+    #[test]
+    fn an_elapsed_time_beyond_i64_does_not_count() {
+        let digest = "0".repeat(64);
+        let as_of = "0001-01-01T00:00:00Z";
+        let list = RevocationList {
+            declaration: format!(
+                r#"{{"profile":"p","asserted_by":"a","binding":"{digest}","list_digest":"{}","as_of":"{as_of}","max_age":{MAX_INTEGER}}}"#,
+                sha256_hex(b"[]")
+            )
+            .into_bytes(),
+            list: b"[]".to_vec(),
+            evaluated_at: UtcTime {
+                seconds: i64::MAX,
+                nanos: 0,
+            },
+        };
+        let t = parse_utc(as_of).unwrap();
+        assert!(
+            t.seconds < 0,
+            "as_of is before 1970, so E - as_of overflows"
+        );
+        let report = list_report(&list, &digest, &[t]);
+        assert!(!report.counts);
+        assert_eq!(
+            report.reason.as_deref(),
+            Some("the evaluation time is more than max_age after as_of")
+        );
+    }
+
+    #[test]
+    fn integers_beyond_2_53_have_no_canonical_form() {
+        let max = MAX_INTEGER as i64;
+        assert_eq!(
+            canonical(&serde_json::json!({"x": max})).as_deref(),
+            Some("{\"x\":9007199254740991}")
+        );
+        assert_eq!(
+            canonical(&serde_json::json!([-max])).as_deref(),
+            Some("[-9007199254740991]")
+        );
+        for v in [
+            serde_json::json!({"x": max + 1}),
+            serde_json::json!([[-max - 1]]),
+            serde_json::json!(u64::MAX),
+            serde_json::json!(1.5),
+        ] {
+            assert_eq!(canonical(&v), None, "{v}");
+        }
     }
 }

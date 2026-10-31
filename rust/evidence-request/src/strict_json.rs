@@ -21,7 +21,9 @@
 //! well-formed record whose signature fails (CB §4.1), not a record that
 //! cannot be read. An integer that fits `i64` or `u64` is kept exactly; any
 //! other number is kept as an `f64`, which has no RFC 8785 form in this
-//! crate (`jcs`).
+//! crate (`jcs`). A number beyond f64's range, such as `1e400`, is kept as
+//! `±f64::MAX`, so it too is a non-integer and the document stays readable,
+//! as it is to Go and Python.
 
 use serde_json::{Map, Number, Value};
 
@@ -216,7 +218,18 @@ impl Parser<'_> {
                 return Some(Value::from(n));
             }
         }
-        Number::from_f64(text.parse().ok()?).map(Value::Number)
+        // A token beyond f64's range (`1e400`) is still a number, as Go's
+        // UseNumber and Python read it. It parses to an infinity, which
+        // serde_json cannot hold, so it is kept as the largest finite f64 of
+        // the same sign: still not an integer, and still with no RFC 8785
+        // form here.
+        let n: f64 = text.parse().ok()?;
+        let n = if n.is_finite() {
+            n
+        } else {
+            f64::MAX.copysign(n)
+        };
+        Number::from_f64(n).map(Value::Number)
     }
 
     fn string(&mut self) -> Option<String> {
@@ -342,28 +355,34 @@ mod tests {
     }
 
     #[test]
-    fn json_numbers_accepts_every_rfc_8259_number_and_nothing_else() {
+    fn json_numbers_reads_every_rfc_8259_number_and_refuses_other_tokens() {
         use super::decode_json_numbers;
         assert_eq!(decode_json_numbers(b"-1"), Some(json!(-1)));
         assert_eq!(
             decode_json_numbers(b"[0,-0,18446744073709551615]"),
             Some(json!([0, 0, 18446744073709551615u64]))
         );
-        for text in ["1.5", "-2e3", "1E+2", "18446744073709551616"] {
-            let value = decode_json_numbers(text.as_bytes()).expect(text);
-            assert!(value.is_number() && value.as_i64().is_none(), "{text}");
-        }
         for text in [
-            "01",
-            "-",
-            "1.",
-            ".5",
-            "1e",
-            "+1",
-            "--1",
+            "1.5",
+            "-2e3",
+            "1E+2",
+            "18446744073709551616",
             "1e400",
-            r#"{"a":1,"a":2}"#,
+            "-1e400",
+            "1e-400",
         ] {
+            let value = decode_json_numbers(text.as_bytes()).expect(text);
+            assert!(
+                value.is_number() && value.as_i64().is_none() && value.as_u64().is_none(),
+                "{text}"
+            );
+        }
+        // Beyond f64's range: the largest finite f64 of the same sign.
+        assert_eq!(
+            decode_json_numbers(b"[1e400,-1e400]"),
+            Some(json!([f64::MAX, -f64::MAX]))
+        );
+        for text in ["01", "-", "1.", ".5", "1e", "+1", "--1", r#"{"a":1,"a":2}"#] {
             assert_eq!(decode_json_numbers(text.as_bytes()), None, "{text:?}");
         }
     }

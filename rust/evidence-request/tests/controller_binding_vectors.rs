@@ -14,8 +14,8 @@ use std::path::PathBuf;
 
 use ed25519_dalek::{Signature, VerifyingKey};
 use evidence_request::controller_binding::{
-    pair_independence, parse_declaration, verify, Credential, CredentialVerifier, Options, Report,
-    RevocationList, PROPERTY_CREDENTIAL,
+    pair_independence, parse_declaration, verify, Credential, CredentialVerifier, DeclarationError,
+    Options, Report, RevocationList, PROPERTY_CREDENTIAL,
 };
 use evidence_request::jcs;
 use evidence_request::status::Status;
@@ -416,4 +416,119 @@ fn a_list_that_cannot_be_read_or_has_no_time_never_fails() {
     );
     assert!(!report.applies());
     assert!(!report.revocation_list.unwrap().counts);
+}
+
+fn find<'a>(corpus: &'a Value, id: &str) -> &'a Value {
+    corpus["cases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["id"] == id)
+        .unwrap_or_else(|| panic!("case {id}"))
+}
+
+fn times_of(case: &Value) -> Vec<UtcTime> {
+    case["inputs"]["halves"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| {
+            let h: Value = serde_json::from_slice(&octets(h)).unwrap();
+            parse_utc(text(&h, "issued_at")).unwrap()
+        })
+        .collect()
+}
+
+/// A number beyond f64's range (`1e400`) is still a number, as Go's
+/// `DecodeJSON` and Python read it: the document stays readable.
+#[test]
+fn a_number_beyond_f64_keeps_the_input_readable() {
+    let corpus = corpus();
+
+    // A declared list holding an applying statement and 1e400 is still read:
+    // the statement applies, so revocation is FAIL, never NOT_CHECKED.
+    let case = find(&corpus, "complete-list-revoked");
+    let l = &case["inputs"]["revocation_list"];
+    let list = text(l, "octets_text");
+    let list = format!("{},1e400]", list.strip_suffix(']').unwrap());
+    let opts = Options {
+        revocation_list: Some(RevocationList {
+            declaration: serde_json::to_vec(&l["declaration"]).unwrap(),
+            list: list.into_bytes(),
+            evaluated_at: parse_utc(text(&case["pins"], "evaluation_time")).unwrap(),
+        }),
+        ..Options::default()
+    };
+    let report = verify(&octets(&case["inputs"]["binding"]), &times_of(case), &opts);
+    assert_eq!(
+        report.properties["controller_binding_revocation"],
+        Status::Fail
+    );
+    assert!(!report.revocation_list.unwrap().counts);
+
+    // A bip340 created_at of 1e400: form PASS, signatures FAIL.
+    let case = find(&corpus, "valid-nostr-key");
+    let record = text(&case["inputs"]["binding"], "octets_text");
+    assert!(record.contains("\"created_at\":1790812800"));
+    let record = record.replace("\"created_at\":1790812800", "\"created_at\":1e400");
+    let report = verify(record.as_bytes(), &times_of(case), &Options::default());
+    assert_eq!(report.properties["controller_binding_form"], Status::Pass);
+    assert_eq!(
+        report.properties["controller_binding_signatures"],
+        Status::Fail
+    );
+
+    // A declaration with max_age 1e400 is a max_age error, reported with
+    // its members as delivered, not an unreadable declaration.
+    let case = find(&corpus, "complete-list");
+    let l = &case["inputs"]["revocation_list"];
+    let declaration = serde_json::to_string(&l["declaration"]).unwrap();
+    assert!(declaration.contains("\"max_age\":86400"));
+    let declaration = declaration.replace("\"max_age\":86400", "\"max_age\":1e400");
+    assert_eq!(
+        parse_declaration(declaration.as_bytes()),
+        Err(DeclarationError::MaxAge)
+    );
+    let opts = Options {
+        revocation_list: Some(RevocationList {
+            declaration: declaration.into_bytes(),
+            list: octets(l),
+            evaluated_at: parse_utc(text(&case["pins"], "evaluation_time")).unwrap(),
+        }),
+        ..Options::default()
+    };
+    let report = verify(&octets(&case["inputs"]["binding"]), &times_of(case), &opts);
+    assert_eq!(
+        report.properties["controller_binding_revocation"],
+        Status::NotChecked
+    );
+    let listed = report.revocation_list.unwrap();
+    assert!(!listed.counts);
+    assert_eq!(
+        listed.reason.as_deref(),
+        Some("max_age is not an integer from 0 to 2^53 - 1")
+    );
+    assert_eq!(listed.profile, text(&l["declaration"], "profile"));
+    assert_eq!(listed.asserted_by, text(&l["declaration"], "asserted_by"));
+    assert_eq!(listed.as_of, text(&l["declaration"], "as_of"));
+}
+
+/// An integer beyond ±(2^53 − 1) outside `sigs` has no RFC 8785 form, as
+/// in Go's `canonical.JCS`: the record reports no binding digest.
+#[test]
+fn an_unsafe_integer_gives_no_binding_digest() {
+    let corpus = corpus();
+    let case = find(&corpus, "valid-same-controller");
+    let record = text(&case["inputs"]["binding"], "octets_text");
+    for (x, has_digest) in [("9007199254740993", false), ("9007199254740991", true)] {
+        let extra = format!("{{\"x\":{x},{}", record.strip_prefix('{').unwrap());
+        let report = verify(extra.as_bytes(), &times_of(case), &Options::default());
+        assert_eq!(report.properties.len(), 1, "{x}");
+        assert_eq!(
+            report.properties["controller_binding_form"],
+            Status::Fail,
+            "{x}"
+        );
+        assert_eq!(report.binding_digest.is_some(), has_digest, "{x}");
+    }
 }
