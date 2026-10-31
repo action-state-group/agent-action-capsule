@@ -621,12 +621,14 @@ form:
 The COSE_Sign1, its protected header and each inclusion proof are each one CBOR item with no
 trailing octet, definite lengths, every argument in its shortest form (RFC 8949 §4.2.1), no
 repeated map key, every integer from -2^63 to 2^64 - 1, every map key an integer or a text
-string, no float, no simple value but
+string, every text string valid UTF-8, no float, no simple value but
 `false`, `true` and `null`, no tag but the outer
 tag 18, and no item nested more than 16 levels deep (an item inside an array, a map or a tag is one
-level deeper than it); map order is not checked. This is the Receipt shape `vectors/bundle/strict/README.md`
-"COSE Receipts" checks for a witness over a Bundle checkpoint, with another leaf and these
-stricter encoding rules, so that every verifier decides the form the same way.
+level deeper than it); map order is not checked, and no array or map is limited in length other
+than by the octet limit. This is the receipt encoding rule, so that every verifier decides the form
+the same way. The Receipt check of `vectors/bundle/strict/README.md` "COSE Receipts", for a witness
+over a Bundle checkpoint, decodes under the same rule, with another leaf and its own header rules:
+it reads fewer labels and ignores the rest.
 
 **The entry.** The Receipt's leaf entry E is the 32 raw octets of the anchor's digest: SHA-256
 over the `cll-checkpoint` octets in the one form of §6.2.1, which is `anchor.digest` [P-31]. The

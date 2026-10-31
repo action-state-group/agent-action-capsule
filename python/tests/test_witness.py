@@ -234,8 +234,10 @@ def test_input_nested_beyond_the_interpreter_is_refused_not_raised():
         ({15: {6: "1792022400"}}, (None, "iat_invalid")),
         ({15: {6: True}}, (None, "iat_invalid")),
         ({15: [6]}, (None, "iat_invalid")),
-        ({15.0: {6: 1792022400}}, (None, "iat_absent")),
-        ({15: {6.0: 1792022400}}, (None, "iat_absent")),
+        # A float key breaks the receipt encoding rule, so such a receipt
+        # never passes; read directly, it gives no time.
+        ({15.0: {6: 1792022400}}, (None, "iat_invalid")),
+        ({15: {6.0: 1792022400}}, (None, "iat_invalid")),
         ({15: {6: 0}}, (0, None)),
         ({15: {6: 2**53 - 1}}, (2**53 - 1, None)),
     ],

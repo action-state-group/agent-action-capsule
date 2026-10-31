@@ -328,6 +328,51 @@ def undefined_payload_receipt(leaf: str) -> dict:
     return {**genuine, "receipt_b64": b64(forged)}
 
 
+def _head(major: int, n: int, width: int | None = None) -> bytes:
+    """A CBOR head; ``width`` forces a longer argument than the shortest."""
+    if width is None:
+        width = 0 if n < 24 else 1 if n < 2**8 else 2 if n < 2**16 else 4 if n < 2**32 else 8
+    if width == 0:
+        return bytes([major << 5 | n])
+    return bytes([major << 5 | {1: 24, 2: 25, 4: 26, 8: 27}[width]]) + n.to_bytes(width, "big")
+
+
+def _int(n: int) -> bytes:
+    return _head(0, n) if n >= 0 else _head(1, -1 - n)
+
+
+def _bstr(data: bytes) -> bytes:
+    return _head(2, len(data)) + data
+
+
+def _tstr(text: str) -> bytes:
+    return _head(3, len(text.encode())) + text.encode()
+
+
+def _map(pairs: list[tuple[bytes, bytes]]) -> bytes:
+    return _head(5, len(pairs)) + b"".join(k + v for k, v in pairs)
+
+
+def raw_receipt(
+    leaf: str, *, protected_extra: list[tuple[bytes, bytes]] = (), unprotected_extra: list[tuple[bytes, bytes]] = (),
+    proof: bytes | None = None,
+) -> dict:
+    """A ``cll`` receipt for ``leaf`` written byte by byte, so that one item can
+    take an encoding no CBOR library writes: ``protected_extra`` and
+    ``unprotected_extra`` are raw (label, value) pairs added to the headers,
+    ``proof`` a raw inclusion-proof blob (default ``[1, 0, []]``). Signed by
+    the listed witness key over the right root, with grade mmr-verified."""
+    protected = _map([(_int(1), _int(-8)), (_int(395), _int(1)), (_int(-65537), _tstr("mmr-verified")),
+                      *protected_extra])
+    proof = proof if proof is not None else bytes.fromhex("83010080")
+    unprotected = _map([(_int(396), _map([(_int(-1), _head(4, 1) + _bstr(proof))])), *unprotected_extra])
+    root = hashlib.sha256(b"\x00" + bytes.fromhex(leaf)).digest()  # RFC 9162 leaf hash of a one-leaf tree
+    sig_structure = _head(4, 4) + _tstr("Signature1") + _bstr(protected) + _bstr(b"") + _bstr(root)
+    signature = CLL_WITNESS.sign(sig_structure)
+    receipt = b"\xd2" + _head(4, 4) + _bstr(protected) + unprotected + b"\xf6" + _bstr(signature)
+    return {"ts_url": CLL_URL, "entry_hash": leaf, "receipt_b64": b64(receipt), "leaf_index": 0, "tree_size": 1}
+
+
 def resigned_receipt(leaf: str, protected_overrides: dict[int, Any]) -> dict:
     """A ``cll`` receipt for ``leaf`` signed over the right root by the listed
     key, but with protected-header values the profile refuses (``vds``,
@@ -933,6 +978,58 @@ def build_cases() -> list[dict]:
                  witnessed(undefined_payload_receipt(leaf)),
                  {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
                   "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
+    # The receipt encoding rule (README "COSE Receipts", profile v1 §6.2.2):
+    # each receipt below is signed over the right root and differs from a
+    # passing one in one item, under unprotected label 99 unless it says
+    # otherwise. Label 99 sits three levels deep (tag, array, map).
+    label = _int(99)
+    for case_id, description, edit in (
+        ("neg-witness-cll-encoding-tag", "a tag 0 over a date-time text", {"u": [(label, b"\xc0" + _tstr("2013-03-21T20:04:00Z"))]}),
+        ("neg-witness-cll-encoding-bignum", "a bignum (tag 2), 2^64", {"u": [(label, b"\xc2" + _bstr(b"\x01" + bytes(8)))]}),
+        ("neg-witness-cll-encoding-integer-below-int64", "the integer -2^64, below -2^63", {"u": [(label, b"\x3b" + b"\xff" * 8)]}),
+        ("neg-witness-cll-encoding-array-key", "a map keyed by an array", {"u": [(label, _map([(_head(4, 1) + _int(1), _int(1))]))]}),
+        ("neg-witness-cll-encoding-bytes-key", "a map keyed by a byte string", {"u": [(label, _map([(_bstr(b"k"), _int(1))]))]}),
+        ("neg-witness-cll-encoding-float", "the float 1.5 in its shortest (half) form", {"u": [(label, b"\xf9\x3e\x00")]}),
+        ("neg-witness-cll-encoding-nan-keys", "a map with two NaN keys", {"u": [(label, _map([(b"\xf9\x7e\x00", _int(1)), (b"\xf9\x7e\x00", _int(2))]))]}),
+        ("neg-witness-cll-encoding-repeated-key", "a map with a repeated integer key", {"u": [(label, _map([(_int(1), _int(1)), (_int(1), _int(2))]))]}),
+        ("neg-witness-cll-encoding-undefined", "CBOR undefined (0xf7)", {"u": [(label, b"\xf7")]}),
+        ("neg-witness-cll-encoding-simple-value", "the unassigned simple value 0 (0xe0)", {"u": [(label, b"\xe0")]}),
+        ("neg-witness-cll-encoding-indefinite", "an indefinite-length array", {"u": [(label, b"\x9f\x01\xff")]}),
+        ("neg-witness-cll-encoding-too-deep", "14 nested arrays, so an item 17 levels deep", {"u": [(label, b"\x81" * 14 + b"\x00")]}),
+        ("neg-witness-cll-encoding-protected-tag", "a tag 1 under protected label -65538", {"p": [(_int(-65538), b"\xc1" + _int(1))]}),
+        ("neg-witness-cll-encoding-proof-not-shortest", "an inclusion proof [1, 0, []] with one-byte integer heads",
+         {"proof": bytes.fromhex("831801180080")}),
+        ("neg-witness-cll-encoding-proof-indefinite", "an inclusion proof whose path is an indefinite-length array",
+         {"proof": bytes.fromhex("8301009fff")}),
+        ("neg-witness-cll-crit-not-understood", "a protected crit [4] over a kid, a label the check does not process",
+         {"p": [(_int(2), _head(4, 1) + _int(4)), (_int(4), _bstr(b"k"))]}),
+        ("neg-witness-cll-crit-absent", "a protected crit [15] with no CWT_Claims in the protected header",
+         {"p": [(_int(2), _head(4, 1) + _int(15))]}),
+        ("neg-witness-cll-crit-empty", "a protected crit that is an empty array", {"p": [(_int(2), _head(4, 0))]}),
+        ("neg-witness-cll-crit-not-an-array", "a protected crit that is an integer", {"p": [(_int(2), _int(1))]}),
+        ("neg-witness-cll-crit-boolean", "a protected crit [true], a label that is not an integer or text",
+         {"p": [(_int(2), _head(4, 1) + b"\xf5")]}),
+    ):
+        witness_case(case_id, f"A receipt carrying {description}: it fails.",
+                     witnessed(raw_receipt(leaf, protected_extra=edit.get("p", []), unprotected_extra=edit.get("u", []),
+                                           proof=edit.get("proof"))),
+                     {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
+                      "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
+    for case_id, description, edit in (
+        ("pos-witness-cll-encoding-keys-out-of-order", "a map whose text keys are not in canonical order",
+         {"u": [(label, _map([(_tstr("b"), _int(1)), (_tstr("a"), _int(2))]))]}),
+        ("pos-witness-cll-encoding-depth-16", "13 nested arrays, so an item 16 levels deep, the most allowed",
+         {"u": [(label, b"\x81" * 13 + b"\x00")]}),
+        ("pos-witness-cll-unread-kid-integer", "an unprotected kid (4) that is an integer, a label the check does not read",
+         {"u": [(_int(4), _int(1))]}),
+        ("pos-witness-cll-unread-content-type", "a protected content type (3) \"abc\", a label the check does not read",
+         {"p": [(_int(3), _tstr("abc"))]}),
+        ("pos-witness-cll-crit-understood", "a protected crit [15] with an empty CWT_Claims map, a label it processes",
+         {"p": [(_int(2), _head(4, 1) + _int(15)), (_int(15), _map([]))]}),
+    ):
+        witness_case(case_id, f"A receipt carrying {description}: it verifies.",
+                     witnessed(raw_receipt(leaf, protected_extra=edit.get("p", []), unprotected_extra=edit.get("u", []))),
+                     {"status": "pass", "findings": [], "receipts": [receipt_expect(CLL_URL, "cll", "pass", "mmr-verified")]})
     for case_id, description, overrides in (
         ("neg-witness-cll-vds-ccf", "A receipt signed over the right root that declares vds 2 (CCF).", {395: 2}),
         ("neg-witness-cll-alg-unsupported", "A receipt signed over the right root that declares alg -257.",
@@ -1090,11 +1187,16 @@ def build_cases() -> list[dict]:
                  "the receipt has no registration time.",
                  witnessed(unprotected_iat_receipt(leaf, TIMESTAMP_SECONDS)),
                  {"status": "pass", "findings": [], "receipts": [receipt_expect(CLL_URL, "cll", "pass", "mmr-verified")]})
-    witness_case("pos-witness-registration-time-invalid",
-                 "A receipt whose signed iat is a float: the receipt verifies, and its iat is no registration time.",
+    witness_case("neg-witness-registration-time-float-iat",
+                 "A receipt whose signed iat is a float: the receipt encoding rule admits no float, so it fails.",
                  witnessed(resigned_receipt(leaf, {15: {6: TIMESTAMP_SECONDS + 0.5}})),
-                 {"status": "pass", "findings": [], "receipts": [
-                     receipt_expect(CLL_URL, "cll", "pass", "mmr-verified", reason="iat_invalid")]})
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
+                  "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
+    witness_case("neg-witness-registration-time-float-claim-key",
+                 "A receipt whose protected CWT claims key a time by the float 6.0: no float, so it fails.",
+                 witnessed(resigned_receipt(leaf, {15: {6.0: TIMESTAMP_SECONDS}})),
+                 {"status": "fail", "findings": [f"witness_receipt_invalid:{CLL_URL}"],
+                  "receipts": [receipt_expect(CLL_URL, "cll", "fail")]}, verdict="INVALID")
     for case_id, description, claims_value, reason in (
         ("pos-witness-registration-time-claims-not-a-map",
          "A receipt whose protected CWT claims (label 15) are an integer, not a map: no registration time.", 7,
@@ -1102,9 +1204,6 @@ def build_cases() -> list[dict]:
         ("pos-witness-registration-time-out-of-range",
          "A receipt whose signed iat is 2^53, past the largest integer every language reads exactly.", {6: 2**53},
          "iat_invalid"),
-        ("pos-witness-registration-time-float-claim-key",
-         "A receipt whose protected CWT claims key a time by the float 6.0: that is no iat claim.",
-         {6.0: TIMESTAMP_SECONDS}, "iat_absent"),
     ):
         witness_case(case_id, description, witnessed(resigned_receipt(leaf, {15: claims_value})),
                      {"status": "pass", "findings": [], "receipts": [

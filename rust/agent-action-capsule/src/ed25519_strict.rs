@@ -20,7 +20,7 @@ const ED25519_L: [u8; 32] = [
 
 /// The strict Ed25519 conditions of checkpointed-local-log's
 /// `ed25519-vectors.json` that do not need the message: A and R canonical
-/// (y < p) and not of small order, and S < L. scitt-cose-receipt 0.1.1
+/// (y < p) and not of small order, and S < L. The witness receipt check
 /// verifies with dalek's `verify`, which checks the same cofactorless
 /// equation as `verify_strict` but accepts a small-order A, and a small-order
 /// A verifies a forged signature over any message. Refusing these first makes

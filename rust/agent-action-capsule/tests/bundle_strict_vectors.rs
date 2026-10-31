@@ -56,7 +56,7 @@ fn every_strict_case_matches() {
     let vectors = vectors();
     let directory = &vectors["witness_directory"];
     let cases = vectors["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 74);
+    assert_eq!(cases.len(), 99);
     let mut failures = Vec::new();
     for case in cases {
         let options = StrictOptions {
@@ -110,45 +110,6 @@ fn the_plain_verifier_is_unchanged() {
         plain.per_record_membership,
         strict.base.per_record_membership
     );
-}
-
-/// The vdp inclusion-proof byte string is decoded leniently, as scitt-cose
-/// does: `[1, 0, []]` written with non-shortest integer heads
-/// (`831801180080` for `83010080`) still verifies. The proof sits in the
-/// unprotected header and the signature covers only the protected header and
-/// the rebuilt root, so no re-signing is needed.
-#[test]
-fn a_non_shortest_inclusion_proof_still_verifies() {
-    use base64::Engine as _;
-    let b64 = base64::engine::general_purpose::STANDARD;
-    let vectors = vectors();
-    let case = vectors["cases"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|c| c["id"] == "pos-witness-cll")
-        .unwrap();
-    let mut bundle = case["bundle"].clone();
-    let receipt_b64 = &mut bundle["checkpoint"]["witnesses"][0]["receipt_b64"];
-    let receipt = hex::encode(b64.decode(receipt_b64.as_str().unwrap()).unwrap());
-    // bstr(4) [1, 0, []] -> bstr(6) [1, 0, []] with one-byte integer heads.
-    assert_eq!(receipt.matches("4483010080").count(), 1);
-    let lenient = receipt.replace("4483010080", "46831801180080");
-    *receipt_b64 = json!(b64.encode(hex::decode(lenient).unwrap()));
-
-    let options = StrictOptions {
-        require_signature: false,
-        witness_directory: Some(&vectors["witness_directory"]),
-        ..StrictOptions::default()
-    };
-    let result = verify_bundle_strict(&bundle, &options);
-    let witnesses = result.witnesses.as_ref().unwrap();
-    assert_eq!(witnesses.status, "pass", "{:?}", result.witness_receipts);
-    assert_eq!(
-        result.witness_receipts[0].grade.as_deref(),
-        Some("mmr-verified")
-    );
-    assert_eq!(result.verdict(), "VALID");
 }
 
 #[test]

@@ -35,8 +35,6 @@
 use base64::alphabet;
 use base64::engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig};
 use base64::Engine as _;
-use coset::iana::Algorithm;
-use coset::{CoseSign1, Label, RegisteredLabelWithPrivate, TaggedCborSerializable};
 use p256::ecdsa::signature::Verifier as _;
 use p256::pkcs8::{DecodePublicKey, EncodePublicKey, ObjectIdentifier, SubjectPublicKeyInfoRef};
 use serde_json::{Map, Value};
@@ -195,29 +193,21 @@ impl ReceiptCheck {
 /// in it, invalid when the claims are not a map or `iat` is not an integer
 /// from 0 to 2^53 - 1. Only the protected header is signed.
 fn registration_time(receipt: &[u8]) -> Result<u64, &'static str> {
-    let sign1 = CoseSign1::from_tagged_slice(receipt).map_err(|_| REASON_IAT_INVALID)?;
-    let claims = match sign1
-        .protected
-        .header
-        .rest
-        .iter()
-        .find(|(label, _)| *label == Label::Int(CWT_CLAIMS_LABEL))
-    {
+    let headers = decode_receipt(receipt)
+        .map_err(|_| REASON_IAT_INVALID)?
+        .headers;
+    let claims = match headers.get(i128::from(CWT_CLAIMS_LABEL)) {
         None => return Err(REASON_IAT_ABSENT),
-        Some((_, coset::cbor::Value::Map(claims))) => claims,
+        Some(claims @ ReceiptItem::Map(_)) => claims,
         Some(_) => return Err(REASON_IAT_INVALID),
     };
-    let iat = claims
-        .iter()
-        .find(|(key, _)| matches!(key, coset::cbor::Value::Integer(i) if u64::try_from(*i) == Ok(CWT_IAT)))
-        .map(|(_, value)| value)
-        .ok_or(REASON_IAT_ABSENT)?;
-    match iat {
-        coset::cbor::Value::Integer(i) => u64::try_from(*i)
+    match claims.get(i128::from(CWT_IAT)) {
+        None => Err(REASON_IAT_ABSENT),
+        Some(ReceiptItem::Int(seconds)) => u64::try_from(*seconds)
             .ok()
             .filter(|seconds| *seconds <= MAX_IAT)
             .ok_or(REASON_IAT_INVALID),
-        _ => Err(REASON_IAT_INVALID),
+        Some(_) => Err(REASON_IAT_INVALID),
     }
 }
 
@@ -407,108 +397,229 @@ pub fn checkpoint_digest(signed: &SignedCheckpoint) -> String {
     .digest()
 }
 
-/// Whether the third item of a COSE_Sign1 `coset` has already decoded is
-/// CBOR null (`0xf6`). `coset` reads undefined (`0xf7`) as an absent
-/// payload too, but only null is detached, as scitt-cose has it.
-fn payload_is_null(receipt: &[u8]) -> bool {
-    let mut offset = 0;
-    // The tag-18 head, then the four-item array head.
-    for _ in 0..2 {
-        match cbor_head(receipt, offset) {
-            Some((_, _, end)) => offset = end,
-            None => return false,
-        }
-    }
-    for _ in 0..2 {
-        match cbor_item_end(receipt, offset, 0) {
-            Some(end) => offset = end,
-            None => return false,
-        }
-    }
-    receipt.get(offset) == Some(&0xf6)
+/// The two signature algorithms a receipt may declare: COSE `alg` -8 (EdDSA,
+/// Ed25519 here) and -7 (ES256).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Algorithm {
+    EdDSA,
+    ES256,
 }
 
-/// One CBOR head at `offset`: its major type, its argument (`None` for an
-/// indefinite length) and the offset after it.
-fn cbor_head(data: &[u8], offset: usize) -> Option<(u8, Option<u64>, usize)> {
-    let first = *data.get(offset)?;
-    let (major, info) = (first >> 5, first & 31);
-    let width = match info {
-        0..=23 => return Some((major, Some(u64::from(info)), offset + 1)),
-        24..=27 => 1usize << (info - 24),
-        31 => return Some((major, None, offset + 1)),
-        _ => return None,
-    };
-    let arg = data
-        .get(offset + 1..offset + 1 + width)?
-        .iter()
-        .fold(0u64, |arg, byte| arg << 8 | u64::from(*byte));
-    Some((major, Some(arg), offset + 1 + width))
+/// An inclusion proof: `tree_size`, `leaf_index` and the audit path.
+type InclusionProof = (u64, u64, Vec<Vec<u8>>);
+
+/// A COSE Receipt decoded under the receipt encoding rule of profile v1
+/// §6.2.2 (`strict_receipt_item`), which the strict Bundle check shares.
+struct DecodedReceipt {
+    alg: Algorithm,
+    protected: Vec<u8>,
+    headers: ReceiptItem,
+    unprotected: ReceiptItem,
+    signature: Vec<u8>,
 }
 
-/// The offset after the CBOR item at `offset`. Nesting is bounded because
-/// `coset` already decoded these bytes.
-fn cbor_item_end(data: &[u8], offset: usize, depth: usize) -> Option<usize> {
-    if depth > 256 {
-        return None;
+/// Decodes a receipt as vectors/bundle/strict/README.md "COSE Receipts"
+/// reads it: at most 10,485,760 octets, one CBOR item under the receipt
+/// encoding rule, a tag-18 COSE_Sign1 with a detached (null) payload, so its
+/// signature covers the rebuilt Merkle root, protected `vds` (label 395) 1
+/// (RFC9162_SHA256) and `alg` EdDSA (-8) or ES256 (-7). A header label the
+/// check does not read is ignored whatever its value.
+fn decode_receipt(receipt: &[u8]) -> Result<DecodedReceipt, String> {
+    if receipt.is_empty() || receipt.len() > MAX_RECEIPT_OCTETS {
+        return Err("receipt size is invalid".into());
     }
-    let (major, arg, mut end) = cbor_head(data, offset)?;
-    let Some(arg) = arg else {
-        // An indefinite length: items (or chunks) until the 0xff break.
-        if !(2..=5).contains(&major) {
-            return None;
-        }
-        while *data.get(end)? != 0xff {
-            end = cbor_item_end(data, end, depth + 1)?;
-        }
-        return Some(end + 1);
+    let Some(ReceiptItem::Tag(18, body)) = strict_receipt_item(receipt, true) else {
+        return Err("receipt rejected: not a COSE_Sign1 under the receipt encoding rule".into());
     };
-    let items = match major {
-        0 | 1 | 7 => 0,
-        2 | 3 => {
-            return end
-                .checked_add(usize::try_from(arg).ok()?)
-                .filter(|e| *e <= data.len())
-        }
-        4 => arg,
-        5 => arg.checked_mul(2)?,
-        _ => 1,
+    let ReceiptItem::Array(parts) = *body else {
+        return Err("receipt is not a COSE_Sign1 message".into());
     };
-    for _ in 0..items {
-        end = cbor_item_end(data, end, depth + 1)?;
-    }
-    Some(end)
-}
-
-/// Refuses what the receipt verifier would read differently from this
-/// profile: a receipt must be a tag-18 COSE_Sign1 with a detached (`nil`)
-/// payload, so its signature covers the rebuilt Merkle root, its protected
-/// `vds` (label 395) must be 1 (RFC9162_SHA256), and its `alg` EdDSA (-8) or
-/// ES256 (-7). Returns the receipt's `alg` and signature.
-fn receipt_shape(receipt: &[u8]) -> Result<(Algorithm, Vec<u8>), String> {
-    let sign1 = CoseSign1::from_tagged_slice(receipt)
-        .map_err(|e| format!("receipt could not be decoded: {e:?}"))?;
-    if sign1.payload.is_some() {
+    let Ok([protected, unprotected, payload, signature]) = <[ReceiptItem; 4]>::try_from(parts)
+    else {
+        return Err("receipt is not a COSE_Sign1 message".into());
+    };
+    let ReceiptItem::Bytes(protected) = protected else {
+        return Err("receipt is not a COSE_Sign1 message".into());
+    };
+    if payload != ReceiptItem::Null {
         return Err("receipt payload is attached; a receipt's payload must be detached".into());
     }
-    if !payload_is_null(receipt) {
-        return Err("receipt payload is not null; a detached payload must be CBOR null".into());
-    }
-    let header = &sign1.protected.header;
-    let vds = header
-        .rest
-        .iter()
-        .find(|(label, _)| *label == Label::Int(395))
-        .and_then(|(_, value)| value.as_integer());
-    if vds != Some(1.into()) {
+    let ReceiptItem::Bytes(signature) = signature else {
+        return Err("receipt signature is not a byte string".into());
+    };
+    let headers =
+        if protected.is_empty() {
+            ReceiptItem::Map(Vec::new())
+        } else {
+            match strict_receipt_item(&protected, false) {
+                Some(map @ ReceiptItem::Map(_)) => map,
+                Some(_) => return Err("protected header is not a map".into()),
+                None => return Err(
+                    "protected header rejected: not one CBOR item under the receipt encoding rule"
+                        .into(),
+                ),
+            }
+        };
+    if headers.get(395) != Some(&ReceiptItem::Int(1)) {
         return Err("receipt vds is not RFC9162_SHA256 (1)".into());
     }
-    match header.alg {
-        Some(RegisteredLabelWithPrivate::Assigned(alg @ (Algorithm::EdDSA | Algorithm::ES256))) => {
-            Ok((alg, sign1.signature))
-        }
-        _ => Err("receipt alg is not EdDSA (-8) or ES256 (-7)".into()),
+    let alg = match headers.get(1) {
+        Some(ReceiptItem::Int(-8)) => Algorithm::EdDSA,
+        Some(ReceiptItem::Int(-7)) => Algorithm::ES256,
+        _ => return Err("receipt alg is not EdDSA (-8) or ES256 (-7)".into()),
+    };
+    check_critical(&headers)?;
+    Ok(DecodedReceipt {
+        alg,
+        protected,
+        headers,
+        unprotected,
+        signature,
+    })
+}
+
+/// RFC 9052 section 3.1: a `crit` (2) list must be a non-empty array of
+/// labels that are present in the protected header and that this check
+/// processes (`alg`, `crit`, CWT_Claims, `vds`).
+fn check_critical(headers: &ReceiptItem) -> Result<(), String> {
+    let Some(raw) = headers.get(2) else {
+        return Ok(());
+    };
+    let ReceiptItem::Array(labels) = raw else {
+        return Err("crit (label 2) must be a non-empty array".into());
+    };
+    if labels.is_empty() {
+        return Err("crit (label 2) must be a non-empty array".into());
     }
+    let ReceiptItem::Map(pairs) = headers else {
+        return Err("protected header is not a map".into());
+    };
+    for label in labels {
+        if !matches!(label, ReceiptItem::Int(_) | ReceiptItem::Text(_)) {
+            return Err("crit lists a label that is not an integer or text".into());
+        }
+        if !pairs.iter().any(|(key, _)| key == label) {
+            return Err("crit lists a header absent from the protected header".into());
+        }
+        if !matches!(label, ReceiptItem::Int(1 | 2 | 15 | 395)) {
+            return Err("crit marks a header this verifier does not understand".into());
+        }
+    }
+    Ok(())
+}
+
+/// The inclusion proofs of a receipt's unprotected `vdp` (396) map, under -1:
+/// one to 16 byte strings, each CBOR `[tree_size, leaf_index, [path...]]`
+/// under the receipt encoding rule. Every entry must decode.
+fn inclusion_proofs(unprotected: &ReceiptItem) -> Result<Vec<InclusionProof>, String> {
+    if !matches!(unprotected, ReceiptItem::Map(_)) {
+        return Err("unprotected header is not a map".into());
+    }
+    let Some(vdp @ ReceiptItem::Map(_)) = unprotected.get(396) else {
+        return Err("unprotected vdp (label 396) missing or not a map".into());
+    };
+    let Some(ReceiptItem::Array(entries)) = vdp.get(-1) else {
+        return Err("vdp has no inclusion proofs (key -1)".into());
+    };
+    if entries.is_empty() || entries.len() > MAX_RECEIPT_PROOFS {
+        return Err("a receipt carries one to 16 inclusion proofs".into());
+    }
+    let mut proofs = Vec::with_capacity(entries.len());
+    for entry in entries {
+        let ReceiptItem::Bytes(blob) = entry else {
+            return Err("inclusion proof entry is not a byte string".into());
+        };
+        let Some(ReceiptItem::Array(proof)) = strict_receipt_item(blob, false) else {
+            return Err(
+                "inclusion proof is not one CBOR array under the receipt encoding rule".into(),
+            );
+        };
+        let [ReceiptItem::Int(size), ReceiptItem::Int(index), ReceiptItem::Array(nodes)] =
+            proof.as_slice()
+        else {
+            return Err("inclusion proof must be [tree_size, leaf_index, [path]]".into());
+        };
+        let (Ok(size), Ok(index)) = (u64::try_from(*size), u64::try_from(*index)) else {
+            return Err("invalid tree size or leaf index".into());
+        };
+        if index >= size
+            || size > MAX_RECEIPT_TREE_SIZE
+            || nodes.len() != receipt_path_length(size, index)
+        {
+            return Err("invalid tree size, leaf index or path length".into());
+        }
+        let mut path = Vec::with_capacity(nodes.len());
+        for node in nodes {
+            match node {
+                ReceiptItem::Bytes(node) if node.len() == 32 => path.push(node.clone()),
+                _ => return Err("inclusion proof path node must be 32 bytes".into()),
+            }
+        }
+        proofs.push((size, index, path));
+    }
+    Ok(proofs)
+}
+
+/// The RFC 9162 root of a tree of `size` leaves rebuilt from `leaf` at
+/// `index` and its audit path, outermost sibling last (RFC 6962 section
+/// 2.1.1).
+fn inclusion_root(leaf: &[u8], index: u64, size: u64, path: &[Vec<u8>]) -> [u8; 32] {
+    fn node(left: &[u8], right: &[u8]) -> [u8; 32] {
+        Sha256::new()
+            .chain_update([1u8])
+            .chain_update(left)
+            .chain_update(right)
+            .finalize()
+            .into()
+    }
+    let mut siblings = path.to_vec();
+    fn fold(leaf: &[u8], size: u64, index: u64, siblings: &mut Vec<Vec<u8>>) -> [u8; 32] {
+        if size == 1 {
+            return Sha256::new()
+                .chain_update([0u8])
+                .chain_update(leaf)
+                .finalize()
+                .into();
+        }
+        let k = 1u64 << (63 - (size - 1).leading_zeros());
+        let sibling = siblings
+            .pop()
+            .expect("path length checked against size and index");
+        if index < k {
+            node(&fold(leaf, k, index, siblings), &sibling)
+        } else {
+            node(&sibling, &fold(leaf, size - k, index - k, siblings))
+        }
+    }
+    fold(leaf, size, index, &mut siblings)
+}
+
+/// The RFC 9052 `Signature1` Sig_structure with an empty external AAD.
+fn sig_structure(protected: &[u8], payload: &[u8]) -> Vec<u8> {
+    fn head(out: &mut Vec<u8>, major: u8, n: usize) {
+        let m = major << 5;
+        match n {
+            0..=23 => out.push(m | n as u8),
+            24..=0xff => out.extend([m | 24, n as u8]),
+            0x100..=0xffff => {
+                out.push(m | 25);
+                out.extend((n as u16).to_be_bytes());
+            }
+            _ => {
+                out.push(m | 26);
+                out.extend((n as u32).to_be_bytes());
+            }
+        }
+    }
+    let mut out = vec![0x84];
+    head(&mut out, 3, 10);
+    out.extend(b"Signature1");
+    head(&mut out, 2, protected.len());
+    out.extend(protected);
+    out.push(0x40);
+    head(&mut out, 2, payload.len());
+    out.extend(payload);
+    out
 }
 
 /// A receipt's `alg` fixes its key type: ES256 verifies only under an ECDSA
@@ -517,7 +628,6 @@ fn key_fits_alg(alg: Algorithm, key_der: &[u8]) -> bool {
     match alg {
         Algorithm::EdDSA => raw_ed25519(key_der).is_some(),
         Algorithm::ES256 => p256::PublicKey::from_public_key_der(key_der).is_ok(),
-        _ => false,
     }
 }
 
@@ -531,28 +641,48 @@ fn known_grade(label: Option<&str>) -> Option<&'static str> {
     }
 }
 
-/// A COSE Receipt over `leaf` under `key_der`, after the shape check.
-fn cose_receipt(
-    receipt: &[u8],
-    leaf: &[u8],
-    key_der: &[u8],
-) -> Result<scitt_cose_receipt::ReceiptResult, String> {
-    let (alg, signature) = receipt_shape(receipt)?;
+/// A COSE Receipt over `leaf` under `key_der`: it decodes as
+/// `decode_receipt` says, every inclusion proof decodes, and for some proof
+/// the root rebuilt from `leaf` verifies the signature. Returns the text of
+/// the protected grade label (-65537), if any.
+fn cose_receipt(receipt: &[u8], leaf: &[u8], key_der: &[u8]) -> Result<Option<String>, String> {
+    let decoded = decode_receipt(receipt)?;
+    let alg = decoded.alg;
     if !key_fits_alg(alg, key_der) {
         return Err(format!(
             "receipt alg {alg:?} does not match the key type (ES256 needs ECDSA P-256, EdDSA Ed25519)"
         ));
     }
     if alg == Algorithm::EdDSA
-        && !raw_ed25519(key_der).is_some_and(|key| strict_ed25519(&key, &signature))
+        && !raw_ed25519(key_der).is_some_and(|key| strict_ed25519(&key, &decoded.signature))
     {
         return Err("receipt EdDSA signature is not strict Ed25519: a non-canonical or small-order key or R, or S >= L".into());
     }
-    let result = scitt_cose_receipt::verify_receipt(receipt, leaf, &pem(key_der));
-    if !result.ok {
-        return Err(result.errors.join("; "));
+    let proofs = inclusion_proofs(&decoded.unprotected)?;
+    // After strict_ed25519, the cofactorless `verify` is the strict check.
+    let verifies = |message: &[u8]| match alg {
+        Algorithm::EdDSA => raw_ed25519(key_der)
+            .and_then(|key| ed25519_dalek::VerifyingKey::from_bytes(&key).ok())
+            .zip(<[u8; 64]>::try_from(decoded.signature.as_slice()).ok())
+            .is_some_and(|(key, signature)| {
+                key.verify(message, &ed25519_dalek::Signature::from_bytes(&signature))
+                    .is_ok()
+            }),
+        _ => p256::ecdsa::VerifyingKey::from_public_key_der(key_der).is_ok_and(|key| {
+            p256::ecdsa::Signature::from_slice(&decoded.signature)
+                .is_ok_and(|signature| key.verify(message, &signature).is_ok())
+        }),
+    };
+    for (size, index, path) in &proofs {
+        let root = inclusion_root(leaf, *index, *size, path);
+        if verifies(&sig_structure(&decoded.protected, &root)) {
+            return Ok(match decoded.headers.get(-65537) {
+                Some(ReceiptItem::Text(grade)) => Some(grade.clone()),
+                _ => None,
+            });
+        }
     }
-    Ok(result)
+    Err("receipt signature did not verify over any reconstructed root".into())
 }
 
 fn verify_cll(
@@ -582,8 +712,8 @@ fn verify_cll(
         } else {
             reason
         }),
-        Ok(result) => {
-            let grade = known_grade(result.grade.as_deref());
+        Ok(label) => {
+            let grade = known_grade(label.as_deref());
             ReceiptCheck::verified(
                 if grade.is_some() {
                     "ok"
@@ -770,18 +900,15 @@ pub fn verify_scrapi_receipt(
         Some(key) => key,
         None => return ReceiptCheck::fail("not checked: no key pinned for this service"),
     };
-    if let Err(shape) = receipt_shape(receipt) {
-        return ReceiptCheck::fail(format!("unreadable receipt: {shape}"));
-    }
     let leaf = Sha256::digest(checkpoint_cose);
     match cose_receipt(receipt, &leaf, key) {
-        Err(_) => {
-            ReceiptCheck::fail("receipt does not verify for this checkpoint under the pinned key")
-        }
-        Ok(result) => {
-            let grade = known_grade(result.grade.as_deref());
+        Err(reason) => ReceiptCheck::fail(format!(
+            "receipt does not verify for this checkpoint under the pinned key: {reason}"
+        )),
+        Ok(label) => {
+            let grade = known_grade(label.as_deref());
             ReceiptCheck::verified(
-                if grade.is_none() && result.grade.is_some() {
+                if grade.is_none() && label.is_some() {
                     "ok (unknown grade label ignored)"
                 } else {
                     "ok"
@@ -1033,7 +1160,7 @@ mod tests {
         let int = |i: i64| Cbor::Integer(i.into());
         for alg in [-8, -7] {
             let good = receipt(vec![(int(1), int(alg)), (int(395), int(1))], Cbor::Null);
-            assert!(receipt_shape(&good).is_ok());
+            assert!(decode_receipt(&good).is_ok());
         }
         for protected in [
             vec![(int(1), int(-8)), (int(395), Cbor::Bool(true))],
@@ -1044,23 +1171,28 @@ mod tests {
             vec![(int(1), int(-8))],
         ] {
             let shaped = receipt(protected.clone(), Cbor::Null);
-            assert!(receipt_shape(&shaped).is_err(), "{protected:?}");
+            assert!(decode_receipt(&shaped).is_err(), "{protected:?}");
         }
         let attached = receipt(
             vec![(int(1), int(-8)), (int(395), int(1))],
             Cbor::Bytes(vec![1]),
         );
-        assert!(receipt_shape(&attached).unwrap_err().contains("attached"));
+        assert!(decode_receipt(&attached)
+            .err()
+            .unwrap()
+            .contains("attached"));
         let mut undefined = receipt(vec![(int(1), int(-8)), (int(395), int(1))], Cbor::Null);
         let at = undefined
             .iter()
             .rposition(|b| *b == 0xf6)
             .expect("null payload");
         undefined[at] = 0xf7;
-        assert!(receipt_shape(&undefined)
-            .unwrap_err()
-            .contains("must be CBOR null"));
-        assert!(receipt_shape(b"junk").is_err());
+        // Undefined is no simple value the receipt encoding rule allows.
+        assert!(decode_receipt(&undefined)
+            .err()
+            .unwrap()
+            .contains("receipt encoding rule"));
+        assert!(decode_receipt(b"junk").is_err());
     }
 
     /// The secp256k1 key of the strict vectors' "K1 witness" row.
@@ -1069,7 +1201,7 @@ mod tests {
     /// A receipt for `leaf` in a one-leaf tree (RFC 9162: the root is
     /// SHA-256(0x00 || leaf)), signed with `alg` by `sign`.
     fn signed_receipt(alg: Algorithm, leaf: &[u8], sign: impl Fn(&[u8]) -> Vec<u8>) -> Vec<u8> {
-        use coset::{CoseSign1Builder, HeaderBuilder};
+        use coset::{CoseSign1Builder, HeaderBuilder, TaggedCborSerializable};
         let root = Sha256::digest([&[0u8][..], leaf].concat());
         let proof = cbor(&Cbor::Array(vec![
             Cbor::Integer(1.into()),
@@ -1077,7 +1209,10 @@ mod tests {
             Cbor::Array(vec![]),
         ]));
         let protected = HeaderBuilder::new()
-            .algorithm(alg)
+            .algorithm(match alg {
+                Algorithm::EdDSA => coset::iana::Algorithm::EdDSA,
+                Algorithm::ES256 => coset::iana::Algorithm::ES256,
+            })
             .value(395, Cbor::Integer(1.into()))
             .build();
         let unprotected = HeaderBuilder::new()
@@ -1147,8 +1282,8 @@ mod tests {
     }
 
     /// checkpointed-local-log's shared strict Ed25519 cases: the pre-check
-    /// followed by dalek's `verify`, as `cose_receipt` and scitt-cose-receipt
-    /// run them, accepts exactly the valid ones.
+    /// followed by dalek's `verify`, as `cose_receipt` runs them, accepts
+    /// exactly the valid ones.
     #[test]
     fn strict_ed25519_matches_the_cll_vectors() {
         use ed25519_dalek::Verifier as _;
@@ -1176,6 +1311,42 @@ mod tests {
                 case["name"]
             );
         }
+    }
+
+    /// The receipt encoding rule limits a map only by the octet limit, and
+    /// its repeated-key check stays fast on a large one.
+    #[test]
+    fn a_map_of_131073_pairs_decodes() {
+        let mut map = vec![0xba, 0x00, 0x02, 0x00, 0x01];
+        for key in 0u32..131_073 {
+            match key {
+                0..=23 => map.push(key as u8),
+                24..=0xff => map.extend([0x18, key as u8]),
+                0x100..=0xffff => map.extend([0x19, (key >> 8) as u8, key as u8]),
+                _ => {
+                    map.push(0x1a);
+                    map.extend(key.to_be_bytes());
+                }
+            }
+            map.push(0);
+        }
+        let started = std::time::Instant::now();
+        assert!(
+            matches!(strict_receipt_item(&map, false), Some(ReceiptItem::Map(pairs)) if pairs.len() == 131_073)
+        );
+        assert!(started.elapsed() < std::time::Duration::from_secs(5));
+        map.extend([0x00, 0x00]);
+        map[4] = 0x02; // 131074 pairs, the last repeating key 0
+        assert!(strict_receipt_item(&map, false).is_none());
+    }
+
+    /// A receipt over 10,485,760 octets is refused before it is decoded, as
+    /// in every language (too large for a shared vector).
+    #[test]
+    fn an_oversize_receipt_is_refused() {
+        let oversize = vec![0u8; MAX_RECEIPT_OCTETS + 1];
+        let err = cose_receipt(&oversize, b"leaf", &ed25519_spki(&[9; 32])).unwrap_err();
+        assert!(err.contains("size"), "{err}");
     }
 
     /// A receipt "signed" by the identity key (R the identity, S = 0)
@@ -1696,10 +1867,10 @@ const ANCHOR_P256_PREFIX: [u8; 27] = [
     0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a,
     0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00, 0x04,
 ];
-const MAX_ANCHOR_RECEIPT_OCTETS: usize = 10 * 1024 * 1024;
-const MAX_ANCHOR_PROOFS: usize = 16;
-const MAX_ANCHOR_DEPTH: usize = 16;
-const MAX_ANCHOR_TREE_SIZE: u64 = 1 << 62;
+const MAX_RECEIPT_OCTETS: usize = 10 * 1024 * 1024;
+const MAX_RECEIPT_PROOFS: usize = 16;
+const MAX_RECEIPT_DEPTH: usize = 16;
+const MAX_RECEIPT_TREE_SIZE: u64 = 1 << 62;
 /// Labels below this are private use (RFC 9052 section 16.4).
 const PRIVATE_LABEL: i128 = -65536;
 
@@ -1737,38 +1908,39 @@ fn anchor_policy_keys(policy: &Value) -> Vec<(String, Algorithm, Vec<u8>)> {
     out
 }
 
-/// A CBOR item under the §6.2.2 rules.
+/// A CBOR item under the receipt encoding rule of profile v1 §6.2.2, which
+/// the strict Bundle check (`cose_receipt`) and the anchor check share.
 #[derive(Debug, PartialEq)]
-enum AnchorItem {
+enum ReceiptItem {
     Int(i128),
     Bytes(Vec<u8>),
     Text(String),
-    Array(Vec<AnchorItem>),
-    Map(Vec<(AnchorItem, AnchorItem)>),
-    Tag(u64, Box<AnchorItem>),
+    Array(Vec<ReceiptItem>),
+    Map(Vec<(ReceiptItem, ReceiptItem)>),
+    Tag(u64, Box<ReceiptItem>),
     Bool(bool),
     Null,
 }
 
-impl AnchorItem {
-    fn get(&self, key: i128) -> Option<&AnchorItem> {
+impl ReceiptItem {
+    fn get(&self, key: i128) -> Option<&ReceiptItem> {
         match self {
-            AnchorItem::Map(pairs) => pairs
+            ReceiptItem::Map(pairs) => pairs
                 .iter()
-                .find(|(k, _)| *k == AnchorItem::Int(key))
+                .find(|(k, _)| *k == ReceiptItem::Int(key))
                 .map(|(_, v)| v),
             _ => None,
         }
     }
 }
 
-struct AnchorReader<'a> {
+struct ReceiptReader<'a> {
     data: &'a [u8],
     offset: usize,
     top_tag: bool,
 }
 
-impl AnchorReader<'_> {
+impl ReceiptReader<'_> {
     fn take(&mut self, n: u64) -> Option<&[u8]> {
         let end = self.offset.checked_add(usize::try_from(n).ok()?)?;
         let bytes = self.data.get(self.offset..end)?;
@@ -1793,45 +1965,51 @@ impl AnchorReader<'_> {
         (arg >= [24, 1 << 8, 1 << 16, 1 << 32][usize::from(info - 24)]).then_some((major, arg))
     }
 
-    fn item(&mut self, depth: usize) -> Option<AnchorItem> {
-        if depth > MAX_ANCHOR_DEPTH {
+    fn item(&mut self, depth: usize) -> Option<ReceiptItem> {
+        if depth > MAX_RECEIPT_DEPTH {
             return None;
         }
         let (major, arg) = self.head()?;
         Some(match major {
-            0 => AnchorItem::Int(i128::from(arg)),
+            0 => ReceiptItem::Int(i128::from(arg)),
             // §6.2.2 admits no integer below -2^63.
-            1 if arg <= i64::MAX as u64 => AnchorItem::Int(-1 - i128::from(arg)),
-            2 => AnchorItem::Bytes(self.take(arg)?.to_vec()),
-            3 => AnchorItem::Text(String::from_utf8(self.take(arg)?.to_vec()).ok()?),
+            1 if arg <= i64::MAX as u64 => ReceiptItem::Int(-1 - i128::from(arg)),
+            2 => ReceiptItem::Bytes(self.take(arg)?.to_vec()),
+            3 => ReceiptItem::Text(String::from_utf8(self.take(arg)?.to_vec()).ok()?),
             4 => {
                 let mut items = Vec::new();
                 for _ in 0..arg {
                     items.push(self.item(depth + 1)?);
                 }
-                AnchorItem::Array(items)
+                ReceiptItem::Array(items)
             }
             5 => {
-                let mut pairs: Vec<(AnchorItem, AnchorItem)> = Vec::new();
+                let mut pairs: Vec<(ReceiptItem, ReceiptItem)> = Vec::new();
+                // A set, not a scan of `pairs`: a 10 MiB map holds millions
+                // of pairs, and a quadratic check would stall on it.
+                let mut seen: BTreeSet<Result<i128, String>> = BTreeSet::new();
                 for _ in 0..arg {
                     let key = self.item(depth + 1)?;
-                    if !matches!(key, AnchorItem::Int(_) | AnchorItem::Text(_))
-                        || pairs.iter().any(|(k, _)| *k == key)
-                    {
+                    let fresh = match &key {
+                        ReceiptItem::Int(i) => seen.insert(Ok(*i)),
+                        ReceiptItem::Text(t) => seen.insert(Err(t.clone())),
+                        _ => false,
+                    };
+                    if !fresh {
                         return None;
                     }
                     let value = self.item(depth + 1)?;
                     pairs.push((key, value));
                 }
-                AnchorItem::Map(pairs)
+                ReceiptItem::Map(pairs)
             }
             6 if depth == 0 && self.top_tag && arg == 18 => {
-                AnchorItem::Tag(arg, Box::new(self.item(depth + 1)?))
+                ReceiptItem::Tag(arg, Box::new(self.item(depth + 1)?))
             }
             7 => match arg {
-                20 => AnchorItem::Bool(false),
-                21 => AnchorItem::Bool(true),
-                22 => AnchorItem::Null,
+                20 => ReceiptItem::Bool(false),
+                21 => ReceiptItem::Bool(true),
+                22 => ReceiptItem::Null,
                 _ => return None,
             },
             _ => return None,
@@ -1839,9 +2017,12 @@ impl AnchorReader<'_> {
     }
 }
 
-/// One CBOR item under the §6.2.2 rules, with no trailing octet.
-fn strict_anchor_item(data: &[u8], top_tag: bool) -> Option<AnchorItem> {
-    let mut reader = AnchorReader {
+/// One CBOR item under the receipt encoding rule, with no trailing octet:
+/// definite lengths, shortest arguments, no repeated key, integer or text
+/// keys, valid UTF-8, no float, no simple value but false, true and null, no
+/// tag but an outer 18 when `top_tag`, and at most `MAX_RECEIPT_DEPTH` levels.
+fn strict_receipt_item(data: &[u8], top_tag: bool) -> Option<ReceiptItem> {
+    let mut reader = ReceiptReader {
         data,
         offset: 0,
         top_tag,
@@ -1850,7 +2031,7 @@ fn strict_anchor_item(data: &[u8], top_tag: bool) -> Option<AnchorItem> {
     (reader.offset == data.len()).then_some(item)
 }
 
-fn anchor_path_length(mut size: u64, mut index: u64) -> usize {
+fn receipt_path_length(mut size: u64, mut index: u64) -> usize {
     let mut count = 0;
     while size > 1 {
         let k = 1u64 << (63 - (size - 1).leading_zeros());
@@ -1867,16 +2048,16 @@ fn anchor_path_length(mut size: u64, mut index: u64) -> usize {
 /// Step 1 of profile v1 §6.2.2: the Receipt's `alg` and registration time,
 /// or `None` when the octets are not in the one form.
 fn parse_anchor_receipt(receipt: &[u8]) -> Option<(Algorithm, Option<u64>)> {
-    if receipt.is_empty() || receipt.len() > MAX_ANCHOR_RECEIPT_OCTETS {
+    if receipt.is_empty() || receipt.len() > MAX_RECEIPT_OCTETS {
         return None;
     }
-    let AnchorItem::Tag(18, body) = strict_anchor_item(receipt, true)? else {
+    let ReceiptItem::Tag(18, body) = strict_receipt_item(receipt, true)? else {
         return None;
     };
-    let AnchorItem::Array(parts) = *body else {
+    let ReceiptItem::Array(parts) = *body else {
         return None;
     };
-    let [AnchorItem::Bytes(protected), unprotected, AnchorItem::Null, AnchorItem::Bytes(signature)] =
+    let [ReceiptItem::Bytes(protected), unprotected, ReceiptItem::Null, ReceiptItem::Bytes(signature)] =
         parts.as_slice()
     else {
         return None;
@@ -1884,23 +2065,23 @@ fn parse_anchor_receipt(receipt: &[u8]) -> Option<(Algorithm, Option<u64>)> {
     if protected.is_empty() || signature.len() != 64 {
         return None;
     }
-    let headers = strict_anchor_item(protected, false)?;
-    let AnchorItem::Map(pairs) = &headers else {
+    let headers = strict_receipt_item(protected, false)?;
+    let ReceiptItem::Map(pairs) = &headers else {
         return None;
     };
     let mut time = None;
     for (label, value) in pairs {
         let ok = match (label, value) {
-            (AnchorItem::Int(1), AnchorItem::Int(alg)) => *alg == -8 || *alg == -7,
-            (AnchorItem::Int(395), AnchorItem::Int(vds)) => *vds == 1,
-            (AnchorItem::Int(4), AnchorItem::Bytes(_)) => true,
-            (AnchorItem::Int(15), claims @ AnchorItem::Map(_)) => {
-                if let Some(AnchorItem::Int(iat)) = claims.get(i128::from(CWT_IAT)) {
+            (ReceiptItem::Int(1), ReceiptItem::Int(alg)) => *alg == -8 || *alg == -7,
+            (ReceiptItem::Int(395), ReceiptItem::Int(vds)) => *vds == 1,
+            (ReceiptItem::Int(4), ReceiptItem::Bytes(_)) => true,
+            (ReceiptItem::Int(15), claims @ ReceiptItem::Map(_)) => {
+                if let Some(ReceiptItem::Int(iat)) = claims.get(i128::from(CWT_IAT)) {
                     time = u64::try_from(*iat).ok().filter(|t| *t <= MAX_IAT);
                 }
                 true
             }
-            (AnchorItem::Int(label), _) => *label < PRIVATE_LABEL,
+            (ReceiptItem::Int(label), _) => *label < PRIVATE_LABEL,
             _ => false,
         };
         if !ok {
@@ -1908,32 +2089,32 @@ fn parse_anchor_receipt(receipt: &[u8]) -> Option<(Algorithm, Option<u64>)> {
         }
     }
     let alg = match (headers.get(1)?, headers.get(395)?) {
-        (AnchorItem::Int(-8), _) => Algorithm::EdDSA,
+        (ReceiptItem::Int(-8), _) => Algorithm::EdDSA,
         _ => Algorithm::ES256,
     };
-    let AnchorItem::Map(outer) = unprotected else {
+    let ReceiptItem::Map(outer) = unprotected else {
         return None;
     };
-    let [(AnchorItem::Int(396), vdp @ AnchorItem::Map(vdp_pairs))] = outer.as_slice() else {
+    let [(ReceiptItem::Int(396), vdp @ ReceiptItem::Map(vdp_pairs))] = outer.as_slice() else {
         return None;
     };
     if vdp_pairs.len() != 1 {
         return None;
     }
-    let AnchorItem::Array(proofs) = vdp.get(-1)? else {
+    let ReceiptItem::Array(proofs) = vdp.get(-1)? else {
         return None;
     };
-    if proofs.is_empty() || proofs.len() > MAX_ANCHOR_PROOFS {
+    if proofs.is_empty() || proofs.len() > MAX_RECEIPT_PROOFS {
         return None;
     }
     for blob in proofs {
-        let AnchorItem::Bytes(blob) = blob else {
+        let ReceiptItem::Bytes(blob) = blob else {
             return None;
         };
-        let AnchorItem::Array(proof) = strict_anchor_item(blob, false)? else {
+        let ReceiptItem::Array(proof) = strict_receipt_item(blob, false)? else {
             return None;
         };
-        let [AnchorItem::Int(size), AnchorItem::Int(index), AnchorItem::Array(path)] =
+        let [ReceiptItem::Int(size), ReceiptItem::Int(index), ReceiptItem::Array(path)] =
             proof.as_slice()
         else {
             return None;
@@ -1942,11 +2123,11 @@ fn parse_anchor_receipt(receipt: &[u8]) -> Option<(Algorithm, Option<u64>)> {
             return None;
         };
         if index >= size
-            || size > MAX_ANCHOR_TREE_SIZE
-            || path.len() != anchor_path_length(size, index)
+            || size > MAX_RECEIPT_TREE_SIZE
+            || path.len() != receipt_path_length(size, index)
             || !path
                 .iter()
-                .all(|node| matches!(node, AnchorItem::Bytes(n) if n.len() == 32))
+                .all(|node| matches!(node, ReceiptItem::Bytes(n) if n.len() == 32))
         {
             return None;
         }

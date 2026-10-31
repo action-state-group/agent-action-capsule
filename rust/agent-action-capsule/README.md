@@ -46,7 +46,7 @@ checkpoint read only from its signed COSE form, producer-selected Bundles, the
 `checkpoint.witnesses` under a witness directory the caller supplies (none is
 trusted by default). Its result carries a `VALID`, `INCOMPLETE` or `INVALID`
 verdict; the plain `verify_bundle` is unchanged. It adds
-`scitt-cose-receipt`, `coset` and `p256`. `vectors/bundle/strict/README.md`
+`p256`. `vectors/bundle/strict/README.md`
 describes every rule.
 
 ```rust

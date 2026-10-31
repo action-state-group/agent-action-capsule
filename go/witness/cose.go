@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
 package witness
 
-// The COSE Receipt check follows the scitt-cose verifiers (Python
-// scitt_cose.verify_receipt and action-state-group/scitt-cose's
-// scitt-cose-go-verify, Apache-2.0), restricted to the profile of
-// vectors/bundle/strict/README.md ("COSE Receipts"): a detached payload,
-// vds 1 (RFC9162_SHA256) and alg EdDSA or ES256.
+// The COSE Receipt check is vectors/bundle/strict/README.md ("COSE
+// Receipts"): a receipt decoded under the encoding rule of profile v1 §6.2.2
+// (strictReceiptItem), a detached payload, vds 1 (RFC9162_SHA256) and alg
+// EdDSA or ES256. Header labels it does not read are ignored.
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/ed25519"
@@ -48,33 +46,13 @@ const (
 // receipt marking any other label critical (RFC 9052 section 3.1) is refused.
 var understoodLabels = map[uint64]bool{labelAlg: true, labelCrit: true, labelVDS: true, labelCWTClaims: true}
 
-var (
-	strictDecoding = func() cbor.DecMode {
-		mode, err := cbor.DecOptions{
-			DupMapKey:   cbor.DupMapKeyEnforcedAPF,
-			IndefLength: cbor.IndefLengthForbidden,
-			IntDec:      cbor.IntDecConvertNone,
-		}.DecMode()
-		if err != nil {
-			panic(err)
-		}
-		return mode
-	}()
-	lenientDecoding = func() cbor.DecMode {
-		mode, err := cbor.DecOptions{IntDec: cbor.IntDecConvertNone}.DecMode()
-		if err != nil {
-			panic(err)
-		}
-		return mode
-	}()
-	deterministicEncoding = func() cbor.EncMode {
-		mode, err := cbor.CoreDetEncOptions().EncMode()
-		if err != nil {
-			panic(err)
-		}
-		return mode
-	}()
-)
+var deterministicEncoding = func() cbor.EncMode {
+	mode, err := cbor.CoreDetEncOptions().EncMode()
+	if err != nil {
+		panic(err)
+	}
+	return mode
+}()
 
 // COSEReceipt is what a verified COSE Receipt states.
 type COSEReceipt struct {
@@ -109,9 +87,9 @@ func VerifyCOSEReceipt(receipt, leaf []byte, key crypto.PublicKey) (COSEReceipt,
 	if len(receipt) == 0 || len(receipt) > maxReceiptBytes {
 		return COSEReceipt{}, errors.New("receipt size is invalid")
 	}
-	decoded, err := strictItem(receipt)
-	if err != nil {
-		return COSEReceipt{}, fmt.Errorf("receipt rejected: %w", err)
+	decoded, ok := strictReceiptItem(receipt, true)
+	if !ok {
+		return COSEReceipt{}, errors.New("receipt rejected: not one CBOR item under the receipt encoding rule")
 	}
 	tag, isTag := decoded.(cbor.Tag)
 	parts, isArray := tag.Content.([]interface{})
@@ -125,28 +103,15 @@ func VerifyCOSEReceipt(receipt, leaf []byte, key crypto.PublicKey) (COSEReceipt,
 	if parts[2] != nil {
 		return COSEReceipt{}, errors.New("receipt payload is attached; a receipt's payload must be detached")
 	}
-	// fxamacker decodes both null (0xf6) and undefined (0xf7) to nil, so
-	// read the payload's raw bytes: only null is detached, as scitt-cose has it.
-	var raw cbor.RawTag
-	if err := strictDecoding.Unmarshal(receipt, &raw); err != nil {
-		return COSEReceipt{}, fmt.Errorf("receipt rejected: %w", err)
-	}
-	var rawParts []cbor.RawMessage
-	if err := strictDecoding.Unmarshal(raw.Content, &rawParts); err != nil || len(rawParts) != 4 {
-		return COSEReceipt{}, errors.New("receipt is not a COSE_Sign1 message")
-	}
-	if !bytes.Equal(rawParts[2], []byte{0xf6}) {
-		return COSEReceipt{}, errors.New("receipt payload is not null; a detached payload must be CBOR null")
-	}
 	signature, isBytes := parts[3].([]byte)
 	if !isBytes {
 		return COSEReceipt{}, errors.New("receipt signature is not a byte string")
 	}
 	protected := map[interface{}]interface{}{}
 	if len(protectedBytes) != 0 {
-		value, err := strictItem(protectedBytes)
-		if err != nil {
-			return COSEReceipt{}, fmt.Errorf("protected header rejected: %w", err)
+		value, ok := strictReceiptItem(protectedBytes, false)
+		if !ok {
+			return COSEReceipt{}, errors.New("protected header rejected: not one CBOR item under the receipt encoding rule")
 		}
 		var isMap bool
 		if protected, isMap = value.(map[interface{}]interface{}); !isMap {
@@ -242,26 +207,6 @@ func registrationTime(protected map[interface{}]interface{}) (*int64, string) {
 	return nil, ReasonIatInvalid
 }
 
-// strictItem decodes one CBOR item and refuses any encoding other than its
-// deterministic one up to map order: trailing bytes, indefinite lengths,
-// duplicate keys, and non-minimal arguments or floats. Like scitt-cose's
-// strict_decode it compares lengths, so a validly signed header whose map
-// keys are not in canonical order is accepted.
-func strictItem(data []byte) (interface{}, error) {
-	var value interface{}
-	if err := strictDecoding.Unmarshal(data, &value); err != nil {
-		return nil, err
-	}
-	canonical, err := deterministicEncoding.Marshal(value)
-	if err != nil {
-		return nil, err
-	}
-	if len(canonical) != len(data) {
-		return nil, errors.New("non-deterministic CBOR encoding")
-	}
-	return value, nil
-}
-
 // checkKeyType holds the key to the type the receipt's alg fixes: ES256 is
 // ECDSA over P-256 only, and EdDSA is Ed25519.
 func checkKeyType(alg int64, key crypto.PublicKey) error {
@@ -305,23 +250,21 @@ func checkCritical(protected map[interface{}]interface{}) error {
 	return nil
 }
 
-// decodeInclusionProof decodes CBOR [tree_size, leaf_index, [audit_path]].
-// Like the scitt-cose verifiers it reads the blob leniently (a non-shortest
-// head is accepted) and refuses only trailing bytes; the envelope and the
-// protected header around it are decoded strictly.
+// decodeInclusionProof decodes CBOR [tree_size, leaf_index, [audit_path]]
+// under the receipt encoding rule, as the envelope around it is decoded.
 func decodeInclusionProof(blob []byte) (int64, int64, [][]byte, error) {
-	var value interface{}
-	if err := lenientDecoding.Unmarshal(blob, &value); err != nil {
-		return 0, 0, nil, fmt.Errorf("inclusion proof is not valid CBOR: %w", err)
+	value, ok := strictReceiptItem(blob, false)
+	if !ok {
+		return 0, 0, nil, errors.New("inclusion proof is not one CBOR item under the receipt encoding rule")
 	}
 	parts, isArray := value.([]interface{})
 	if !isArray || len(parts) != 3 {
 		return 0, 0, nil, errors.New("inclusion proof must be [tree_size, leaf_index, [path]]")
 	}
-	size, sizeOK := cborInteger(parts[0])
-	index, indexOK := cborInteger(parts[1])
+	size, sizeOK := parts[0].(uint64)
+	index, indexOK := parts[1].(uint64)
 	if !sizeOK || !indexOK {
-		return 0, 0, nil, errors.New("inclusion proof tree_size and leaf_index must be integers")
+		return 0, 0, nil, errors.New("inclusion proof tree_size and leaf_index must be unsigned integers")
 	}
 	nodes, isArray := parts[2].([]interface{})
 	if !isArray {
@@ -338,10 +281,10 @@ func decodeInclusionProof(blob []byte) (int64, int64, [][]byte, error) {
 		}
 		path[i] = raw
 	}
-	if index < 0 || index >= size || size > maxTreeSize {
+	if index >= size || size > uint64(maxTreeSize) {
 		return 0, 0, nil, errors.New("invalid tree size or leaf index")
 	}
-	if int64(len(path)) != expectedPathLength(size, index) {
+	if int64(len(path)) != expectedPathLength(int64(size), int64(index)) {
 		return 0, 0, nil, errors.New("invalid inclusion proof path length")
 	}
 	for _, node := range path {
@@ -349,30 +292,7 @@ func decodeInclusionProof(blob []byte) (int64, int64, [][]byte, error) {
 			return 0, 0, nil, errors.New("inclusion proof path node must be 32 bytes")
 		}
 	}
-	return size, index, path, nil
-}
-
-// cborInteger reads a decoded CBOR integer, a bignum included, that fits an
-// int64; the range checks that follow bound it further.
-func cborInteger(value interface{}) (int64, bool) {
-	switch value := value.(type) {
-	case uint64:
-		if value > math.MaxInt64 {
-			return 0, false
-		}
-		return int64(value), true
-	case int64:
-		return value, true
-	case big.Int:
-		if value.IsInt64() {
-			return value.Int64(), true
-		}
-	case *big.Int:
-		if value.IsInt64() {
-			return value.Int64(), true
-		}
-	}
-	return 0, false
+	return int64(size), int64(index), path, nil
 }
 
 func largestPowerOfTwoBelow(n int64) int64 {

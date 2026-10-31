@@ -257,7 +257,7 @@ A receipt verifies over a leaf when all of these hold:
   fixes the key type: ES256 verifies only under an ECDSA P-256 key and EdDSA
   only under an Ed25519 key, so a receipt checked under any other key fails
   (`neg-witness-cll-es256-other-curve`);
-- its unprotected `vdp` (396) map carries a non-empty array of inclusion
+- its unprotected `vdp` (396) map carries an array of one to 16 inclusion
   proofs under -1, each a byte string holding CBOR
   `[tree_size, leaf_index, [audit_path...]]`. Every entry must decode;
 - for some proof, the RFC 9162 root rebuilt from the leaf and that proof
@@ -269,8 +269,45 @@ A receipt verifies over a leaf when all of these hold:
   for any root, so anyone could sign under it
   (`neg-witness-cll-small-order-key`).
 
-Decoding follows the scitt-cose verifiers (Python `scitt_cose.verify_receipt`,
-the Rust crate `scitt-cose-receipt`), including their `crit` handling.
+**Receipt encoding.** A receipt is at most 10,485,760 octets. The
+COSE_Sign1, its protected header and each inclusion-proof byte string are
+each one CBOR item under the encoding rule of
+`spec/interop-profile-v1.md` §6.2.2, which this check shares with the
+anchor check of §6.2.2. In short: no trailing octet, definite lengths, every
+argument in its shortest form, no repeated map key, integer or text map
+keys, valid UTF-8, no float, no simple value but `false`, `true` and `null`,
+no tag but the outer tag 18, and no item more than 16 levels deep; map order
+is not checked. §6.2.2 states it in full. A receipt that breaks it fails,
+whatever its signature: a tag (`neg-witness-cll-encoding-tag`), a bignum
+(`neg-witness-cll-encoding-bignum`), an integer below -2^63
+(`neg-witness-cll-encoding-integer-below-int64`), a key that is neither an
+integer nor text (`neg-witness-cll-encoding-array-key`,
+`neg-witness-cll-encoding-bytes-key`), a float
+(`neg-witness-cll-encoding-float`, `neg-witness-cll-encoding-nan-keys`), a
+repeated key (`neg-witness-cll-encoding-repeated-key`), a simple value
+other than `false`, `true` and `null` (`neg-witness-cll-encoding-undefined`,
+`neg-witness-cll-encoding-simple-value`), an indefinite length
+(`neg-witness-cll-encoding-indefinite`), an item 17 levels deep
+(`neg-witness-cll-encoding-too-deep`, against
+`pos-witness-cll-encoding-depth-16`), in the protected header
+(`neg-witness-cll-encoding-protected-tag`) or in an inclusion proof
+(`neg-witness-cll-encoding-proof-not-shortest`,
+`neg-witness-cll-encoding-proof-indefinite`). Map keys out of canonical
+order are accepted (`pos-witness-cll-encoding-keys-out-of-order`).
+
+The check reads only `alg` (1), `crit` (2), CWT_Claims (15), `vds` (395),
+`vdp` (396) and the grade label (-65537). Any other header label is ignored
+whatever its value, provided the receipt meets the encoding rule: an
+unprotected `kid` (4) that is an integer
+(`pos-witness-cll-unread-kid-integer`) or a protected content type (3) of
+`"abc"` (`pos-witness-cll-unread-content-type`) changes nothing. A protected
+`crit` (2) must be a non-empty array of labels that are present in the
+protected header and among `alg`, `crit`, CWT_Claims and `vds` (RFC 9052
+§3.1; `pos-witness-cll-crit-understood`); otherwise the receipt fails: a
+label it does not process (`neg-witness-cll-crit-not-understood`), one absent
+from the header (`neg-witness-cll-crit-absent`), an empty array
+(`neg-witness-cll-crit-empty`), no array (`neg-witness-cll-crit-not-an-array`)
+or a label that is neither an integer nor text (`neg-witness-cll-crit-boolean`).
 
 Every base64 field a receipt check reads (`receipt_b64`, the Rekor `body`,
 `signedEntryTimestamp` and `verifier`) is canonical standard base64 with
@@ -299,8 +336,8 @@ one of:
 | reason | the receipt |
 |---|---|
 | `receipt_not_passed` | is `withheld` or `fail` (`pos-witness-registration-time-no-directory`, `neg-witness-registration-time-wrong-key`) |
-| `iat_absent` | passed, and its protected header has no CWT claims map, or one without `iat`: the wire shape before witnesses signed a time (`pos-witness-cll`). Labels and claim keys are CBOR integers; a float key such as `6.0` is another key (`pos-witness-registration-time-float-claim-key`) |
-| `iat_invalid` | passed, and its protected CWT claims are not a map, or its `iat` is not an integer from 0 to 2^53 - 1 (a float, text, a negative number or 2^53 and above; `pos-witness-registration-time-invalid`, `pos-witness-registration-time-claims-not-a-map`, `pos-witness-registration-time-out-of-range`) |
+| `iat_absent` | passed, and its protected header has no CWT claims map, or one without `iat`: the wire shape before witnesses signed a time (`pos-witness-cll`). A float key such as `6.0` breaks the receipt encoding rule, so that receipt fails (`neg-witness-registration-time-float-claim-key`) |
+| `iat_invalid` | passed, and its protected CWT claims are not a map, or its `iat` is not an integer from 0 to 2^53 - 1 (text, a negative number or 2^53 and above; `pos-witness-registration-time-claims-not-a-map`, `pos-witness-registration-time-out-of-range`). A float `iat`, which RFC 8392 permits, breaks the receipt encoding rule, so that receipt fails (`neg-witness-registration-time-float-iat`) |
 | `binding_without_iat` | passed under the `rekor` binding, whose receipt is a Rekor entry, not a COSE Receipt (`pos-witness-rekor`) |
 
 When `registration_time` is set, `registration_time_reason` is `null`. An
@@ -363,6 +400,31 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-wrong-key` | a receipt signed by a key the row does not list | INVALID |
 | `neg-witness-cll-attached-payload` | a receipt with an attached payload signed by the listed key | INVALID |
 | `neg-witness-cll-undefined-payload` | a receipt over the right root whose payload is CBOR undefined (`0xf7`), not null | INVALID |
+| `neg-witness-cll-encoding-tag` | a tag 0 over a date-time text under unprotected label 99 | INVALID |
+| `neg-witness-cll-encoding-bignum` | a bignum (tag 2) 2^64 under label 99 | INVALID |
+| `neg-witness-cll-encoding-integer-below-int64` | the integer -2^64 under label 99 | INVALID |
+| `neg-witness-cll-encoding-array-key` | a map keyed by an array under label 99 | INVALID |
+| `neg-witness-cll-encoding-bytes-key` | a map keyed by a byte string under label 99 | INVALID |
+| `neg-witness-cll-encoding-float` | the float 1.5 (half precision) under label 99 | INVALID |
+| `neg-witness-cll-encoding-nan-keys` | a map with two NaN keys under label 99 | INVALID |
+| `neg-witness-cll-encoding-repeated-key` | a map with a repeated integer key under label 99 | INVALID |
+| `neg-witness-cll-encoding-undefined` | `undefined` (`0xf7`) under label 99 | INVALID |
+| `neg-witness-cll-encoding-simple-value` | the unassigned simple value 0 (`0xe0`) under label 99 | INVALID |
+| `neg-witness-cll-encoding-indefinite` | an indefinite-length array under label 99 | INVALID |
+| `neg-witness-cll-encoding-too-deep` | 14 nested arrays under label 99: an item 17 levels deep | INVALID |
+| `neg-witness-cll-encoding-protected-tag` | a tag 1 under protected label -65538 | INVALID |
+| `neg-witness-cll-encoding-proof-not-shortest` | an inclusion proof `[1, 0, []]` with one-byte integer heads | INVALID |
+| `neg-witness-cll-encoding-proof-indefinite` | an inclusion proof whose path is an indefinite-length array | INVALID |
+| `pos-witness-cll-encoding-keys-out-of-order` | a map whose text keys are out of canonical order under label 99 | VALID |
+| `pos-witness-cll-encoding-depth-16` | 13 nested arrays under label 99: an item 16 levels deep | VALID |
+| `pos-witness-cll-unread-kid-integer` | an unprotected `kid` (4) that is an integer | VALID |
+| `pos-witness-cll-unread-content-type` | a protected content type (3) of `"abc"` | VALID |
+| `pos-witness-cll-crit-understood` | a protected `crit` `[15]` with an empty CWT_Claims map | VALID |
+| `neg-witness-cll-crit-not-understood` | a protected `crit` `[4]` over a `kid` | INVALID |
+| `neg-witness-cll-crit-absent` | a protected `crit` `[15]` with no CWT_Claims | INVALID |
+| `neg-witness-cll-crit-empty` | a protected `crit` that is an empty array | INVALID |
+| `neg-witness-cll-crit-not-an-array` | a protected `crit` that is an integer | INVALID |
+| `neg-witness-cll-crit-boolean` | a protected `crit` `[true]` | INVALID |
 | `neg-witness-cll-vds-ccf` | a receipt signed over the right root that declares `vds` 2 | INVALID |
 | `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
 | `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |
@@ -392,10 +454,10 @@ checkpoint is signed by another, the log key.
 | `pos-witness-registration-time-no-directory` | a receipt with an `iat` and no directory | VALID, witnesses withheld, `receipt_not_passed` |
 | `neg-witness-registration-time-wrong-key` | a receipt with an `iat`, signed by a key the row does not list | INVALID, `receipt_not_passed` |
 | `pos-witness-registration-time-unprotected` | no protected `iat`; the unprotected header carries one | VALID, `iat_absent` |
-| `pos-witness-registration-time-invalid` | a protected `iat` that is a float | VALID, `iat_invalid` |
+| `neg-witness-registration-time-float-iat` | a protected `iat` that is a float: no float under the receipt encoding rule | INVALID, `receipt_not_passed` |
 | `pos-witness-registration-time-claims-not-a-map` | protected CWT claims that are an integer | VALID, `iat_invalid` |
 | `pos-witness-registration-time-out-of-range` | a protected `iat` of 2^53 | VALID, `iat_invalid` |
-| `pos-witness-registration-time-float-claim-key` | protected CWT claims keyed by the float `6.0`, not the integer 6 | VALID, `iat_absent` |
+| `neg-witness-registration-time-float-claim-key` | protected CWT claims keyed by the float `6.0`: no float under the receipt encoding rule | INVALID, `receipt_not_passed` |
 | `pos-witness-scrapi-registration-time` | a `scrapi` receipt with a protected `iat` | VALID, `registration_time` is the `iat` |
 | `incomplete-witness-on-unsigned-checkpoint` | a receipt on a checkpoint with no `cose` | INCOMPLETE, witnesses withheld |
 

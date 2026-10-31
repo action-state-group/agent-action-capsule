@@ -190,8 +190,7 @@ describe("strict Evidence Bundle vectors", () => {
   });
 
   // pos-witness-cll with its unprotected proof blob [1, 0, []] (83 01 00 80)
-  // re-encoded: unsigned, so the receipt still verifies when the blob reads
-  // as the same proof, as Python's cbor2 and Rust's ciborium read it.
+  // re-encoded: unsigned, so only the decoding rule decides the receipt.
   const withProofBlob = async (blobHex: string) => {
     const testCase = vectors.cases.find((c) => c.id === "pos-witness-cll")!;
     const bundle = structuredClone(testCase.bundle) as {
@@ -218,24 +217,12 @@ describe("strict Evidence Bundle vectors", () => {
     return { strict, expected: testCase.expect.verdict };
   };
 
+  // The receipt encoding rule holds inside the blob as in the envelope.
   it.each([
     ["non-shortest integer heads", "831801180080"],
     ["an indefinite-length outer array", "9f010080ff"],
     ["an indefinite-length path", "8301009fff"],
     ["both indefinite", "9f01009fffff"],
-  ])(
-    "reads an inclusion-proof blob with %s, as scitt-cose does",
-    async (_name, blobHex) => {
-      const { strict, expected } = await withProofBlob(blobHex);
-      expect(strict.witnesses).toMatchObject({
-        status: "pass",
-        receipts: [{ status: "pass", grade: "mmr-verified" }],
-      });
-      expect(strict.verdict).toBe(expected);
-    },
-  );
-
-  it.each([
     ["trailing bytes after the array", "83010080ff"],
     ["an unterminated indefinite array", "9f010080"],
     ["a break inside a definite array", "830100ff"],
