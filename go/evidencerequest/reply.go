@@ -238,7 +238,10 @@ func (e Envelope) Value() map[string]any {
 // Verify checks the envelope signature under its own responder key, that
 // the artifact hashes to the signed digest, and that each verification item
 // hashes to the digest at its position. It does not decide whether the key
-// is trusted or whether the artifact answers the request.
+// is trusted or whether the artifact answers the request, and it does not
+// compare e.Profile with the identifier the request asked for (ProfileID when
+// it named none, profile §3.3 step 5): the Verifier does, and so must a
+// caller that accepts an envelope with Verify alone.
 func (e Envelope) Verify() error {
 	body, err := e.SigningBody()
 	if err != nil {
