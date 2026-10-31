@@ -310,7 +310,9 @@ response, the verifier reports the signature property for that object as `FAIL`.
 A JSON text nested more than 128 levels deep MUST be rejected as not well-formed in the same way
 [P-12]; 128 levels are read. Each object or array inside another is one more level, so `[]` is one
 level and `[[]]` two. The bound is the same in every implementation of this profile:
-`vectors/json-nesting/` is its conformance set.
+`vectors/json-nesting/` is its conformance set. It is the bound the capsule draft states for every
+JSON text under it, in the Conventions section of its working revision
+(`spec/draft-mih-scitt-agent-action-capsule-06.md`).
 
 ## 6. Messages, and what binds them
 

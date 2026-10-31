@@ -23,8 +23,8 @@ denied Capsule is affirmative evidence that a gate worked.
 ## The draft
 
 - **Datatracker:** https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/
-- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-05.md`](spec/draft-mih-scitt-agent-action-capsule-05.md)
-  (kramdown-rfc source).
+- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-06.md`](spec/draft-mih-scitt-agent-action-capsule-06.md)
+  (kramdown-rfc source; -05 is the posted revision).
 - **Registry of record:** [`spec/REGISTRY.md`](spec/REGISTRY.md) — the interim
   registry for the seven profile vocabularies until IANA registries are
   established on RFC publication.

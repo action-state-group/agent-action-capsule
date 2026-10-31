@@ -16,6 +16,14 @@ Not in any tag yet: nothing after `go/v0.18.0`, `python/v0.14.0` and `ts/v0.12.0
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- The capsule draft states the JSON nesting limit (AAC#498): the in-tree working revision
+  `spec/draft-mih-scitt-agent-action-capsule-06.md` (cut from the posted -05, `spec/Makefile` now
+  gates it) says in Conventions that JSON text nests at most 128 levels, a verifier rejects deeper
+  text as not well-formed and never rejects text 128 levels deep or less for its depth alone, with
+  `vectors/json-nesting/` as its conformance set. `spec/interop-profile-v1.md` §5.2 and the vector
+  README cite it. Nothing is posted until the -06 cut; the wire value stays
+  `draft-mih-scitt-agent-action-capsule-05`.
+
 ## go 0.18.0 — 2026-10-31
 
 Tag `go/v0.18.0`.
