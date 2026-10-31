@@ -1,0 +1,12 @@
+{
+  "spec": "spec/interop-profile-v1.md",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_cbor_nesting_vectors.py",
+  "files": [
+    {
+      "path": "cases.json",
+      "sha256": "e9a96080cc3121728844188467c52571d035df0e8cda1c181eb8179e48bd8123",
+      "count": 9
+    }
+  ]
+}

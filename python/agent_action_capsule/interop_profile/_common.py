@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 from .._ed25519_strict import verify_strict
-from ..canonical import jcs, json_text_too_deep
+from ..canonical import MAX_NESTING_DEPTH, jcs, json_text_too_deep
 from ._cbor import Tag
 
 __all__ = [
@@ -228,7 +228,7 @@ def member_of(value: Any, allowed: Any) -> bool:
 def numbers_in_domain(value: Any, depth: int = 0) -> bool:
     """§5.2: every number is an unsigned integer from 0 to 2^53 - 1, never a float or boolean
     standing in for one, and every map key is text."""
-    if depth > 64:
+    if depth > MAX_NESTING_DEPTH:
         return False
     if isinstance(value, bool) or value is None or isinstance(value, (str, bytes)):
         return True
