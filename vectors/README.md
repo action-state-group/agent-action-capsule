@@ -51,6 +51,11 @@ same-commit files in CI.
 - `anchor-witness-v1/`: profile `evidence-interop/1` §6.2.2 witness Receipts
   over an anchor and the `anchor_witnessed` report, positive and MUST-reject;
   `python/scripts/generate_anchor_witness_v1_vectors.py` regenerates them.
+- `json-nesting/`: the nesting limit every implementation shares: JSON text
+  nested 128 levels deep is read and canonicalized, 129 levels is refused as
+  malformed, and a value past the limit has no RFC 8785 form; `spec/interop-profile-v1.md` §5.2
+  states the limit (#498);
+  `python/scripts/generate_json_nesting_vectors.py` regenerates them.
 - `minimum-necessary/`: provisional registry entries held for ratification
   (`spec/REGISTRY.md` §10, §14, §16): SD-JWT (RFC 9901) presentations as a
   revealed `agent_input`, the `disclosure-policy-decisions/v1` and

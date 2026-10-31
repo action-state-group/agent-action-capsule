@@ -109,10 +109,12 @@ impl RequestError {
 }
 
 /// Parse and check a request in the JSON binding, from the bytes as
-/// received. Duplicate member names are not detected in this binding.
+/// received. A duplicate member name, an unpaired surrogate escape and
+/// nesting deeper than 128 levels are malformed, as in Go and Python
+/// (`vectors/json-nesting/`); any RFC 8259 number is read.
 pub fn parse_json(bytes: &[u8]) -> Result<Request, RequestError> {
-    let value: serde_json::Value = serde_json::from_slice(bytes)
-        .map_err(|_| RequestError::Malformed("not well-formed JSON"))?;
+    let value = crate::strict_json::decode_json_numbers(bytes)
+        .ok_or(RequestError::Malformed("not well-formed JSON"))?;
     from_val(&Val::from_json(&value))
 }
 

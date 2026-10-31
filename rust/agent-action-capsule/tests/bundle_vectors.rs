@@ -596,3 +596,30 @@ fn fragment_refuses_non_canonical_base64url() {
     // "e31" carries the same two bytes with non-zero trailing bits.
     assert!(decode_fragment("e31").is_err());
 }
+
+/// `vectors/json-nesting/` through the fragment codec: decoded at 128 levels,
+/// refused at 129, as in Go, Python and TypeScript.
+#[test]
+fn fragment_shares_the_json_nesting_limit() {
+    use base64::Engine as _;
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../vectors/json-nesting/cases.json"
+    );
+    let doc: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    for id in ["pos-arrays-at-limit", "neg-arrays-past-limit"] {
+        let case = doc["cases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|c| c["id"] == id)
+            .unwrap();
+        let text = case["json"].as_str().unwrap();
+        let fragment = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(text);
+        assert_eq!(
+            decode_fragment(&fragment).is_ok(),
+            case["accept"].as_bool().unwrap(),
+            "{id}"
+        );
+    }
+}

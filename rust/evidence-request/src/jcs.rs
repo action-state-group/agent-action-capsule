@@ -13,16 +13,26 @@ use serde_json::Value;
 pub enum JcsError {
     #[error("a number that is not an integer has no canonical form in this crate")]
     NonIntegerNumber,
+    #[error("a value nested more than 128 levels deep has no canonical form")]
+    TooDeep,
 }
+
+/// The deepest nesting of arrays and objects serialized (`[]` is one level),
+/// shared by every implementation (`vectors/json-nesting/`).
+pub(crate) const MAX_DEPTH: usize = 128;
 
 /// The RFC 8785 serialization of `value`.
 pub fn to_string(value: &Value) -> Result<String, JcsError> {
     let mut out = String::new();
-    write(value, &mut out)?;
+    write(value, &mut out, 0)?;
     Ok(out)
 }
 
-fn write(value: &Value, out: &mut String) -> Result<(), JcsError> {
+/// Writes `value`, enclosed by `depth` arrays and objects.
+fn write(value: &Value, out: &mut String, depth: usize) -> Result<(), JcsError> {
+    if matches!(value, Value::Array(_) | Value::Object(_)) && depth >= MAX_DEPTH {
+        return Err(JcsError::TooDeep);
+    }
     match value {
         Value::Null => out.push_str("null"),
         Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
@@ -42,7 +52,7 @@ fn write(value: &Value, out: &mut String) -> Result<(), JcsError> {
                 if i > 0 {
                     out.push(',');
                 }
-                write(item, out)?;
+                write(item, out, depth + 1)?;
             }
             out.push(']');
         }
@@ -56,7 +66,7 @@ fn write(value: &Value, out: &mut String) -> Result<(), JcsError> {
                 }
                 write_string(key, out);
                 out.push(':');
-                write(item, out)?;
+                write(item, out, depth + 1)?;
             }
             out.push('}');
         }

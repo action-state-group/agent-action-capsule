@@ -219,6 +219,34 @@ def test_fragment_refuses_what_the_other_decoders_refuse(text):
         decode_fragment(fragment)
 
 
+_NESTING = {
+    c["id"]: c
+    for c in json.loads(
+        (Path(__file__).resolve().parents[2] / "vectors" / "json-nesting" / "cases.json").read_text(encoding="utf-8")
+    )["cases"]
+}
+
+
+@pytest.mark.parametrize("case_id", ["pos-arrays-at-limit", "neg-arrays-past-limit", "pos-objects-at-limit"])
+def test_fragment_shares_the_json_nesting_limit(case_id):
+    # vectors/json-nesting/: read at 128 levels, refused at 129 with ValueError
+    # (never RecursionError), as Go, TypeScript and Rust do.
+    case = _NESTING[case_id]
+    fragment = base64.urlsafe_b64encode(case["json"].encode()).rstrip(b"=").decode()
+    if case["accept"]:
+        assert decode_fragment(fragment) == json.loads(case["json"])
+    else:
+        with pytest.raises(ValueError, match="not UTF-8 JSON"):
+            decode_fragment(fragment)
+
+
+def test_fragment_far_past_the_nesting_limit_is_a_value_error():
+    text = "[" * 100_000 + "]" * 100_000
+    fragment = base64.urlsafe_b64encode(text.encode()).rstrip(b"=").decode()
+    with pytest.raises(ValueError, match="nested more than 128"):
+        decode_fragment(fragment)
+
+
 def test_fragment_keeps_the_last_of_a_repeated_name():
     fragment = base64.urlsafe_b64encode(b'{"a":"x","a":1}').rstrip(b"=").decode()
     assert decode_fragment(fragment) == {"a": 1}

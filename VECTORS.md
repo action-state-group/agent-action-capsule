@@ -94,6 +94,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/judgment/` | `x-judgment-v1` extension (provisional) | record, verify | 5 |
 | `vectors/evidence-layer/padding/` | `draft-mih-agent-evidence-layer-00` (What a Checkpoint Reveals) | record, verify | 17 |
 | `vectors/registry-conformance/` | `spec/REGISTRY.md` | verify | 26 |
+| `vectors/json-nesting/` | none: the nesting limit every implementation shares (#498) | record, verify | 9 |
 
 Counts that are not a set's own case list: `vectors/cross-language/` is the 54
 Ed25519 and 14 COSE cases of `cll-ed25519-vectors.json` plus one case for each

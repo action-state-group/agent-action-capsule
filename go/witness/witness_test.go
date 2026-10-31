@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/checkpointed-local-log/go/checkpoint"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/require"
@@ -689,3 +690,11 @@ func TestRegistrationTimeEdges(t *testing.T) {
 }
 
 func ptr[T any](value T) *T { return &value }
+
+func TestParseDirectoryRefusesPastTheNestingLimit(t *testing.T) {
+	n := canonical.MaxNestingDepth
+	_, err := ParseDirectory([]byte("[" + strings.Repeat("[", n-1) + strings.Repeat("]", n-1) + "]"))
+	require.NoError(t, err)
+	_, err = ParseDirectory([]byte("[" + strings.Repeat("[", n) + strings.Repeat("]", n) + "]"))
+	require.Error(t, err)
+}

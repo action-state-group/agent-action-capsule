@@ -95,7 +95,7 @@ from typing import Any, Protocol
 
 from . import _ed25519_strict
 from ._ed25519_strict import verify_strict
-from .canonical import jcs
+from .canonical import MAX_NESTING_DEPTH, jcs, json_text_too_deep
 from .interop_profile import _cbor
 from .interop_profile import cll as _cll
 from .interop_profile._common import (
@@ -335,14 +335,17 @@ def _reject_constant(text: str) -> Any:
 
 def _decode_json(data: bytes) -> Any:
     try:
+        text = data.decode("utf-8")
+        if json_text_too_deep(text):
+            raise ValueError(f"nested more than {MAX_NESTING_DEPTH} levels deep")
         return json.loads(
-            data.decode("utf-8"),
+            text,
             object_pairs_hook=_json_object,
             parse_int=_json_int,
             parse_float=_json_float,
             parse_constant=_reject_constant,
         )
-    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+    except (UnicodeDecodeError, ValueError) as exc:
         raise RequestError(REASON_REQUEST_MALFORMED, f"not well-formed JSON: {exc}") from exc
 
 

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Breaking: `jcs::to_string` refuses a value nested more than 128 levels deep with the new
+  `JcsError::TooDeep` instead of recursing. The acceptance record's contract digest now has the
+  same limit (it was 64). The strict decoders' limit is unchanged (128); Go, Python and TypeScript
+  now share it, and the unit tests run the shared `vectors/json-nesting/` (AAC#498).
+- `request::parse_json` and `envelope::parse_reply` (JSON binding) read through the crate's strict
+  decoder instead of `serde_json`, whose default limit refused the 128th level: both now read 128
+  levels and refuse 129, as Go and Python do (`tests/json_nesting.rs`). Breaking for
+  `request::parse_json`: a duplicate member name is now `Malformed("not well-formed JSON")`, as in
+  Go and Python; before, the last duplicate won.
 - **`unavailable_window`**: ER -02 §4.7 unavailable-window statements. `recognize` reads a
   statement for a responder key and the receipts held for it: a `ReasonClass` from the closed list,
   `start` <= `end`, the responder key's signature checked in the vectors' signature profile

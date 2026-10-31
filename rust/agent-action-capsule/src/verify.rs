@@ -284,6 +284,11 @@ pub fn verify_with(
     store: Option<&[Value]>,
     regs: &Registries,
 ) -> VerificationResult {
+    // Refused before any check walks it, as Go, Python and TypeScript refuse
+    // it (vectors/json-nesting/).
+    if crate::json::exceeds_max_depth(capsule) {
+        return VerificationResult::internal_error("Capsule is nested too deeply");
+    }
     let capsule_map = match capsule.as_object() {
         Some(m) => m,
         None => {

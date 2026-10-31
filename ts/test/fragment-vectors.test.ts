@@ -51,3 +51,23 @@ describe("vectors/bundle/fragment", () => {
     });
   }
 });
+
+describe("vectors/json-nesting through the fragment codec", () => {
+  const nesting = (
+    JSON.parse(
+      readFileSync(
+        resolve(process.cwd(), "..", "vectors", "json-nesting", "cases.json"),
+        "utf8",
+      ),
+    ) as { cases: { id: string; accept: boolean; json: string }[] }
+  ).cases;
+  for (const id of ["pos-arrays-at-limit", "neg-arrays-past-limit"]) {
+    const c = nesting.find((n) => n.id === id)!;
+    it(`${id}: ${c.accept ? "decoded" : "refused"}, as in Go, Python and Rust`, () => {
+      const fragment = Buffer.from(c.json, "utf8").toString("base64url");
+      if (c.accept)
+        expect(decodeFragment(fragment)).toEqual(JSON.parse(c.json));
+      else expect(() => decodeFragment(fragment)).toThrow();
+    });
+  }
+});

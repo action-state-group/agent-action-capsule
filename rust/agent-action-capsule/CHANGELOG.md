@@ -7,6 +7,11 @@
   `spec/interop-profile-v1.md` §6.2.2 over `cll-witness-receipt` Receipts
   (RFC 9942, RFC9162_SHA256, leaf entry the anchor digest) under a witness
   policy, and passes `vectors/anchor-witness-v1/`.
+- Breaking: `canonical::jcs` (and `json_digest`, `compute_capsule_id`) refuses a value nested more
+  than 128 levels deep with the new `CanonicalError::TooDeep` instead of recursing, and
+  `verify::verify` reports only `verifier_internal_error` for such a Capsule, as Go, Python and
+  TypeScript now do. The decoder's limit is unchanged (128); the four implementations now share it
+  and `tests/json_nesting.rs` runs the shared `vectors/json-nesting/` (AAC#498).
 - Security, settlement: the `wrapped_resigned` check verifies a wrapped JWS
   under the leg key with dalek's `verify_strict`, not `verify`, so a
   small-order key (such as the identity key's forgery, R the identity and

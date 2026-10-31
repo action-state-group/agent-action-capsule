@@ -114,9 +114,8 @@ func (r StrictResult) Claim(name string) *ClaimResult {
 //   - the witness receipts in checkpoint.witnesses under the keys of
 //     WitnessDirectory.
 func VerifyStrict(value interface{}, opts StrictOptions) StrictResult {
-	// A value nested deeper than any JSON text decodes to (only a value built
-	// in Go can be) is refused before any recursive check can exhaust the
-	// stack: bundle_malformed on every claim, as the plain verifier reports a
+	// A value nested more than canonical.MaxNestingDepth levels deep is
+	// refused before any recursive check runs: bundle_malformed on every claim, as the plain verifier reports a
 	// value that is not a Bundle.
 	if canonical.TooDeep(value) {
 		malformed := ClaimResult{Status: "fail", Findings: []string{"bundle_malformed"}}

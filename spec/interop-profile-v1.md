@@ -307,6 +307,11 @@ A JSON object or CBOR map received under this profile with a duplicate member na
 as not well-formed [P-12]. For a request, that is a refusal with `request_malformed` [ER §3]. For a
 response, the verifier reports the signature property for that object as `FAIL`.
 
+A JSON text nested more than 128 levels deep MUST be rejected as not well-formed in the same way
+[P-12]; 128 levels are read. Each object or array inside another is one more level, so `[]` is one
+level and `[[]]` two. The bound is the same in every implementation of this profile:
+`vectors/json-nesting/` is its conformance set.
+
 ## 6. Messages, and what binds them
 
 ### 6.1 Request

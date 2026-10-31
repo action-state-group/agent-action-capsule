@@ -17,7 +17,6 @@ receipt actually verified. A signature with no verified receipt is
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -31,6 +30,7 @@ from scitt_cose import (  # type: ignore
 
 from . import VerificationResult, verify
 from ._ed25519_strict import strict_encoding
+from .canonical import loads_bounded
 from .media_types import CAPSULE_ID_MEDIA_TYPE
 
 
@@ -169,8 +169,8 @@ def verify_transparent(
         )
         return report
     try:
-        capsule = json.loads(payload_bytes)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        capsule = loads_bounded(payload_bytes)
+    except ValueError as exc:  # JSONDecodeError, UnicodeDecodeError, NestingTooDeepError
         report.substrate_errors.append(f"authenticated payload is not valid JSON: {exc}")
         report.ok = False
         return report

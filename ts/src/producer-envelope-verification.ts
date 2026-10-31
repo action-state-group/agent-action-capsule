@@ -1,4 +1,5 @@
 import { jcs, JsonNumber, sha256Hex } from "./json.js";
+import { nestedTooDeep } from "./nesting.js";
 import {
   CONTENT_TYPE,
   equalBytes,
@@ -400,6 +401,8 @@ async function gradeRecordSignature(record: unknown): Promise<{
 }> {
   if (!plainObject(record))
     return { verdict: "invalid", messages: ["not a JSON object"] };
+  if (nestedTooDeep(record))
+    return { verdict: "invalid", messages: ["record is nested too deeply"] };
   const id = idText(record);
   const hasSignature = Object.hasOwn(record, "signature"),
     hasKeyId = Object.hasOwn(record, "key_id");

@@ -42,6 +42,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ._ed25519_strict import strict_encoding as _strict_ed25519
+from .canonical import loads_bounded
 
 __all__ = [
     "ANCHOR_WITNESS_KIND",
@@ -425,7 +426,7 @@ def verify_rekor_receipt(
             rekor_key.verify(_b64_canonical(set_b64), signed, ec.ECDSA(hashes.SHA256()))
         except InvalidSignature:
             return False, "signedEntryTimestamp does not verify under the pinned Rekor key"
-        entry = json.loads(_b64_canonical(receipt["body"]))
+        entry = loads_bounded(_b64_canonical(receipt["body"]))
         if entry.get("kind") != "dsse":
             return False, f"entry kind {entry.get('kind')!r}, expected 'dsse'"
         spec = entry.get("spec") or {}
@@ -489,7 +490,7 @@ def verify_receipt(
         return False, "not checked: checkpoint COSE statement not available", None
     if binding == BINDING_REKOR:
         try:
-            receipt = json.loads(_b64_canonical(record["receipt_b64"]))
+            receipt = loads_bounded(_b64_canonical(record["receipt_b64"]))
         except (ValueError, TypeError, RecursionError) as exc:
             return False, f"unreadable receipt: {exc}", None
         ok, reason = verify_rekor_receipt(

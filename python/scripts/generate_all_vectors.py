@@ -97,6 +97,7 @@ GENERATORS = (
     "generate_envelope_encoding_vectors.py",
     # Appends to the capsule manifest.
     "generate_negative_zero_vectors.py",
+    "generate_json_nesting_vectors.py",
 )
 
 

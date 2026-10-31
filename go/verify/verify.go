@@ -977,9 +977,9 @@ func Verify(capsule interface{}, store []interface{}, regs map[string]map[string
 		}
 	}
 	// The number walk and the identity check visit every member; a value
-	// nested deeper than any JSON text decodes to, or one that contains
-	// itself (only a value built in Go can be either), is refused before
-	// they run, since neither an endless walk nor a stack overflow can be
+	// nested more than canonical.MaxNestingDepth levels deep, or one that
+	// contains itself (only a value built in Go can), is refused before they
+	// run, since neither an endless walk nor a stack overflow can be
 	// recovered.
 	if canonical.TooDeep(capsule) {
 		return VerificationResult{
@@ -1162,6 +1162,9 @@ func DecodeCapsuleJSON(data []byte) (interface{}, error) {
 	}
 	if _, err := d.Token(); err != io.EOF {
 		return nil, fmt.Errorf("trailing data after JSON value")
+	}
+	if canonical.TooDeep(v) {
+		return nil, fmt.Errorf("JSON nested more than %d levels deep", canonical.MaxNestingDepth)
 	}
 	return v, nil
 }

@@ -49,9 +49,11 @@ var hex64 = regexp.MustCompile(`^[0-9a-f]{64}$`)
 // IsDigest reports whether s is a digest in the form Digest returns.
 func IsDigest(s string) bool { return hex64.MatchString(s) }
 
-// maxNesting bounds how deep a received JSON or CBOR value may nest. No
-// object the profile defines nests deeper than a handful of levels.
-const maxNesting = 32
+// maxCBORNesting bounds how deep a received CBOR value may nest. No object
+// the profile defines nests deeper than a handful of levels. A received JSON
+// value may nest canonical.MaxNestingDepth objects and arrays deep, the
+// limit every implementation shares (vectors/json-nesting/).
+const maxCBORNesting = 32
 
 // errNotWellFormed marks a received map that is not well formed (§5.2): a
 // duplicate member, trailing bytes, invalid UTF-8, or a value outside the
@@ -124,16 +126,17 @@ func DecodeJSON(data []byte) (any, error) {
 	return value, nil
 }
 
+// readJSONValue reads one value enclosed by depth objects and arrays.
 func readJSONValue(decoder *json.Decoder, depth int) (any, error) {
-	if depth > maxNesting {
-		return nil, fmt.Errorf("%w: nested too deeply", errNotWellFormed)
-	}
 	token, err := decoder.Token()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", errNotWellFormed, err)
 	}
 	switch t := token.(type) {
 	case json.Delim:
+		if depth >= canonical.MaxNestingDepth {
+			return nil, fmt.Errorf("%w: nested more than %d levels deep", errNotWellFormed, canonical.MaxNestingDepth)
+		}
 		switch t {
 		case '{':
 			object := map[string]any{}
@@ -183,7 +186,7 @@ func readJSONValue(decoder *json.Decoder, depth int) (any, error) {
 var strictCBOR = func() cbor.DecMode {
 	mode, err := cbor.DecOptions{
 		DupMapKey:         cbor.DupMapKeyEnforcedAPF,
-		MaxNestedLevels:   maxNesting,
+		MaxNestedLevels:   maxCBORNesting,
 		UTF8:              cbor.UTF8RejectInvalid,
 		IndefLength:       cbor.IndefLengthAllowed,
 		TagsMd:            cbor.TagsAllowed,

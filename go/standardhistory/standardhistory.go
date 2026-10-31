@@ -23,6 +23,8 @@ import (
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 )
 
 // Derivation is the registered token (SH §3).
@@ -429,6 +431,9 @@ func decode(data []byte) (any, error) {
 	}
 	if dec.More() {
 		return nil, errors.New("trailing data after the JSON value")
+	}
+	if canonical.TooDeep(v) {
+		return nil, fmt.Errorf("JSON nested more than %d levels deep", canonical.MaxNestingDepth)
 	}
 	return v, nil
 }
