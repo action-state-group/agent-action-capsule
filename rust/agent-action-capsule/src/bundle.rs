@@ -33,6 +33,13 @@ pub use category_coverage::{
     category_coverage_signing_input, check_category_coverage, CategoryCoverage, CategoryInputs,
     CATEGORY_COVERAGE_GATING, CATEGORY_COVERAGE_PROPERTIES, CATEGORY_STATUSES,
 };
+mod composed;
+pub use composed::{
+    composed_digest, composed_digest_preimage, verify_composed, ComposedDigestResult,
+    ComposedJoinResult, ComposedMemberResult, ComposedOptions, ComposedResult,
+    CompositionClosureResult, CorroborationResult, JoinDifference, JoinValue, SignatureVerifier,
+    COMPOSED_KIND, SIGNATURE_INVALID, SIGNATURE_UNVERIFIED, SIGNATURE_VERIFIED,
+};
 #[cfg(feature = "strict")]
 mod strict;
 #[cfg(feature = "strict")]
@@ -97,11 +104,14 @@ pub struct DisclosureResult {
     pub status: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct ExtensionResult {
     pub kind: String,
     pub status: String,
     pub integrity_covered: bool,
+    /// The `composed/v1` block's verification, for that kind only. Its
+    /// `status` is this result's `status`.
+    pub composed: Option<ComposedResult>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -114,6 +124,23 @@ pub struct CountersignatureResult {
 pub struct ProducerSelfReport {
     pub value: Value,
     pub status: String,
+}
+
+/// What an empty-history Bundle shows (Bundle -02, "Empty-History Bundles"):
+/// no history. `state` is `none`; `since` is the timestamp of the signed
+/// checkpoint the Bundle carries, when it verifies.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoryResult {
+    pub state: String,
+    pub since: Option<String>,
+}
+
+/// What a Bundle is verified with beyond its own bytes: the inputs for its
+/// `category_coverage` member and for a `composed/v1` block.
+#[derive(Clone, Copy, Default)]
+pub struct BundleOptions<'a> {
+    pub category: CategoryInputs<'a>,
+    pub composed: ComposedOptions<'a>,
 }
 
 #[derive(Debug, Clone)]
@@ -130,6 +157,9 @@ pub struct VerificationResult {
     /// The `category_coverage` member's five properties, in report order, or
     /// `None` when the Bundle carries no such member.
     pub category_coverage: Option<CategoryCoverage>,
+    /// Set only for a well-formed empty-history Bundle: the member shows no
+    /// history.
+    pub history: Option<HistoryResult>,
 }
 
 #[derive(Debug)]
@@ -1150,7 +1180,7 @@ fn disclosures(
     result
 }
 
-fn extensions(raw: Option<&Value>) -> Vec<ExtensionResult> {
+fn extensions(raw: Option<&Value>, opts: &BundleOptions) -> Vec<ExtensionResult> {
     let values = match raw.and_then(Value::as_object) {
         Some(v) => v,
         None => return Vec::new(),
@@ -1159,12 +1189,117 @@ fn extensions(raw: Option<&Value>) -> Vec<ExtensionResult> {
     kinds.sort();
     kinds
         .into_iter()
-        .map(|kind| ExtensionResult {
-            kind: kind.clone(),
-            status: "uninterpreted".to_string(),
-            integrity_covered: true,
+        .map(|kind| {
+            let composed = (kind == COMPOSED_KIND).then(|| verify_composed(&values[kind], opts));
+            ExtensionResult {
+                kind: kind.clone(),
+                status: composed
+                    .as_ref()
+                    .map_or("uninterpreted", |c| c.status.as_str())
+                    .to_string(),
+                integrity_covered: true,
+                composed,
+            }
         })
         .collect()
+}
+
+// ---- signed checkpoint --------------------------------------------------------
+
+/// The checkpoint fields a signed COSE checkpoint states; the Bundle's JSON
+/// copy must match every one it carries.
+const SIGNED_CHECKPOINT_FIELDS: [&str; 7] = [
+    "log_id",
+    "mmr_size",
+    "root",
+    "key_id",
+    "timestamp",
+    "prev_size",
+    "prev_root",
+];
+
+/// JSON equality of a stated checkpoint field with its signed string value.
+fn same_string(stated: &Value, signed: &str) -> bool {
+    matches!(stated, Value::String(s) if s == signed)
+}
+
+/// JSON equality of a stated checkpoint field with its signed integer value:
+/// a JSON integer (never a float or a boolean) of the same value.
+fn same_integer(stated: &Value, signed: u64) -> bool {
+    match stated {
+        Value::Number(n) if !canonical::is_float(n) => {
+            n.to_string().parse::<i128>().ok() == Some(i128::from(signed))
+        }
+        _ => false,
+    }
+}
+
+/// Verifies `checkpoint.cose` and holds the JSON copy, and the completeness
+/// certificate's `log_id` when stated, to it. Returns the claim and, when it
+/// passed, the signed fields and the COSE bytes.
+fn signed_checkpoint(
+    stated: &Map<String, Value>,
+    certificate: &Map<String, Value>,
+) -> (
+    ClaimResult,
+    Option<(cll::checkpoint::DecodedCheckpointCose, Vec<u8>)>,
+) {
+    let fail = |finding: &str| (ClaimResult::fail(vec![finding.to_string()]), None);
+    let encoded = match stated.get("cose") {
+        None | Some(Value::Null) => {
+            return (
+                ClaimResult {
+                    status: "withheld".to_string(),
+                    findings: vec!["checkpoint_signature_absent".to_string()],
+                },
+                None,
+            )
+        }
+        Some(Value::String(s)) if is_b64url(s) => s,
+        Some(_) => return fail("checkpoint_signature_malformed"),
+    };
+    let cose = match B64.decode(encoded) {
+        Ok(c) => c,
+        Err(_) => return fail("checkpoint_signature_malformed"),
+    };
+    let verified = cll::checkpoint::verify_checkpoint_cose_offline(&cose);
+    let signed = match verified.decoded {
+        Some(decoded) if verified.ok => decoded,
+        _ => return fail("checkpoint_signature_invalid"),
+    };
+    let mut findings: Vec<String> = SIGNED_CHECKPOINT_FIELDS
+        .iter()
+        .filter(|name| {
+            // The certificate's log_id is a second stated copy of the signed
+            // one (bundle -01 §Completeness): either copy differing is one
+            // mismatch.
+            let certificate_differs = **name == "log_id"
+                && certificate
+                    .get("log_id")
+                    .is_some_and(|value| !same_string(value, &signed.log_id));
+            certificate_differs
+                || stated.get(**name).is_some_and(|value| match **name {
+                    "log_id" => !same_string(value, &signed.log_id),
+                    "mmr_size" => !same_integer(value, signed.mmr_size),
+                    "root" => !same_string(value, &signed.root),
+                    "key_id" => !same_string(value, &signed.key_id),
+                    "timestamp" => !same_string(value, &signed.timestamp),
+                    "prev_size" => !same_integer(value, signed.prev_size),
+                    _ => !same_string(value, &signed.prev_root),
+                })
+        })
+        .map(|name| format!("checkpoint_field_mismatch:{name}"))
+        .collect();
+    findings.extend(
+        ["log_id", "mmr_size", "root"]
+            .iter()
+            .filter(|name| !stated.contains_key(**name))
+            .map(|name| format!("checkpoint_field_missing:{name}")),
+    );
+    if !findings.is_empty() {
+        return (ClaimResult::fail(findings), None);
+    }
+    (ClaimResult::pass(), Some((signed, cose)))
 }
 
 // ---- top-level verifier -------------------------------------------------------
@@ -1184,6 +1319,7 @@ fn malformed_bundle() -> VerificationResult {
         verification: None,
         capsule_results: BTreeMap::new(),
         category_coverage: None,
+        history: None,
     }
 }
 
@@ -1200,6 +1336,21 @@ pub fn verify_bundle(value: &Value) -> VerificationResult {
 /// [`verify_bundle`] with the inputs a Bundle cannot carry for its
 /// `category_coverage` member ([`CategoryInputs`]).
 pub fn verify_bundle_with(value: &Value, category: &CategoryInputs) -> VerificationResult {
+    verify_bundle_with_options(
+        value,
+        &BundleOptions {
+            category: *category,
+            composed: ComposedOptions::default(),
+        },
+    )
+}
+
+/// [`verify_bundle`] with [`BundleOptions`]: the `category_coverage` inputs
+/// and the signature verifiers and delivered binding records a `composed/v1`
+/// block is checked with. Carried member bundles are verified with the same
+/// options.
+pub fn verify_bundle_with_options(value: &Value, opts: &BundleOptions) -> VerificationResult {
+    let category = &opts.category;
     let bundle = match value.as_object() {
         Some(b) if !crate::json::exceeds_max_depth(value) => b,
         _ => return malformed_bundle(),
@@ -1208,14 +1359,42 @@ pub fn verify_bundle_with(value: &Value, category: &CategoryInputs) -> Verificat
     let mut capsule_results = BTreeMap::new();
     let bundle_digest_value = bundle_digest(value).ok();
     let (record_map, record_findings) = records(bundle.get("records"), &mut capsule_results);
-    let graph_closure = graph(bundle, &record_map, &record_findings);
-    let (interval_coverage, per_record_membership) = completeness(bundle, &record_map);
+    let mut history = None;
+    let (graph_closure, interval_coverage, per_record_membership) = if is_empty_history(bundle) {
+        let graph_closure = empty_history_form(bundle);
+        let no_records = ClaimResult {
+            status: "withheld".to_string(),
+            findings: vec!["no_records".to_string()],
+        };
+        if graph_closure.status == "pass" {
+            let empty = Map::new();
+            let object = |name: &str| {
+                bundle
+                    .get(name)
+                    .and_then(Value::as_object)
+                    .unwrap_or(&empty)
+            };
+            let (claim, signed) =
+                signed_checkpoint(object("checkpoint"), object("completeness_certificate"));
+            history = Some(HistoryResult {
+                state: "none".to_string(),
+                since: signed
+                    .filter(|_| claim.status == "pass")
+                    .map(|(decoded, _)| decoded.timestamp),
+            });
+        }
+        (graph_closure, no_records.clone(), no_records)
+    } else {
+        let graph_closure = graph(bundle, &record_map, &record_findings);
+        let (interval_coverage, per_record_membership) = completeness(bundle, &record_map);
+        (graph_closure, interval_coverage, per_record_membership)
+    };
     let empty_overlay = Value::Object(Map::new());
     let disclosures_result = match bundle.get("disclosures") {
         Some(v) => disclosures(Some(v), &record_map),
         None => disclosures(Some(&empty_overlay), &record_map),
     };
-    let extensions_result = extensions(bundle.get("extensions"));
+    let extensions_result = extensions(bundle.get("extensions"), opts);
     let countersignatures = match bundle.get("countersignatures").and_then(Value::as_array) {
         Some(list) => list
             .iter()
@@ -1242,6 +1421,54 @@ pub fn verify_bundle_with(value: &Value, category: &CategoryInputs) -> Verificat
         verification,
         capsule_results,
         category_coverage: check_category_coverage(bundle, category),
+        history,
+    }
+}
+
+/// Whether `bundle` has the shape of an empty-history Bundle: an empty
+/// `records` array and no `root` member. Whether it is well formed is
+/// [`empty_history_form`]'s question.
+fn is_empty_history(bundle: &Map<String, Value>) -> bool {
+    matches!(bundle.get("records"), Some(Value::Array(l)) if l.is_empty())
+        && !bundle.contains_key("root")
+}
+
+/// Graph closure for an empty-history Bundle: nothing to close, so it passes
+/// when the Bundle is well formed. `records_mode` is `complete`,
+/// `payloads_mode` `none`, and no certificate, disclosures or disclosure
+/// record is carried.
+fn empty_history_form(bundle: &Map<String, Value>) -> ClaimResult {
+    let mut findings = Vec::new();
+    if !is_str(bundle.get("bundle_version"), "2")
+        || !is_str(bundle.get("bundle_kind"), "evidence-bundle/v2")
+    {
+        findings.push("bundle_version_or_kind_invalid".to_string());
+    }
+    let complete = bundle.get("completeness").and_then(Value::as_object);
+    let missing_ok = match complete.and_then(|c| c.get("missing")) {
+        None => true,
+        Some(Value::Array(l)) => l.is_empty(),
+        Some(_) => false,
+    };
+    if !complete.is_some_and(|c| {
+        is_str(c.get("records_mode"), "complete") && is_str(c.get("payloads_mode"), "none")
+    }) || !missing_ok
+    {
+        findings.push("empty_history_completeness_invalid".to_string());
+    }
+    for name in [
+        "completeness_certificate",
+        "disclosures",
+        "disclosure_record",
+    ] {
+        if bundle.contains_key(name) {
+            findings.push(format!("empty_history_carries:{name}"));
+        }
+    }
+    if findings.is_empty() {
+        ClaimResult::pass()
+    } else {
+        ClaimResult::fail(findings)
     }
 }
 
@@ -1280,23 +1507,26 @@ mod tests {
     #[test]
     fn extensions_reports_every_kind_sorted_and_uninterpreted() {
         let raw = json!({"b/kind": {"x": 1}, "a/kind": {}});
-        let result = extensions(Some(&raw));
+        let result = extensions(Some(&raw), &BundleOptions::default());
+        let shown: Vec<_> = result
+            .iter()
+            .map(|e| {
+                (
+                    e.kind.as_str(),
+                    e.status.as_str(),
+                    e.integrity_covered,
+                    e.composed.is_none(),
+                )
+            })
+            .collect();
         assert_eq!(
-            result,
+            shown,
             vec![
-                ExtensionResult {
-                    kind: "a/kind".to_string(),
-                    status: "uninterpreted".to_string(),
-                    integrity_covered: true,
-                },
-                ExtensionResult {
-                    kind: "b/kind".to_string(),
-                    status: "uninterpreted".to_string(),
-                    integrity_covered: true,
-                },
+                ("a/kind", "uninterpreted", true, true),
+                ("b/kind", "uninterpreted", true, true),
             ]
         );
-        assert_eq!(extensions(None), Vec::new());
-        assert_eq!(extensions(Some(&json!("not-an-object"))), Vec::new());
+        assert!(extensions(None, &BundleOptions::default()).is_empty());
+        assert!(extensions(Some(&json!("not-an-object")), &BundleOptions::default()).is_empty());
     }
 }

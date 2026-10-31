@@ -4,26 +4,13 @@
 //! `vectors/bundle/strict/README.md` is the normative description.
 
 use super::category_coverage::category_coverage_fails;
-use super::{as_bundle_int, is_b64url, is_str, selected_membership, verify_bundle_with};
-use super::{CategoryInputs, ClaimResult, VerificationResult, B64, SELECTION_PRODUCER_SELECTED};
+use super::{as_bundle_int, is_str, selected_membership, verify_bundle_with};
+use super::{CategoryInputs, ClaimResult, VerificationResult, SELECTION_PRODUCER_SELECTED};
 use crate::disclosure;
 use crate::envelope::{self, INVALID, UNCLAIMED};
 use crate::witness::{self, SignedCheckpoint, WitnessReceiptResult};
-use base64::Engine as _;
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
-
-/// The checkpoint fields a signed COSE checkpoint states; the Bundle's JSON
-/// copy must match every one it carries.
-const SIGNED_CHECKPOINT_FIELDS: [&str; 7] = [
-    "log_id",
-    "mmr_size",
-    "root",
-    "key_id",
-    "timestamp",
-    "prev_size",
-    "prev_root",
-];
 
 /// Options of [`verify_bundle_strict`].
 #[derive(Debug, Clone, Copy, Default)]
@@ -384,22 +371,6 @@ pub fn verify_bundle_strict(value: &Value, options: &StrictOptions) -> StrictVer
     }
 }
 
-/// JSON equality of a stated checkpoint field with its signed string value.
-fn same_string(stated: &Value, signed: &str) -> bool {
-    matches!(stated, Value::String(s) if s == signed)
-}
-
-/// JSON equality of a stated checkpoint field with its signed integer value:
-/// a JSON integer (never a float or a boolean) of the same value.
-fn same_integer(stated: &Value, signed: u64) -> bool {
-    match stated {
-        Value::Number(n) if !crate::canonical::is_float(n) => {
-            n.to_string().parse::<i128>().ok() == Some(i128::from(signed))
-        }
-        _ => false,
-    }
-}
-
 /// Verifies `checkpoint.cose` and holds the JSON copy, and the completeness
 /// certificate's `log_id` when stated, to it. Returns the claim and, when it
 /// passed, the signed fields and the COSE bytes.
@@ -407,59 +378,11 @@ fn strict_checkpoint(
     stated: &Map<String, Value>,
     certificate: &Map<String, Value>,
 ) -> (ClaimResult, Option<(SignedCheckpoint, Vec<u8>)>) {
-    let fail = |finding: &str| (ClaimResult::fail(vec![finding.to_string()]), None);
-    let encoded = match stated.get("cose") {
-        None | Some(Value::Null) => {
-            return (
-                withheld(vec!["checkpoint_signature_absent".to_string()]),
-                None,
-            )
-        }
-        Some(Value::String(s)) if is_b64url(s) => s,
-        Some(_) => return fail("checkpoint_signature_malformed"),
-    };
-    let cose = match B64.decode(encoded) {
-        Ok(c) => c,
-        Err(_) => return fail("checkpoint_signature_malformed"),
-    };
-    let verified = cll::checkpoint::verify_checkpoint_cose_offline(&cose);
-    let signed = match verified.decoded {
-        Some(decoded) if verified.ok => SignedCheckpoint::from(&decoded),
-        _ => return fail("checkpoint_signature_invalid"),
-    };
-    let mut findings: Vec<String> = SIGNED_CHECKPOINT_FIELDS
-        .iter()
-        .filter(|name| {
-            // The certificate's log_id is a second stated copy of the signed
-            // one (bundle -01 §Completeness): either copy differing is one
-            // mismatch.
-            let certificate_differs = **name == "log_id"
-                && certificate
-                    .get("log_id")
-                    .is_some_and(|value| !same_string(value, &signed.log_id));
-            certificate_differs
-                || stated.get(**name).is_some_and(|value| match **name {
-                    "log_id" => !same_string(value, &signed.log_id),
-                    "mmr_size" => !same_integer(value, signed.mmr_size),
-                    "root" => !same_string(value, &signed.root),
-                    "key_id" => !same_string(value, &signed.key_id),
-                    "timestamp" => !same_string(value, &signed.timestamp),
-                    "prev_size" => !same_integer(value, signed.prev_size),
-                    _ => !same_string(value, &signed.prev_root),
-                })
-        })
-        .map(|name| format!("checkpoint_field_mismatch:{name}"))
-        .collect();
-    findings.extend(
-        ["log_id", "mmr_size", "root"]
-            .iter()
-            .filter(|name| !stated.contains_key(**name))
-            .map(|name| format!("checkpoint_field_missing:{name}")),
-    );
-    if !findings.is_empty() {
-        return (ClaimResult::fail(findings), None);
-    }
-    (ClaimResult::pass(), Some((signed, cose)))
+    let (claim, signed) = super::signed_checkpoint(stated, certificate);
+    (
+        claim,
+        signed.map(|(decoded, cose)| (SignedCheckpoint::from(&decoded), cose)),
+    )
 }
 
 /// A proof claim with no signed checkpoint behind it: a failure stays a
@@ -512,6 +435,7 @@ fn membership_seqs(bundle: &Map<String, Value>) -> HashMap<String, i64> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::{same_integer, same_string};
     use super::*;
     use serde_json::json;
 
