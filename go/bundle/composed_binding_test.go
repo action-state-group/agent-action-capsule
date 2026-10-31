@@ -360,3 +360,21 @@ func TestComposedControllerBindingSignedButMalformed(t *testing.T) {
 	composed = verifyBlock(t, c.Container, Options{ControllerBindings: []map[string]interface{}{swapped}})
 	require.Equal(t, "unjoined", composed.Joins[0].Derived)
 }
+
+// signingInput is the UTF-8 JCS of value without the member named omit.
+func signingInput(value map[string]interface{}, omit string) ([]byte, bool) {
+	rest := make(map[string]interface{}, len(value))
+	for k, v := range value {
+		if k != omit {
+			rest[k] = v
+		}
+	}
+	data, err := canonical.JCS(rest)
+	return data, err == nil
+}
+
+// bindingForm reports whether a record is well formed as -02 states it.
+func bindingForm(record map[string]interface{}) bool {
+	_, wellFormed := bindingReport(record, nil, nil)
+	return wellFormed
+}
