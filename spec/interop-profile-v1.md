@@ -1046,8 +1046,8 @@ Where each row comes from:
 - `capacity_exceeded` is "status unknown" in ER's mapping: the responder states a limit of its
   own, which is evidence neither of non-satisfaction nor of withholding by policy [ER §4.2, §4.6].
   So it maps to `UNKNOWN`, never `WITHHELD` [P-65]. It is never a breach of a retention
-  commitment [ER §9], so it is the one token a responder can use to withhold a committed subject
-  without a breach; `UNKNOWN` lets a later request settle it.
+  commitment, within `until` or after it [ER §9], so a responder can withhold a committed subject
+  with it indefinitely [ER §11]; `UNKNOWN` lets a later request settle it.
 - `request_unauthenticated` says the request's authentication did not verify, nothing about the
   evidence [ER §4.6], and is a property of the request [ER §9]. It maps to `UNKNOWN`, as
   `request_malformed` does [P-65].

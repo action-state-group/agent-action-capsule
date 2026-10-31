@@ -55,12 +55,12 @@ pub const PROFILES: [&str; 2] = [PROFILE, PROFILE_V1];
 /// The refusal reasons registered under `profile` (each revision's §9.1):
 /// /0 pins ER -01 and its eight, /1 pins ER -02 and its ten. A refusal
 /// carries no profile, so read it under the identifier its request asked
-/// for (v1 §6.3). `None` for an identifier this crate does not implement.
-pub fn refusal_reasons(profile: &str) -> Option<&'static [Reason]> {
+/// for (v1 §6.3). For an identifier this crate does not implement, every
+/// token of those it does: the ten.
+pub fn refusal_reasons(profile: &str) -> &'static [Reason] {
     match profile {
-        PROFILE => Some(&Reason::ALL[..8]),
-        PROFILE_V1 => Some(&Reason::ALL[..]),
-        _ => None,
+        PROFILE => &Reason::ALL[..8],
+        _ => &Reason::ALL[..],
     }
 }
 

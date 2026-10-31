@@ -153,15 +153,16 @@ fn sign_with_profile_refuses_an_unknown_identifier() {
 /// Each revision's §9.1: /0 pins ER -01's eight, /1 ER -02's ten (v1 §6.3).
 #[test]
 fn refusal_reasons_per_identifier() {
-    let v0 = refusal_reasons(PROFILE).unwrap();
-    let v1 = refusal_reasons(PROFILE_V1).unwrap();
+    let v0 = refusal_reasons(PROFILE);
+    let v1 = refusal_reasons(PROFILE_V1);
     assert_eq!(v0.len(), 8);
     assert_eq!(v1.len(), 10);
     for r in [Reason::CapacityExceeded, Reason::RequestUnauthenticated] {
         assert!(!v0.contains(&r) && v1.contains(&r), "{r}");
     }
     assert!(v0.contains(&Reason::PolicyDeclined));
-    assert_eq!(refusal_reasons("evidence-interop/9"), None);
+    // An identifier the crate does not implement: every token of /0 and /1.
+    assert_eq!(refusal_reasons("evidence-interop/9"), v1);
 }
 
 #[test]
