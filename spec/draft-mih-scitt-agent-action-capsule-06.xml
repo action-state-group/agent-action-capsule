@@ -2510,7 +2510,7 @@ documentation so deployers can audit admission without reading implementation co
             <author fullname="Amaury Chamayou" initials="A." surname="Chamayou">
               <organization>Microsoft Research</organization>
             </author>
-            <date day="22" month="October" year="2026"/>
+            <date day="23" month="September" year="2026"/>
             <abstract>
               <t>   This document defines a new verifiable data structure (VDS) type for
    COSE Receipts and the associated inclusion and consistency proofs,
@@ -2521,7 +2521,7 @@ documentation so deployers can audit admission without reading implementation co
               </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-receipts-ccf-profile-06"/>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-receipts-ccf-profile-05"/>
         </reference>
         <reference anchor="I-D.ietf-spice-sd-cwt">
           <front>
@@ -2537,7 +2537,7 @@ documentation so deployers can audit admission without reading implementation co
             </author>
             <author fullname="Rohan Mahy" initials="R." surname="Mahy">
          </author>
-            <date day="30" month="October" year="2026"/>
+            <date day="1" month="June" year="2026"/>
             <abstract>
               <t>   This specification describes a data minimization technique for use
    with CBOR Web Tokens (CWTs).  The approach is inspired by the
@@ -2547,7 +2547,7 @@ documentation so deployers can audit admission without reading implementation co
               </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-ietf-spice-sd-cwt-09"/>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-spice-sd-cwt-08"/>
         </reference>
         <reference anchor="RFC8949">
           <front>
@@ -2638,12 +2638,9 @@ disclosure of JSON Web Token (JWT) claims.</t>
           <front>
             <title>AI Agent Execution Profile of SCITT</title>
             <author fullname="Pinar Emirdag" initials="P." surname="Emirdag">
-              <organization>Veridic Inc.</organization>
+              <organization>VERIDIC Inc.</organization>
             </author>
-            <author fullname="Daniel Feichtinger" initials="D." surname="Feichtinger">
-              <organization>Veridic Inc.</organization>
-            </author>
-            <date day="12" month="October" year="2026"/>
+            <date day="11" month="April" year="2026"/>
             <abstract>
               <t>   This document defines a SCITT (Supply Chain Integrity, Transparency,
    and Trust) profile for creating independently verifiable, tamper-
@@ -2656,13 +2653,13 @@ disclosure of JSON Web Token (JWT) claims.</t>
    temporal ordering, and sequence completeness; defines a redaction
    receipt mechanism for privacy-preserving evidence custody; and
    provides compliance mappings to EU AI Act Articles 12 and 19, DORA,
-   NIST AI RMF, MAS AI Risk Management Guidelines, PCI DSS, and MiFID
-   II.
+   NIST AI RMF, MAS AI Risk Management Guidelines, PCI DSS v4.0, and
+   MiFID II.
 
               </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-emirdag-scitt-ai-agent-execution-01"/>
+          <seriesInfo name="Internet-Draft" value="draft-emirdag-scitt-ai-agent-execution-00"/>
         </reference>
         <reference anchor="I-D.kamimura-scitt-refusal-events">
           <front>
@@ -2670,7 +2667,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
             <author fullname="TOKACHI KAMIMURA" initials="K." surname="Tokachi">
               <organization>VeritasChain Standards Organization</organization>
             </author>
-            <date day="24" month="October" year="2026"/>
+            <date day="2" month="August" year="2026"/>
             <abstract>
               <t>   This document defines a claim set for recording AI content refusal
    events.  The claim set specifies the semantic content and correlation
@@ -2690,7 +2687,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
               </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-kamimura-scitt-refusal-events-04"/>
+          <seriesInfo name="Internet-Draft" value="draft-kamimura-scitt-refusal-events-03"/>
         </reference>
         <reference anchor="I-D.kamimura-scitt-vcp">
           <front>
@@ -2698,46 +2695,69 @@ disclosure of JSON Web Token (JWT) claims.</t>
             <author fullname="TOKACHI KAMIMURA" initials="K." surname="Tokachi">
               <organization>VeritasChain Standards Organization</organization>
             </author>
-            <date day="24" month="October" year="2026"/>
+            <date day="21" month="July" year="2026"/>
             <abstract>
               <t>   This document defines a profile of the SCITT (Supply Chain Integrity,
    Transparency, and Trust) architecture for creating tamper-evident
    audit trails of AI-driven algorithmic trading decisions and
    executions.  The VeritasChain Protocol (VCP) applies the SCITT
    framework to address the specific requirements of financial markets,
-   including high-precision timestamps, considerations arising from
-   recordkeeping regimes such as the EU AI Act and MiFID II, and a
-   crypto-shredding mechanism intended to support erasure obligations
-   such as those under the GDPR.  This profile specifies how VCP events
-   are encoded as SCITT Signed Statements, registered with Transparency
-   Services, and verified using COSE Receipts.  It further defines SCITT
-   conformance profiles for interoperability and an ERASURE event type
-   that records crypto-shredding operations as append-only audit events.
-   The profile makes trading records auditable and attributable after
-   the fact; it does not prevent or block any trading activity, and it
-   does not warrant the correctness of any recorded decision.
+   including high-precision timestamps, regulatory compliance
+   considerations (EU AI Act, MiFID II), and privacy-preserving
+   mechanisms (crypto-shredding) compatible with GDPR.  This profile
+   specifies how VCP events are encoded as SCITT Signed Statements,
+   registered with Transparency Services, and verified using COSE
+   Receipts.  It further defines SCITT conformance profiles for
+   interoperability and an ERASURE event type that records crypto-
+   shredding operations as immutable audit events.
+
+About This Document
+
+   This note is to be removed before publishing as an RFC.
+
+   The latest version of this document, along with implementation
+   resources and test vectors, can be found at
+   https://github.com/veritaschain/vcp-spec.
+
+   Discussion of this document takes place on the SCITT Working Group
+   mailing list (scitt@ietf.org).
+
+   Changes from -02:
+
+   *  Updated to align with VCP Specification v1.2
+
+   *  Added SCITT Alignment Object and conformance profiles
+      (Section 4.4)
+
+   *  Added ERASURE event type recording crypto-shredding operations
+      (Section 6.3)
+
+   *  Corrected the post-quantum SignAlgo registry value from DILITHIUM3
+      to DILITHIUM2 (ML-DSA, FIPS 204)
+
+   *  PolicyID examples migrated to the Issuer Domain + Local ID naming
+      convention defined in VCP v1.2
 
               </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-kamimura-scitt-vcp-05"/>
+          <seriesInfo name="Internet-Draft" value="draft-kamimura-scitt-vcp-03"/>
         </reference>
         <reference anchor="I-D.kamimura-vap-framework">
           <front>
-            <title>Verifiable AI Provenance Framework (VAP): An Architectural Framework for Auditable AI Decision Trails</title>
+            <title>Verifiable AI Provenance Framework (VAP): An Architectural Framework for Evidentiary-Grade AI Decision Trails</title>
             <author fullname="TOKACHI KAMIMURA" initials="K." surname="Tokachi">
               <organization>VeritasChain Standards Organization</organization>
             </author>
-            <date day="24" month="October" year="2026"/>
+            <date day="21" month="July" year="2026"/>
             <abstract>
               <t>   Automated decision-making systems, including AI and algorithmic
    systems in critical infrastructure, currently lack standardized
-   mechanisms for producing provenance records that third parties can
-   verify independently.  Traditional logging approaches do not provide
-   the cryptographic properties that regulatory examination, forensic
-   investigation, and cross-organizational accountability depend on:
-   detectability of alteration, detectability of omission after
-   commitment, and attribution.
+   mechanisms for producing evidentiary-grade provenance records that
+   can withstand independent verification.  Traditional logging
+   approaches fail to provide the cryptographic guarantees required for
+   regulatory compliance, forensic investigation, and cross-
+   organizational accountability.
 
    This document describes the Verifiable AI Provenance Framework (VAP),
    an architectural framework that defines requirements for producing
@@ -2749,13 +2769,6 @@ disclosure of JSON Web Token (JWT) claims.</t>
    CBOR Object Signing and Encryption (COSE), and related IETF work in a
    consistent manner.
 
-   VAP makes records auditable and attributable after the fact.  It does
-   not prevent, block, or intercept any system behaviour, and it does
-   not warrant that any recorded decision was correct, fair, or safe.
-   The detailed requirement set is maintained by the VeritasChain
-   Standards Organization (VSO) as a separate specification; this
-   document describes the architecture and its mapping to IETF work.
-
    This document is intended to frame the problem space and facilitate
    discussion about whether architectural coordination work is needed in
    this area.
@@ -2763,7 +2776,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
               </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-kamimura-vap-framework-02"/>
+          <seriesInfo name="Internet-Draft" value="draft-kamimura-vap-framework-01"/>
         </reference>
         <reference anchor="I-D.dawkins-scitt-ai-article50">
           <front>

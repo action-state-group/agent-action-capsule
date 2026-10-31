@@ -331,8 +331,10 @@ object (for example `envelope_signature` or `refusal_signature`) as `FAIL`, and 
 of small order under a trust policy that accepts the key is still `FAIL`. `vectors/interop-profile-v1/` holds four
 cases of it: `envelope-small-order-key`, `envelope-identity-r`, `forged-refusal-small-order-key`
 and `forged-refusal-identity-r`. The rule applies to every Ed25519 signature that a check of §6,
-§7.2 or §11 verifies, the Checkpointed Local Log checkpoint signature included; a signature inside a
-foreign object, which the profile only carries, is checked by that object's own check (§5.1).
+§7.2 or §11 verifies and whose signing input this profile defines, the Checkpointed Local Log
+checkpoint signature included; a signature inside a foreign object, which the profile only carries,
+is checked by that object's own check (§5.1), and so is the Producer Envelope of a Capsule, which
+the capsule draft does not yet make strict (#322).
 
 ## 6. Messages, and what binds them
 
@@ -3391,9 +3393,10 @@ it defers, and P-68 the strict Ed25519 rule.
   Conventions rule, cited and not pinned, as for the nesting limit (P-12). It applies to every
   signature that a check of §6, §7.2 or §11 verifies: the envelope and the refusal, the optional
   requester signature of an absence record, the checkpoint signature behind `anchor_inclusion`, the
-  acceptance record and its receipt, the execution and producer records of §11.1 and §11.2, and the
-  lifecycle statement; the witness Receipt already says it (P-67). `evidence-interop/0` is frozen and states no rule. Left open: a signature inside a
-  foreign object, which that object's own check decides, and the Producer Envelope of a Capsule,
+  acceptance record and its receipt, and the lifecycle statement; the witness Receipt already says it
+  (P-67). `evidence-interop/0` is frozen and states no rule. Left open: a signature inside a
+  foreign object, which that object's own check decides, including the execution and producer records
+  of §11.1 and §11.2, checked by their own format's method, and so the Producer Envelope of a Capsule,
   which the capsule draft does not yet make strict (#322).
 
 ## References

@@ -3162,19 +3162,19 @@ Internet-Draft            Agent Action Capsules             October 2026
               scitt-ai-article50-00>.
 
    [I-D.emirdag-scitt-ai-agent-execution]
-              Emirdag, P. and D. Feichtinger, "AI Agent Execution
-              Profile of SCITT", Work in Progress, Internet-Draft,
-              draft-emirdag-scitt-ai-agent-execution-01, 12 October
-              2026, <https://datatracker.ietf.org/doc/html/draft-
-              emirdag-scitt-ai-agent-execution-01>.
+              Emirdag, P., "AI Agent Execution Profile of SCITT", Work
+              in Progress, Internet-Draft, draft-emirdag-scitt-ai-agent-
+              execution-00, 11 April 2026,
+              <https://datatracker.ietf.org/doc/html/draft-emirdag-
+              scitt-ai-agent-execution-00>.
 
    [I-D.ietf-scitt-receipts-ccf-profile]
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
               Chamayou, "CCF Profile for COSE Receipts", Work in
               Progress, Internet-Draft, draft-ietf-scitt-receipts-ccf-
-              profile-06, 22 October 2026,
+              profile-05, 23 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
-              receipts-ccf-profile-06>.
+              receipts-ccf-profile-05>.
 
    [I-D.ietf-scitt-scrapi]
               Birkholz, H., Geater, J., and A. Delignat-Lavaud, "Supply
@@ -3197,32 +3197,32 @@ Internet-Draft            Agent Action Capsules             October 2026
    [I-D.ietf-spice-sd-cwt]
               Prorock, M., Steele, O., Birkholz, H., and R. Mahy,
               "Selective Disclosure CBOR Web Tokens (SD-CWT)", Work in
-              Progress, Internet-Draft, draft-ietf-spice-sd-cwt-09, 30
-              October 2026, <https://datatracker.ietf.org/doc/html/
-              draft-ietf-spice-sd-cwt-09>.
+              Progress, Internet-Draft, draft-ietf-spice-sd-cwt-08, 1
+              June 2026, <https://datatracker.ietf.org/doc/html/draft-
+              ietf-spice-sd-cwt-08>.
 
    [I-D.kamimura-scitt-refusal-events]
               Tokachi, K., "Verifiable AI Refusal Events using SCITT",
               Work in Progress, Internet-Draft, draft-kamimura-scitt-
-              refusal-events-04, 24 October 2026,
+              refusal-events-03, 2 August 2026,
               <https://datatracker.ietf.org/doc/html/draft-kamimura-
-              scitt-refusal-events-04>.
+              scitt-refusal-events-03>.
 
    [I-D.kamimura-scitt-vcp]
               Tokachi, K., "A SCITT Profile for Verifiable Audit Trails
               in Algorithmic Trading: The VeritasChain Protocol (VCP)",
               Work in Progress, Internet-Draft, draft-kamimura-scitt-
-              vcp-05, 24 October 2026,
+              vcp-03, 21 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-kamimura-
-              scitt-vcp-05>.
+              scitt-vcp-03>.
 
    [I-D.kamimura-vap-framework]
               Tokachi, K., "Verifiable AI Provenance Framework (VAP): An
-              Architectural Framework for Auditable AI Decision Trails",
-              Work in Progress, Internet-Draft, draft-kamimura-vap-
-              framework-02, 24 October 2026,
+              Architectural Framework for Evidentiary-Grade AI Decision
+              Trails", Work in Progress, Internet-Draft, draft-kamimura-
+              vap-framework-01, 21 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-kamimura-vap-
-              framework-02>.
+              framework-01>.
 
    [I-D.mih-agent-bilateral-attestation]
               Mih, S., "Bilateral Agent Action Attestation", Work in
