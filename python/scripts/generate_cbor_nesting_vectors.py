@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-3-Clause
+"""Generate the CBOR nesting-limit vectors in ../../vectors/cbor-nesting/.
+
+Every reader of received deterministic CBOR that accepts nested content reads
+items nested up to 128 levels deep and refuses anything deeper as malformed
+(#504), the same bound the JSON readers apply (``vectors/json-nesting/``,
+#498), so one request reads the same in its JSON and CBOR bindings. A level is
+an array, a map or a tag around an item: ``[]`` is one level, ``[[]]`` two.
+Before, Go read an Evidence Request 32 levels deep, Python and the interop
+profile's Go reader 64, Rust 512 and the Rust CLL Material reader 256.
+
+Each case is the CBOR encoding of a minimal valid Evidence Request map whose
+open-world member ``x`` holds a chain of containers, so a request reader, which
+also refuses what it cannot read, and a generic deterministic-CBOR decoder
+decide it alike. ``depth`` counts the whole item. ``tag`` marks a case that
+holds tags: only the generic decoders are held to it, since request readers
+treat a tag in a member they ignore differently.
+
+Output: ``cases.json``, ``manifest.json`` and ``SHA256SUMS`` in ``vectors/cbor-nesting/``
+(or ``--out DIR``). ``README.md`` is hand-written; when present it is included in
+``SHA256SUMS`` but never rewritten. Deterministic: no clock, randomness or keys.
+
+Run: cd python && python scripts/generate_cbor_nesting_vectors.py
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from vector_layout import dumps  # noqa: E402
+
+OUT = Path(__file__).resolve().parents[2] / "vectors" / "cbor-nesting"
+LIMIT = 128
+
+NULL = b"\xf6"
+
+
+def text(s: str) -> bytes:
+    raw = s.encode("utf-8")
+    assert len(raw) < 24 or len(raw) < 256
+    return (bytes([0x60 | len(raw)]) if len(raw) < 24 else bytes([0x78, len(raw)])) + raw
+
+
+def array(inner: bytes) -> bytes:
+    return b"\x81" + inner
+
+
+def mapping(inner: bytes) -> bytes:
+    return b"\xa1" + text("a") + inner
+
+
+def tag(inner: bytes) -> bytes:
+    return b"\xd9\x03\xe8" + inner  # tag 1000, unassigned
+
+
+def chain(levels: int, kind: str) -> bytes:
+    """``levels`` nested containers; the innermost array is empty, the innermost map or tag holds null."""
+    if kind == "array":
+        return b"\x81" * (levels - 1) + b"\x80"
+    wrap = {"map": mapping, "tag": tag}.get(kind)
+    inner = NULL
+    if kind == "mixed":
+        inner = NULL
+        for level in range(levels):
+            inner = (array, mapping)[level % 2](inner)
+        return inner
+    for _ in range(levels):
+        inner = wrap(inner)
+    return inner
+
+
+def request(member: bytes) -> bytes:
+    """A minimal valid Evidence Request with the extra member ``x`` (keys in length-first order)."""
+    return (
+        b"\xa4"
+        + text("x") + member
+        + text("nonce") + text("n-1")
+        + text("subject") + b"\xa1" + text("record") + text("cd" * 32)
+        + text("coverage") + b"\xa1" + text("expected_pin") + text("ab" * 32)
+    )
+
+
+def case(case_id: str, description: str, kind: str, extra: int, accept: bool, *, tags: bool = False) -> dict:
+    # The request map is one level; the chain adds ``extra`` more.
+    item = request(chain(extra, kind))
+    return {
+        "id": case_id,
+        "description": description,
+        "depth": extra + 1,
+        "accept": accept,
+        "tag": tags,
+        "cbor_hex": item.hex(),
+    }
+
+
+def cases() -> list[dict]:
+    at, past = LIMIT, LIMIT + 1
+    out = []
+    for kind, noun, tags in (("array", "arrays", False), ("map", "maps", False),
+                             ("mixed", "arrays and maps alternating", False), ("tag", "tags", True)):
+        out.append(case(f"pos-{kind}-at-limit",
+                        f"A request map whose member x nests {noun} so that the item is {at} levels deep: accepted.",
+                        kind, at - 1, True, tags=tags))
+        out.append(case(f"neg-{kind}-past-limit",
+                        f"The same with one more level, {past} levels deep: refused as malformed.",
+                        kind, at, False, tags=tags))
+    out.append({**case("neg-arrays-far-past-limit",
+                       "A request map whose member x nests 10000 arrays: refused as malformed, without exhausting the stack.",
+                       "array", 1, False), "depth": 10001,
+                "cbor_hex": request(b"\x81" * 10000 + b"\x80").hex()})
+    return out
+
+
+def write(out: Path) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    doc = {
+        "description": (
+            "CBOR nesting limit shared by every reader of received deterministic CBOR (#504): items "
+            f"nested up to {LIMIT} levels deep (an array, a map or a tag around an item is one level) "
+            "are read; deeper input is refused as malformed. Generated by "
+            "python/scripts/generate_cbor_nesting_vectors.py."
+        ),
+        "max_nesting_depth": LIMIT,
+        "cases": cases(),
+    }
+    body = dumps(doc)
+    (out / "cases.json").write_text(body, encoding="utf-8")
+    manifest = {
+        "spec": "spec/interop-profile-v1.md",
+        "provenance": "spec-derived",
+        "generator": "python/scripts/generate_cbor_nesting_vectors.py",
+        "files": [{
+            "path": "cases.json",
+            "sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+            "count": len(doc["cases"]),
+        }],
+    }
+    (out / "manifest.json").write_text(dumps(manifest), encoding="utf-8")
+    lines = [f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}"
+             for p in sorted(out.iterdir()) if p.is_file() and p.name != "SHA256SUMS"]
+    (out / "SHA256SUMS").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--out", type=Path, default=OUT)
+    write(parser.parse_args().out)
+
+
+if __name__ == "__main__":
+    main()

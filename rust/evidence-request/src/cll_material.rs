@@ -294,7 +294,7 @@ fn sig_structure(protected: &[u8], payload: &[u8]) -> Vec<u8> {
 /// One CBOR item from `bytes`, with nothing after it.
 fn one_item(bytes: &[u8]) -> Result<C, &'static str> {
     let mut reader = bytes;
-    let value: C = ciborium::from_reader(&mut reader).map_err(|_| "not well-formed CBOR")?;
+    let value = crate::det_cbor::decode_value(&mut reader).ok_or("not well-formed CBOR")?;
     if !reader.is_empty() {
         return Err("bytes after the item");
     }
@@ -310,16 +310,10 @@ fn map_entries(value: &C) -> Result<&[(C, C)], &'static str> {
     }
 }
 
-/// The deepest nesting walked for duplicate keys; ciborium's own decoder
-/// stops well before this.
-const MAX_DEPTH: usize = 256;
-
 /// True when no map at any depth of `value` repeats a key. Keys compare by
 /// their encodings, sorted, so a map of n keys costs n log n.
-fn no_duplicate_keys(value: &C, depth: usize) -> bool {
-    if depth > MAX_DEPTH {
-        return false;
-    }
+fn no_duplicate_keys(value: &C) -> bool {
+    // `value` was decoded under det_cbor::MAX_NESTING, so the walk is bounded.
     match value {
         C::Map(entries) => {
             let mut keys: Vec<Vec<u8>> = entries
@@ -332,12 +326,12 @@ fn no_duplicate_keys(value: &C, depth: usize) -> bool {
                 .collect();
             keys.sort_unstable();
             keys.windows(2).all(|w| w[0] != w[1])
-                && entries.iter().all(|(k, v)| {
-                    no_duplicate_keys(k, depth + 1) && no_duplicate_keys(v, depth + 1)
-                })
+                && entries
+                    .iter()
+                    .all(|(k, v)| no_duplicate_keys(k) && no_duplicate_keys(v))
         }
-        C::Array(items) => items.iter().all(|v| no_duplicate_keys(v, depth + 1)),
-        C::Tag(_, inner) => no_duplicate_keys(inner, depth + 1),
+        C::Array(items) => items.iter().all(no_duplicate_keys),
+        C::Tag(_, inner) => no_duplicate_keys(inner),
         _ => true,
     }
 }
@@ -345,7 +339,7 @@ fn no_duplicate_keys(value: &C, depth: usize) -> bool {
 /// One CBOR item with no duplicate map key at any depth.
 fn one_item_unique(bytes: &[u8]) -> Result<C, &'static str> {
     let value = one_item(bytes)?;
-    if no_duplicate_keys(&value, 0) {
+    if no_duplicate_keys(&value) {
         Ok(value)
     } else {
         Err("a map with a duplicate key")
@@ -778,6 +772,18 @@ fn check_consistency(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn nesting_is_read_to_128_levels() {
+        // Arrays nested n deep around an empty array: n + 1 levels.
+        let nested = |n: usize| [vec![0x81u8; n], vec![0x80]].concat();
+        assert!(one_item_unique(&nested(127)).is_ok());
+        assert_eq!(one_item_unique(&nested(128)), Err("not well-formed CBOR"));
+        assert_eq!(
+            one_item_unique(&nested(10_000)),
+            Err("not well-formed CBOR")
+        );
+    }
+
     use super::*;
 
     #[test]

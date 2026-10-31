@@ -203,7 +203,7 @@ pub fn check_cbor(frame: &[u8]) -> RefusalCheck {
 
 fn decode_cbor_object(frame: &[u8]) -> Option<Value> {
     let mut reader = frame;
-    let value = ciborium::from_reader::<ciborium::Value, _>(&mut reader).ok()?;
+    let value = crate::det_cbor::decode_value(&mut reader)?;
     if !reader.is_empty() {
         return None;
     }
@@ -325,6 +325,25 @@ fn signature_verifies_under(map: &Map<String, Value>, key: &VerifyingKey) -> boo
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_cbor_frame_is_read_to_128_levels() {
+        // {"x": <arrays n deep around an empty array>}: n + 2 levels.
+        let frame = |n: usize| [vec![0xa1u8, 0x61, 0x78], vec![0x81u8; n], vec![0x80]].concat();
+        assert!(decode_cbor_object(&frame(126)).is_some());
+        assert!(decode_cbor_object(&frame(127)).is_none());
+        // A bignum tag is a level too, though ciborium reads it as an integer.
+        let bignum = |n: usize| {
+            [
+                vec![0xa1u8, 0x61, 0x78],
+                vec![0x81u8; n],
+                vec![0xc2, 0x41, 0x01],
+            ]
+            .concat()
+        };
+        assert!(decode_cbor_object(&bignum(126)).is_some());
+        assert!(decode_cbor_object(&bignum(127)).is_none());
+    }
+
     use super::*;
 
     fn key() -> SigningKey {

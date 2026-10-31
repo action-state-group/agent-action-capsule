@@ -126,8 +126,8 @@ pub fn parse_json(bytes: &[u8]) -> Result<Request, RequestError> {
 /// integer outside 0 to 2^53 - 1.
 pub fn parse_cbor(bytes: &[u8]) -> Result<Request, RequestError> {
     let mut reader = bytes;
-    let value: ciborium::Value = ciborium::from_reader(&mut reader)
-        .map_err(|_| RequestError::Malformed("not well-formed CBOR"))?;
+    let value = crate::det_cbor::decode_value(&mut reader)
+        .ok_or(RequestError::Malformed("not well-formed CBOR"))?;
     if !reader.is_empty() {
         return Err(RequestError::Malformed("bytes after the request item"));
     }
