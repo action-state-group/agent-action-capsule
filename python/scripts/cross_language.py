@@ -137,6 +137,7 @@ def composed_verify(value: dict) -> int:
         jcs(
             {
                 "status": composed.status,
+                "findings": sorted(composed.findings),
                 "joins": [
                     {"members": list(j.members), "declared": j.declared, "derived": j.derived or None,
                      "result": j.result, "corroboration": k.result, "reason": k.reason or None}

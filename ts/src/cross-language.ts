@@ -160,7 +160,13 @@ async function composedVerify(): Promise<number> {
     };
   });
   process.stdout.write(
-    `${new TextDecoder().decode(jcs({ status: composed.status, joins }))}\n`,
+    `${new TextDecoder().decode(
+      jcs({
+        status: composed.status,
+        findings: [...composed.findings].sort(),
+        joins,
+      }),
+    )}\n`,
   );
   return 0;
 }

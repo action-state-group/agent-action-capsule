@@ -1687,7 +1687,7 @@ async function extensions(
         ? {
             composed: await verifyComposed(
               raw[kind],
-              (member) => verifyBundle(member),
+              (member) => verifyBundle(member, { ...options, strict: false }),
               {
                 controllerBindings: options.controllerBindings ?? [],
                 bindingRevocations: options.bindingRevocations ?? [],

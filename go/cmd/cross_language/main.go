@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -342,7 +343,12 @@ func composedVerify(in io.Reader, out, errOut io.Writer) int {
 				"corroboration": composed.Corroboration[i].Result, "reason": reason,
 			}
 		}
-		line, err := canonical.JCS(map[string]interface{}{"status": composed.Status, "joins": joins})
+		findings := make([]interface{}, 0, len(composed.Findings))
+		for _, finding := range composed.Findings {
+			findings = append(findings, finding)
+		}
+		sort.Slice(findings, func(i, k int) bool { return findings[i].(string) < findings[k].(string) })
+		line, err := canonical.JCS(map[string]interface{}{"status": composed.Status, "findings": findings, "joins": joins})
 		if err != nil {
 			fmt.Fprintln(errOut, err)
 			return 2

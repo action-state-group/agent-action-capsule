@@ -430,7 +430,7 @@ def _verify_bundle(
         graph = _verify_graph(bundle, records, record_findings)
         interval, membership = _verify_completeness(bundle, records)
     disclosures = _verify_disclosures(bundle["disclosures"] if "disclosures" in bundle else {}, records)
-    extensions = _extensions(bundle.get("extensions"), composed_options)
+    extensions = _extensions(bundle.get("extensions"), composed_options, coverage_inputs)
     countersignatures = bundle.get("countersignatures")
     result = BundleVerificationResult(
         digest,
@@ -1261,7 +1261,7 @@ def _verify_disclosures(raw: Any, records: Mapping[str, Mapping[str, Any]]) -> l
     return findings
 
 
-def _extensions(raw: Any, composed_options: Any = None) -> list[ExtensionResult]:
+def _extensions(raw: Any, composed_options: Any = None, coverage_inputs: Mapping[str, Any] | None = None) -> list[ExtensionResult]:
     if not isinstance(raw, Mapping):
         return []
     from .composed import COMPOSED_KIND, verify_composed
@@ -1269,7 +1269,7 @@ def _extensions(raw: Any, composed_options: Any = None) -> list[ExtensionResult]
     results = []
     for kind in sorted(raw):
         if kind == COMPOSED_KIND:
-            composed = verify_composed(raw[kind], composed_options)
+            composed = verify_composed(raw[kind], composed_options, coverage_inputs)
             results.append(ExtensionResult(kind, composed.status, True, composed))
         else:
             results.append(ExtensionResult(kind))

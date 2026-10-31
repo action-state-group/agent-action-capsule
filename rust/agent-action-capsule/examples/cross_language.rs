@@ -334,7 +334,9 @@ fn composed_verify(input: &[u8]) -> ExitCode {
             })
         })
         .collect();
-    let line = serde_json::json!({"status": composed.status, "joins": joins});
+    let mut findings = composed.findings.clone();
+    findings.sort();
+    let line = serde_json::json!({"status": composed.status, "findings": findings, "joins": joins});
     match canonical::jcs(&line) {
         Ok(bytes) => {
             println!("{}", String::from_utf8_lossy(&bytes));

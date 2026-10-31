@@ -2,6 +2,8 @@
 package bundle
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"regexp"
 	"time"
 
@@ -97,6 +99,24 @@ func bindingReport(record map[string]interface{}, times []time.Time, statements 
 	return report, formReport.Properties[controllerbinding.PropertyForm] == evidencerequest.StatusPass
 }
 
+// bindingDigest is -02's binding digest: the SHA-256 of the JCS of the record
+// without sigs. A join names its record by it, so a record with another
+// digest is skipped before any signature is checked.
+func bindingDigest(record map[string]interface{}) (string, bool) {
+	rest := make(map[string]interface{}, len(record))
+	for k, v := range record {
+		if k != "sigs" {
+			rest[k] = v
+		}
+	}
+	octets, err := canonical.JCS(rest)
+	if err != nil {
+		return "", false
+	}
+	sum := sha256.Sum256(octets)
+	return hex.EncodeToString(sum[:]), true
+}
+
 // controllerBindingLink derives the linkage of a controller_binding join
 // between two root records. derivable is false when no delivered binding
 // record has the join's identifier_digest, or when every one that does names
@@ -122,10 +142,10 @@ func controllerBindingLink(j composedJoin, a, b bindingSide, opts Options) (link
 		}
 	}
 	for _, record := range opts.ControllerBindings {
-		report, wellFormed := bindingReport(record, times, statements)
-		if report.BindingDigest != *j.identifier {
+		if digest, ok := bindingDigest(record); !ok || digest != *j.identifier {
 			continue
 		}
+		report, wellFormed := bindingReport(record, times, statements)
 		if !wellFormed {
 			// A malformed record does not apply: the join derives, unjoined.
 			derivable = true
