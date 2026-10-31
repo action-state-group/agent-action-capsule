@@ -1463,6 +1463,72 @@ def unavailable_window_cases() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# refusal-02.json: the two refusal reasons -02 adds
+# ---------------------------------------------------------------------------
+
+S_SEC = "§11 Security Considerations"
+REASONS_02_ADDED = ["capacity_exceeded", "request_unauthenticated"]
+REASONS_02 = REASONS + REASONS_02_ADDED
+REFUSAL_02_NOTES = (
+    "-02 adds capacity_exceeded (a limit of the responder's own: load, a size limit, a full replay "
+    "cache, a transient fault) and request_unauthenticated (a requester authentication a deployment "
+    "profile defines does not verify). registry.json and refusal.json stay as -00 fixes them; under "
+    "-00 and -01 both tokens are unregistered. Signatures use the profile in refusal.json."
+)
+
+
+def refusal_02_cases(requests: list[dict]) -> list[dict]:
+    digest = {c["id"]: c for c in requests}["pos-subject-record"]["request_json_digest"]
+    cases: list[dict] = []
+    for reason in REASONS_02_ADDED:
+        obj = refusal(digest, reason)
+        cases.append({
+            "id": f"r02-reason-{reason}", "section": [S_REF, S_IANA],
+            "description": f"A signed refusal of request pos-subject-record (JSON binding) with reason {reason}, "
+            "registered by -02.",
+            "refusal": obj, "request_case": "pos-subject-record",
+            "signing_body": jcs({k: obj[k] for k in ("issued_at", "reason", "request_digest")}),
+            "expect": {"signature": "valid", "reason_registered": True, "conformant": True}})
+    obj = refusal(digest, "rate_limited")
+    cases.append({
+        "id": "r02-neg-unregistered-rate_limited", "section": [S_REF, S_IANA],
+        "description": "Correctly signed, but rate_limited is not registered: a limit of the responder's own is "
+        "capacity_exceeded.",
+        "refusal": obj, "request_case": "pos-subject-record",
+        "expect": {"signature": "valid", "reason_registered": False, "conformant": False}})
+    for reason in REASONS_02_ADDED:
+        for commitment, side in (("in_force", "inside"), ("lapsed", "after")):
+            cases.append({
+                "id": f"r02-ret-{side}-{reason}", "section": [S_RET],
+                "description": f"A refusal with reason {reason} {side} until: never a breach"
+                + (" (flooding a responder cannot manufacture broken commitments)."
+                   if reason == "capacity_exceeded" else " (a property of the request)."),
+                "facts": {"commitment": commitment, "refusal_reason": reason},
+                "expect": {"classification": "no_breach"}})
+    cases.append({
+        "id": "r02-load-shedding-is-capacity_exceeded", "section": [S_SEC, S_REF],
+        "description": "A responder declines for its own load. It refuses capacity_exceeded; policy_declined and "
+        "not_authorized are statements about policy and are not used for load shedding.",
+        "facts": {"cause": "responder_load"},
+        "expect": {"reason": "capacity_exceeded", "not_reason": ["policy_declined", "not_authorized"]}})
+    cases.append({
+        "id": "r02-deadline-missed-under-load", "section": [S_DEADLINE, S_SEC],
+        "description": "A responder cannot answer by the deadline only because of its own load. It refuses "
+        "capacity_exceeded, not deadline_unmet, which states that the deadline itself cannot be met.",
+        "facts": {"cause": "responder_load", "deadline": "would_be_missed"},
+        "expect": {"reason": "capacity_exceeded", "not_reason": ["deadline_unmet"]}})
+    for reason in REASONS_02_ADDED:
+        cases.append({
+            "id": f"r02-map-{reason}", "section": [S_MAP],
+            "description": f"The illustrative status mapping of a refusal with reason {reason}: the requirement's "
+            "status stays unknown; never withheld by policy, never evidence of non-satisfaction.",
+            "facts": {"refusal_reason": reason},
+            "expect": {"status_unknown": True, "withheld_by_policy": False,
+                       "evidence_of_non_satisfaction": False}})
+    return cases
+
+
+# ---------------------------------------------------------------------------
 # registry.json: the exact strings -00 fixes
 # ---------------------------------------------------------------------------
 
@@ -1549,6 +1615,10 @@ def build() -> dict[str, bytes]:
         "retention.json": _dump(_corpus(
             "retention", "Retention commitments: the breach table and commitment subject forms.",
             retention_cases())),
+        "refusal-02.json": _dump(_corpus(
+            "refusal-02", "The two refusal reasons -02 adds: signed refusals, the retention breach table and "
+            "the status mapping.", refusal_02_cases(requests), draft=DRAFT_02, notes=REFUSAL_02_NOTES,
+            refusal_reasons=REASONS_02, signature_profile=SIGNATURE_PROFILE)),
         "unavailable-window.json": _dump(_corpus(
             "unavailable-window", "Unavailable-window statements: which a reader recognizes, which "
             "cover an absence, and how the reader shows a covered absence.", unavailable_window_cases(),

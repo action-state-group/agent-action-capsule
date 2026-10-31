@@ -488,7 +488,10 @@ it, and normative in one respect: a responder that determines it cannot
 answer by the deadline SHOULD send a refusal with reason `deadline_unmet`
 before the deadline rather than let the exchange lapse into absence. A
 refusal is cheap and citable; an absence is neither party's record of
-anything except the requester's attempt.
+anything except the requester's attempt. `deadline_unmet` states that the
+deadline itself cannot be met; a responder that cannot answer in time only
+because of its own load or limits refuses `capacity_exceeded`
+({{security}}).
 
 ## Nonce {#nonce}
 
@@ -681,11 +684,21 @@ A refusal is an answer, not an error. It carries:
 2. **A reason:** exactly one machine-readable token from the registry
    established in {{iana}}. The initial tokens are `not_authorized`,
    `no_such_subject`, `coverage_unsatisfiable`, `derivation_unsupported`,
-   `policy_declined`, `deadline_unmet`, `request_malformed`, and
-   `retention_expired`. The last is distinct from `no_such_subject` by
-   design: it states that the responder once committed to answer this
-   subject ({{retention}}) and the commitment has lapsed, so a lapsed
-   promise cannot be presented as never having held the evidence.
+   `policy_declined`, `deadline_unmet`, `request_malformed`,
+   `retention_expired`, `capacity_exceeded`, and
+   `request_unauthenticated`. `retention_expired` is distinct from
+   `no_such_subject` by design: it states that the responder once
+   committed to answer this subject ({{retention}}) and the commitment has
+   lapsed, so a lapsed promise cannot be presented as never having held
+   the evidence. `capacity_exceeded` is distinct from `policy_declined`
+   by design: it states that the responder declined for a limit of its
+   own (load, a size limit on the request or on the answer, a full replay
+   cache, or a transient fault), whoever asked and whatever its policy
+   discloses, so `policy_declined` and `not_authorized` remain statements
+   about policy. `request_unauthenticated` states that the request carries
+   a requester authentication, defined by a deployment profile
+   ({{principal}}), that does not verify: its signature, the binding of its
+   key, its audience, its deadline window, or its replay check.
 3. **An issuance time:** the time the refusal was issued, which MUST be
    present and MUST be covered by the signature. It binds the refusal to
    a moment, so a recorded refusal cannot be presented as current policy
@@ -701,7 +714,9 @@ prose, is the machine-readable answer. A responder MUST select the most
 specific applicable token, with one deliberate exception noted in
 {{privacy}}: a responder MAY uniformly answer `policy_declined` wherever a
 more specific token would disclose information its policy protects,
-overriding the most-specific-token rule. That choice is policy, made by
+overriding the most-specific-token rule. The exception does not cover
+load shedding, which is always `capacity_exceeded` ({{security}}). That
+choice is policy, made by
 the responder, applied
 uniformly; it is not a license to select tokens per-requester in a way that
 leaks by differentiation ({{privacy}}).
@@ -804,6 +819,8 @@ shape — not a specific registry — is informative:
 | Refusal: `no_such_subject`, `coverage_unsatisfiable` | evidence not found, or not yet committed |
 | Refusal: `not_authorized`, `policy_declined`, `derivation_unsupported` | evidence withheld by policy, not absent |
 | Refusal: `retention_expired` | a prior commitment lapsed; distinct from never having held the evidence |
+| Refusal: `capacity_exceeded` | status unknown; the responder states a limit of its own. Not evidence of non-satisfaction or of withholding by policy |
+| Refusal: `request_unauthenticated` | the request's authentication did not verify; nothing about the evidence |
 | Pending | request outstanding; the window has not closed, nothing yet to map |
 | Recorded absence | status unknown to the requester; not evidence of non-satisfaction |
 | Recorded absence covered by an unavailable-window statement | status unknown; the responder states it was unavailable. Not evidence of non-satisfaction, of refusal, or of an attack |
@@ -1074,10 +1091,14 @@ commitment is a route with a promise attached, never an address.
 
 Within `until`, an absence for the committed subject is recorded citing
 the commitment ({{absence}}). Within `until`, a refusal carrying
-`not_authorized`, `coverage_unsatisfiable`, `request_malformed`, or
-`derivation_unsupported` reflects a property of the request or of this
-responder's capabilities, not a failure to honor the commitment, and is
-not a breach. Any other refusal reason — `no_such_subject`,
+`not_authorized`, `coverage_unsatisfiable`, `request_malformed`,
+`request_unauthenticated`, or `derivation_unsupported` reflects a property
+of the request or of this responder's capabilities, not a failure to honor
+the commitment, and is not a breach. A refusal carrying
+`capacity_exceeded` is never a breach, within `until` or after it:
+anyone can load a responder, so counting it would let any requester
+manufacture broken commitments against the responder by flooding it.
+Any other refusal reason — `no_such_subject`,
 `policy_declined`, or `deadline_unmet` — within `until` is a broken
 commitment: the responder promised this subject would remain answerable
 and is refusing it on a ground the promise foreclosed; the refusal is
@@ -1407,10 +1428,20 @@ excuse any absence, which is why a reader never shows it as one.
 
 **Denial of service.** Requests are cheap to send; artifact assembly,
 fresh-commitment issuance under `min_freshness`, and derivation evaluation
-are not. Responders MAY apply rate and cost policy freely — refusing with
-`policy_declined` is always available and always honest — but MUST NOT let
-load-shedding take the form of caller-variant artifacts, which would
-violate {{invariance}} where refusal would not.
+are not. Responders MAY apply rate and cost limits freely. A responder that
+declines for its own load or limits MUST refuse with `capacity_exceeded`,
+not `policy_declined` or `not_authorized`, so that those two remain
+statements about policy that a requester can hold against the policy the
+responder advertised; the uniform-`policy_declined` posture of {{privacy}}
+does not extend to load shedding. A responder MUST NOT let load-shedding
+take the form of caller-variant artifacts, which would violate
+{{invariance}} where refusal would not. Because `capacity_exceeded` is
+never a breach of a retention commitment ({{retention}}), flooding a
+responder cannot manufacture broken commitments against it. The trade
+runs the other way too: a responder can withhold a committed subject
+indefinitely by answering `capacity_exceeded`, and a retention commitment
+cannot be enforced against that refusal. A requester can only retry and
+treat the requirement's status as unknown ({{status-mapping}}).
 
 # Privacy Considerations {#privacy}
 
@@ -1434,9 +1465,11 @@ relied on to conceal enumerable content.
 `no_such_subject` and `not_authorized` reveals whether the subject exists;
 other token distinctions leak analogously. A responder MAY answer
 `policy_declined` uniformly wherever a more specific token would disclose
-information its policy protects ({{refusal}}). The uniformity is the
-point: a per-requester choice of token leaks by differentiation exactly
-what the uniform token conceals.
+information its policy protects ({{refusal}}), except for load shedding
+({{security}}). The uniformity is the point: a per-requester choice of
+token leaks by differentiation exactly what the uniform token conceals.
+A `capacity_exceeded` refusal discloses operational state: that the
+responder was at a limit when the request arrived.
 
 **Coverage probing leaks log size.** A size-based `min_freshness` is a
 threshold query on current log size — granted at or above the threshold,
@@ -1506,6 +1539,8 @@ initial contents are:
 | `deadline_unmet` | the responder cannot answer within the stated deadline | This document |
 | `request_malformed` | the request is not well-formed as specified by the defining document | This document |
 | `retention_expired` | the responder's retention commitment for this subject has lapsed | This document |
+| `capacity_exceeded` | the responder declines for a limit of its own (load, size, a transient fault), whoever asks | This document |
+| `request_unauthenticated` | the requester authentication a deployment profile defines does not verify | This document |
 
 This document further requests a registry titled "Evidence Request
 Derivations", registration policy Specification Required. Each entry
@@ -1655,6 +1690,15 @@ that the two can cite each other without either defining the other.
   are not a registry.
 - {{field-evidence}}: a worked example of a responder flooded during a
   dispute window.
+- Two refusal reasons ({{refusal}}, {{iana}}): `capacity_exceeded`, for a
+  responder's own load, size limits and transient faults, and
+  `request_unauthenticated`, for a requester authentication that does not
+  verify. Load shedding now refuses `capacity_exceeded`, not
+  `policy_declined` (Security Considerations), so `policy_declined` and
+  `not_authorized` are statements about policy. `capacity_exceeded` is
+  never a breach of a retention commitment, and `request_unauthenticated`
+  is a property of the request ({{retention}}). {{status-mapping}} maps
+  both.
 
 # Changes from -00 {#changes}
 {:numbered="false"}

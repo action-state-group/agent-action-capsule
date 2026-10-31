@@ -518,7 +518,10 @@ it, and normative in one respect: a responder that determines it cannot
 answer by the deadline <bcp14>SHOULD</bcp14> send a refusal with reason <tt>deadline_unmet</tt>
 before the deadline rather than let the exchange lapse into absence. A
 refusal is cheap and citable; an absence is neither party's record of
-anything except the requester's attempt.</t>
+anything except the requester's attempt. <tt>deadline_unmet</tt> states that the
+deadline itself cannot be met; a responder that cannot answer in time only
+because of its own load or limits refuses <tt>capacity_exceeded</tt>
+(<xref target="security"/>).</t>
       </section>
       <section anchor="nonce">
         <name>Nonce</name>
@@ -732,11 +735,21 @@ computed over the request bytes as received.</t>
             <t><strong>A reason:</strong> exactly one machine-readable token from the registry
 established in <xref target="iana"/>. The initial tokens are <tt>not_authorized</tt>,
 <tt>no_such_subject</tt>, <tt>coverage_unsatisfiable</tt>, <tt>derivation_unsupported</tt>,
-<tt>policy_declined</tt>, <tt>deadline_unmet</tt>, <tt>request_malformed</tt>, and
-<tt>retention_expired</tt>. The last is distinct from <tt>no_such_subject</tt> by
-design: it states that the responder once committed to answer this
-subject (<xref target="retention"/>) and the commitment has lapsed, so a lapsed
-promise cannot be presented as never having held the evidence.</t>
+<tt>policy_declined</tt>, <tt>deadline_unmet</tt>, <tt>request_malformed</tt>,
+<tt>retention_expired</tt>, <tt>capacity_exceeded</tt>, and
+<tt>request_unauthenticated</tt>. <tt>retention_expired</tt> is distinct from
+<tt>no_such_subject</tt> by design: it states that the responder once
+committed to answer this subject (<xref target="retention"/>) and the commitment has
+lapsed, so a lapsed promise cannot be presented as never having held
+the evidence. <tt>capacity_exceeded</tt> is distinct from <tt>policy_declined</tt>
+by design: it states that the responder declined for a limit of its
+own (load, a size limit on the request or on the answer, a full replay
+cache, or a transient fault), whoever asked and whatever its policy
+discloses, so <tt>policy_declined</tt> and <tt>not_authorized</tt> remain statements
+about policy. <tt>request_unauthenticated</tt> states that the request carries
+a requester authentication, defined by a deployment profile
+(<xref target="principal"/>), that does not verify: its signature, the binding of its
+key, its audience, its deadline window, or its replay check.</t>
           </li>
           <li>
             <t><strong>An issuance time:</strong> the time the refusal was issued, which <bcp14>MUST</bcp14> be
@@ -757,7 +770,9 @@ prose, is the machine-readable answer. A responder <bcp14>MUST</bcp14> select th
 specific applicable token, with one deliberate exception noted in
 <xref target="privacy"/>: a responder <bcp14>MAY</bcp14> uniformly answer <tt>policy_declined</tt> wherever a
 more specific token would disclose information its policy protects,
-overriding the most-specific-token rule. That choice is policy, made by
+overriding the most-specific-token rule. The exception does not cover
+load shedding, which is always <tt>capacity_exceeded</tt> (<xref target="security"/>). That
+choice is policy, made by
 the responder, applied
 uniformly; it is not a license to select tokens per-requester in a way that
 leaks by differentiation (<xref target="privacy"/>).</t>
@@ -886,6 +901,14 @@ shape — not a specific registry — is informative:</t>
             <tr>
               <td align="left">Refusal: <tt>retention_expired</tt></td>
               <td align="left">a prior commitment lapsed; distinct from never having held the evidence</td>
+            </tr>
+            <tr>
+              <td align="left">Refusal: <tt>capacity_exceeded</tt></td>
+              <td align="left">status unknown; the responder states a limit of its own. Not evidence of non-satisfaction or of withholding by policy</td>
+            </tr>
+            <tr>
+              <td align="left">Refusal: <tt>request_unauthenticated</tt></td>
+              <td align="left">the request's authentication did not verify; nothing about the evidence</td>
             </tr>
             <tr>
               <td align="left">Pending</td>
@@ -1203,10 +1226,14 @@ checkpoint is malformed: the digest remains the identity, and the
 commitment is a route with a promise attached, never an address.</t>
       <t>Within <tt>until</tt>, an absence for the committed subject is recorded citing
 the commitment (<xref target="absence"/>). Within <tt>until</tt>, a refusal carrying
-<tt>not_authorized</tt>, <tt>coverage_unsatisfiable</tt>, <tt>request_malformed</tt>, or
-<tt>derivation_unsupported</tt> reflects a property of the request or of this
-responder's capabilities, not a failure to honor the commitment, and is
-not a breach. Any other refusal reason — <tt>no_such_subject</tt>,
+<tt>not_authorized</tt>, <tt>coverage_unsatisfiable</tt>, <tt>request_malformed</tt>,
+<tt>request_unauthenticated</tt>, or <tt>derivation_unsupported</tt> reflects a property
+of the request or of this responder's capabilities, not a failure to honor
+the commitment, and is not a breach. A refusal carrying
+<tt>capacity_exceeded</tt> is never a breach, within <tt>until</tt> or after it:
+anyone can load a responder, so counting it would let any requester
+manufacture broken commitments against the responder by flooding it.
+Any other refusal reason — <tt>no_such_subject</tt>,
 <tt>policy_declined</tt>, or <tt>deadline_unmet</tt> — within <tt>until</tt> is a broken
 commitment: the responder promised this subject would remain answerable
 and is refusing it on a ground the promise foreclosed; the refusal is
@@ -1533,10 +1560,20 @@ refusal. A statement read as proof of attack would let any responder
 excuse any absence, which is why a reader never shows it as one.</t>
       <t><strong>Denial of service.</strong> Requests are cheap to send; artifact assembly,
 fresh-commitment issuance under <tt>min_freshness</tt>, and derivation evaluation
-are not. Responders <bcp14>MAY</bcp14> apply rate and cost policy freely — refusing with
-<tt>policy_declined</tt> is always available and always honest — but <bcp14>MUST NOT</bcp14> let
-load-shedding take the form of caller-variant artifacts, which would
-violate <xref target="invariance"/> where refusal would not.</t>
+are not. Responders <bcp14>MAY</bcp14> apply rate and cost limits freely. A responder that
+declines for its own load or limits <bcp14>MUST</bcp14> refuse with <tt>capacity_exceeded</tt>,
+not <tt>policy_declined</tt> or <tt>not_authorized</tt>, so that those two remain
+statements about policy that a requester can hold against the policy the
+responder advertised; the uniform-<tt>policy_declined</tt> posture of <xref target="privacy"/>
+does not extend to load shedding. A responder <bcp14>MUST NOT</bcp14> let load-shedding
+take the form of caller-variant artifacts, which would violate
+<xref target="invariance"/> where refusal would not. Because <tt>capacity_exceeded</tt> is
+never a breach of a retention commitment (<xref target="retention"/>), flooding a
+responder cannot manufacture broken commitments against it. The trade
+runs the other way too: a responder can withhold a committed subject
+indefinitely by answering <tt>capacity_exceeded</tt>, and a retention commitment
+cannot be enforced against that refusal. A requester can only retry and
+treat the requirement's status as unknown (<xref target="status-mapping"/>).</t>
     </section>
     <section anchor="privacy">
       <name>Privacy Considerations</name>
@@ -1558,9 +1595,11 @@ relied on to conceal enumerable content.</t>
 <tt>no_such_subject</tt> and <tt>not_authorized</tt> reveals whether the subject exists;
 other token distinctions leak analogously. A responder <bcp14>MAY</bcp14> answer
 <tt>policy_declined</tt> uniformly wherever a more specific token would disclose
-information its policy protects (<xref target="refusal"/>). The uniformity is the
-point: a per-requester choice of token leaks by differentiation exactly
-what the uniform token conceals.</t>
+information its policy protects (<xref target="refusal"/>), except for load shedding
+(<xref target="security"/>). The uniformity is the point: a per-requester choice of
+token leaks by differentiation exactly what the uniform token conceals.
+A <tt>capacity_exceeded</tt> refusal discloses operational state: that the
+responder was at a limit when the request arrived.</t>
       <t><strong>Coverage probing leaks log size.</strong> A size-based <tt>min_freshness</tt> is a
 threshold query on current log size — granted at or above the threshold,
 refused <tt>coverage_unsatisfiable</tt> below it — so a requester can
@@ -1666,6 +1705,18 @@ initial contents are:</t>
             <td align="left">
               <tt>retention_expired</tt></td>
             <td align="left">the responder's retention commitment for this subject has lapsed</td>
+            <td align="left">This document</td>
+          </tr>
+          <tr>
+            <td align="left">
+              <tt>capacity_exceeded</tt></td>
+            <td align="left">the responder declines for a limit of its own (load, size, a transient fault), whoever asks</td>
+            <td align="left">This document</td>
+          </tr>
+          <tr>
+            <td align="left">
+              <tt>request_unauthenticated</tt></td>
+            <td align="left">the requester authentication a deployment profile defines does not verify</td>
             <td align="left">This document</td>
           </tr>
         </tbody>
@@ -1876,7 +1927,7 @@ action.</t>
         </reference>
       </references>
     </references>
-    <?line 1544?>
+    <?line 1579?>
 
 <section anchor="field-evidence">
       <name>Example Deployments</name>
@@ -2042,6 +2093,17 @@ are not a registry.</t>
         <li>
           <t><xref target="field-evidence"/>: a worked example of a responder flooded during a
 dispute window.</t>
+        </li>
+        <li>
+          <t>Two refusal reasons (<xref target="refusal"/>, <xref target="iana"/>): <tt>capacity_exceeded</tt>, for a
+responder's own load, size limits and transient faults, and
+<tt>request_unauthenticated</tt>, for a requester authentication that does not
+verify. Load shedding now refuses <tt>capacity_exceeded</tt>, not
+<tt>policy_declined</tt> (Security Considerations), so <tt>policy_declined</tt> and
+<tt>not_authorized</tt> are statements about policy. <tt>capacity_exceeded</tt> is
+never a breach of a retention commitment, and <tt>request_unauthenticated</tt>
+is a property of the request (<xref target="retention"/>). <xref target="status-mapping"/> maps
+both.</t>
         </li>
       </ul>
     </section>

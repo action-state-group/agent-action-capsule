@@ -104,7 +104,7 @@ its 9 `record_signatures`.
 
 | Set | Owning specification | Verbs | Cases |
 |---|---|---|---|
-| `vectors/evidence-request/` | `draft-mih-agent-evidence-request-00`, `-01` and `-02` | request, respond, verify | 201 |
+| `vectors/evidence-request/` | `draft-mih-agent-evidence-request-00`, `-01` and `-02` | request, respond, verify | 212 |
 | `vectors/settlement/` | `draft-mih-agent-settlement-records-00` | record, verify | 24 |
 | `vectors/interop/` | composition and run-under suites | verify | 11 |
 | `vectors/interop-profile-v0/` | `spec/interop-profile-v0.md` (`evidence-interop/0`) | respond, verify | 55 |

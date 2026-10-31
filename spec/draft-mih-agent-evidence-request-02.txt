@@ -105,7 +105,7 @@ Table of Contents
    8.  Derivation-Scoped Disclosure  . . . . . . . . . . . . . . . .  27
      8.1.  The History Card  . . . . . . . . . . . . . . . . . . . .  28
    9.  Retention Commitments . . . . . . . . . . . . . . . . . . . .  28
-   10. Transport Bindings  . . . . . . . . . . . . . . . . . . . . .  29
+   10. Transport Bindings  . . . . . . . . . . . . . . . . . . . . .  30
 
 
 
@@ -114,21 +114,21 @@ Mih                        Expires 3 May 2027                   [Page 2]
 Internet-Draft              Evidence Request                October 2026
 
 
-     10.1.  Carriage Rules . . . . . . . . . . . . . . . . . . . . .  30
-     10.2.  A2A Binding  . . . . . . . . . . . . . . . . . . . . . .  31
+     10.1.  Carriage Rules . . . . . . . . . . . . . . . . . . . . .  31
+     10.2.  A2A Binding  . . . . . . . . . . . . . . . . . . . . . .  32
      10.3.  MCP Binding  . . . . . . . . . . . . . . . . . . . . . .  33
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  33
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  36
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  38
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  40
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  40
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  40
-   Appendix A.  Example Deployments  . . . . . . . . . . . . . . . .  42
-   Appendix B.  Reference Blocks and This Interaction  . . . . . . .  44
-   Changes from -01  . . . . . . . . . . . . . . . . . . . . . . . .  44
-   Changes from -00  . . . . . . . . . . . . . . . . . . . . . . . .  45
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  46
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  46
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  34
+   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  38
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  39
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  41
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  41
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  42
+   Appendix A.  Example Deployments  . . . . . . . . . . . . . . . .  43
+   Appendix B.  Reference Blocks and This Interaction  . . . . . . .  45
+   Changes from -01  . . . . . . . . . . . . . . . . . . . . . . . .  45
+   Changes from -00  . . . . . . . . . . . . . . . . . . . . . . . .  46
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  47
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  47
 
 1.  Introduction
 
@@ -693,7 +693,9 @@ Internet-Draft              Evidence Request                October 2026
    refusal with reason deadline_unmet before the deadline rather than
    let the exchange lapse into absence.  A refusal is cheap and citable;
    an absence is neither party's record of anything except the
-   requester's attempt.
+   requester's attempt. deadline_unmet states that the deadline itself
+   cannot be met; a responder that cannot answer in time only because of
+   its own load or limits refuses capacity_exceeded (Section 11).
 
 3.5.  Nonce
 
@@ -715,8 +717,6 @@ Internet-Draft              Evidence Request                October 2026
    (Section 11).  The field exists so that the route actually attempted
    is part of the requester's record of asking, and so a failed route is
    part of any absence recorded (Section 4.4).
-
-
 
 
 
@@ -971,11 +971,22 @@ Internet-Draft              Evidence Request                October 2026
        established in Section 13.  The initial tokens are
        not_authorized, no_such_subject, coverage_unsatisfiable,
        derivation_unsupported, policy_declined, deadline_unmet,
-       request_malformed, and retention_expired.  The last is distinct
-       from no_such_subject by design: it states that the responder once
+       request_malformed, retention_expired, capacity_exceeded, and
+       request_unauthenticated. retention_expired is distinct from
+       no_such_subject by design: it states that the responder once
        committed to answer this subject (Section 9) and the commitment
        has lapsed, so a lapsed promise cannot be presented as never
-       having held the evidence.
+       having held the evidence. capacity_exceeded is distinct from
+       policy_declined by design: it states that the responder declined
+       for a limit of its own (load, a size limit on the request or on
+       the answer, a full replay cache, or a transient fault), whoever
+       asked and whatever its policy discloses, so policy_declined and
+       not_authorized remain statements about policy.
+       request_unauthenticated states that the request carries a
+       requester authentication, defined by a deployment profile
+       (Section 3.7), that does not verify: its signature, the binding
+       of its key, its audience, its deadline window, or its replay
+       check.
 
    3.  *An issuance time:* the time the refusal was issued, which MUST
        be present and MUST be covered by the signature.  It binds the
@@ -989,17 +1000,6 @@ Internet-Draft              Evidence Request                October 2026
        later demonstrate to a third party that this responder refused
        this request for this stated reason.
 
-   Human-readable detail MAY accompany the reason token; the token, not
-   the prose, is the machine-readable answer.  A responder MUST select
-   the most specific applicable token, with one deliberate exception
-   noted in Section 12: a responder MAY uniformly answer policy_declined
-   wherever a more specific token would disclose information its policy
-   protects, overriding the most-specific-token rule.  That choice is
-   policy, made by the responder, applied uniformly; it is not a license
-   to select tokens per-requester in a way that leaks by differentiation
-   (Section 12).
-
-
 
 
 
@@ -1009,6 +1009,17 @@ Mih                        Expires 3 May 2027                  [Page 18]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+   Human-readable detail MAY accompany the reason token; the token, not
+   the prose, is the machine-readable answer.  A responder MUST select
+   the most specific applicable token, with one deliberate exception
+   noted in Section 12: a responder MAY uniformly answer policy_declined
+   wherever a more specific token would disclose information its policy
+   protects, overriding the most-specific-token rule.  The exception
+   does not cover load shedding, which is always capacity_exceeded
+   (Section 11).  That choice is policy, made by the responder, applied
+   uniformly; it is not a license to select tokens per-requester in a
+   way that leaks by differentiation (Section 12).
 
    A refusal refuses the request, once.  It creates no standing
    obligation and no standing prohibition; the same request MAY be made
@@ -1043,6 +1054,18 @@ Internet-Draft              Evidence Request                October 2026
    digest, the transport attempted, and the window in which no answer
    came.
 
+
+
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 19]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    Absence is an outcome about the exchange, not about the responder's
    intent.  A network partition, a crashed responder, and a responder
    deliberately ignoring the request produce identical absences, and the
@@ -1056,15 +1079,6 @@ Internet-Draft              Evidence Request                October 2026
    but the attempt.  The commitment changes whom the absence is evidence
    _against_; it does not change what the absence _is_, and the
    requester still MUST NOT infer intent.
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 19]
-
-Internet-Draft              Evidence Request                October 2026
-
 
    An absence remains the requester's record of its own attempt whatever
    the responder later says about it.  A responder's unavailable-window
@@ -1101,6 +1115,13 @@ Internet-Draft              Evidence Request                October 2026
       does not make it a signed act of the responder, and no party may
       record it as one.
 
+
+
+Mih                        Expires 3 May 2027                  [Page 20]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    *  *Pending is never recorded as absence.* A request still inside its
       waiting window is pending (Section 4.3), not absent; only the
       close of the window resolves it one way or the other.
@@ -1110,17 +1131,6 @@ Internet-Draft              Evidence Request                October 2026
       (Section 4.7).  An absence it covers is still an absence: no party
       may record or show it as a refusal, and a reader that holds the
       statement MUST NOT show the absence as if no statement existed.
-
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 20]
-
-Internet-Draft              Evidence Request                October 2026
-
 
    The discipline exists because the three outcomes carry different
    evidentiary weight — a refusal is the responder's signed act, an
@@ -1133,16 +1143,6 @@ Internet-Draft              Evidence Request                October 2026
    deployment composing this interaction with an evidence-contract or
    evidence-bundle layer typically derives one from the three outcomes
    above.  The mapping shape — not a specific registry — is informative:
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1201,6 +1201,15 @@ Internet-Draft              Evidence Request                October 2026
       | retention_expired        | distinct from never having held |
       |                          | the evidence                    |
       +--------------------------+---------------------------------+
+      | Refusal:                 | status unknown; the responder   |
+      | capacity_exceeded        | states a limit of its own.  Not |
+      |                          | evidence of non-satisfaction or |
+      |                          | of withholding by policy        |
+      +--------------------------+---------------------------------+
+      | Refusal:                 | the request's authentication    |
+      | request_unauthenticated  | did not verify; nothing about   |
+      |                          | the evidence                    |
+      +--------------------------+---------------------------------+
       | Pending                  | request outstanding; the window |
       |                          | has not closed, nothing yet to  |
       |                          | map                             |
@@ -1217,15 +1226,6 @@ Internet-Draft              Evidence Request                October 2026
 
                                  Table 4
 
-   A deployment's own vocabulary MAY be coarser or finer than this
-   table; the table exists to show that the three outcomes carry enough
-   distinction to support one, not to define it.
-
-
-
-
-
-
 
 
 
@@ -1233,6 +1233,10 @@ Mih                        Expires 3 May 2027                  [Page 22]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+   A deployment's own vocabulary MAY be coarser or finer than this
+   table; the table exists to show that the three outcomes carry enough
+   distinction to support one, not to define it.
 
 4.7.  Unavailable-Window Statements
 
@@ -1264,6 +1268,28 @@ Internet-Draft              Evidence Request                October 2026
 
    The reason classes are a closed list:
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 23]
+
+Internet-Draft              Evidence Request                October 2026
+
+
          +================+=====================================+
          | Token          | Meaning                             |
          +================+=====================================+
@@ -1281,14 +1307,6 @@ Internet-Draft              Evidence Request                October 2026
          +----------------+-------------------------------------+
 
                                  Table 5
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 23]
-
-Internet-Draft              Evidence Request                October 2026
-
 
    The reason is the token alone, never free text.  A statement is
    malformed when its reason_class is missing or is not one of these
@@ -1319,6 +1337,15 @@ Internet-Draft              Evidence Request                October 2026
        attacked, flooded, or otherwise unable to answer.  A flood
        statement says what the responder states, not what happened.
 
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 24]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    3.  MUST show the statement's registration time relative to the close
        of the absence's waiting window.  When the registration time is
        later than that close, the reader MUST label the statement
@@ -1335,16 +1362,6 @@ Internet-Draft              Evidence Request                October 2026
    what a reader shows.  A statement has no effect on an artifact
    response or a signed refusal: a request that received either has no
    absence for a statement to cover.
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 24]
-
-Internet-Draft              Evidence Request                October 2026
-
 
 5.  Caller Invariance
 
@@ -1377,6 +1394,14 @@ Internet-Draft              Evidence Request                October 2026
    a per-audience story: any two requesters — or one requester over two
    channels — can detect a responder serving divergent versions by
    comparing artifact digests for the same (subject, anchor) pair,
+
+
+
+Mih                        Expires 3 May 2027                  [Page 25]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    without trusting each other's verification and without any authority
    adjudicating.  A responder MAY refuse a requester outright
    (Section 4.2); what it MUST NOT do is grant different requesters
@@ -1393,14 +1418,6 @@ Internet-Draft              Evidence Request                October 2026
    discussed in Section 11.
 
    Two consequences for implementers:
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 25]
-
-Internet-Draft              Evidence Request                October 2026
-
 
    *  The artifact serialization MUST be deterministic.  An artifact
       assembled with nondeterministic map ordering, timestamps of
@@ -1433,6 +1450,14 @@ Internet-Draft              Evidence Request                October 2026
    provider asking its former requester is the same interaction with the
    roles swapped; no new message, no new state.
 
+
+
+
+Mih                        Expires 3 May 2027                  [Page 26]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    The consequence is the one property no single-responder interaction
    can otherwise provide.  A responder's log, however well witnessed,
    proves only the integrity of what the responder chose to write.  A
@@ -1447,16 +1472,6 @@ Internet-Draft              Evidence Request                October 2026
    verifies against an independently obtained checkpoint.  Such a policy
    is a requiring-party decision and is outside this document; the
    interaction only makes it expressible.
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 26]
-
-Internet-Draft              Evidence Request                October 2026
-
 
 7.  Recording the Exchange
 
@@ -1492,6 +1507,13 @@ Internet-Draft              Evidence Request                October 2026
 
    Three disclosure tiers fall out naturally:
 
+
+
+Mih                        Expires 3 May 2027                  [Page 27]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    1.  *Digests-only* — no derivation; subjects and artifacts identified
        and verified by digest, content never disclosed.  Always safe to
        serve (subject to Section 12 on low-entropy content).
@@ -1503,16 +1525,6 @@ Internet-Draft              Evidence Request                October 2026
 
    3.  *Full* — the raw evidence bytes.  The rare tier, appropriate
        where the requester's role requires the whole record.
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 27]
-
-Internet-Draft              Evidence Request                October 2026
-
 
 8.1.  The History Card
 
@@ -1549,6 +1561,15 @@ Internet-Draft              Evidence Request                October 2026
    1.  the subject, in one of the forms of Section 3.1, and the evidence
        stream it belongs to;
 
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 28]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    2.  until: the time after which the commitment lapses, covered by the
        signature;
 
@@ -1558,17 +1579,6 @@ Internet-Draft              Evidence Request                October 2026
 
    4.  the responder's signature, in the signature format of the
        deployment's evidence mechanism.
-
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 28]
-
-Internet-Draft              Evidence Request                October 2026
-
 
    A commitment is a promise about _answerability under this
    interaction_. It says nothing about whether the bytes exist anywhere
@@ -1586,10 +1596,14 @@ Internet-Draft              Evidence Request                October 2026
 
    Within until, an absence for the committed subject is recorded citing
    the commitment (Section 4.4).  Within until, a refusal carrying
-   not_authorized, coverage_unsatisfiable, request_malformed, or
-   derivation_unsupported reflects a property of the request or of this
-   responder's capabilities, not a failure to honor the commitment, and
-   is not a breach.  Any other refusal reason — no_such_subject,
+   not_authorized, coverage_unsatisfiable, request_malformed,
+   request_unauthenticated, or derivation_unsupported reflects a
+   property of the request or of this responder's capabilities, not a
+   failure to honor the commitment, and is not a breach.  A refusal
+   carrying capacity_exceeded is never a breach, within until or after
+   it: anyone can load a responder, so counting it would let any
+   requester manufacture broken commitments against the responder by
+   flooding it.  Any other refusal reason — no_such_subject,
    policy_declined, or deadline_unmet — within until is a broken
    commitment: the responder promised this subject would remain
    answerable and is refusing it on a ground the promise foreclosed; the
@@ -1601,6 +1615,16 @@ Internet-Draft              Evidence Request                October 2026
    resolvable and the bytes staying unchanged are two different
    promises.  The digest keeps the second.  The commitment, when
    present, names who is answerable for the first, and for how long.
+
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 29]
+
+Internet-Draft              Evidence Request                October 2026
+
 
 10.  Transport Bindings
 
@@ -1618,14 +1642,6 @@ Internet-Draft              Evidence Request                October 2026
    [RFC8949]) of the maps in Section 3 and Section 4.  Absence is the
    stream closed or timed out without a response frame.  The subprotocol
    identifier is what lets any two peers implementing it interoperate
-
-
-
-Mih                        Expires 3 May 2027                  [Page 29]
-
-Internet-Draft              Evidence Request                October 2026
-
-
    without prior arrangement; a peer that does not offer it has not
    refused — it has not answered, and the requester records that as
    absence, not as policy_declined.  Message-oriented agent protocols
@@ -1653,6 +1669,19 @@ Internet-Draft              Evidence Request                October 2026
    transport exchange carrying a refusal answer.  Bindings MUST NOT
    conflate transport-level errors with refusals (Section 4.5).
 
+
+
+
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 30]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    *Registry query.* A registry or query service exposing stored claims
    can expose this same interaction over its query path, so that a query
    answer arrives as an anchored artifact, a signed refusal, or a
@@ -1675,13 +1704,6 @@ Internet-Draft              Evidence Request                October 2026
        those decoded octets as received, never over the text and never
        over a re-serialization.
 
-
-
-Mih                        Expires 3 May 2027                  [Page 30]
-
-Internet-Draft              Evidence Request                October 2026
-
-
    2.  *One request, one digest.* The same request bytes therefore have
        the same digest over every carriage.  A requester that may send
        one request over more than one carriage SHOULD encode it in
@@ -1701,6 +1723,20 @@ Internet-Draft              Evidence Request                October 2026
        messages in an interrupted task, and any client identification.
        None of it is covered by a signature this document defines, and
        none of it may influence the artifact (Section 5).
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 31]
+
+Internet-Draft              Evidence Request                October 2026
+
 
    5.  *Errors are not refusals.* Authentication or authorization in the
        carriage decides whether a responder answers, never what a given
@@ -1730,14 +1766,6 @@ Internet-Draft              Evidence Request                October 2026
    A2A's JSON bindings write the bytes of a raw part as base64 with
    padding (Section 4 of [RFC4648]).
 
-
-
-
-Mih                        Expires 3 May 2027                  [Page 31]
-
-Internet-Draft              Evidence Request                October 2026
-
-
    *Declaration.* A responder that carries this interaction over A2A
    lists one extension in its Agent Card's capabilities.extensions, with
    uri exactly https://datatracker.ietf.org/doc/draft-mih-agent-
@@ -1745,6 +1773,26 @@ Internet-Draft              Evidence Request                October 2026
    manifest (Section 10) as params.  A responder MUST NOT advertise this
    binding under any other URI.  The Agent Card SHOULD list application/
    cbor and application/json among its default input and output modes.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 32]
+
+Internet-Draft              Evidence Request                October 2026
+
 
    *Request.* The request is one Message with role user, whose parts
    hold exactly one Part whose raw is the request bytes and whose
@@ -1787,17 +1835,20 @@ Internet-Draft              Evidence Request                October 2026
       failed, or canceled, an A2A error, and a direct Message are the
       responder sending no reply.  None of them is a refusal.
 
-
-
-Mih                        Expires 3 May 2027                  [Page 32]
-
-Internet-Draft              Evidence Request                October 2026
-
-
 10.3.  MCP Binding
 
    This binding uses MCP revision 2026-07-28 ([MCP]).  Field names are
    MCP's.
+
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 33]
+
+Internet-Draft              Evidence Request                October 2026
+
 
    *Listing.* A responder that carries this interaction over MCP lists
    two tools under exactly these names: evidence_manifest, which takes
@@ -1843,17 +1894,18 @@ Internet-Draft              Evidence Request                October 2026
    responses inherit only whatever independence the responder-selected
    anchor has from its own witnessing or publication.
 
-
-
-Mih                        Expires 3 May 2027                  [Page 33]
-
-Internet-Draft              Evidence Request                October 2026
-
-
    *Split views: per-requester anchor forks defeat invariance.* Caller
    invariance binds the artifact to (subject, anchor), not the anchor to
    a single history: a responder that maintains divergent histories and
    steers each requester to an anchor on "its" fork — a split-view
+
+
+
+Mih                        Expires 3 May 2027                  [Page 34]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    (equivocation) attack — serves individually verifiable, per-anchor-
    invariant answers while defeating invariance in substance.  The
    anchor-consistency rule of Section 5 makes any fork a provable
@@ -1898,17 +1950,17 @@ Internet-Draft              Evidence Request                October 2026
    returned for categories (Section 3.9) is the responder's signed
    statement of what it offers in each category.  It is attributable,
    and a counterparty's records can contradict it (Section 6), but it is
-
-
-
-Mih                        Expires 3 May 2027                  [Page 34]
-
-Internet-Draft              Evidence Request                October 2026
-
-
    no more complete than anything else the responder chose to record.  A
    requester SHOULD NOT treat a declared "absent" as proof that nothing
    of that category exists.
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 35]
+
+Internet-Draft              Evidence Request                October 2026
+
 
    *A principal reference is not authenticated by this document.* Where
    a deployment binds a request or a commitment to a principal reference
@@ -1957,7 +2009,11 @@ Internet-Draft              Evidence Request                October 2026
 
 
 
-Mih                        Expires 3 May 2027                  [Page 35]
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 36]
 
 Internet-Draft              Evidence Request                October 2026
 
@@ -1993,10 +2049,30 @@ Internet-Draft              Evidence Request                October 2026
 
    *Denial of service.* Requests are cheap to send; artifact assembly,
    fresh-commitment issuance under min_freshness, and derivation
-   evaluation are not.  Responders MAY apply rate and cost policy freely
-   — refusing with policy_declined is always available and always honest
-   — but MUST NOT let load-shedding take the form of caller-variant
-   artifacts, which would violate Section 5 where refusal would not.
+   evaluation are not.  Responders MAY apply rate and cost limits
+   freely.  A responder that declines for its own load or limits MUST
+   refuse with capacity_exceeded, not policy_declined or not_authorized,
+   so that those two remain statements about policy that a requester can
+   hold against the policy the responder advertised; the uniform-
+   policy_declined posture of Section 12 does not extend to load
+   shedding.  A responder MUST NOT let load-shedding take the form of
+   caller-variant artifacts, which would violate Section 5 where refusal
+   would not.  Because capacity_exceeded is never a breach of a
+   retention commitment (Section 9), flooding a responder cannot
+   manufacture broken commitments against it.  The trade runs the other
+   way too: a responder can withhold a committed subject indefinitely by
+   answering capacity_exceeded, and a retention commitment cannot be
+   enforced against that refusal.  A requester can only retry and treat
+   the requirement's status as unknown (Section 4.6).
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 37]
+
+Internet-Draft              Evidence Request                October 2026
+
 
 12.  Privacy Considerations
 
@@ -2010,14 +2086,6 @@ Internet-Draft              Evidence Request                October 2026
    entropy value (an enumerable identifier, a small-range field) can be
    reversed by dictionary: an observer holding candidate values checks
    each against the digest.  Subjects, correlation identifiers, and
-
-
-
-Mih                        Expires 3 May 2027                  [Page 36]
-
-Internet-Draft              Evidence Request                October 2026
-
-
    digests-only responses over low-entropy content SHOULD therefore be
    constructed with salting or equivalent hardening, per the conventions
    of the deployment's evidence format; this document does not define
@@ -2028,9 +2096,12 @@ Internet-Draft              Evidence Request                October 2026
    no_such_subject and not_authorized reveals whether the subject
    exists; other token distinctions leak analogously.  A responder MAY
    answer policy_declined uniformly wherever a more specific token would
-   disclose information its policy protects (Section 4.2).  The
-   uniformity is the point: a per-requester choice of token leaks by
-   differentiation exactly what the uniform token conceals.
+   disclose information its policy protects (Section 4.2), except for
+   load shedding (Section 11).  The uniformity is the point: a per-
+   requester choice of token leaks by differentiation exactly what the
+   uniform token conceals.  A capacity_exceeded refusal discloses
+   operational state: that the responder was at a limit when the request
+   arrived.
 
    *Coverage probing leaks log size.* A size-based min_freshness is a
    threshold query on current log size — granted at or above the
@@ -2052,6 +2123,13 @@ Internet-Draft              Evidence Request                October 2026
    know; transport confidentiality is the only mitigation for everyone
    else.
 
+
+
+Mih                        Expires 3 May 2027                  [Page 38]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    *Correlation identifiers SHOULD be non-identifying.* A correlation
    subject is visible to the responder and to any transport
    intermediary; identifiers that name persons or otherwise carry
@@ -2063,16 +2141,6 @@ Internet-Draft              Evidence Request                October 2026
    a task) tells an intermediary that an evidence request was made, even
    when the request bytes are protected.  Transport confidentiality is
    the only mitigation.
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 37]
-
-Internet-Draft              Evidence Request                October 2026
-
 
    *The request itself leaks interest.* Asking about a subject reveals
    that the requester cares about it — to the responder, and to
@@ -2113,60 +2181,66 @@ Internet-Draft              Evidence Request                October 2026
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 38]
+Mih                        Expires 3 May 2027                  [Page 39]
 
 Internet-Draft              Evidence Request                October 2026
 
 
-    +========================+============================+===========+
-    | Token                  | Description                | Reference |
-    +========================+============================+===========+
-    | not_authorized         | the responder's policy     | This      |
-    |                        | does not authorize this    | document  |
-    |                        | requester for this subject |           |
-    +------------------------+----------------------------+-----------+
-    | no_such_subject        | the subject does not       | This      |
-    |                        | resolve to evidence the    | document  |
-    |                        | responder holds            |           |
-    +------------------------+----------------------------+-----------+
-    | coverage_unsatisfiable | the responder cannot       | This      |
-    |                        | satisfy the coverage       | document  |
-    |                        | constraint as stated       |           |
-    +------------------------+----------------------------+-----------+
-    | derivation_unsupported | the responder does not     | This      |
-    |                        | support the named          | document  |
-    |                        | derivation                 |           |
-    +------------------------+----------------------------+-----------+
-    | policy_declined        | the responder declines     | This      |
-    |                        | without further            | document  |
-    |                        | characterization           |           |
-    +------------------------+----------------------------+-----------+
-    | deadline_unmet         | the responder cannot       | This      |
-    |                        | answer within the stated   | document  |
-    |                        | deadline                   |           |
-    +------------------------+----------------------------+-----------+
-    | request_malformed      | the request is not well-   | This      |
-    |                        | formed as specified by the | document  |
-    |                        | defining document          |           |
-    +------------------------+----------------------------+-----------+
-    | retention_expired      | the responder's retention  | This      |
-    |                        | commitment for this        | document  |
-    |                        | subject has lapsed         |           |
-    +------------------------+----------------------------+-----------+
+   +=========================+============================+===========+
+   | Token                   | Description                | Reference |
+   +=========================+============================+===========+
+   | not_authorized          | the responder's policy     | This      |
+   |                         | does not authorize this    | document  |
+   |                         | requester for this subject |           |
+   +-------------------------+----------------------------+-----------+
+   | no_such_subject         | the subject does not       | This      |
+   |                         | resolve to evidence the    | document  |
+   |                         | responder holds            |           |
+   +-------------------------+----------------------------+-----------+
+   | coverage_unsatisfiable  | the responder cannot       | This      |
+   |                         | satisfy the coverage       | document  |
+   |                         | constraint as stated       |           |
+   +-------------------------+----------------------------+-----------+
+   | derivation_unsupported  | the responder does not     | This      |
+   |                         | support the named          | document  |
+   |                         | derivation                 |           |
+   +-------------------------+----------------------------+-----------+
+   | policy_declined         | the responder declines     | This      |
+   |                         | without further            | document  |
+   |                         | characterization           |           |
+   +-------------------------+----------------------------+-----------+
+   | deadline_unmet          | the responder cannot       | This      |
+   |                         | answer within the stated   | document  |
+   |                         | deadline                   |           |
+   +-------------------------+----------------------------+-----------+
+   | request_malformed       | the request is not well-   | This      |
+   |                         | formed as specified by the | document  |
+   |                         | defining document          |           |
+   +-------------------------+----------------------------+-----------+
+   | retention_expired       | the responder's retention  | This      |
+   |                         | commitment for this        | document  |
+   |                         | subject has lapsed         |           |
+   +-------------------------+----------------------------+-----------+
+   | capacity_exceeded       | the responder declines for | This      |
+   |                         | a limit of its own (load,  | document  |
+   |                         | size, a transient fault),  |           |
+   |                         | whoever asks               |           |
+   +-------------------------+----------------------------+-----------+
+   | request_unauthenticated | the requester              | This      |
+   |                         | authentication a           | document  |
+   |                         | deployment profile defines |           |
+   |                         | does not verify            |           |
+   +-------------------------+----------------------------+-----------+
 
-                                  Table 6
+                                 Table 6
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 40]
+
+Internet-Draft              Evidence Request                October 2026
+
 
    This document further requests a registry titled "Evidence Request
    Derivations", registration policy Specification Required.  Each entry
@@ -2174,17 +2248,6 @@ Internet-Draft              Evidence Request                October 2026
    separated, with a /N version suffix), a one-line description, the
    declared field set or a reference to it, and a reference.  The
    initial contents are:
-
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 39]
-
-Internet-Draft              Evidence Request                October 2026
-
 
     +================+========================+==========+===========+
     | Token          | Description            | Declared | Reference |
@@ -2224,23 +2287,23 @@ Internet-Draft              Evidence Request                October 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/rfc/rfc8785>.
 
+
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 41]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
               Representation (CBOR)", STD 94, RFC 8949,
               DOI 10.17487/RFC8949, December 2020,
               <https://www.rfc-editor.org/rfc/rfc8949>.
 
 14.2.  Informative References
-
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 40]
-
-Internet-Draft              Evidence Request                October 2026
-
 
    [A2A]      A2A Project, "Agent2Agent (A2A) Protocol Specification",
               Version 1.0.1,
@@ -2284,19 +2347,18 @@ Internet-Draft              Evidence Request                October 2026
               Receipts", RFC 9942, DOI 10.17487/RFC9942, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9942>.
 
+
+
+Mih                        Expires 3 May 2027                  [Page 42]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
               Transparent Digital Supply Chains", RFC 9943,
               DOI 10.17487/RFC9943, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9943>.
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 41]
-
-Internet-Draft              Evidence Request                October 2026
-
 
 Appendix A.  Example Deployments
 
@@ -2339,6 +2401,15 @@ Appendix A.  Example Deployments
    caller invariance (Section 5) turns "my node says X" into something
    checkable rather than trusted.
 
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 43]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    *A continuous-integration pipeline* requests build-provenance
    evidence for one artifact from an upstream stage before promoting it:
    subject names the artifact by its build digest, coverage pins the
@@ -2346,14 +2417,6 @@ Appendix A.  Example Deployments
    and deadline bounds how long the promotion step will wait before
    treating the request as absence rather than blocking indefinitely.  A
    stage that cannot produce the provenance in time refuses
-
-
-
-Mih                        Expires 3 May 2027                  [Page 42]
-
-Internet-Draft              Evidence Request                October 2026
-
-
    deadline_unmet rather than let promotion discover only a timeout;
    whether a promotion step proceeds anyway on absence, rather than
    treating it as a blocked release, is a policy decision this document
@@ -2398,14 +2461,7 @@ Internet-Draft              Evidence Request                October 2026
 
 
 
-
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 43]
+Mih                        Expires 3 May 2027                  [Page 44]
 
 Internet-Draft              Evidence Request                October 2026
 
@@ -2461,7 +2517,7 @@ Changes from -01
 
 
 
-Mih                        Expires 3 May 2027                  [Page 44]
+Mih                        Expires 3 May 2027                  [Page 45]
 
 Internet-Draft              Evidence Request                October 2026
 
@@ -2483,6 +2539,16 @@ Internet-Draft              Evidence Request                October 2026
    *  Appendix A: a worked example of a responder flooded during a
       dispute window.
 
+   *  Two refusal reasons (Section 4.2, Section 13): capacity_exceeded,
+      for a responder's own load, size limits and transient faults, and
+      request_unauthenticated, for a requester authentication that does
+      not verify.  Load shedding now refuses capacity_exceeded, not
+      policy_declined (Security Considerations), so policy_declined and
+      not_authorized are statements about policy. capacity_exceeded is
+      never a breach of a retention commitment, and
+      request_unauthenticated is a property of the request (Section 9).
+      Section 4.6 maps both.
+
 Changes from -00
 
    [[RFC Editor: please remove this section before publication.]]
@@ -2501,6 +2567,17 @@ Changes from -00
    *  Section 3.2: a non-conforming member value is refused
       request_malformed before the both-or-neither rule applies.
 
+
+
+
+
+
+
+Mih                        Expires 3 May 2027                  [Page 46]
+
+Internet-Draft              Evidence Request                October 2026
+
+
    *  New Section 3.9: the OPTIONAL categories request field, a category
       set identifier and category names, OPTIONAL for a responder to
       implement.  Section 5 adds it to the inputs of the artifact when
@@ -2512,15 +2589,6 @@ Changes from -00
       stream binding's message-oriented sentence now maps only the
       outcomes that have a reply to reply types; -00 said "the three
       outcomes as three reply types", but absence has no reply.
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 45]
-
-Internet-Draft              Evidence Request                October 2026
-
 
    *  Security and Privacy Considerations: a category declaration
       declares and does not prove; carriage metadata reveals the ask.
@@ -2561,16 +2629,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 3 May 2027                  [Page 46]
+Mih                        Expires 3 May 2027                  [Page 47]
