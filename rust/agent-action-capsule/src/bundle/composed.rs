@@ -873,11 +873,11 @@ fn derived_state(
 ) -> (Option<String>, Vec<JoinDifference>) {
     let a = by_id[j.members[0].as_str()];
     let b = by_id[j.members[1].as_str()];
-    // A join with a declared-missing artifact member is not derivable,
-    // whatever its other member is.
+    // A join with a declared-missing artifact member (listed in `missing` and
+    // carrying no body) is not derivable, whatever its other member is.
     if [a, b]
         .iter()
-        .any(|m| m.outcome == "artifact" && missing.contains(&m.id))
+        .any(|m| m.outcome == "artifact" && missing.contains(&m.id) && m.body.is_none())
     {
         return (None, Vec::new());
     }

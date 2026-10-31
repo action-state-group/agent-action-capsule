@@ -800,9 +800,14 @@ async function derivedState(
 ): Promise<{ derived?: JoinState; differences: JoinDifference[] }> {
   const a = byId.get(j.members[0])!;
   const b = byId.get(j.members[1])!;
-  // A join with a declared-missing artifact member is not derivable, whatever
-  // its other member is.
-  if ([a, b].some((m) => m.outcome === "artifact" && missing.has(m.id)))
+  // A join with a declared-missing artifact member (listed in missing and
+  // carrying no body) is not derivable, whatever its other member is.
+  if (
+    [a, b].some(
+      (m) =>
+        m.outcome === "artifact" && missing.has(m.id) && m.body === undefined,
+    )
+  )
     return { differences: [] };
   // An artifact member counts as having records unless its carried Bundle is
   // an empty-history Bundle, which shows no history.

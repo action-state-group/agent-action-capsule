@@ -36,12 +36,12 @@ func composedCases(t *testing.T) map[string]composedCase {
 		Cases []composedCase `json:"cases"`
 	}
 	require.NoError(t, decoder.Decode(&file))
-	require.Equal(t, json.Number("8"), file.Count)
+	require.Equal(t, json.Number("9"), file.Count)
 	cases := map[string]composedCase{}
 	for _, c := range file.Cases {
 		cases[c.ID] = c
 	}
-	require.Len(t, cases, 8)
+	require.Len(t, cases, 9)
 	return cases
 }
 

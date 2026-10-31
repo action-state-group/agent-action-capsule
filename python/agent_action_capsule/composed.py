@@ -372,9 +372,9 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions):
     from .bundle import is_empty_history
 
     a, b = by_id[j.members[0]], by_id[j.members[1]]
-    # A join with a declared-missing artifact member is not derivable, whatever
-    # its other member is.
-    if any(m.outcome == "artifact" and missing.get(m.id) for m in (a, b)):
+    # A join with a declared-missing artifact member (listed in missing and
+    # carrying no body) is not derivable, whatever its other member is.
+    if any(m.outcome == "artifact" and missing.get(m.id) and m.body is None for m in (a, b)):
         return "", []
     # An artifact member counts as having records unless its carried Bundle is
     # an empty-history Bundle, which shows no history.

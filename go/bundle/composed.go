@@ -399,10 +399,10 @@ func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[stri
 
 func derivedState(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options) (string, []JoinDifference) {
 	a, b := byID[j.members[0]], byID[j.members[1]]
-	// A join with a declared-missing artifact member is not derivable,
-	// whatever its other member is.
+	// A join with a declared-missing artifact member (listed in missing and
+	// carrying no body) is not derivable, whatever its other member is.
 	for _, m := range []composedMember{a, b} {
-		if m.outcome == "artifact" && missing[m.id] {
+		if m.outcome == "artifact" && missing[m.id] && m.body == nil {
 			return "", nil
 		}
 	}

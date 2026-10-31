@@ -38,6 +38,9 @@ Cases:
 * ``missing-member-beside-absence``: one artifact member declared missing,
   the other an absence, the join declared ``one_sided``: ``not_derivable``,
   because one of its artifact members is declared missing.
+* ``listed-member-carries-body``: the same with responder-a's Bundle still
+  carried: not declared missing, so closure fails and the join derives
+  ``one_sided``.
 * ``join-order-pointer-absent-first``: two ``same_interval`` joins on one
   pair, one with ``pointer`` ``""`` and one without, carried in that order;
   the digest input lists the join without ``pointer`` first (-02).
@@ -679,6 +682,41 @@ def case_missing_beside_absence() -> dict:
     }
 
 
+def case_listed_member_carries_body() -> dict:
+    members, observers = two_responders()
+    request_digest = members[1]["request_digest"]
+    absence = {"request_digest": request_digest, "window": {"from": t(0), "to": t(20)}}
+    members[1] = {"id": "responder-b", "observer": "obs-b", "request_digest": request_digest,
+                  "outcome": "absence", "digest": sha256_hex(jcs(absence)), "absence": absence}
+    comp = block(members, observers, [join("responder-a", "responder-b", "one_sided")])
+    comp["missing"] = ["responder-a"]  # listed, yet its body is still carried
+    digest, preimage = composed_digest(comp)
+    return {
+        "id": "listed-member-carries-body",
+        "section": [S_MEMBERS, S_JOINS, S_CLOSURE],
+        "description": "The missing-member-beside-absence composition with responder-a listed in missing but "
+                       "its Evidence Bundle still carried. A member is declared missing only when it is listed "
+                       "and carries no body, so composition closure fails (missing_member_carries_body) and the "
+                       "join derives from the carried body: one_sided.",
+        "container": container(comp),
+        "expect": {
+            "composed_digest": digest,
+            "canonical_preimage": preimage,
+            "status": "fail",
+            "members": {
+                "responder-a": {"outcome": "artifact", "body": "carried", "digest": "reproduced",
+                                "claims": MEMBER_CLAIMS_DEPTH0},
+                "responder-b": {"outcome": "absence", "body": "carried", "digest": "reproduced",
+                                "claims": None},
+            },
+            "composition_closure": {"status": "fail", "missing": ["responder-a"]},
+            "joins": [{"members": ["responder-a", "responder-b"], "declared": "one_sided", "derived": "one_sided",
+                       "result": "derived_matches"}],
+            "corroboration": [{"members": ["responder-a", "responder-b"], "result": "not_applicable"}],
+        },
+    }
+
+
 def case_join_order_pointer_absent_first() -> dict:
     members, observers = two_responders()
     pair = ["responder-a", "responder-b"]
@@ -728,7 +766,7 @@ def cases() -> list[dict]:
             case_response("artifact-response-bound", "responder-a"),
             case_response("artifact-response-other-request", "responder-b"),
             case_agree_with_checkpoints(), case_missing_beside_absence(),
-            case_join_order_pointer_absent_first()]
+            case_listed_member_carries_body(), case_join_order_pointer_absent_first()]
 
 
 # ---------------------------------------------------------------------------
