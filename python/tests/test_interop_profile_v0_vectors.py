@@ -34,6 +34,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
+from agent_action_capsule._ed25519_strict import strict_encoding
 from agent_action_capsule.canonical import jcs
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -89,6 +90,8 @@ def d64(text: str) -> bytes:
 
 
 def verifies(key_hex: str, sig_hex: str, message: bytes) -> bool:
+    if VERSION >= 1 and not strict_encoding(bytes.fromhex(key_hex), bytes.fromhex(sig_hex)):
+        return False  # §5.2: strict Ed25519, P-68
     try:
         Ed25519PublicKey.from_public_bytes(bytes.fromhex(key_hex)).verify(bytes.fromhex(sig_hex), message)
         return True
@@ -1069,6 +1072,9 @@ def test_invariant_check_catches_its_mutant(mutation):
 
 def test_test_keys_derive_from_their_stated_seeds():
     for name, k in DATA["test_keys"]["keys"].items():
+        if name == "small-order":  # the identity point: a public key with no private key (§5.2)
+            assert k["public"] == "01" + "00" * 31
+            continue
         priv = Ed25519PrivateKey.from_private_bytes(sha(k["seed_label"].encode()))
         assert priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex() == k["public"], name
     assert "TEST-ONLY" in DATA["test_keys"]["note"]

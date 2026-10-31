@@ -110,11 +110,11 @@ its 9 `record_signatures`.
 | Set | Owning specification | Verbs | Cases |
 |---|---|---|---|
 | `vectors/evidence-request/` | `draft-mih-agent-evidence-request-00`, `-01` and `-02` | request, respond, verify | 212 |
-| `vectors/settlement/` | `draft-mih-agent-settlement-records-00` | record, verify | 24 |
+| `vectors/settlement/` | `draft-mih-agent-settlement-records-00` | record, verify | 25 |
 | `vectors/interop/` | composition and run-under suites | verify | 11 |
 | `vectors/interop-profile-v0/` | `spec/interop-profile-v0.md` (`evidence-interop/0`) | respond, verify | 55 |
 | `vectors/interop-profile-v0-requirement-facts/` | `spec/interop-profile-v0.md` §8.3 | evaluate | 2 |
-| `vectors/interop-profile-v1/` | `spec/interop-profile-v1.md` (`evidence-interop/1`) | respond, verify | 58 |
+| `vectors/interop-profile-v1/` | `spec/interop-profile-v1.md` (`evidence-interop/1`) | respond, verify | 62 |
 | `vectors/interop-profile-v1-requirement-facts/` | `spec/interop-profile-v1.md` §8.3 | evaluate | 2 |
 | `vectors/cll-material/` | `spec/interop-profile-v0.md` §6.2.1 | respond, verify | 184 |
 | `vectors/anchor-witness-v1/` | `spec/interop-profile-v1.md` §6.2.2 | verify | 69 |

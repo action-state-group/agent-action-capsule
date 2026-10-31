@@ -35,6 +35,7 @@ from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from ed25519_forgeries import identity_r
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "settlement"
@@ -138,6 +139,23 @@ PAYER_MANDATE = Key("payer AP2 mandate signing")
 PROCESSOR = Key("AP2 payment processor")
 KEYS = [PAYER, PAYEE, PAYEE_OFFER, PAYER_MANDATE, PROCESSOR]
 KEY_POLICY = {"payer": PAYER.public_hex, "payee": PAYEE.public_hex}
+
+
+class Forger:
+    """A signer for the strict Ed25519 negatives. ``signs`` maps a message to the 64-byte
+    signature; it stands in for ``Key.private.sign``. Not listed in ``keys``."""
+
+    def __init__(self, name: str, public: bytes, signs: Any) -> None:
+        self.name, self.public, self.sign = name, public, signs
+        self.private = self
+
+    @property
+    def public_hex(self) -> str:
+        return self.public.hex()
+
+
+#: The payee's own key, signing with R the identity point.
+PAYEE_IDENTITY_R = Forger("payee, identity R", PAYEE.public, lambda message: identity_r(PAYEE.private, message))
 
 
 def producer_envelope(capsule_id: str, key: Key) -> bytes:
@@ -550,6 +568,24 @@ def cases() -> list[dict]:
                                                            "signed by the payee leg key")],
             expect(conforming=False, payment_state="terms_only", delivery_state="none", terms="ap2-terms",
                    failures=[{"records": ["ap2-payee-observed"], "code": "wrapped_resigned"}])))
+
+    # 8, continued. The re-signing check verifies under the leg key with strict Ed25519 (RFC 8032
+    # with A and R canonical and not of small order, S < L, as vectors/cross-language/
+    # cll-ed25519-vectors.json reads it). A signature a lenient verifier accepts but strict Ed25519
+    # refuses is not a signature by the leg key, so it is not re-signing.
+    ir_receipt = ap2_payment_receipt(PAYEE_IDENTITY_R)
+    ir_payee = observed_leg("ap2-payee-observed", "payee", PAYEE, aterms, pay_ref, usd,
+                            [wrapped("ap2.payment-receipt", ir_receipt, include_content=True)], minute=2)
+    out.append(case(
+        "pos-wrapped-jws-identity-r-not-resigned", [S_WRAP, S_FAILURES],
+        "The payee's leg wraps the AP2 Payment Receipt with its octets, signed by the payee's own leg key "
+        "with R the identity point (S = k * a mod L). The cofactorless equation holds, so a lenient "
+        "verifier flags wrapped_resigned; strict Ed25519 refuses a small-order R, so the receipt carries "
+        "no signature by the leg key and the leg contributes.",
+        [aterms, ir_payee],
+        [ap2_objects[0], wobj("ap2.payment-receipt", ir_receipt,
+                              "the receipt claims, signed by the payee leg key with R the identity point")],
+        expect(conforming=True, payment_state="payee_stated", delivery_state="none", terms="ap2-terms")))
 
     # 9. Negative: wrapped content does not hash to its digest.
     altered = x402_settle_response(TX, amount="1400000")

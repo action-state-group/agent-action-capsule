@@ -83,7 +83,7 @@ async function run(testCase: Case) {
 describe("settlement vectors", () => {
   it("runs every case", () => {
     expect(corpus.cases).toHaveLength(corpus.count);
-    expect(corpus.count).toBe(24);
+    expect(corpus.count).toBe(25);
   });
 
   it("tables match the draft registry", () => {
