@@ -418,6 +418,27 @@
       }
     },
     {
+      "name": "pass-label-int64-min",
+      "description": "a private-use label -2^63, the least integer allowed",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2845819a4012719018b013b7fffffffffffffff000fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840a0e3257b67461bc16f908aa69a6fbf1766226b5e2a12559dd024bffe7922a3d3e72d3ecb51b60d3a467f8d2e60210d218c05d3209d203485307d49c024e5ba0a"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "PASS",
+        "receipts": [
+          {
+            "status": "PASS",
+            "witness": "witness-a",
+            "registration_time": 1793520240
+          }
+        ],
+        "witness": "witness-a",
+        "witnessed_time": 1793520240
+      }
+    },
+    {
       "name": "pass-depth-16",
       "description": "a private-label value whose deepest item is 16 levels deep",
       "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
@@ -865,6 +886,90 @@
       "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
       "receipts": [
         "d28453a3012719018b010fa106fb41dab9bc9c000000a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658403635667dc3f56b58b6283ab4c311ab52bfcd53c583b614be3c138e8fe953cda216bca95c10e12ca59be18450d5cf8091263accb57c30d941d0bd4ae751f58802"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "iat-below-int64",
+      "description": "iat -2^63 - 1: an integer below the range",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d28453a3012719018b010fa1063b8000000000000000a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658406459eae2f91587ab84c2de98fb41b1fa0a141ea61ec5fcfd067357e4c7cd1e4618a99a27faf449fe07a95e2e17012f41450c00cb75142e8bc2039b6a8c116000"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "label-below-int64",
+      "description": "a private-use label -2^64",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2845819a4012719018b013bffffffffffffffff000fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840997da0a72c885f4bd78a8925c664c5bf618dfd19c5fff2609ee58ffa86e61ac9c6c3e183f54f5cc598a839841d0b89153f3006d573efe60141213b79627df202"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "payload-undefined",
+      "description": "the payload slot holds undefined (0xf7), not null",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844fa3012719018b010fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff758403abbe01a887384c89ae2d9264911303a27a5d7177249b705bcd2a39205e45be0da112ef2bb883fd017e76fc3eca79a63499bcdaece2d058d1de69dd8a18bb20b"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "private-label-undefined",
+      "description": "a private-label value that is undefined",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844da3012719018b013a00010000f7a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840bd00f1dd4bede34af4968ac9e60e7781993d2e7c961934b82d6b87e9c37de4f93941e5f78cecab3a0146bdc5d5d60dbb61f3de3a8217d6f9b34555c61d62c00b"
       ],
       "policy": "default",
       "expected": {

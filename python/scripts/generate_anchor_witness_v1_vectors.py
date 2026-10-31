@@ -338,6 +338,8 @@ def cases() -> list[dict]:
         case("pass-private-label", "a private-use protected label (below -65536), any value",
              [receipt(KEY_A, protected={1: -8, 395: 1, -65537: "mmr-verified", 15: {6: T1}})],
              [passed("witness-a", T1)]),
+        case("pass-label-int64-min", "a private-use label -2^63, the least integer allowed",
+             [receipt(KEY_A, protected={1: -8, 395: 1, -(1 << 63): 0, 15: {6: T1}})], [passed("witness-a", T1)]),
         case("pass-depth-16", "a private-label value whose deepest item is 16 levels deep",
              [receipt(KEY_A, protected={1: -8, 395: 1, -65537: nested(15), 15: {6: T1}})],
              [passed("witness-a", T1)]),
@@ -379,6 +381,14 @@ def cases() -> list[dict]:
              [receipt(KEY_A, protected={1: -8, 395: 1, 15: {6: Tag(2, T1.to_bytes(8, "big"))}})], [status("FAIL")]),
         case("iat-float", "iat as a float", [receipt(KEY_A, protected={1: -8, 395: 1, 15: {6: Raw(
              b"\xfb" + struct.pack(">d", float(T1)))}})], [status("FAIL")]),
+        case("iat-below-int64", "iat -2^63 - 1: an integer below the range",
+             [receipt(KEY_A, iat=-(1 << 63) - 1)], [status("FAIL")]),
+        case("label-below-int64", "a private-use label -2^64", [receipt(KEY_A, protected={
+             1: -8, 395: 1, -(1 << 64): 0, 15: {6: T1}})], [status("FAIL")]),
+        case("payload-undefined", "the payload slot holds undefined (0xf7), not null",
+             [receipt(KEY_A, iat=T1, payload=Raw(b"\xf7"))], [status("FAIL")]),
+        case("private-label-undefined", "a private-label value that is undefined",
+             [receipt(KEY_A, protected={1: -8, 395: 1, -65537: Raw(b"\xf7")})], [status("FAIL")]),
         case("depth-17", "a private-label value whose deepest item is 17 levels deep",
              [receipt(KEY_A, protected={1: -8, 395: 1, -65537: nested(16), 15: {6: T1}})], [status("FAIL")]),
         case("bytes-map-key", "a byte-string map key inside CWT_Claims",

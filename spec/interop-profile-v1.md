@@ -612,7 +612,8 @@ form:
 
 The COSE_Sign1, its protected header and each inclusion proof are each one CBOR item with no
 trailing octet, definite lengths, every argument in its shortest form (RFC 8949 §4.2.1), no
-repeated map key, every map key an integer or a text string, no float, no simple value but
+repeated map key, every integer from -2^63 to 2^64 - 1, every map key an integer or a text
+string, no float, no simple value but
 `false`, `true` and `null`, no tag but the outer
 tag 18, and no item nested more than 16 levels deep (an item inside an array, a map or a tag is one
 level deeper than it); map order is not checked. This is the Receipt shape `vectors/bundle/strict/README.md`

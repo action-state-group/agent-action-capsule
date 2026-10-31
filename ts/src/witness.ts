@@ -835,6 +835,8 @@ function strictAnchorItem(data: Uint8Array, topTag: boolean): CborValue {
   const value = decodeStrictCbor(data);
   const walk = (item: CborValue, depth: number): void => {
     if (depth > MAX_ANCHOR_DEPTH) throw new SyntaxError("nested too deep");
+    if (typeof item === "bigint" && item < -(1n << 63n))
+      throw new SyntaxError("an integer below -2^63");
     if (item instanceof CborTag) {
       if (!(depth === 0 && topTag && item.tag === 18n))
         throw new SyntaxError("a tag other than the outer tag 18");
@@ -845,6 +847,7 @@ function strictAnchorItem(data: Uint8Array, topTag: boolean): CborValue {
       for (const [key, inner] of item.entries) {
         if (typeof key !== "bigint" && typeof key !== "string")
           throw new SyntaxError("a map key that is not an integer or text");
+        walk(key, depth + 1);
         walk(inner, depth + 1);
       }
     } else if (

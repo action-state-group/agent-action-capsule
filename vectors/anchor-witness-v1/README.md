@@ -32,7 +32,7 @@ Positive: an EdDSA Receipt with and without a protected `iat`, an ES256 Receipt,
 leaf, a rotated key, a second inclusion proof that verifies after one that does not, the earliest
 time with the witness that signed it, a timed Receipt after an untimed one, a tie on time, no time
 at all, a passing Receipt beside a failing one, `iat` values that give no registration time
-(negative, over 2^53 - 1, text, `true`), a protected `kid`, a private-use label, other CWT claims,
+(negative, over 2^53 - 1, text, `true`), a protected `kid`, a private-use label (-2^63 among them), other CWT claims,
 and nesting 16 levels deep.
 
 `NOT_PRESENT` and `NOT_CHECKED`: no Receipt, an empty policy, an ES256 Receipt under a policy with
@@ -42,7 +42,8 @@ Negative (MUST reject, `FAIL`): another anchor, an unlisted witness, a tampered 
 below the group order, a small-order key, a listed P-256 key off the curve, and every departure
 from the one form, checked before the policy: an attached payload, an untagged COSE_Sign1, `vds`
 2, another `alg`, no `alg`, any `crit`, a protected label outside the closed set, a text `kid`,
-CWT_Claims that is not a map, an `iat` bignum or float, an unprotected label besides `vdp`, a `vdp`
+CWT_Claims that is not a map, an `iat` bignum or float, an integer below -2^63, `undefined` as the
+payload or a value, an unprotected label besides `vdp`, a `vdp`
 key besides -1, a repeated protected label, a byte-string or array map key, nesting 17 levels deep,
 a longer argument (outer head, `alg`, `tree_size`), a 63-octet signature, no `vdp`, no proofs, 17
 proofs, a malformed proof beside a valid one, a short path, `leaf_index` equal to `tree_size`, a

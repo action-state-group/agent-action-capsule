@@ -1754,7 +1754,8 @@ impl AnchorReader<'_> {
         let (major, arg) = self.head()?;
         Some(match major {
             0 => AnchorItem::Int(i128::from(arg)),
-            1 => AnchorItem::Int(-1 - i128::from(arg)),
+            // §6.2.2 admits no integer below -2^63.
+            1 if arg <= i64::MAX as u64 => AnchorItem::Int(-1 - i128::from(arg)),
             2 => AnchorItem::Bytes(self.take(arg)?.to_vec()),
             3 => AnchorItem::Text(String::from_utf8(self.take(arg)?.to_vec()).ok()?),
             4 => {

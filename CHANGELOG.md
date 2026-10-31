@@ -27,7 +27,7 @@ has not yet.
   that a witness checked the counts; `anchor_inclusion` stays `NOT_CHECKED` for a card. No card
   member, counting table, wording pack or envelope check changes. Go `witness.CheckAnchorWitnessed`,
   Python `witness.check_anchor_witnessed` and TypeScript `checkAnchorWitnessed` (the `witness`
-  entry point) run the new `vectors/anchor-witness-v1/` (64 cases, positive and MUST-reject).
+  entry point) run the new `vectors/anchor-witness-v1/` (69 cases, positive and MUST-reject).
 - Spec: a verifier may draw a `standard_history/1` card's `outcomes` tally as one bar (AAC#507,
   AAC#506). HF §4.6 gains an opt-in "count bar" that only SH §6 allows: it draws the counts and is not
   a ratio, carries no figure, scale or marker, is never aligned or ordered across subjects, and is

@@ -692,6 +692,8 @@ def _strict(octets: bytes, top_tag: bool = False) -> Any:
     def walk(value: Any, depth: int) -> None:
         if depth > _MAX_DEPTH:
             raise _NotTheForm("an item nested more than 16 levels deep")
+        if _int(value) and not -(1 << 63) <= value < (1 << 64):
+            raise _NotTheForm("an integer below -2^63")
         if isinstance(value, Tag):
             if not (depth == 0 and top_tag and value.number == 18):
                 raise _NotTheForm("a CBOR tag other than the outer tag 18")
@@ -703,6 +705,7 @@ def _strict(octets: bytes, top_tag: bool = False) -> Any:
             for key, item in value.items():
                 if not (_int(key) or isinstance(key, str)):
                     raise _NotTheForm("a map key that is not an integer or a text string")
+                walk(key, depth + 1)
                 walk(item, depth + 1)
 
     walk(decoded.value, 0)

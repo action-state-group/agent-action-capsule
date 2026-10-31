@@ -68,6 +68,27 @@ var (
 	lowerHex          = regexp.MustCompile(`^(?:[0-9a-f]{2})*$`)
 )
 
+// anchorDecoding is strictDecoding with CBOR undefined and the bignum tags
+// refused, so that null alone decodes to nil. A negative integer below -2^63
+// decodes to a big.Int, which strictAnchorItem refuses, as §6.2.2 does.
+var anchorDecoding = func() cbor.DecMode {
+	simple, err := cbor.NewSimpleValueRegistryFromDefaults(cbor.WithRejectedSimpleValue(23))
+	if err != nil {
+		panic(err)
+	}
+	mode, err := cbor.DecOptions{
+		DupMapKey:    cbor.DupMapKeyEnforcedAPF,
+		IndefLength:  cbor.IndefLengthForbidden,
+		IntDec:       cbor.IntDecConvertNone,
+		BignumTag:    cbor.BignumTagForbidden,
+		SimpleValues: simple,
+	}.DecMode()
+	if err != nil {
+		panic(err)
+	}
+	return mode
+}()
+
 // privateLabel bounds the private-use COSE labels (RFC 9052 section 16.4):
 // a label below it may carry any value.
 const privateLabel = -65536
@@ -127,8 +148,13 @@ type anchorReceipt struct {
 // with no float, no simple value but false, true and null, and no tag but an
 // outer 18 when topTag.
 func strictAnchorItem(data []byte, topTag bool) (interface{}, bool) {
-	value, err := strictItem(data)
-	if err != nil {
+	var value interface{}
+	if err := anchorDecoding.Unmarshal(data, &value); err != nil {
+		return nil, false
+	}
+	// Shortest arguments, as strictItem checks them: the deterministic
+	// re-encoding is as long as the input.
+	if canonical, err := deterministicEncoding.Marshal(value); err != nil || len(canonical) != len(data) {
 		return nil, false
 	}
 	var walk func(v interface{}, depth int) bool

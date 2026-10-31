@@ -348,7 +348,7 @@ card's `anchor`, with a witness policy the relying party set, and got `PASS` MAY
 snapshot was witnessed: at the anchor's witnessed time and by the witness IP1 §6.2.2 pairs with it,
 named as the relying party's policy names it, or with no time when no passing Receipt has one. It
 shows that a witness entered that anchor digest in its log, not that the anchor is a well-formed
-checkpoint of the holder's log, nor that it is the anchor the envelope names, which is `as_of`. It says so only of a standard card. It MUST NOT pair one
+checkpoint of the holder's log, nor that it is the anchor the envelope names; `as_of` checks that. It says so only of a standard card. It MUST NOT pair one
 Receipt's time with another Receipt's witness, and it MUST NOT say or imply that the witness
 checked, saw or confirmed the counts, the deals or the card: those stay the holder's statement
 under the holder key. Otherwise, with a Receipt that came with the card, the verifier
