@@ -125,6 +125,8 @@ class ExtensionResult:
     kind: str
     status: str = "uninterpreted"
     integrity_covered: bool = True
+    #: The ``composed/v1`` verification, for that kind; ``status`` is its status.
+    composed: Any = None
 
 
 @dataclass(frozen=True)
@@ -335,6 +337,7 @@ def verify_bundle(
     category_sets: Mapping[str, Sequence[str]] | None = None,
     category_request: bytes | None = None,
     record_categories: Mapping[str, str] | None = None,
+    composed_options: Any = None,
 ) -> BundleVerificationResult:
     """Verify an AAC Evidence Bundle using only its supplied evidence.
 
@@ -368,6 +371,10 @@ def verify_bundle(
     ``category_request`` (the Evidence Request octets as received) and
     ``record_categories`` are the inputs a Bundle cannot carry for itself;
     see :func:`agent_action_capsule.category_coverage.check_category_coverage`.
+    A ``composed/v1`` extension is verified as :func:`agent_action_capsule.composed.verify_composed`
+    does, with ``composed_options`` (a :class:`~agent_action_capsule.composed.ComposedOptions`:
+    the controller binding records and revocation statements delivered beside the
+    Bundle, and the refusal and response signature profiles).
     In strict mode a ``FAIL`` of its form, signature or consistency makes the
     verdict ``INVALID``; no property is ever combined into a score.
     """
@@ -377,7 +384,7 @@ def verify_bundle(
         "record_categories": record_categories,
     }
     if not too_deep(bundle):
-        return _verify_bundle(bundle, strict, require_signature, witness_directory, coverage_inputs)
+        return _verify_bundle(bundle, strict, require_signature, witness_directory, coverage_inputs, composed_options)
     # Nested more than MAX_NESTING_DEPTH levels deep (or containing itself):
     # refused before any recursive check, never raised, as in Go and Rust.
     invalid = ClaimResult("fail", ("bundle_malformed",))
@@ -389,7 +396,12 @@ def verify_bundle(
 
 
 def _verify_bundle(
-    bundle: Any, strict: bool, require_signature: bool, witness_directory: Any, coverage_inputs: Mapping[str, Any]
+    bundle: Any,
+    strict: bool,
+    require_signature: bool,
+    witness_directory: Any,
+    coverage_inputs: Mapping[str, Any],
+    composed_options: Any = None,
 ) -> BundleVerificationResult:
     invalid = ClaimResult("fail", ("bundle_malformed",))
     if not isinstance(bundle, Mapping):
@@ -418,7 +430,7 @@ def _verify_bundle(
         graph = _verify_graph(bundle, records, record_findings)
         interval, membership = _verify_completeness(bundle, records)
     disclosures = _verify_disclosures(bundle["disclosures"] if "disclosures" in bundle else {}, records)
-    extensions = _extensions(bundle.get("extensions"))
+    extensions = _extensions(bundle.get("extensions"), composed_options, coverage_inputs)
     countersignatures = bundle.get("countersignatures")
     result = BundleVerificationResult(
         digest,
@@ -1249,10 +1261,19 @@ def _verify_disclosures(raw: Any, records: Mapping[str, Mapping[str, Any]]) -> l
     return findings
 
 
-def _extensions(raw: Any) -> list[ExtensionResult]:
+def _extensions(raw: Any, composed_options: Any = None, coverage_inputs: Mapping[str, Any] | None = None) -> list[ExtensionResult]:
     if not isinstance(raw, Mapping):
         return []
-    return [ExtensionResult(kind) for kind in sorted(raw)]
+    from .composed import COMPOSED_KIND, verify_composed
+
+    results = []
+    for kind in sorted(raw):
+        if kind == COMPOSED_KIND:
+            composed = verify_composed(raw[kind], composed_options, coverage_inputs)
+            results.append(ExtensionResult(kind, composed.status, True, composed))
+        else:
+            results.append(ExtensionResult(kind))
+    return results
 
 
 # -- the producer ----------------------------------------------------------------

@@ -67,12 +67,16 @@ and its time is that checkpoint's `timestamp`; a linked join derives
 
 The Python test (`python/tests/test_bundle_composed_cb_vectors.py`) rederives
 every expectation independently of the generator, with CLL's offline
-checkpoint verifier for the empty members' checkpoints; the Go reference
-(`go/bundle/composed_binding.go`) runs every case, and
-`python/tests/test_bundle_empty_history.py` runs the empty members through
-the Python `verify_bundle`. TypeScript and Rust do not yet implement the
-basis and read a block that carries it as malformed, as -01 does; they also
-read an empty-history Bundle as malformed (no `root`).
+checkpoint verifier for the empty members' checkpoints. Every implementation
+runs every case: Go (`go/bundle`), Python (`agent_action_capsule.composed`),
+TypeScript (`ts/src/composed.ts`) and Rust
+(`agent-action-capsule::bundle::composed`). Each verifies a binding record
+through its one Controller Binding v0 verifier (`go/controllerbinding`,
+`agent_action_capsule.controller_binding`, `ts/src/controller-binding.ts`,
+`evidence-request`'s `controller_binding`) and applies -02's own rules on
+top: an empty `nonce` is malformed, `ed25519` is the one key type, and a
+`sig` under `ed25519` keys is a `sig-hex`. `scripts/cross-language-interlock.sh`
+has all four print the same result line for every case.
 
 ## Regenerating
 

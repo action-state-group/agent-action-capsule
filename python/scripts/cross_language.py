@@ -12,7 +12,7 @@ import sys
 
 from agent_action_capsule import compute_capsule_id, verify
 
-USAGE = "usage: cross_language.py seal|verify|bundle-produce <kind>|bundle-verify"
+USAGE = "usage: cross_language.py seal|verify|bundle-produce <kind>|bundle-verify|composed-verify"
 
 
 class _FixtureBackend:
@@ -119,6 +119,36 @@ def bundle_verify(raw: bytes) -> int:
     return 0
 
 
+def composed_verify(value: dict) -> int:
+    """Read ``{container, controller_bindings, binding_revocations}`` and print
+    the container's composed/v1 block as one JCS line: its status, and per join
+    the declared and derived state, result and corroboration."""
+    from agent_action_capsule.bundle import verify_bundle
+    from agent_action_capsule.canonical import jcs
+    from agent_action_capsule.composed import ComposedOptions
+
+    options = ComposedOptions(
+        controller_bindings=value.get("controller_bindings", []),
+        binding_revocations=value.get("binding_revocations", []),
+    )
+    extensions = verify_bundle(value["container"], composed_options=options).extensions
+    composed = next(e.composed for e in extensions if e.composed is not None)
+    print(
+        jcs(
+            {
+                "status": composed.status,
+                "findings": sorted(composed.findings),
+                "joins": [
+                    {"members": list(j.members), "declared": j.declared, "derived": j.derived or None,
+                     "result": j.result, "corroboration": k.result, "reason": k.reason or None}
+                    for j, k in zip(composed.joins, composed.corroboration)
+                ],
+            }
+        ).decode()
+    )
+    return 0
+
+
 def base64url(raw: bytes) -> str:
     import base64
 
@@ -131,6 +161,8 @@ def main() -> int:
         return bundle_produce(args[1], json.load(sys.stdin))
     if args == ["bundle-verify"]:
         return bundle_verify(sys.stdin.buffer.read())
+    if args == ["composed-verify"]:
+        return composed_verify(json.load(sys.stdin))
     if len(args) != 1 or args[0] not in {"seal", "verify"}:
         print(USAGE, file=sys.stderr)
         return 2
