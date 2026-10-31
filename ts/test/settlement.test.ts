@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { identityR } from "./helpers/ed25519-forgeries.js";
 import {
   createEd25519Identity,
   signCapsuleId,
@@ -545,5 +546,70 @@ describe("verifySettlements", () => {
       },
     );
     expect(differing.settlements).toMatchObject([{ paymentState: "mismatch" }]);
+  });
+});
+
+describe("wrapped_resigned under strict Ed25519", () => {
+  // neg-wrapped-object-resigned: the payee leg wraps an AP2 receipt (a JWS)
+  // that verifies under the payee's own key.
+  const resigned = corpus.cases.find(
+    (c) => c.id === "neg-wrapped-object-resigned",
+  )!;
+  const payeeLeg = resigned.records.find(
+    (r) => r.label === "ap2-payee-observed",
+  )!;
+  const asRecord = (record: (typeof resigned.records)[number]) => ({
+    ...record.capsule,
+    signature: record.envelope_hex,
+    key_id: record.envelope_kid,
+  });
+  const codes = async (records: Record<string, unknown>[]) =>
+    (
+      await verifySettlements(records, {
+        keyPolicy: resigned.key_policy,
+        wrappedObjects: resigned.wrapped_objects.map(
+          (w) => new Uint8Array(Buffer.from(w.octets_b64u, "base64url")),
+        ),
+      })
+    ).failures.map((f) => f.code);
+
+  it("does not count a payee signature with R the identity as re-signing, on any engine", async () => {
+    // The same JWS, re-signed by the payee with R the identity (the
+    // "identity R" case of cll-ed25519-vectors.json, over this JWS): a
+    // cofactorless verifier accepts it. subtle.verify is stubbed to pass
+    // everything, so only the strict pre-check can refuse it.
+    const settlement = payeeLeg.capsule.settlement as {
+      wrapped: { digest: string; content: string }[];
+    };
+    const jws = Buffer.from(settlement.wrapped[0]!.content, "base64url")
+      .toString("ascii")
+      .split(".");
+    const signingInput = new TextEncoder().encode(`${jws[0]}.${jws[1]}`);
+    const smallR = identityR(
+      hexToBytes(corpus.keys.payee!.seed_hex),
+      signingInput,
+    );
+    const octets = Buffer.from(
+      `${jws[0]}.${jws[1]}.${Buffer.from(smallR).toString("base64url")}`,
+      "ascii",
+    );
+    const leg = await reseal(payeeLeg.capsule, "payee", (s) => {
+      const w = (s.wrapped as Record<string, unknown>[])[0]!;
+      w.digest = createHash("sha256").update(octets).digest("hex");
+      w.content = octets.toString("base64url");
+    });
+    const terms = asRecord(
+      resigned.records.find((r) => r.label === "ap2-terms")!,
+    );
+    vi.spyOn(globalThis.crypto.subtle, "verify").mockResolvedValue(true);
+    try {
+      expect(await codes([terms, asRecord(payeeLeg)])).toContain(
+        "wrapped_resigned",
+      );
+      expect(await codes([terms, leg])).not.toContain("wrapped_resigned");
+    } finally {
+      vi.restoreAllMocks();
+    }
+    expect(await codes([terms, leg])).not.toContain("wrapped_resigned");
   });
 });

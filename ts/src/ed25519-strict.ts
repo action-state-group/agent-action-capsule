@@ -36,10 +36,12 @@ function strictPoint(encoded: Uint8Array): boolean {
  * The strict Ed25519 conditions of checkpointed-local-log's
  * `ed25519-vectors.json` that do not need the message: A and R canonical
  * (y < p) and not of small order, and S < L. Whether WebCrypto refuses a
- * small-order A depends on the runtime (Node's does), and a small-order A
- * verifies a forged signature over any message. Every path that verifies an
- * Ed25519 signature under a pinned, registered or trusted key runs this
- * before `subtle.verify`, so its verdict does not depend on the engine.
+ * small-order A or R depends on the runtime and its version (Node 24.18.1
+ * accepts the identity-key forgery, #322; this package supports Node >= 20),
+ * and a small-order A verifies a forged signature over any message. Every
+ * path that verifies an Ed25519 signature under a pinned, registered or
+ * trusted key runs this before `subtle.verify`, so its verdict does not
+ * depend on the engine.
  */
 export function strictEd25519(
   publicKey: Uint8Array,

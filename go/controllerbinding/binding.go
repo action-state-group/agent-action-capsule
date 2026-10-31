@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/action-state-group/agent-action-capsule/go/evidencerequest"
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 )
 
@@ -421,13 +422,20 @@ func verifySig(key, keyType string, sig any, version string, signed []byte) bool
 	return false
 }
 
+// verifyHex checks an ed25519 key's hex sig with strict Ed25519. A caller
+// reads the result against keys it expects (Binds, BindsPair, AppliesTo),
+// and a small-order key would sign any record or revocation for anyone.
 func verifyHex(key string, sig any, message []byte) bool {
 	text, ok := sig.(string)
 	if !ok || !hex128.MatchString(text) {
 		return false
 	}
+	public, err := hex.DecodeString(key)
+	if err != nil {
+		return false
+	}
 	raw, _ := hex.DecodeString(text)
-	return evidencerequest.VerifySignature(key, message, raw) == nil
+	return ed25519strict.Verify(public, message, raw)
 }
 
 // verifyNostr checks a bip340 key's sig, {created_at, sig}: the BIP-340

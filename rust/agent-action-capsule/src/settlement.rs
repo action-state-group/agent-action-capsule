@@ -1931,37 +1931,66 @@ mod tests {
     }
 
     /// `wrapped_resigned` asks whether a wrapped JWS verifies under the leg
-    /// key, strictly: the identity key's forgery (R the identity, S = 0),
-    /// which dalek's `verify` accepts over any message, and a non-canonical R
-    /// do not count as a signature by that key.
+    /// key, strictly. The identity key's forgery (R the identity, S = 0) and
+    /// a small-order R by an honest key (the "small-order A" and "identity R"
+    /// cases of cll-ed25519-vectors.json, over this JWS), which dalek's
+    /// `verify` accepts, do not count as a signature by that key.
     #[test]
     fn jws_signatures_verify_strictly() {
         use ed25519_dalek::{Signer, SigningKey, Verifier as _};
+        use sha2::{Digest as _, Sha512};
+        use std::ops::{Add, Mul};
+
+        // a * (wide little-endian integer mod L), in the type of a: the
+        // scalar type is curve25519-dalek's, which this crate does not name.
+        fn times_wide<S: Copy + From<u64> + Add<Output = S> + Mul<Output = S>>(
+            a: S,
+            wide: &[u8],
+        ) -> S {
+            let mut k = S::from(0);
+            for byte in wide.iter().rev() {
+                k = k * S::from(256) + S::from(u64::from(*byte));
+            }
+            k * a
+        }
+
         let input = "eyJhbGciOiJFZERTQSJ9.eyJhIjoxfQ";
+        let lenient = |key: &[u8; 32], signature: &[u8; 64]| {
+            VerifyingKey::from_bytes(key)
+                .unwrap()
+                .verify(input.as_bytes(), &Signature::from_bytes(signature))
+                .is_ok()
+        };
+        let jws = |signature: &[u8; 64]| format!("{input}.{}", B64URL.encode(signature));
+
         let mut identity = [0u8; 32];
         identity[0] = 1;
         let mut forged = [0u8; 64];
         forged[0] = 1;
-        assert!(VerifyingKey::from_bytes(&identity)
-            .unwrap()
-            .verify(input.as_bytes(), &Signature::from_bytes(&forged))
-            .is_ok());
-        let jws = format!("{input}.{}", B64URL.encode(forged));
-        assert!(!jws_verifies(jws.as_bytes(), &hex::encode(identity)));
+        assert!(lenient(&identity, &forged));
+        assert!(!jws_verifies(
+            jws(&forged).as_bytes(),
+            &hex::encode(identity)
+        ));
 
         let key = SigningKey::from_bytes(&[9; 32]);
-        let mut signature = key.sign(input.as_bytes()).to_bytes();
-        let public = hex::encode(key.verifying_key().to_bytes());
-        assert!(jws_verifies(
-            format!("{input}.{}", B64URL.encode(signature)).as_bytes(),
-            &public
-        ));
-        signature[0] = 0xef;
-        signature[1..31].fill(0xff);
-        signature[31] = 0x7f;
+        let public = key.verifying_key().to_bytes();
+        let honest = key.sign(input.as_bytes()).to_bytes();
+        assert!(jws_verifies(jws(&honest).as_bytes(), &hex::encode(public)));
+        // R the identity, S = k * a mod L with k = SHA-512(R || A || M):
+        // [S]B = [k]A = R + [k]A, so the cofactorless equation holds.
+        let k = Sha512::new()
+            .chain_update(identity)
+            .chain_update(public)
+            .chain_update(input.as_bytes())
+            .finalize();
+        let mut small_r = [0u8; 64];
+        small_r[..32].copy_from_slice(&identity);
+        small_r[32..].copy_from_slice(&times_wide(key.to_scalar(), &k).to_bytes());
+        assert!(lenient(&public, &small_r));
         assert!(!jws_verifies(
-            format!("{input}.{}", B64URL.encode(signature)).as_bytes(),
-            &public
+            jws(&small_r).as_bytes(),
+            &hex::encode(public)
         ));
     }
 }

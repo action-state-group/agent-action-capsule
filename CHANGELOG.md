@@ -16,6 +16,23 @@ Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their o
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Security, strict Ed25519 on trusted-key paths: each Ed25519 check under a pinned, registered or
+  trusted key now uses the strict rule of #447 (A and R canonical and not of small order, S < L,
+  then the cofactorless check), so a small-order key no longer verifies a forgery over any message,
+  except the record-key paths left for #322 (Go `evidencerequest.VerifySignature` in `reply.go` and
+  `envelope.go`, Rust `envelope.rs`, and the TypeScript and Python producer envelope). Go: the
+  interop profile's envelope, refusal and acceptance signatures, the CLL checkpoint
+  (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`), controller-binding and
+  revocation signatures by an `ed25519` key, and the settlement `wrapped_resigned` check; the
+  helper moves from `witness` to `internal/ed25519strict`. Python: `interop_profile` (every
+  signature it checks), `evidence_request` (which already refused a small-order key, and whose
+  `cryptography` verify already refused a non-canonical R and S >= L; a small-order R is now
+  refused too), the settlement `wrapped_resigned` check and `verify --transparent` (the Signed
+  Statement under the issuer key and each receipt under the log key); the helper moves from
+  `witness` to `agent_action_capsule._ed25519_strict`. TypeScript: the settlement
+  `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on whether the
+  runtime's WebCrypto, which varies by version, refuses these; the helper moves from
+  `cose-receipt.ts` to `ed25519-strict.ts`. Honest signatures verify as before. (#448)
 - Security, strict Ed25519 on every trusted-key path: each Ed25519 check under a pinned,
   registered or trusted key now uses the strict rule of #447 (A and R canonical and not of small
   order, S < L, then the cofactorless check), so a small-order key no longer verifies a forgery

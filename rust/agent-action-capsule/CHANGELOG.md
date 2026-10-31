@@ -3,10 +3,11 @@
 ## Unreleased
 
 - Security, settlement: the `wrapped_resigned` check verifies a wrapped JWS
-  under the leg key with dalek's `verify_strict`, not `verify`, so the
-  identity key's forgery (R the identity, S = 0) and a non-canonical R no
-  longer count as a signature by that key, as in Go, Python and TypeScript
-  (#448).
+  under the leg key with dalek's `verify_strict`, not `verify`, so a
+  small-order key (such as the identity key's forgery, R the identity and
+  S = 0) or a small-order R no longer counts as a signature by that key, as
+  in Go, Python and TypeScript. dalek's `verify` already refused a
+  non-canonical R (#448).
 
 ## 0.5.0 — 2026-10-30
 

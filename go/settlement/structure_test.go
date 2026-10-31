@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict/ed25519stricttest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -276,26 +277,27 @@ func TestUTCTimesNameARealInstant(t *testing.T) {
 }
 
 // The wrapped_resigned check verifies a wrapped JWS under the leg key with
-// strict Ed25519: the identity key's forgery (R the identity, S = 0), which
-// ed25519.Verify accepts over any message, and a non-canonical R do not count
-// as a signature by that key.
+// strict Ed25519. The identity key's forgery and a small-order R by an honest
+// key (the "small-order A" and "identity R" cases of cll-ed25519-vectors.json,
+// over this JWS), which ed25519.Verify accepts, do not count as a signature by
+// that key.
 func TestJWSVerifiesIsStrict(t *testing.T) {
 	b64 := base64.RawURLEncoding.EncodeToString
-	signingInput := b64([]byte(`{"alg":"EdDSA"}`)) + "." + b64([]byte(`{}`))
-	compact := func(signature []byte) []byte { return []byte(signingInput + "." + b64(signature)) }
+	signingInput := []byte(b64([]byte(`{"alg":"EdDSA"}`)) + "." + b64([]byte(`{}`)))
+	compact := func(signature []byte) []byte { return []byte(string(signingInput) + "." + b64(signature)) }
 
-	identity := append([]byte{1}, make([]byte, 31)...)
-	forged := append(append([]byte(nil), identity...), make([]byte, 32)...)
-	require.True(t, ed25519.Verify(identity, []byte(signingInput), forged))
+	identity := ed25519stricttest.IdentityKey
+	forged := ed25519stricttest.IdentityKeyForgery()
+	require.True(t, ed25519.Verify(identity, signingInput, forged))
 	require.False(t, jwsVerifies(compact(forged), hex.EncodeToString(identity)))
 
 	_, private, err := ed25519.GenerateKey(nil)
 	require.NoError(t, err)
-	keyHex := hex.EncodeToString(private.Public().(ed25519.PublicKey))
-	signature := ed25519.Sign(private, []byte(signingInput))
-	require.True(t, jwsVerifies(compact(signature), keyHex))
-	nonCanonicalR := append(append([]byte{0xef}, []byte(strings.Repeat("\xff", 30))...), 0x7f)
-	require.False(t, jwsVerifies(compact(append(nonCanonicalR, signature[32:]...)), keyHex))
+	public := private.Public().(ed25519.PublicKey)
+	require.True(t, jwsVerifies(compact(ed25519.Sign(private, signingInput)), hex.EncodeToString(public)))
+	smallR := ed25519stricttest.IdentityR(private, signingInput)
+	require.True(t, ed25519.Verify(public, signingInput, smallR))
+	require.False(t, jwsVerifies(compact(smallR), hex.EncodeToString(public)))
 }
 
 func TestEnvelopeSignatureIsHexPairs(t *testing.T) {

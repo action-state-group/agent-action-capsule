@@ -1,43 +1,27 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { verifyCountersignV1Signature } from "../src/countersignature-stamp.js";
+import {
+  countersignV1SigningInput,
+  verifyCountersignV1Signature,
+} from "../src/countersignature-stamp.js";
 import { strictEd25519, verifyEd25519Strict } from "../src/ed25519-strict.js";
 import { hexToBytes } from "../src/producer-envelope-wire.js";
+import {
+  IDENTITY,
+  IDENTITY_FORGERY as FORGERY,
+  identityR,
+  publicKeyOf,
+} from "./helpers/ed25519-forgeries.js";
 
-// The identity key and its forgery (R the identity, S = 0), which plain
-// cofactorless verification accepts over any message, and the
-// non-canonical encoding of y = p + 2, which strict verification refuses
-// as an R.
-const IDENTITY = hexToBytes("01" + "00".repeat(31));
-const FORGERY = hexToBytes("01" + "00".repeat(63));
-const NON_CANONICAL_R = hexToBytes("ef" + "ff".repeat(30) + "7f");
+// The two kinds of signature a cofactorless verifier accepts and strict
+// Ed25519 refuses (the "small-order A" and "identity R" cases of
+// cll-ed25519-vectors.json), over each path's own message.
+const SEED = new Uint8Array(32).fill(5);
+const PUBLIC = publicKeyOf(SEED);
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-
-async function honest(
-  message: Uint8Array,
-): Promise<{ publicKey: Uint8Array; signature: Uint8Array }> {
-  const pair = (await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
-    "sign",
-    "verify",
-  ])) as CryptoKeyPair;
-  const publicKey = new Uint8Array(
-    await crypto.subtle.exportKey("raw", pair.publicKey),
-  );
-  const signature = new Uint8Array(
-    await crypto.subtle.sign(
-      { name: "Ed25519" },
-      pair.privateKey,
-      message as BufferSource,
-    ),
-  );
-  return { publicKey, signature };
-}
-
-const withR = (signature: Uint8Array, r: Uint8Array): Uint8Array =>
-  Uint8Array.from([...r, ...signature.subarray(32)]);
 
 // An engine that checks nothing: whatever reaches subtle.verify passes, so
 // only the strict pre-check can refuse.
@@ -91,20 +75,23 @@ describe("verifyEd25519Strict", () => {
     }
   });
 
-  it("refuses the identity forgery and a non-canonical R on any engine", async () => {
+  it("builds the identity-R signature the Python helper builds", () => {
+    // python/tests/_ed25519_forgeries.py identity_r for this seed and "m",
+    // which cryptography's cofactorless verify accepts.
+    expect(toHex(identityR(SEED, new TextEncoder().encode("m")))).toBe(
+      "0100000000000000000000000000000000000000000000000000000000000000" +
+        "4663dfe46ad618523ff47a170312fc53e49d16b3107a01bbc38f599830d0fa0d",
+    );
+  });
+
+  it("refuses a small-order key or R on any engine", async () => {
     const message = new TextEncoder().encode("any message");
-    const { publicKey, signature } = await honest(message);
     lenientEngine();
     expect(strictEd25519(IDENTITY, FORGERY)).toBe(false);
     expect(await verifyEd25519Strict(IDENTITY, FORGERY, message)).toBe(false);
     expect(
-      await verifyEd25519Strict(
-        publicKey,
-        withR(signature, NON_CANONICAL_R),
-        message,
-      ),
+      await verifyEd25519Strict(PUBLIC, identityR(SEED, message), message),
     ).toBe(false);
-    expect(await verifyEd25519Strict(publicKey, signature, message)).toBe(true);
   });
 
   it("refuses wrong lengths", async () => {
@@ -118,33 +105,30 @@ describe("verifyEd25519Strict", () => {
 });
 
 describe("countersign/v1 signatures are strict", () => {
-  const entry = {
+  const entry = (keyId: string) => ({
     over: "ab".repeat(32),
-    signer: { id: "witness", key_id: toHex(IDENTITY) },
+    signer: { id: "witness", key_id: keyId },
     statement: { recomputed_at: "2026-10-16T00:00:00Z", checks: [] },
     type: "countersign/v1",
-  };
+  });
 
   it("refuses the identity forgery even where the engine would pass it", async () => {
     lenientEngine();
     expect(
       await verifyCountersignV1Signature(
-        entry,
+        entry(toHex(IDENTITY)),
         toHex(IDENTITY),
         toHex(FORGERY),
       ),
     ).toBe(false);
   });
 
-  it("refuses a non-canonical R even where the engine would pass it", async () => {
-    const { publicKey, signature } = await honest(new Uint8Array([1]));
+  it("refuses a small-order R by the signer's key even where the engine would pass it", async () => {
+    const signed = entry(toHex(PUBLIC));
+    const smallR = identityR(SEED, countersignV1SigningInput(signed));
     lenientEngine();
     expect(
-      await verifyCountersignV1Signature(
-        { ...entry, signer: { id: "witness", key_id: toHex(publicKey) } },
-        toHex(publicKey),
-        toHex(withR(signature, NON_CANONICAL_R)),
-      ),
+      await verifyCountersignV1Signature(signed, toHex(PUBLIC), toHex(smallR)),
     ).toBe(false);
   });
 });

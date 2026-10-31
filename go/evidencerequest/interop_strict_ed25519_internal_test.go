@@ -10,26 +10,48 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict/ed25519stricttest"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// The identity key and its forgery (R the identity, S = 0), which
-// ed25519.Verify accepts over any message, and the non-canonical encoding of
-// y = p + 2, which strict verification refuses as an R.
-var (
-	identityKey     = append([]byte{1}, make([]byte, 31)...)
-	identityForgery = append(append([]byte(nil), identityKey...), make([]byte, 32)...)
-	nonCanonicalR   = append(append([]byte{0xef}, bytes.Repeat([]byte{0xff}, 30)...), 0x7f)
-)
+// Each test below uses the two kinds of signature ed25519.Verify accepts and
+// strict Ed25519 refuses (the "small-order A" and "identity R" cases of
+// cll-ed25519-vectors.json), each over the path's own message, and checks
+// first that ed25519.Verify does accept it, so the path's refusal is the
+// strict check's doing.
 
-func withR(signature, r []byte) []byte {
-	return append(append([]byte(nil), r...), signature[32:]...)
-}
+var identityKey = ed25519stricttest.IdentityKey
 
 func testKey(seed byte) ed25519.PrivateKey {
 	return ed25519.NewKeyFromSeed(bytes.Repeat([]byte{seed}, ed25519.SeedSize))
+}
+
+func identityForgery(message []byte, t *testing.T) []byte {
+	t.Helper()
+	forged := ed25519stricttest.IdentityKeyForgery()
+	require.True(t, ed25519.Verify(identityKey, message, forged))
+	return forged
+}
+
+func identityR(key ed25519.PrivateKey, message []byte, t *testing.T) []byte {
+	t.Helper()
+	signature := ed25519stricttest.IdentityR(key, message)
+	require.True(t, ed25519.Verify(key.Public().(ed25519.PublicKey), message, signature))
+	return signature
+}
+
+// The interop envelope, refusal and acceptance signatures are checked with
+// verifyHexSignature.
+func TestVerifyHexSignatureIsStrict(t *testing.T) {
+	message := []byte("any message")
+	assert.False(t, verifyHexSignature(hex.EncodeToString(identityKey), hex.EncodeToString(identityForgery(message, t)), message))
+
+	key := testKey(8)
+	keyHex := hex.EncodeToString(key.Public().(ed25519.PublicKey))
+	assert.True(t, verifyHexSignature(keyHex, hex.EncodeToString(ed25519.Sign(key, message)), message))
+	assert.False(t, verifyHexSignature(keyHex, hex.EncodeToString(identityR(key, message, t)), message))
 }
 
 func jws(kid string, sign func([]byte) []byte) string {
@@ -38,26 +60,11 @@ func jws(kid string, sign func([]byte) []byte) string {
 	return signingInput + "." + b64(sign([]byte(signingInput)))
 }
 
-// The interop envelope, refusal and acceptance signatures are checked with
-// verifyHexSignature: a small-order key and a non-canonical R are refused.
-func TestVerifyHexSignatureIsStrict(t *testing.T) {
-	message := []byte("any message")
-	require.True(t, ed25519.Verify(identityKey, message, identityForgery))
-	assert.False(t, verifyHexSignature(hex.EncodeToString(identityKey), hex.EncodeToString(identityForgery), message))
-
-	key := testKey(8)
-	keyHex := hex.EncodeToString(key.Public().(ed25519.PublicKey))
-	signature := ed25519.Sign(key, message)
-	assert.True(t, verifyHexSignature(keyHex, hex.EncodeToString(signature), message))
-	assert.False(t, verifyHexSignature(keyHex, hex.EncodeToString(withR(signature, nonCanonicalR)), message))
-}
-
 // The native JWS check verifies under a trust-policy key: a small-order key
-// and a non-canonical R are refused even when the policy lists the key.
+// or R is refused even when the policy lists the key.
 func TestCheckJWSEdDSAIsStrict(t *testing.T) {
-	require.True(t, ed25519.Verify(identityKey, []byte("any message"), identityForgery))
 	identityHex := hex.EncodeToString(identityKey)
-	forged := jws(identityHex, func([]byte) []byte { return identityForgery })
+	forged := jws(identityHex, func(m []byte) []byte { return identityForgery(m, t) })
 	report := CheckJWSEdDSA(forged, TrustPolicy{ForeignKeys: []string{identityHex}}, "2026-10-16T00:00:00Z")
 	assert.Equal(t, StatusFail, report.Status)
 
@@ -66,8 +73,8 @@ func TestCheckJWSEdDSAIsStrict(t *testing.T) {
 	trust := TrustPolicy{ForeignKeys: []string{keyHex}}
 	honest := jws(keyHex, func(m []byte) []byte { return ed25519.Sign(key, m) })
 	assert.Equal(t, StatusPass, CheckJWSEdDSA(honest, trust, "2026-10-16T00:00:00Z").Status)
-	badR := jws(keyHex, func(m []byte) []byte { return withR(ed25519.Sign(key, m), nonCanonicalR) })
-	assert.Equal(t, StatusFail, CheckJWSEdDSA(badR, trust, "2026-10-16T00:00:00Z").Status)
+	smallR := jws(keyHex, func(m []byte) []byte { return identityR(key, m, t) })
+	assert.Equal(t, StatusFail, CheckJWSEdDSA(smallR, trust, "2026-10-16T00:00:00Z").Status)
 }
 
 // inclusionCase is a record-subject envelope carrying one CLL checkpoint,
@@ -100,7 +107,7 @@ func inclusionCase(t *testing.T, kid []byte, sign func([]byte) []byte) (map[stri
 }
 
 // anchor_inclusion step 10 verifies the checkpoint under a trust-policy log
-// key: a small-order key and a non-canonical R fail there.
+// key: a small-order key or R fails there.
 func TestCheckpointSignatureIsStrict(t *testing.T) {
 	passed := map[string]string{"envelope_signature": StatusPass, "artifact_digest": StatusPass, "verification_binding": StatusPass}
 	run := func(kid []byte, sign func([]byte) []byte) PropertyReport {
@@ -108,8 +115,7 @@ func TestCheckpointSignatureIsStrict(t *testing.T) {
 		trust := TrustPolicy{LogKeys: []LogKey{{Iss: "iss", Sub: "sub", Kid: hex.EncodeToString(kid)}}}
 		return checkAnchorInclusion(env, material, passed, trust, CLLKinds)
 	}
-	require.True(t, ed25519.Verify(identityKey, []byte("any message"), identityForgery))
-	forged := run(identityKey, func([]byte) []byte { return identityForgery })
+	forged := run(identityKey, func(m []byte) []byte { return identityForgery(m, t) })
 	assert.Equal(t, StatusFail, forged.Status)
 	assert.True(t, strings.HasPrefix(forged.Detail, "step 10:"), forged.Detail)
 
@@ -117,7 +123,7 @@ func TestCheckpointSignatureIsStrict(t *testing.T) {
 	public := key.Public().(ed25519.PublicKey)
 	honest := run(public, func(m []byte) []byte { return ed25519.Sign(key, m) })
 	assert.False(t, strings.HasPrefix(honest.Detail, "step 10:"), honest.Detail)
-	badR := run(public, func(m []byte) []byte { return withR(ed25519.Sign(key, m), nonCanonicalR) })
-	assert.Equal(t, StatusFail, badR.Status)
-	assert.True(t, strings.HasPrefix(badR.Detail, "step 10:"), badR.Detail)
+	smallR := run(public, func(m []byte) []byte { return identityR(key, m, t) })
+	assert.Equal(t, StatusFail, smallR.Status)
+	assert.True(t, strings.HasPrefix(smallR.Detail, "step 10:"), smallR.Detail)
 }

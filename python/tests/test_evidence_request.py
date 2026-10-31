@@ -596,13 +596,18 @@ def test_a_small_order_key_never_verifies():
     assert verify_refusal_offline(honest)
 
 
-def test_a_non_canonical_r_never_verifies():
-    """Strict Ed25519 refuses an R whose y is not reduced (y >= p), here
-    y = p + 2, under the refusal's own honest key."""
-    honest = sign_refusal("ab" * 32, REASON_NO_SUCH_SUBJECT, signer=PRIMARY, issued_at=NOW)
-    non_canonical_r = "ef" + "ff" * 30 + "7f"
-    forged = Refusal(request_digest=honest.request_digest, reason=honest.reason, issued_at=honest.issued_at,
-                     key_id=honest.key_id, sig=non_canonical_r + honest.sig[64:])
+def test_a_small_order_r_never_verifies():
+    """The responder's own key signs with R the identity (the "identity R"
+    case of cll-ed25519-vectors.json, over this refusal): ``cryptography``
+    accepts it, and strict Ed25519 refuses it."""
+    from _ed25519_forgeries import identity_r, lenient
+
+    stub = sign_refusal("ab" * 32, REASON_NO_SUCH_SUBJECT, signer=PRIMARY, issued_at=NOW)
+    body = stub.signing_body()
+    sig = identity_r(PRIMARY._key, body)
+    assert lenient(bytes.fromhex(PRIMARY.key_id), sig, body)
+    forged = Refusal(request_digest=stub.request_digest, reason=stub.reason, issued_at=stub.issued_at,
+                     key_id=stub.key_id, sig=sig.hex())
     assert not verify_refusal_offline(forged)
     obj = {"request_digest": forged.request_digest, "reason": forged.reason, "issued_at": forged.issued_at,
            "key_id": forged.key_id, "sig": forged.sig}

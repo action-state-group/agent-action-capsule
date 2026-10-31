@@ -73,6 +73,8 @@ def _eddsa_not_strict(cose: bytes, key_pem: bytes) -> bool:
         signature = value[3]
     except Exception:  # noqa: BLE001 -- scitt_cose has already judged what it could read
         return False
+    # scitt_cose (checked at 0.5.0) verifies an Ed25519 key only under alg -8
+    # (EdDSA) and raises for any other alg, so -8 is the only case to check.
     if not isinstance(key, Ed25519PublicKey) or not isinstance(protected, dict) or protected.get(1) != -8:
         return False
     raw = key.public_bytes(Encoding.Raw, PublicFormat.Raw)
