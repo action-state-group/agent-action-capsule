@@ -5,6 +5,16 @@ import {
   type ObjectValue,
   type ZoneStatement,
 } from "./evidence-graph.js";
+import {
+  CALIBRATION_SUMMARY_V1,
+  HUMAN_RATING_V1,
+  readCalibrationSummary,
+  readHumanRating,
+  type CalibrationClauseTally,
+  type CalibrationSummaryRecord,
+  type HumanRatingRecord,
+  type KOfN,
+} from "./calibration-summary.js";
 import { jsonDigest } from "./json.js";
 import {
   REQUIREMENT_CLAIM,
@@ -402,21 +412,101 @@ export interface OutcomeReportRunInfo {
   readonly reportsCited?: number;
 }
 
-export interface CalibrationSample {
-  readonly conversationId: string;
-  readonly aiVerdict: string;
-  readonly humanVerdict: string;
-  readonly note?: string;
-  readonly agrees: boolean;
+/**
+ * The reader conventions below are this reader's, pending
+ * action-state-group/evidencebook-skills#73 and #74. Neither the schemas nor
+ * spec/judge-record-family-v1.md state them:
+ *
+ * - Binding: a rating is bound to the requirement claim that cites its rated
+ *   case digest in `evidence[]` (the producer seals one
+ *   `evaluation-report/v1` per case per criterion, and a claim cites that
+ *   report). `human-rating/v1` itself names no clause.
+ * - Clause: a summary clause's `clause_ref` is read as that claim's
+ *   `requirement_ref`. Section 8 does not say what `clause_ref` cites.
+ * - Counting (pending evidencebook-skills#74; settled with Sherlock2 for
+ *   this reader): a rating counts, in both k and n, only when its `label`
+ *   AND its bound claim's verdict are each `met` or `not_met`; it agrees
+ *   when the two are equal. `not_evaluable` (the live form of the sampling
+ *   spec's `unsure`, which that spec drops from numerator and denominator),
+ *   `out_of_scope` and any other label or verdict, on either side, leave
+ *   the rating out. The schema leaves `label` open.
+ * - Population: the cited ratings are read as a sample of the cases behind
+ *   a clause's counts, not the whole population. Section 8 does not say they
+ *   are all of them, so fewer ratings than the stated n is never a mismatch.
+ */
+
+/**
+ * A `human-rating/v1` record the calibration claim cites, with the judge's
+ * verdict on the same case when the Result settles it (see the binding
+ * convention above): `judged` is present only when every requirement claim
+ * citing the rated case that has not failed verification names the same
+ * requirement and verdict, and at least one does.
+ */
+export interface CalibrationRating {
+  /** The digest the calibration claim cites the rating by. */
+  readonly digest: string;
+  readonly rating: HumanRatingRecord;
+  readonly judged?: {
+    readonly claimId: string;
+    readonly requirementRef: string;
+    readonly verdict: string;
+  };
+  /** The rating's `label` equals the judge's verdict; present only with `judged` when the label and the judge's verdict are both `met` or `not_met` (the counting convention above). */
+  readonly agrees?: boolean;
 }
-export interface CalibrationWeek {
-  readonly weekId: string;
-  readonly from?: string;
-  readonly to?: string;
-  readonly k: number;
-  readonly n: number;
-  readonly sample: readonly CalibrationSample[];
+
+/**
+ * How a clause's stated agreement compares with the count recomputed from
+ * the cited ratings, under the conventions above. Since the cited ratings
+ * are read as a sample, not the population:
+ *
+ * - `mismatch`: the recomputed count contradicts the stated one, because it
+ *   has more agreeing ratings than the stated k or more disagreeing ones than
+ *   the stated n - k (so recomputed n above the stated n, or the same n with
+ *   a different k). It is a finding: the stated count is kept as the record
+ *   states it and never replaced by the recomputed one.
+ * - `matches`: the recomputed count equals the stated one.
+ * - `not_recomputable`: anything else. That covers fewer bound ratings than
+ *   the stated n without a contradiction, no rating bound to the clause
+ *   (including a claim that cites no rating), and a cited rating that does
+ *   not match its schema or is bound to no judged requirement claim, since
+ *   that rating could belong to any clause.
+ */
+export type CalibrationAgreementCheck =
+  | "matches"
+  | "mismatch"
+  | "not_recomputable";
+
+export interface CalibrationClause extends CalibrationClauseTally {
+  /** The bound ratings whose label and judge verdict both count and whose requirement_ref is this clause_ref (the clause and counting conventions above): n of them, k agreeing. Present whenever at least one such rating exists and every cited rating is bound; even then it is not a replacement for the stated count. */
+  readonly recomputedAgreement?: KOfN;
+  readonly agreementCheck: CalibrationAgreementCheck;
+}
+
+/**
+ * One `calibration` claim and the `calibration-summary/v1` record it cites
+ * (schemas/judge/calibration-summary-v1.json), with the `human-rating/v1`
+ * records it cites for the drill-down. Citations are read once per digest,
+ * so a record cited twice counts once. `state` is `read` when the claim
+ * cites exactly one disclosed record naming `calibration-summary/v1` and it
+ * matches the schema (including `k <= n`); `not_matching` when that record
+ * does not match, so nothing of it is read; `ambiguous` when the claim cites
+ * more than one. `clauses` is empty unless `state` is `read`. No rate or
+ * percentage is computed or stored: every figure is `k` of `n`.
+ */
+export interface CalibrationReading {
   readonly claim: ResultClaim;
+  readonly state: "read" | "not_matching" | "ambiguous";
+  /** Digest of the cited summary record; the first one cited when `ambiguous`. */
+  readonly summaryDigest: string;
+  readonly summary?: CalibrationSummaryRecord;
+  readonly clauses: readonly CalibrationClause[];
+  /** Cited ratings that match their schema, in citation order. */
+  readonly ratings: readonly CalibrationRating[];
+  /** Cited records naming `human-rating/v1` that do not match its schema; never read. */
+  readonly ratingsNotMatching: number;
+  /** Cited ratings bound to a judged claim whose requirement_ref names no clause of the summary, so no clause counts them. Zero unless `state` is `read`. */
+  readonly ratingsOutsideClauses: number;
 }
 
 export interface MissedReasonGroup {
@@ -461,7 +551,7 @@ export interface OutcomeReportModel {
    */
   readonly notYetInForce: readonly Conversation[];
   readonly runInfo: OutcomeReportRunInfo;
-  readonly calibration: readonly CalibrationWeek[];
+  readonly calibration: readonly CalibrationReading[];
   readonly checkPassCounts: ReadonlyMap<string, number>;
   readonly missedReasons: readonly MissedReasonGroup[];
   /** requirementRef (`<checkId>.<criterionId>`) -> tier, read from the claims that cite it -- never from `terms`. See `CriterionTierReading`. */
@@ -533,7 +623,14 @@ function reportPayload(
   claim: ResultClaim,
 ): ObjectValue | undefined {
   const digest = claim.evidence[0]?.digest;
-  if (digest === undefined) return undefined;
+  return digest === undefined ? undefined : citedPayload(records, digest);
+}
+
+/** The disclosed payload of the record cited by `digest`, or undefined. */
+function citedPayload(
+  records: ReadonlyMap<string, CitedRecord>,
+  digest: string,
+): ObjectValue | undefined {
   const record = records.get(digest);
   if (record === undefined) return undefined;
   // An evidence-book record's own agent_input is the book's header, not the
@@ -1391,76 +1488,176 @@ export async function verifyJudgePin(
   return { ...runInfo, judgePinRecomputes: recomputes };
 }
 
-function buildCalibration(result: ResultRoot): CalibrationWeek[] {
-  const weeks: CalibrationWeek[] = [];
-  for (const claim of result.claims) {
-    if (claim.type !== "calibration") continue;
-    const payload = reportPayload(result.records, claim);
-    if (payload === undefined) continue;
-    const weekId = asString(payload.week);
-    if (weekId === undefined) continue;
-    const sample = (
-      Array.isArray(payload.sample) ? payload.sample : []
-    ).flatMap((entry): CalibrationSample[] => {
-      if (!isObject(entry)) return [];
-      const conversationId = asString(entry.conversation_id);
-      const aiVerdict = asString(entry.ai_verdict);
-      const humanVerdict = asString(entry.human_verdict);
-      if (
-        conversationId === undefined ||
-        aiVerdict === undefined ||
-        humanVerdict === undefined
-      )
-        return [];
-      const note = asString(entry.note);
-      return [
-        {
-          conversationId,
-          aiVerdict,
-          humanVerdict,
-          ...(note === undefined ? {} : { note }),
-          agrees: aiVerdict === humanVerdict,
-        },
-      ];
-    });
-    // k and n are recomputed from the enumerable sample -- never taken from
-    // the record's own stated `agreement` field, the same rule
-    // result-root.ts's recomputeCounts already holds for every other
-    // headline count in this codebase (a stated aggregate that disagrees
-    // with the enumerable data it summarizes is exactly the failure mode
-    // the Result page's recompute already fixes for buckets/coverage).
-    const k = sample.filter((entry) => entry.agrees).length;
-    const n = sample.length;
-    const from = asString(payload.from);
-    const to = asString(payload.to);
-    weeks.push({
-      weekId,
-      ...(from === undefined ? {} : { from }),
-      ...(to === undefined ? {} : { to }),
-      k,
-      n,
-      sample,
-      claim,
-    });
-  }
-  weeks.sort((a, b) => a.weekId.localeCompare(b.weekId));
-  return weeks;
+/** See `CalibrationRating.judged`. */
+function judgedCase(
+  result: ResultRoot,
+  caseDigest: string,
+): CalibrationRating["judged"] {
+  const citing = result.claims.filter(
+    (claim) =>
+      claim.type === REQUIREMENT_CLAIM &&
+      !claim.failed &&
+      claim.evidence.some((ref) => ref.digest === caseDigest),
+  );
+  const first = citing[0];
+  if (first === undefined) return undefined;
+  const settled = citing.every(
+    (claim) =>
+      claim.requirementRef === first.requirementRef &&
+      claim.verdict === first.verdict,
+  );
+  return settled
+    ? {
+        claimId: first.id,
+        requirementRef: first.requirementRef,
+        verdict: first.verdict,
+      }
+    : undefined;
 }
 
-/** From the calibration samples only -- never from the claims' own verdicts, which is where "resolved" is recomputed from above. */
-function heldAndAdded(weeks: readonly CalibrationWeek[]): {
+/** The rating labels that count in a clause's k and n (the counting convention above). */
+const COUNTED_LABELS: ReadonlySet<string> = new Set(["met", "not_met"]);
+
+function buildCalibration(result: ResultRoot): CalibrationReading[] {
+  const readings: CalibrationReading[] = [];
+  for (const claim of result.claims) {
+    if (claim.type !== "calibration") continue;
+    const summaries: { digest: string; payload: ObjectValue }[] = [];
+    const ratings: CalibrationRating[] = [];
+    let ratingsNotMatching = 0;
+    // A digest cited twice is one citation: a summary cited twice is not
+    // ambiguous, and a rating cited twice counts once.
+    for (const digest of new Set(claim.evidence.map((ref) => ref.digest))) {
+      const payload = citedPayload(result.records, digest);
+      if (payload === undefined) continue;
+      if (payload.record_version === CALIBRATION_SUMMARY_V1)
+        summaries.push({ digest, payload });
+      else if (payload.record_version === HUMAN_RATING_V1) {
+        const rating = readHumanRating(payload);
+        if (rating === undefined) {
+          ratingsNotMatching += 1;
+          continue;
+        }
+        const judged = judgedCase(result, rating.ratedCase.digest);
+        ratings.push({
+          digest,
+          rating,
+          ...(judged === undefined
+            ? {}
+            : {
+                judged,
+                ...(COUNTED_LABELS.has(rating.label) &&
+                COUNTED_LABELS.has(judged.verdict)
+                  ? { agrees: rating.label === judged.verdict }
+                  : {}),
+              }),
+        });
+      }
+    }
+    // A claim that cites no disclosed summary yields no reading, as before.
+    const first = summaries[0];
+    if (first === undefined) continue;
+    const base = {
+      claim,
+      summaryDigest: first.digest,
+      ratings,
+      ratingsNotMatching,
+      ratingsOutsideClauses: 0,
+    };
+    if (summaries.length > 1) {
+      readings.push({ ...base, state: "ambiguous", clauses: [] });
+      continue;
+    }
+    const summary = readCalibrationSummary(first.payload);
+    if (summary === undefined) {
+      readings.push({ ...base, state: "not_matching", clauses: [] });
+      continue;
+    }
+    // The stated counts are the record's; the recomputed agreement is
+    // checked against them and never replaces them (see
+    // CalibrationAgreementCheck). Only agreement is recomputed: drift is the
+    // judge re-run against itself, which no human-rating/v1 record carries,
+    // so it stays as stated.
+    const recomputable =
+      ratingsNotMatching === 0 &&
+      ratings.every((entry) => entry.judged !== undefined);
+    const clauses = summary.clauses.map((tally): CalibrationClause => {
+      const bound = recomputable
+        ? ratings.filter(
+            (entry) =>
+              entry.judged!.requirementRef === tally.clauseRef &&
+              entry.agrees !== undefined,
+          )
+        : [];
+      if (bound.length === 0)
+        return { ...tally, agreementCheck: "not_recomputable" };
+      const recomputed = {
+        k: bound.filter((entry) => entry.agrees === true).length,
+        n: bound.length,
+      };
+      const stated = tally.agreement;
+      const agreementCheck: CalibrationAgreementCheck =
+        recomputed.k > stated.k ||
+        recomputed.n - recomputed.k > stated.n - stated.k
+          ? "mismatch"
+          : recomputed.k === stated.k && recomputed.n === stated.n
+            ? "matches"
+            : "not_recomputable";
+      return { ...tally, recomputedAgreement: recomputed, agreementCheck };
+    });
+    const clauseRefs = new Set(summary.clauses.map((c) => c.clauseRef));
+    const ratingsOutsideClauses = ratings.filter(
+      (entry) =>
+        entry.judged !== undefined &&
+        !clauseRefs.has(entry.judged.requirementRef),
+    ).length;
+    readings.push({
+      ...base,
+      ratingsOutsideClauses,
+      state: "read",
+      summary,
+      clauses,
+    });
+  }
+  // Readings with a schema-valid summary first, by computed_at then digest;
+  // not-matching and ambiguous readings after them, in claim order (the sort
+  // is stable).
+  readings.sort((a, b) => {
+    if (a.summary === undefined || b.summary === undefined)
+      return Number(a.summary === undefined) - Number(b.summary === undefined);
+    return (
+      a.summary.computedAt.localeCompare(b.summary.computedAt) ||
+      a.summaryDigest.localeCompare(b.summaryDigest)
+    );
+  });
+  return readings;
+}
+
+/**
+ * From the cited human ratings bound to a judged claim, in readings whose
+ * summary matches its schema -- never from the claims' own verdicts alone,
+ * which is where "resolved" is recomputed from above. held: the judge said
+ * met and the rater said not_met; added: the judge said not_met and the rater
+ * said met. Any other label or verdict counts as neither. A rating cited by
+ * more than one claim counts once (by its digest).
+ */
+function heldAndAdded(readings: readonly CalibrationReading[]): {
   held: number;
   added: number;
 } {
   let held = 0,
     added = 0;
-  for (const week of weeks)
-    for (const sample of week.sample) {
-      if (sample.aiVerdict === "met" && sample.humanVerdict !== "met")
-        held += 1;
-      else if (sample.aiVerdict !== "met" && sample.humanVerdict === "met")
+  const seen = new Set<string>();
+  for (const reading of readings) {
+    if (reading.state !== "read") continue;
+    for (const { digest, rating, judged } of reading.ratings) {
+      if (judged === undefined || seen.has(digest)) continue;
+      seen.add(digest);
+      if (judged.verdict === "met" && rating.label === "not_met") held += 1;
+      else if (judged.verdict === "not_met" && rating.label === "met")
         added += 1;
     }
+  }
   return { held, added };
 }
 
