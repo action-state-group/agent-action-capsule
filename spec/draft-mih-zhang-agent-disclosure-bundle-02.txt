@@ -549,11 +549,11 @@ Internet-Draft             AAC Evidence Bundle              October 2026
 
    *  reports a certificate that carries non_record_leaves as invalid.
 
-
-
-
-
-
+   When checkpoint.cose does not verify, or a stated value (including
+   the certificate's log_id) contradicts it, the checkpoint anchors no
+   record: the verifier reports per-record membership as not
+   established, labelled checkpoint_unverified, except that a
+   certificate that carries non_record_leaves still fails it.
 
 
 

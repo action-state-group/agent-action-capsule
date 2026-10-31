@@ -399,6 +399,11 @@ Bundle does not carry is a failure. Otherwise the rules of
             <t>reports a certificate that carries <tt>non_record_leaves</tt> as invalid.</t>
           </li>
         </ul>
+        <t>When <tt>checkpoint.cose</tt> does not verify, or a stated value (including the
+certificate's <tt>log_id</tt>) contradicts it, the checkpoint anchors no record: the
+verifier reports per-record membership as not established, labelled
+<tt>checkpoint_unverified</tt>, except that a certificate that carries
+<tt>non_record_leaves</tt> still fails it.</t>
         <t>A producer-selected Bundle is therefore never complete as to its log: a
 verifier MUST NOT report it as such, and its best result is that every carried
 record is a member of the checkpointed log. A changed record or proof fails
@@ -2022,7 +2027,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 1618?>
+    <?line 1624?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>

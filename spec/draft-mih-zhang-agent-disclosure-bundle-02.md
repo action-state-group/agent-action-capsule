@@ -440,6 +440,12 @@ A verifier that implements this mode:
   {{completeness}} apply, including the `checkpoint_unverified` label;
 - reports a certificate that carries `non_record_leaves` as invalid.
 
+When `checkpoint.cose` does not verify, or a stated value (including the
+certificate's `log_id`) contradicts it, the checkpoint anchors no record: the
+verifier reports per-record membership as not established, labelled
+`checkpoint_unverified`, except that a certificate that carries
+`non_record_leaves` still fails it.
+
 A producer-selected Bundle is therefore never complete as to its log: a
 verifier MUST NOT report it as such, and its best result is that every carried
 record is a member of the checkpointed log. A changed record or proof fails
