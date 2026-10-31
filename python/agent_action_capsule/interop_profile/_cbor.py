@@ -45,14 +45,16 @@ class Decoded:
 
     ``duplicate_keys`` is set when any map repeats a key; the first occurrence is kept.
     ``deterministic`` is False when any head is not in shortest form or any map's keys are not in
-    the bytewise lexicographic order of their encodings (RFC 8949 §4.2.1).
+    the bytewise lexicographic order of their encodings (RFC 8949 §4.2.1). ``shortest`` is False
+    only when a head is not in shortest form: unlike ``deterministic``, it ignores map order.
     """
 
-    __slots__ = ("value", "duplicate_keys", "deterministic", "irregular")
+    __slots__ = ("value", "duplicate_keys", "deterministic", "irregular", "shortest")
 
-    def __init__(self, value: Any, duplicate_keys: bool, deterministic: bool, irregular: bool = False):
+    def __init__(self, value: Any, duplicate_keys: bool, deterministic: bool, irregular: bool = False,
+                 shortest: bool = True):
         self.value, self.duplicate_keys, self.deterministic = value, duplicate_keys, deterministic
-        self.irregular = irregular
+        self.irregular, self.shortest = irregular, shortest
 
     @property
     def well_formed(self) -> bool:
@@ -60,10 +62,10 @@ class Decoded:
 
 
 class _State:
-    __slots__ = ("data", "dup", "det", "odd")
+    __slots__ = ("data", "dup", "det", "odd", "short")
 
     def __init__(self, data: bytes):
-        self.data, self.dup, self.det, self.odd = data, False, True, False
+        self.data, self.dup, self.det, self.odd, self.short = data, False, True, False, True
 
 
 _MAX_DEPTH = 64
@@ -93,7 +95,7 @@ def _item(st: _State, i: int, depth: int) -> tuple[Any, int]:
         arg = int.from_bytes(data[i:i + width], "big")
         i += width
         if arg < (24 if width == 1 else 1 << (4 * width)):
-            st.det = False  # not the shortest head
+            st.det = st.short = False  # not the shortest head
     else:
         raise CborError("indefinite length or reserved additional information")
     if major == 0:
@@ -152,7 +154,7 @@ def decode(data: bytes) -> Decoded:
     value, end = _item(st, 0, 0)
     if end != len(st.data):
         raise CborError("trailing octets after the data item")
-    return Decoded(value, st.dup, st.det, st.odd)
+    return Decoded(value, st.dup, st.det, st.odd, st.short)
 
 
 def encode_head(major: int, arg: int) -> bytes:

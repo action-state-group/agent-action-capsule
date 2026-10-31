@@ -31,17 +31,26 @@ Times are NumericDates (seconds since 1970-01-01T00:00:00Z). A consumer compares
 Positive: an EdDSA Receipt with and without a protected `iat`, an ES256 Receipt, a tree of one
 leaf, a rotated key, a second inclusion proof that verifies after one that does not, the earliest
 time with the witness that signed it, a timed Receipt after an untimed one, a tie on time, no time
-at all, a passing Receipt beside a failing one, and `iat` values that give no registration time
-(negative, over 2^53 - 1, text, unprotected only).
+at all, a passing Receipt beside a failing one, `iat` values that give no registration time
+(negative, over 2^53 - 1, text, `true`), a protected `kid`, a private-use label, other CWT claims,
+and nesting 16 levels deep.
 
 `NOT_PRESENT` and `NOT_CHECKED`: no Receipt, an empty policy, an ES256 Receipt under a policy with
 Ed25519 keys only, and that beside a failing Receipt (`FAIL`).
 
 Negative (MUST reject, `FAIL`): another anchor, an unlisted witness, a tampered signature, S not
-below the group order, a small-order key, an attached payload, an untagged COSE_Sign1, `vds` 2,
-another `alg`, no `alg`, any `crit`, a repeated protected label, no `vdp`, no proofs, 17 proofs, a
-malformed proof beside a valid one, a short path, `leaf_index` equal to `tree_size`, a 31-octet
-node, trailing octets, and octets that are not CBOR.
+below the group order, a small-order key, a listed P-256 key off the curve, and every departure
+from the one form, checked before the policy: an attached payload, an untagged COSE_Sign1, `vds`
+2, another `alg`, no `alg`, any `crit`, a protected label outside the closed set, a text `kid`,
+CWT_Claims that is not a map, an `iat` bignum or float, an unprotected label besides `vdp`, a `vdp`
+key besides -1, a repeated protected label, a byte-string or array map key, nesting 17 levels deep,
+a longer argument (outer head, `alg`, `tree_size`), a 63-octet signature, no `vdp`, no proofs, 17
+proofs, a malformed proof beside a valid one, a short path, `leaf_index` equal to `tree_size`, a
+31-octet node, trailing octets, and octets that are not CBOR. The 10,485,760-octet limit is tested
+in `python/tests/test_anchor_witness_v1_vectors.py` with signed Receipts at and one octet over it,
+too large for this file.
+
+A report may add `method` and `detail` (§6.2.2); the vectors leave them out.
 
 ## Gates
 

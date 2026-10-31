@@ -80,3 +80,29 @@ def test_non_bytes_receipt_fails_without_raising():
     anchor = DATA["cases"][0]["anchor"]
     report = aw.check_anchor_witnessed(anchor, ["text", None, b""], DATA["policies"]["default"])
     assert [r.status for r in report.receipts] == ["FAIL"] * 3
+
+
+def test_receipt_size_limit():
+    # Valid, signed Receipts padded by a private-use label to the limit and one octet over it:
+    # too large for a vector file, so built here with the generator's own code.
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("generator", GENERATOR)
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+    policy = DATA["policies"]["default"]
+
+    def build(pad):
+        return gen.receipt(gen.KEY_A, protected={1: -8, 395: 1, -65537: b"\x00" * pad})
+
+    def padded(size):
+        # Every head width is fixed above 65,536 octets, so the length grows one for one.
+        base = 1 << 20
+        return build(base + size - len(build(base)))
+
+    limit = 10 * 1024 * 1024
+    at_limit, over = padded(limit), padded(limit + 1)
+    assert len(at_limit) == limit and len(over) == limit + 1
+    anchor = gen.ANCHOR.hex()
+    assert aw.check_anchor_receipt(anchor, at_limit, policy).status == "PASS"
+    assert aw.check_anchor_receipt(anchor, over, policy).status == "FAIL"

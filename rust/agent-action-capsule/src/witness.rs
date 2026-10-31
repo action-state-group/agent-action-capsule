@@ -1643,10 +1643,24 @@ pub struct AnchorWitnessReport {
     pub witnessed_time: Option<u64>,
 }
 
-/// The policy's keys in order, as `(name, DER SubjectPublicKeyInfo)`: the
-/// policy is `{"witnesses": [{"name": ..., "keys": [<hex DER SPKI>, ...]}]}`,
-/// and an entry of any other shape lists no key.
-fn anchor_policy_keys(policy: &Value) -> Vec<(String, Vec<u8>)> {
+const ANCHOR_ED25519_PREFIX: [u8; 12] = [
+    0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00,
+];
+const ANCHOR_P256_PREFIX: [u8; 27] = [
+    0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a,
+    0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00, 0x04,
+];
+const MAX_ANCHOR_RECEIPT_OCTETS: usize = 10 * 1024 * 1024;
+const MAX_ANCHOR_PROOFS: usize = 16;
+const MAX_ANCHOR_DEPTH: usize = 16;
+const MAX_ANCHOR_TREE_SIZE: u64 = 1 << 62;
+/// Labels below this are private use (RFC 9052 section 16.4).
+const PRIVATE_LABEL: i128 = -65536;
+
+/// The policy's listed keys in order (§6.2.2 step 2), as `(name, alg, DER
+/// SubjectPublicKeyInfo)`: lowercase hex of one of two exact shapes. Any
+/// other entry lists no key.
+fn anchor_policy_keys(policy: &Value) -> Vec<(String, Algorithm, Vec<u8>)> {
     let rows = policy.get("witnesses").and_then(Value::as_array);
     let mut out = Vec::new();
     for row in rows.into_iter().flatten() {
@@ -1656,27 +1670,246 @@ fn anchor_policy_keys(policy: &Value) -> Vec<(String, Vec<u8>)> {
         ) else {
             continue;
         };
-        for key in keys {
-            if let Some(der) = key.as_str().and_then(|text| hex::decode(text).ok()) {
-                out.push((name.to_string(), der));
+        for key in keys.iter().filter_map(Value::as_str) {
+            if !key
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            {
+                continue;
             }
+            let Ok(der) = hex::decode(key) else { continue };
+            let alg = if der.len() == 44 && der.starts_with(&ANCHOR_ED25519_PREFIX) {
+                Algorithm::EdDSA
+            } else if der.len() == 91 && der.starts_with(&ANCHOR_P256_PREFIX) {
+                Algorithm::ES256
+            } else {
+                continue;
+            };
+            out.push((name.to_string(), alg, der));
         }
     }
     out
 }
 
-/// Whether a Receipt's protected header carries `crit` (label 2), which a
-/// `cll-witness-receipt` never does (§6.2.2 step 1).
-fn carries_crit(receipt: &[u8]) -> bool {
-    CoseSign1::from_tagged_slice(receipt).map_or(true, |sign1| {
-        let header = &sign1.protected.header;
-        !header.crit.is_empty() || header.rest.iter().any(|(label, _)| *label == Label::Int(2))
-    })
+/// A CBOR item under the §6.2.2 rules.
+#[derive(Debug, PartialEq)]
+enum AnchorItem {
+    Int(i128),
+    Bytes(Vec<u8>),
+    Text(String),
+    Array(Vec<AnchorItem>),
+    Map(Vec<(AnchorItem, AnchorItem)>),
+    Tag(u64, Box<AnchorItem>),
+    Bool(bool),
+    Null,
+}
+
+impl AnchorItem {
+    fn get(&self, key: i128) -> Option<&AnchorItem> {
+        match self {
+            AnchorItem::Map(pairs) => pairs
+                .iter()
+                .find(|(k, _)| *k == AnchorItem::Int(key))
+                .map(|(_, v)| v),
+            _ => None,
+        }
+    }
+}
+
+struct AnchorReader<'a> {
+    data: &'a [u8],
+    offset: usize,
+    top_tag: bool,
+}
+
+impl AnchorReader<'_> {
+    fn take(&mut self, n: u64) -> Option<&[u8]> {
+        let end = self.offset.checked_add(usize::try_from(n).ok()?)?;
+        let bytes = self.data.get(self.offset..end)?;
+        self.offset = end;
+        Some(bytes)
+    }
+
+    /// The major type and argument, refusing a longer argument, an
+    /// indefinite length and every float.
+    fn head(&mut self) -> Option<(u8, u64)> {
+        let first = self.take(1)?[0];
+        let (major, info) = (first >> 5, first & 31);
+        let width = match info {
+            0..=23 => return Some((major, u64::from(info))),
+            24..=27 if major != 7 => 1usize << (info - 24),
+            _ => return None,
+        };
+        let arg = self
+            .take(width as u64)?
+            .iter()
+            .fold(0u64, |arg, byte| arg << 8 | u64::from(*byte));
+        (arg >= [24, 1 << 8, 1 << 16, 1 << 32][usize::from(info - 24)]).then_some((major, arg))
+    }
+
+    fn item(&mut self, depth: usize) -> Option<AnchorItem> {
+        if depth > MAX_ANCHOR_DEPTH {
+            return None;
+        }
+        let (major, arg) = self.head()?;
+        Some(match major {
+            0 => AnchorItem::Int(i128::from(arg)),
+            1 => AnchorItem::Int(-1 - i128::from(arg)),
+            2 => AnchorItem::Bytes(self.take(arg)?.to_vec()),
+            3 => AnchorItem::Text(String::from_utf8(self.take(arg)?.to_vec()).ok()?),
+            4 => {
+                let mut items = Vec::new();
+                for _ in 0..arg {
+                    items.push(self.item(depth + 1)?);
+                }
+                AnchorItem::Array(items)
+            }
+            5 => {
+                let mut pairs: Vec<(AnchorItem, AnchorItem)> = Vec::new();
+                for _ in 0..arg {
+                    let key = self.item(depth + 1)?;
+                    if !matches!(key, AnchorItem::Int(_) | AnchorItem::Text(_))
+                        || pairs.iter().any(|(k, _)| *k == key)
+                    {
+                        return None;
+                    }
+                    let value = self.item(depth + 1)?;
+                    pairs.push((key, value));
+                }
+                AnchorItem::Map(pairs)
+            }
+            6 if depth == 0 && self.top_tag && arg == 18 => {
+                AnchorItem::Tag(arg, Box::new(self.item(depth + 1)?))
+            }
+            7 => match arg {
+                20 => AnchorItem::Bool(false),
+                21 => AnchorItem::Bool(true),
+                22 => AnchorItem::Null,
+                _ => return None,
+            },
+            _ => return None,
+        })
+    }
+}
+
+/// One CBOR item under the §6.2.2 rules, with no trailing octet.
+fn strict_anchor_item(data: &[u8], top_tag: bool) -> Option<AnchorItem> {
+    let mut reader = AnchorReader {
+        data,
+        offset: 0,
+        top_tag,
+    };
+    let item = reader.item(0)?;
+    (reader.offset == data.len()).then_some(item)
+}
+
+fn anchor_path_length(mut size: u64, mut index: u64) -> usize {
+    let mut count = 0;
+    while size > 1 {
+        let k = 1u64 << (63 - (size - 1).leading_zeros());
+        if index < k {
+            size = k;
+        } else {
+            (size, index) = (size - k, index - k);
+        }
+        count += 1;
+    }
+    count
+}
+
+/// Step 1 of profile v1 §6.2.2: the Receipt's `alg` and registration time,
+/// or `None` when the octets are not in the one form.
+fn parse_anchor_receipt(receipt: &[u8]) -> Option<(Algorithm, Option<u64>)> {
+    if receipt.is_empty() || receipt.len() > MAX_ANCHOR_RECEIPT_OCTETS {
+        return None;
+    }
+    let AnchorItem::Tag(18, body) = strict_anchor_item(receipt, true)? else {
+        return None;
+    };
+    let AnchorItem::Array(parts) = *body else {
+        return None;
+    };
+    let [AnchorItem::Bytes(protected), unprotected, AnchorItem::Null, AnchorItem::Bytes(signature)] =
+        parts.as_slice()
+    else {
+        return None;
+    };
+    if protected.is_empty() || signature.len() != 64 {
+        return None;
+    }
+    let headers = strict_anchor_item(protected, false)?;
+    let AnchorItem::Map(pairs) = &headers else {
+        return None;
+    };
+    let mut time = None;
+    for (label, value) in pairs {
+        let ok = match (label, value) {
+            (AnchorItem::Int(1), AnchorItem::Int(alg)) => *alg == -8 || *alg == -7,
+            (AnchorItem::Int(395), AnchorItem::Int(vds)) => *vds == 1,
+            (AnchorItem::Int(4), AnchorItem::Bytes(_)) => true,
+            (AnchorItem::Int(15), claims @ AnchorItem::Map(_)) => {
+                if let Some(AnchorItem::Int(iat)) = claims.get(i128::from(CWT_IAT)) {
+                    time = u64::try_from(*iat).ok().filter(|t| *t <= MAX_IAT);
+                }
+                true
+            }
+            (AnchorItem::Int(label), _) => *label < PRIVATE_LABEL,
+            _ => false,
+        };
+        if !ok {
+            return None;
+        }
+    }
+    let alg = match (headers.get(1)?, headers.get(395)?) {
+        (AnchorItem::Int(-8), _) => Algorithm::EdDSA,
+        _ => Algorithm::ES256,
+    };
+    let AnchorItem::Map(outer) = unprotected else {
+        return None;
+    };
+    let [(AnchorItem::Int(396), vdp @ AnchorItem::Map(vdp_pairs))] = outer.as_slice() else {
+        return None;
+    };
+    if vdp_pairs.len() != 1 {
+        return None;
+    }
+    let AnchorItem::Array(proofs) = vdp.get(-1)? else {
+        return None;
+    };
+    if proofs.is_empty() || proofs.len() > MAX_ANCHOR_PROOFS {
+        return None;
+    }
+    for blob in proofs {
+        let AnchorItem::Bytes(blob) = blob else {
+            return None;
+        };
+        let AnchorItem::Array(proof) = strict_anchor_item(blob, false)? else {
+            return None;
+        };
+        let [AnchorItem::Int(size), AnchorItem::Int(index), AnchorItem::Array(path)] =
+            proof.as_slice()
+        else {
+            return None;
+        };
+        let (Ok(size), Ok(index)) = (u64::try_from(*size), u64::try_from(*index)) else {
+            return None;
+        };
+        if index >= size
+            || size > MAX_ANCHOR_TREE_SIZE
+            || path.len() != anchor_path_length(size, index)
+            || !path
+                .iter()
+                .all(|node| matches!(node, AnchorItem::Bytes(n) if n.len() == 32))
+        {
+            return None;
+        }
+    }
+    Some((alg, time))
 }
 
 /// Steps 1 to 5 of profile v1 §6.2.2 for one Receipt over the anchor whose
 /// digest is `anchor` (64 lowercase hex characters), under the relying
-/// party's witness `policy`. The Receipt is checked as a `scrapi` Receipt
+/// party's witness `policy`. The signature is checked as a `scrapi` Receipt
 /// is, with the anchor digest's 32 octets as the leaf entry.
 pub fn check_anchor_receipt(anchor: &str, receipt: &[u8], policy: &Value) -> AnchorReceiptReport {
     let report = |status, witness, registration_time| AnchorReceiptReport {
@@ -1688,22 +1921,19 @@ pub fn check_anchor_receipt(anchor: &str, receipt: &[u8], policy: &Value) -> Anc
         Ok(leaf) if leaf.len() == 32 && !anchor.bytes().any(|b| b.is_ascii_uppercase()) => leaf,
         _ => return report("FAIL", None, None),
     };
-    let Ok((alg, _)) = receipt_shape(receipt) else {
+    let Some((alg, time)) = parse_anchor_receipt(receipt) else {
         return report("FAIL", None, None);
     };
-    if carries_crit(receipt) {
-        return report("FAIL", None, None);
-    }
     let keys: Vec<_> = anchor_policy_keys(policy)
         .into_iter()
-        .filter(|(_, der)| key_fits_alg(alg, der))
+        .filter(|(_, key_alg, _)| *key_alg == alg)
         .collect();
     if keys.is_empty() {
         return report("NOT_CHECKED", None, None);
     }
-    for (name, der) in keys {
+    for (name, _, der) in keys {
         if cose_receipt(receipt, &leaf, &der).is_ok() {
-            return report("PASS", Some(name), registration_time(receipt).ok());
+            return report("PASS", Some(name), time);
         }
     }
     report("FAIL", None, None)

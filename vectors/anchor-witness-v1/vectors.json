@@ -355,11 +355,11 @@
       }
     },
     {
-      "name": "iat-unprotected-only",
-      "description": "a time only in the unprotected header is never read",
+      "name": "iat-bool",
+      "description": "iat true: PASS with no registration time",
       "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
       "receipts": [
-        "d28447a2012719018b01a20fa1061a6ae6f27019018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840122a8ec65b86eb8aede2ad7a24896fb4a5e25c35232d48fa0b2f2e4c1c0b5f63c9869b992c79d016ef48aea13e14a7cdfa6598772c7547e31d5281d0edd01b0e"
+        "d2844ba3012719018b010fa106f5a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840dba1ec8a8b23524739b1b005ec9f632dcac0d8d3c82d0401bfe735f29a2a521db04e29e953d26cfb4e593b7e6df5a1e28f24ffecbe8e4623bdf91ae14b09a100"
       ],
       "policy": "default",
       "expected": {
@@ -373,6 +373,90 @@
         ],
         "witness": "witness-a",
         "witnessed_time": null
+      }
+    },
+    {
+      "name": "pass-kid",
+      "description": "a kid byte string in the protected header",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d284581ea40127044d7769746e6573732d61206b657919018b010fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658404087f6a079cfd40c975375c3771a5a69e5f02849cfbf499d6696ad3fac8054d5b985db0a5f0659198c266a03a1b7642cd6aa821c87dc01a5341c7a13d55c3a0f"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "PASS",
+        "receipts": [
+          {
+            "status": "PASS",
+            "witness": "witness-a",
+            "registration_time": 1793520240
+          }
+        ],
+        "witness": "witness-a",
+        "witnessed_time": 1793520240
+      }
+    },
+    {
+      "name": "pass-private-label",
+      "description": "a private-use protected label (below -65536), any value",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2845821a4012719018b013a000100006c6d6d722d76657269666965640fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff6584030dd72a6ceffc35aa56546f8373023a7624958143603756ba27977e30d8d0cab7dd9874d6861817ae9f5f9d91172039a0d9495d7ce25954f4ea51d9f6d6ce20a"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "PASS",
+        "receipts": [
+          {
+            "status": "PASS",
+            "witness": "witness-a",
+            "registration_time": 1793520240
+          }
+        ],
+        "witness": "witness-a",
+        "witnessed_time": 1793520240
+      }
+    },
+    {
+      "name": "pass-depth-16",
+      "description": "a private-label value whose deepest item is 16 levels deep",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2845824a4012719018b013a00010000818181818181818181818181818181000fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840538505fe186f1371b90164c44b9d70776ddb41442313284a7d5ff282e7aa824b0558db17ab4de76ca3e10da7b72b71ca06ce154cac75d5c8bb2e620159daa10b"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "PASS",
+        "receipts": [
+          {
+            "status": "PASS",
+            "witness": "witness-a",
+            "registration_time": 1793520240
+          }
+        ],
+        "witness": "witness-a",
+        "witnessed_time": 1793520240
+      }
+    },
+    {
+      "name": "pass-cwt-other-claims",
+      "description": "CWT_Claims with iss and iat",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d284581aa3012719018b010fa201697769746e6573732d61061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840d32ce6afd0bc12bdbd14ba20fe00abb7df93183595f926f6a91e298ee8c52459fca85f155869721dc26ba625387d0a9b96ff34ddc95cfea2eec39b28786ac705"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "PASS",
+        "receipts": [
+          {
+            "status": "PASS",
+            "witness": "witness-a",
+            "registration_time": 1793520240
+          }
+        ],
+        "witness": "witness-a",
+        "witnessed_time": 1793520240
       }
     },
     {
@@ -588,6 +672,374 @@
             "name": "witness-small",
             "keys": [
               "302a300506032b65700321000100000000000000000000000000000000000000000000000000000000000000"
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "form-checked-before-policy",
+      "description": "trailing octets and an empty policy: FAIL, not NOT_CHECKED",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844fa3012719018b010fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658403abbe01a887384c89ae2d9264911303a27a5d7177249b705bcd2a39205e45be0da112ef2bb883fd017e76fc3eca79a63499bcdaece2d058d1de69dd8a18bb20b00"
+      ],
+      "policy": {
+        "witnesses": []
+      },
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "unprotected-time",
+      "description": "an unprotected label besides vdp: a time there is never read",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d28447a2012719018b01a20fa1061a6ae6f27019018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840122a8ec65b86eb8aede2ad7a24896fb4a5e25c35232d48fa0b2f2e4c1c0b5f63c9869b992c79d016ef48aea13e14a7cdfa6598772c7547e31d5281d0edd01b0e"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "unprotected-kid-text",
+      "description": "a text kid in the unprotected header",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844fa3012719018b010fa1061a6ae6f270a204616b19018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658403abbe01a887384c89ae2d9264911303a27a5d7177249b705bcd2a39205e45be0da112ef2bb883fd017e76fc3eca79a63499bcdaece2d058d1de69dd8a18bb20b"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "vdp-extra-key",
+      "description": "vdp with a consistency proof key (-2) besides -1",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844fa3012719018b010fa1061a6ae6f270a119018ca22081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7df2180f658403abbe01a887384c89ae2d9264911303a27a5d7177249b705bcd2a39205e45be0da112ef2bb883fd017e76fc3eca79a63499bcdaece2d058d1de69dd8a18bb20b"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "protected-content-type",
+      "description": "a protected label outside the closed set (content type, 3)",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2845819a3012703706170706c69636174696f6e2f63626f7219018b01a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840606c19a832d418f931b97d835eaa875f44f807fefe6aee6d421721237a1bf929c33b3b00d1a3ac6886714fd6f3748839711e89f9355edc4726e5ad310b305d01"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "kid-text",
+      "description": "a protected kid that is text",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844aa3012704616b19018b01a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840b924c80e2ca1647715c06b62abcd2edf4276296769c1b5d7d208d7a85271447b7f44c30d815d4127c2a4fb51493cbcf8445b46392a9dd310a7ed672ca22cdc0b"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "cwt-not-map",
+      "description": "CWT_Claims that is not a map",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844aa3012719018b010f8106a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658401367531d51f5926b779942bc9625ae55bd968419c83bef82b07ee2206fdca6fdec90aea0f9e8b165bcd89ba9333554a51ec79c5869086d2f9275152680383b0d"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "iat-bignum",
+      "description": "iat as a tag-2 bignum: a tag inside the protected header",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d28454a3012719018b010fa106c248000000006ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840746ec3ba4b07de5a5e666be5fdf20f72cc47b27586e561590b06fc126b9c6c0ed311a84547cb21b987e6a0745c9f115b4d684a3f6c76dca63b5ea8a51bccfe00"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "iat-float",
+      "description": "iat as a float",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d28453a3012719018b010fa106fb41dab9bc9c000000a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658403635667dc3f56b58b6283ab4c311ab52bfcd53c583b614be3c138e8fe953cda216bca95c10e12ca59be18450d5cf8091263accb57c30d941d0bd4ae751f58802"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "depth-17",
+      "description": "a private-label value whose deepest item is 17 levels deep",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2845825a4012719018b013a0001000081818181818181818181818181818181000fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840ae386261f641fdce353647e1bf313f7d142f7dba85f67c8b6fe52002bd7bf4906e0d88ea5ef9d2eb0734683684f6cc4ab5b6277bfce56166ef9551479276c70d"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "bytes-map-key",
+      "description": "a byte-string map key inside CWT_Claims",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d28452a3012719018b010fa2416b01061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840d97b52624de78c88d89b40ba71c2f061d6029b7509d73956e9d736f9bda5f057415f68dc5194524df0287a40e3d3e49a1886b6d7cf48239fe1b84a7ce1030e0e"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "array-map-key",
+      "description": "an array map key inside a private-label value",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844fa3012719018b013a00010000a18000a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658400a3eae5f2911480e044252495d584f6bc852a44c024ab27b4273b173ac69655c058095e59fb49c46580979d01f1e5b959c58542c4e173fdad39f71d5b6e44f00"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "outer-head-long",
+      "description": "the COSE_Sign1 array head in two octets (0x98 04)",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d298044fa3012719018b010fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658403abbe01a887384c89ae2d9264911303a27a5d7177249b705bcd2a39205e45be0da112ef2bb883fd017e76fc3eca79a63499bcdaece2d058d1de69dd8a18bb20b"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "alg-head-long",
+      "description": "alg -8 written as 0x38 07",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d28448a201380719018b01a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff65840489c342856be25561d55a39cce4c8699573c11f874788105d490fea1b817e0a1324ecdcd4695fc8cbfc59709a999339e6273237cd03dfdb35bcb008bc284f20b"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "proof-head-long",
+      "description": "tree_size written in two octets",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844fa3012719018b010fa1061a6ae6f270a119018ca12081586b83180704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff658403abbe01a887384c89ae2d9264911303a27a5d7177249b705bcd2a39205e45be0da112ef2bb883fd017e76fc3eca79a63499bcdaece2d058d1de69dd8a18bb20b"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "signature-63",
+      "description": "a signature of 63 octets",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844fa3012719018b010fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff6583f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "policy": "default",
+      "expected": {
+        "status": "FAIL",
+        "receipts": [
+          {
+            "status": "FAIL",
+            "witness": null,
+            "registration_time": null
+          }
+        ],
+        "witness": null,
+        "witnessed_time": null
+      }
+    },
+    {
+      "name": "p256-key-off-curve",
+      "description": "a listed P-256 key whose point is not on the curve verifies nothing",
+      "anchor": "635c3445fd908cfddf18b445c1290b0b4a7c47bf54c600ac6dbdd478ea7f6231",
+      "receipts": [
+        "d2844fa3012619018b010fa1061a6ae6f270a119018ca12081586a830704835820dc6d5607d0a7eb97273f0f7ac0c6cea80064df158ead0e7f2b5964943a7440e35820e3b487301fdc9c67529259c599e4684066edae6926978a2a07ce9ab62f9407ee5820bfdb6dcac01828912f799d47ff575361887423d671a28dca56a8c40f9abab7dff6584071596ca1665754d679f0bb1562678e63c4ae660a0fd38b686478707822c5cd8e73847ddbbd46af06672c709562c0a13cd9acb4919934f97a9a8279e035ab59fb"
+      ],
+      "policy": {
+        "witnesses": [
+          {
+            "name": "witness-b",
+            "keys": [
+              "3059301306072a8648ce3d020106082a8648ce3d0301070342000401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"
             ]
           }
         ]

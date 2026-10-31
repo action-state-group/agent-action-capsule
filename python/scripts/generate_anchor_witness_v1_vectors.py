@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import struct
 from pathlib import Path
 from typing import Any
 
@@ -259,6 +260,14 @@ def case(name: str, description: str, receipts: list[bytes], results: list[dict]
     }
 
 
+def nested(arrays: int) -> Any:
+    """``arrays`` nested arrays around 0: inside a protected map, 0 is ``arrays + 1`` levels deep."""
+    value: Any = 0
+    for _ in range(arrays):
+        value = [value]
+    return value
+
+
 def tampered(octets: bytes) -> bytes:
     return octets[:-1] + bytes([octets[-1] ^ 1])
 
@@ -322,8 +331,18 @@ def cases() -> list[dict]:
              [receipt(KEY_A, iat=1 << 53)], [passed("witness-a")]),
         case("iat-text", "iat as a text string: PASS with no registration time",
              [receipt(KEY_A, iat="2026-11-01T08:04:00Z")], [passed("witness-a")]),
-        case("iat-unprotected-only", "a time only in the unprotected header is never read",
-             [receipt(KEY_A, unprotected={15: {6: T1}, 396: {-1: [proof()]}})], [passed("witness-a")]),
+        case("iat-bool", "iat true: PASS with no registration time",
+             [receipt(KEY_A, iat=True)], [passed("witness-a")]),
+        case("pass-kid", "a kid byte string in the protected header", [receipt(KEY_A, protected={
+             1: -8, 4: b"witness-a key", 395: 1, 15: {6: T1}})], [passed("witness-a", T1)]),
+        case("pass-private-label", "a private-use protected label (below -65536), any value",
+             [receipt(KEY_A, protected={1: -8, 395: 1, -65537: "mmr-verified", 15: {6: T1}})],
+             [passed("witness-a", T1)]),
+        case("pass-depth-16", "a private-label value whose deepest item is 16 levels deep",
+             [receipt(KEY_A, protected={1: -8, 395: 1, -65537: nested(15), 15: {6: T1}})],
+             [passed("witness-a", T1)]),
+        case("pass-cwt-other-claims", "CWT_Claims with iss and iat", [receipt(KEY_A, protected={
+             1: -8, 395: 1, 15: {1: "witness-a", 6: T1}})], [passed("witness-a", T1)]),
         # NOT_PRESENT and NOT_CHECKED
         case("no-receipt", "nothing beside the answer", [], []),
         case("policy-empty", "the policy lists no witness (step 2)", [r_a1], [status("NOT_CHECKED")],
@@ -341,7 +360,42 @@ def cases() -> list[dict]:
              [receipt(KEY_A, iat=T1, signature=big_s)], [status("FAIL")]),
         case("eddsa-small-order-key", "an identity key in the policy verifies any message without the strict check",
              [receipt(KEY_A, iat=T1, signature=small_sig)], [status("FAIL")], policy=small_policy),
-        # FAIL: not of the form (step 1)
+        # FAIL: not of the form (step 1), whatever the policy
+        case("form-checked-before-policy", "trailing octets and an empty policy: FAIL, not NOT_CHECKED",
+             [good + b"\x00"], [status("FAIL")], policy={"witnesses": []}),
+        case("unprotected-time", "an unprotected label besides vdp: a time there is never read",
+             [receipt(KEY_A, unprotected={15: {6: T1}, 396: {-1: [proof()]}})], [status("FAIL")]),
+        case("unprotected-kid-text", "a text kid in the unprotected header",
+             [receipt(KEY_A, iat=T1, unprotected={4: "k", 396: {-1: [proof()]}})], [status("FAIL")]),
+        case("vdp-extra-key", "vdp with a consistency proof key (-2) besides -1",
+             [receipt(KEY_A, iat=T1, unprotected={396: {-1: [proof()], -2: []}})], [status("FAIL")]),
+        case("protected-content-type", "a protected label outside the closed set (content type, 3)",
+             [receipt(KEY_A, protected={1: -8, 3: "application/cbor", 395: 1})], [status("FAIL")]),
+        case("kid-text", "a protected kid that is text", [receipt(KEY_A, protected={1: -8, 4: "k", 395: 1})],
+             [status("FAIL")]),
+        case("cwt-not-map", "CWT_Claims that is not a map", [receipt(KEY_A, protected={1: -8, 395: 1, 15: [6]})],
+             [status("FAIL")]),
+        case("iat-bignum", "iat as a tag-2 bignum: a tag inside the protected header",
+             [receipt(KEY_A, protected={1: -8, 395: 1, 15: {6: Tag(2, T1.to_bytes(8, "big"))}})], [status("FAIL")]),
+        case("iat-float", "iat as a float", [receipt(KEY_A, protected={1: -8, 395: 1, 15: {6: Raw(
+             b"\xfb" + struct.pack(">d", float(T1)))}})], [status("FAIL")]),
+        case("depth-17", "a private-label value whose deepest item is 17 levels deep",
+             [receipt(KEY_A, protected={1: -8, 395: 1, -65537: nested(16), 15: {6: T1}})], [status("FAIL")]),
+        case("bytes-map-key", "a byte-string map key inside CWT_Claims",
+             [receipt(KEY_A, protected={1: -8, 395: 1, 15: {b"k": 1, 6: T1}})], [status("FAIL")]),
+        case("array-map-key", "an array map key inside a private-label value",
+             [receipt(KEY_A, protected={1: -8, 395: 1, -65537: Raw(b"\xa1\x80\x00")})], [status("FAIL")]),
+        case("outer-head-long", "the COSE_Sign1 array head in two octets (0x98 04)",
+             [b"\xd2\x98\x04" + good[2:]], [status("FAIL")]),
+        case("alg-head-long", "alg -8 written as 0x38 07", [receipt(KEY_A, protected_raw=(
+             b"\xa2\x01\x38\x07" + cbor(395) + cbor(1)))], [status("FAIL")]),
+        case("proof-head-long", "tree_size written in two octets", [receipt(KEY_A, iat=T1, proofs=[
+             b"\x83\x18\x07" + cbor(ANCHOR_INDEX) + cbor(path(ANCHOR_INDEX, ENTRIES))])], [status("FAIL")]),
+        case("signature-63", "a signature of 63 octets", [receipt(KEY_A, iat=T1, signature=b"\x00" * 63)],
+             [status("FAIL")]),
+        case("p256-key-off-curve", "a listed P-256 key whose point is not on the curve verifies nothing",
+             [r_b1], [status("FAIL")], policy={"witnesses": [{"name": "witness-b", "keys": [
+                 (bytes.fromhex("3059301306072a8648ce3d020106082a8648ce3d03010703420004") + b"\x01" * 64).hex()]}]}),
         case("attached-payload", "the root attached as the payload, signed: refused even though it verifies",
              [receipt(KEY_A, iat=T1, payload=root)], [status("FAIL")]),
         case("untagged", "a COSE_Sign1 without tag 18", [receipt(KEY_A, iat=T1, tag=None)], [status("FAIL")]),

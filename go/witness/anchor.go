@@ -3,8 +3,8 @@
 package witness
 
 import (
+	"bytes"
 	"crypto"
-	"crypto/ecdsa"
 	"crypto/ed25519"
 	"encoding/hex"
 	"regexp"
@@ -62,92 +62,227 @@ type AnchorWitnessReport struct {
 	WitnessedTime *int64                `json:"witnessed_time"`
 }
 
+var (
+	ed25519SPKIPrefix = []byte{0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00}
+	p256SPKIPrefix    = []byte{0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00, 0x04}
+	lowerHex          = regexp.MustCompile(`^(?:[0-9a-f]{2})*$`)
+)
+
+// privateLabel bounds the private-use COSE labels (RFC 9052 section 16.4):
+// a label below it may carry any value.
+const privateLabel = -65536
+
+// maxAnchorDepth is the deepest nesting §6.2.2 allows.
+const maxAnchorDepth = 16
+
 type policyKey struct {
 	name string
-	key  crypto.PublicKey
+	alg  int64
+	// key is nil when the entry has a key's shape but is not a valid key:
+	// it is listed, and nothing verifies under it.
+	key crypto.PublicKey
 }
 
-// keys returns the policy's usable keys in order; an entry that is not hex
-// of an Ed25519 or ECDSA P-256 SubjectPublicKeyInfo lists no key.
+// keys returns the policy's listed keys in order (profile v1 §6.2.2 step
+// 2): lowercase hex of one of two exact SubjectPublicKeyInfo shapes.
 func (p AnchorWitnessPolicy) keys() []policyKey {
 	var out []policyKey
 	for _, row := range p.Witnesses {
 		for _, text := range row.Keys {
-			der, err := hex.DecodeString(text)
-			if err != nil {
+			if !lowerHex.MatchString(text) {
 				continue
 			}
-			if key, err := parsePublicKey(der); err == nil {
-				out = append(out, policyKey{row.Name, key})
+			der, _ := hex.DecodeString(text)
+			switch {
+			case len(der) == 44 && bytes.HasPrefix(der, ed25519SPKIPrefix):
+				out = append(out, policyKey{row.Name, algEdDSA, ed25519.PublicKey(der[12:])})
+			case len(der) == 91 && bytes.HasPrefix(der, p256SPKIPrefix):
+				key, err := parsePublicKey(der)
+				if err != nil {
+					key = nil
+				}
+				out = append(out, policyKey{row.Name, algES256, key})
 			}
 		}
 	}
 	return out
 }
 
-// receiptAlg reads a Receipt's protected alg after step 1 of §6.2.2: a
-// tag-18 COSE_Sign1 with a detached payload, vds 1, alg EdDSA or ES256 and
-// no crit.
-func receiptAlg(receipt []byte) (int64, bool) {
-	if len(receipt) == 0 || len(receipt) > maxReceiptBytes {
-		return 0, false
-	}
-	decoded, err := strictItem(receipt)
-	if err != nil {
-		return 0, false
-	}
-	tag, isTag := decoded.(cbor.Tag)
-	parts, isArray := tag.Content.([]interface{})
-	if !isTag || tag.Number != 18 || !isArray || len(parts) != 4 || parts[2] != nil {
-		return 0, false
-	}
-	protectedBytes, isBytes := parts[0].([]byte)
-	if !isBytes || len(protectedBytes) == 0 {
-		return 0, false
-	}
-	value, err := strictItem(protectedBytes)
-	if err != nil {
-		return 0, false
-	}
-	protected, isMap := value.(map[interface{}]interface{})
-	if !isMap {
-		return 0, false
-	}
-	if vds, _ := protected[uint64(labelVDS)].(uint64); vds != vdsRFC9162 {
-		return 0, false
-	}
-	if _, crit := protected[uint64(labelCrit)]; crit {
-		return 0, false
-	}
-	alg, _ := protected[uint64(labelAlg)].(int64)
-	return alg, alg == algEdDSA || alg == algES256
+// anchorProof is one inclusion proof of a Receipt in the one form.
+type anchorProof struct {
+	size, index int64
+	path        [][]byte
 }
 
-func keyFits(alg int64, key crypto.PublicKey) bool {
-	switch key.(type) {
-	case ed25519.PublicKey:
-		return alg == algEdDSA
-	case *ecdsa.PublicKey:
-		return alg == algES256
+// anchorReceipt is a Receipt in the one form of §6.2.2.
+type anchorReceipt struct {
+	alg       int64
+	protected []byte
+	proofs    []anchorProof
+	signature []byte
+	time      *int64
+}
+
+// strictAnchorItem decodes one CBOR item under the §6.2.2 rules: strictItem's,
+// with no float, no simple value but false, true and null, and no tag but an
+// outer 18 when topTag.
+func strictAnchorItem(data []byte, topTag bool) (interface{}, bool) {
+	value, err := strictItem(data)
+	if err != nil {
+		return nil, false
 	}
-	return false
+	var walk func(v interface{}, depth int) bool
+	walk = func(v interface{}, depth int) bool {
+		if depth > maxAnchorDepth {
+			return false
+		}
+		switch v := v.(type) {
+		case nil, bool, uint64, int64, []byte, string:
+			return true
+		case cbor.Tag:
+			return depth == 0 && topTag && v.Number == 18 && walk(v.Content, depth+1)
+		case []interface{}:
+			for _, item := range v {
+				if !walk(item, depth+1) {
+					return false
+				}
+			}
+			return true
+		case map[interface{}]interface{}:
+			for key, item := range v {
+				switch key.(type) {
+				case uint64, int64, string:
+				default:
+					return false
+				}
+				if !walk(item, depth+1) {
+					return false
+				}
+			}
+			return true
+		}
+		return false // a float, a bignum, a simple value or any other decoded type
+	}
+	return value, walk(value, 0)
+}
+
+// protectedLabelOK reports whether one protected header entry is allowed.
+func protectedLabelOK(label, value interface{}, out *anchorReceipt) bool {
+	switch label {
+	case uint64(labelAlg):
+		alg, isInt := value.(int64)
+		out.alg = alg
+		return isInt && (alg == algEdDSA || alg == algES256)
+	case uint64(labelVDS):
+		vds, isUint := value.(uint64)
+		return isUint && vds == vdsRFC9162
+	case uint64(4):
+		_, isBytes := value.([]byte)
+		return isBytes
+	case uint64(labelCWTClaims):
+		claims, isMap := value.(map[interface{}]interface{})
+		if iat, isUint := claims[uint64(cwtIat)].(uint64); isMap && isUint && iat <= maxIat {
+			seconds := int64(iat)
+			out.time = &seconds
+		}
+		return isMap
+	}
+	negative, isInt := label.(int64)
+	return isInt && negative < privateLabel
+}
+
+// parseAnchorReceipt is step 1 of profile v1 §6.2.2.
+func parseAnchorReceipt(receipt []byte) (anchorReceipt, bool) {
+	var out anchorReceipt
+	if len(receipt) == 0 || len(receipt) > maxReceiptBytes {
+		return out, false
+	}
+	decoded, ok := strictAnchorItem(receipt, true)
+	tag, isTag := decoded.(cbor.Tag)
+	if !ok || !isTag || tag.Number != 18 {
+		return out, false
+	}
+	parts, isArray := tag.Content.([]interface{})
+	if !isArray || len(parts) != 4 || parts[2] != nil {
+		return out, false
+	}
+	protected, isBytes := parts[0].([]byte)
+	signature, sigBytes := parts[3].([]byte)
+	if !isBytes || len(protected) == 0 || !sigBytes || len(signature) != 64 {
+		return out, false
+	}
+	value, ok := strictAnchorItem(protected, false)
+	headers, isMap := value.(map[interface{}]interface{})
+	if !ok || !isMap {
+		return out, false
+	}
+	_, hasAlg := headers[uint64(labelAlg)]
+	_, hasVDS := headers[uint64(labelVDS)]
+	if !hasAlg || !hasVDS {
+		return out, false
+	}
+	for label, value := range headers {
+		if !protectedLabelOK(label, value, &out) {
+			return out, false
+		}
+	}
+	unprotected, isMap := parts[1].(map[interface{}]interface{})
+	if !isMap || len(unprotected) != 1 {
+		return out, false
+	}
+	vdp, isMap := unprotected[uint64(labelVDP)].(map[interface{}]interface{})
+	if !isMap || len(vdp) != 1 {
+		return out, false
+	}
+	proofs, isArray := vdp[int64(vdpInclusion)].([]interface{})
+	if !isArray || len(proofs) == 0 || len(proofs) > maxProofs {
+		return out, false
+	}
+	for _, entry := range proofs {
+		blob, isBytes := entry.([]byte)
+		if !isBytes {
+			return out, false
+		}
+		value, ok := strictAnchorItem(blob, false)
+		proof, isArray := value.([]interface{})
+		if !ok || !isArray || len(proof) != 3 {
+			return out, false
+		}
+		size, sizeOK := proof[0].(uint64)
+		index, indexOK := proof[1].(uint64)
+		nodes, nodesOK := proof[2].([]interface{})
+		if !sizeOK || !indexOK || !nodesOK || index >= size || size > uint64(maxTreeSize) ||
+			int64(len(nodes)) != expectedPathLength(int64(size), int64(index)) {
+			return out, false
+		}
+		path := make([][]byte, len(nodes))
+		for i, node := range nodes {
+			raw, isBytes := node.([]byte)
+			if !isBytes || len(raw) != 32 {
+				return out, false
+			}
+			path[i] = raw
+		}
+		out.proofs = append(out.proofs, anchorProof{int64(size), int64(index), path})
+	}
+	out.protected, out.signature = protected, signature
+	return out, true
 }
 
 // CheckAnchorReceipt runs steps 1 to 5 of profile v1 §6.2.2 for one
 // Receipt over the anchor whose digest is anchor (64 lowercase hex
-// characters): the Receipt is checked as VerifyCOSEReceipt checks one, with
-// the anchor digest's 32 octets as the leaf entry.
+// characters).
 func CheckAnchorReceipt(anchor string, receipt []byte, policy AnchorWitnessPolicy) AnchorReceiptReport {
 	if !anchorDigest.MatchString(anchor) {
 		return AnchorReceiptReport{Status: AnchorFail, Detail: "the anchor digest is not 64 lowercase hex characters"}
 	}
-	alg, ok := receiptAlg(receipt)
+	parsed, ok := parseAnchorReceipt(receipt)
 	if !ok {
-		return AnchorReceiptReport{Status: AnchorFail, Detail: "not a tag-18 COSE_Sign1 Receipt with a detached payload, vds 1, alg EdDSA or ES256 and no crit"}
+		return AnchorReceiptReport{Status: AnchorFail, Detail: "not a Receipt in the one form of profile v1 §6.2.2"}
 	}
 	var keys []policyKey
 	for _, key := range policy.keys() {
-		if keyFits(alg, key.key) {
+		if key.alg == parsed.alg {
 			keys = append(keys, key)
 		}
 	}
@@ -156,12 +291,16 @@ func CheckAnchorReceipt(anchor string, receipt []byte, policy AnchorWitnessPolic
 	}
 	leaf, _ := hex.DecodeString(anchor)
 	for _, key := range keys {
-		verified, err := VerifyCOSEReceipt(receipt, leaf, key.key)
-		if err != nil {
+		if key.key == nil {
 			continue
 		}
-		name := key.name
-		return AnchorReceiptReport{Status: AnchorPass, Witness: &name, RegistrationTime: verified.RegistrationTime}
+		for _, proof := range parsed.proofs {
+			root, ok := rootFromInclusionProof(leaf, proof.index, proof.size, proof.path)
+			if ok && verifySignature(parsed.alg, key.key, sigStructure(parsed.protected, root), parsed.signature) {
+				name := key.name
+				return AnchorReceiptReport{Status: AnchorPass, Witness: &name, RegistrationTime: parsed.time}
+			}
+		}
 	}
 	return AnchorReceiptReport{Status: AnchorFail, Detail: "no accepted witness key verifies the Receipt over this anchor"}
 }

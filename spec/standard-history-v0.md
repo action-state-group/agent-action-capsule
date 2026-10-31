@@ -342,12 +342,13 @@ the bar, as above. `undecided` is drawn in a tone that is neither the colour of
 the counts, and a card whose `outcomes.of` is 0 has none. This display rule has no vector: a vector
 checks a card's properties (§6), not how a verifier draws it.
 
-**The witness line.** A witness Receipt covers the anchor, the snapshot the card is as of, and
-not the card's counts (§3). A verifier that ran `anchor_witnessed` [IP1 §6.2.2] over the card's
-`anchor`, with a witness policy the relying party set, and got `PASS` MAY say that the snapshot
-was witnessed: at the anchor's witnessed time, by the witness of the Receipt that gives that time,
-named as the relying party's policy names it, or by the witness of a passing Receipt and with no
-time when no passing Receipt has one. It says so only of a standard card. It MUST NOT pair one
+**The witness line.** A witness Receipt covers the anchor, the snapshot the card states it is as
+of, and not the card's counts (§3). A verifier that ran `anchor_witnessed` [IP1 §6.2.2] over the
+card's `anchor`, with a witness policy the relying party set, and got `PASS` MAY say that the
+snapshot was witnessed: at the anchor's witnessed time and by the witness IP1 §6.2.2 pairs with it,
+named as the relying party's policy names it, or with no time when no passing Receipt has one. It
+shows that a witness entered that anchor digest in its log, not that the anchor is a well-formed
+checkpoint of the holder's log, nor that it is the anchor the envelope names, which is `as_of`. It says so only of a standard card. It MUST NOT pair one
 Receipt's time with another Receipt's witness, and it MUST NOT say or imply that the witness
 checked, saw or confirmed the counts, the deals or the card: those stay the holder's statement
 under the holder key. Otherwise, with a Receipt that came with the card, the verifier

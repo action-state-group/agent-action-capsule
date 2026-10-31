@@ -12,6 +12,7 @@
 import {
   CborMap,
   CborTag,
+  type CborValue,
   decodeStrictCbor,
   HDR_CWT_CLAIMS,
   HDR_GRADE,
@@ -805,14 +806,80 @@ export interface AnchorWitnessReport {
 }
 
 const ANCHOR_DIGEST = /^[0-9a-f]{64}$/u;
-const HEX = /^(?:[0-9a-f]{2})*$/iu;
+const LOWER_HEX = /^(?:[0-9a-f]{2})*$/u;
+const ANCHOR_ED25519_PREFIX = "302a300506032b6570032100";
+const P256_SPKI_PREFIX =
+  "3059301306072a8648ce3d020106082a8648ce3d03010703420004";
+const MAX_ANCHOR_RECEIPT_OCTETS = 10 * 1024 * 1024;
+const MAX_ANCHOR_PROOFS = 16;
+const MAX_ANCHOR_DEPTH = 16;
+const MAX_ANCHOR_TREE_SIZE = 1n << 62n;
+// Labels below this are private use (RFC 9052 section 16.4).
+const PRIVATE_LABEL = -65536n;
 
-/** Step 1 of §6.2.2: a tag-18 COSE_Sign1 with a detached payload, `vds` 1,
- * `alg` EdDSA or ES256 and no `crit`. Returns the key type that `alg` needs,
- * or null. */
-function anchorReceiptKeyType(receipt: Uint8Array): "ed25519" | "p256" | null {
+/** A Receipt in the one form of §6.2.2. */
+interface AnchorReceipt {
+  readonly alg: "ed25519" | "p256";
+  readonly proofs: readonly {
+    readonly size: bigint;
+    readonly index: bigint;
+    readonly path: readonly Uint8Array[];
+  }[];
+  readonly time: number | null;
+}
+
+/** One CBOR item under the §6.2.2 rules: decodeStrictCbor's, with no float,
+ * no simple value but false, true and null, no tag but an outer 18 when
+ * `topTag`, and no item more than 16 levels deep. Throws otherwise. */
+function strictAnchorItem(data: Uint8Array, topTag: boolean): CborValue {
+  const value = decodeStrictCbor(data);
+  const walk = (item: CborValue, depth: number): void => {
+    if (depth > MAX_ANCHOR_DEPTH) throw new SyntaxError("nested too deep");
+    if (item instanceof CborTag) {
+      if (!(depth === 0 && topTag && item.tag === 18n))
+        throw new SyntaxError("a tag other than the outer tag 18");
+      walk(item.value, depth + 1);
+    } else if (Array.isArray(item)) {
+      for (const inner of item as readonly CborValue[]) walk(inner, depth + 1);
+    } else if (item instanceof CborMap) {
+      for (const [key, inner] of item.entries) {
+        if (typeof key !== "bigint" && typeof key !== "string")
+          throw new SyntaxError("a map key that is not an integer or text");
+        walk(inner, depth + 1);
+      }
+    } else if (
+      !(
+        item === null ||
+        typeof item === "boolean" ||
+        typeof item === "bigint" ||
+        typeof item === "string" ||
+        item instanceof Uint8Array
+      )
+    )
+      throw new SyntaxError("a float or a simple value");
+  };
+  walk(value, 0);
+  return value;
+}
+
+function anchorPathLength(size: bigint, index: bigint): number {
+  let count = 0;
+  while (size > 1n) {
+    let k = 1n;
+    while (k * 2n < size) k *= 2n;
+    if (index < k) size = k;
+    else [size, index] = [size - k, index - k];
+    count += 1;
+  }
+  return count;
+}
+
+/** Step 1 of profile v1 §6.2.2, or null when the octets are not in the form. */
+function parseAnchorReceipt(receipt: Uint8Array): AnchorReceipt | null {
   try {
-    const outer = decodeStrictCbor(receipt);
+    if (receipt.length === 0 || receipt.length > MAX_ANCHOR_RECEIPT_OCTETS)
+      return null;
+    const outer = strictAnchorItem(receipt, true);
     if (
       !(outer instanceof CborTag) ||
       outer.tag !== 18n ||
@@ -820,49 +887,111 @@ function anchorReceiptKeyType(receipt: Uint8Array): "ed25519" | "p256" | null {
       outer.value.length !== 4
     )
       return null;
-    const [protectedBytes, , payload] = outer.value as readonly unknown[];
-    if (!(protectedBytes instanceof Uint8Array) || payload !== null)
-      return null;
-    if (protectedBytes.length === 0) return null;
-    const headers = decodeStrictCbor(protectedBytes);
+    const [protectedBytes, unprotected, payload, signature] =
+      outer.value as readonly CborValue[];
     if (
-      !(headers instanceof CborMap) ||
-      headers.get(395n) !== 1n ||
-      headers.has(2n)
+      !(protectedBytes instanceof Uint8Array) ||
+      protectedBytes.length === 0 ||
+      payload !== null ||
+      !(signature instanceof Uint8Array) ||
+      signature.length !== 64
     )
       return null;
+    const headers = strictAnchorItem(protectedBytes, false);
+    if (!(headers instanceof CborMap)) return null;
+    let time: number | null = null;
+    for (const [label, value] of headers.entries) {
+      if (label === 1n) {
+        if (value !== -8n && value !== -7n) return null;
+      } else if (label === 395n) {
+        if (value !== 1n) return null;
+      } else if (label === 4n) {
+        if (!(value instanceof Uint8Array)) return null;
+      } else if (label === HDR_CWT_CLAIMS) {
+        if (!(value instanceof CborMap)) return null;
+        const iat = value.get(CWT_IAT);
+        if (typeof iat === "bigint" && iat >= 0n && iat <= MAX_IAT)
+          time = Number(iat);
+      } else if (!(typeof label === "bigint" && label < PRIVATE_LABEL))
+        return null;
+    }
     const alg = headers.get(1n);
-    return alg === -8n ? "ed25519" : alg === -7n ? "p256" : null;
+    if (alg === undefined || !headers.has(395n)) return null;
+    if (!(unprotected instanceof CborMap) || unprotected.entries.length !== 1)
+      return null;
+    const vdp = unprotected.get(396n);
+    if (!(vdp instanceof CborMap) || vdp.entries.length !== 1) return null;
+    const raw = vdp.get(-1n);
+    if (
+      !Array.isArray(raw) ||
+      raw.length === 0 ||
+      raw.length > MAX_ANCHOR_PROOFS
+    )
+      return null;
+    const proofs = [];
+    for (const blob of raw as readonly CborValue[]) {
+      if (!(blob instanceof Uint8Array)) return null;
+      const proof = strictAnchorItem(blob, false);
+      if (!Array.isArray(proof) || proof.length !== 3) return null;
+      const [size, index, path] = proof as readonly CborValue[];
+      if (
+        typeof size !== "bigint" ||
+        typeof index !== "bigint" ||
+        index < 0n ||
+        index >= size ||
+        size > MAX_ANCHOR_TREE_SIZE ||
+        !Array.isArray(path) ||
+        path.length !== anchorPathLength(size, index) ||
+        !(path as readonly CborValue[]).every(
+          (node) => node instanceof Uint8Array && node.length === 32,
+        )
+      )
+        return null;
+      proofs.push({ size, index, path: path as readonly Uint8Array[] });
+    }
+    return { alg: alg === -8n ? "ed25519" : "p256", proofs, time };
   } catch {
     return null;
   }
 }
 
-function anchorPolicyKeys(
-  policy: unknown,
-): { readonly name: string; readonly spki: Uint8Array }[] {
+/** The policy's listed keys in order (§6.2.2 step 2): lowercase hex of one
+ * of two exact SubjectPublicKeyInfo shapes. */
+function anchorPolicyKeys(policy: unknown): {
+  readonly name: string;
+  readonly type: "ed25519" | "p256";
+  readonly spki: Uint8Array;
+}[] {
   const rows =
     typeof policy === "object" && policy !== null
       ? (policy as { witnesses?: unknown }).witnesses
       : undefined;
-  const out: { name: string; spki: Uint8Array }[] = [];
+  const out: { name: string; type: "ed25519" | "p256"; spki: Uint8Array }[] =
+    [];
   for (const row of Array.isArray(rows) ? rows : []) {
     if (typeof row !== "object" || row === null) continue;
     const { name, keys } = row as { name?: unknown; keys?: unknown };
     if (typeof name !== "string" || !Array.isArray(keys)) continue;
-    for (const key of keys)
-      if (typeof key === "string" && HEX.test(key))
-        out.push({ name, spki: hexToBytes(key) });
+    for (const key of keys) {
+      if (typeof key !== "string" || !LOWER_HEX.test(key)) continue;
+      const type =
+        key.length === 88 && key.startsWith(ANCHOR_ED25519_PREFIX)
+          ? "ed25519"
+          : key.length === 182 && key.startsWith(P256_SPKI_PREFIX)
+            ? "p256"
+            : null;
+      if (type !== null) out.push({ name, type, spki: hexToBytes(key) });
+    }
   }
   return out;
 }
 
 /**
  * Steps 1 to 5 of profile v1 §6.2.2 for one Receipt over the anchor whose
- * digest is `anchorDigest` (64 lowercase hex characters). The Receipt is
- * checked as {@link verifyCoseReceipt} checks one, with the anchor digest's 32
- * octets as the leaf entry. A runtime that cannot verify the Receipt's
- * algorithm reports it `NOT_CHECKED`. Never throws.
+ * digest is `anchorDigest` (64 lowercase hex characters). The signature is
+ * checked by {@link verifyCoseReceipt} with the anchor digest's 32 octets as
+ * the leaf entry. A runtime that cannot verify the Receipt's algorithm
+ * reports it `NOT_CHECKED`. Never throws.
  */
 export async function checkAnchorReceipt(
   anchorDigest: string,
@@ -880,22 +1009,17 @@ export async function checkAnchorReceipt(
   });
   if (!ANCHOR_DIGEST.test(anchorDigest) || !(receipt instanceof Uint8Array))
     return report("FAIL");
-  const wanted = anchorReceiptKeyType(receipt);
-  if (wanted === null) return report("FAIL");
+  const parsed = parseAnchorReceipt(receipt);
+  if (parsed === null) return report("FAIL");
   const keys = anchorPolicyKeys(policy).filter(
-    ({ spki }) => spkiKeyType(spki) === wanted,
+    ({ type }) => type === parsed.alg,
   );
   if (keys.length === 0) return report("NOT_CHECKED");
   const leaf = hexToBytes(anchorDigest);
   let unavailable = false;
   for (const { name, spki } of keys) {
     const result = await verifyCoseReceipt(receipt, leaf, spki);
-    if (result.ok)
-      return report(
-        "PASS",
-        name,
-        registrationTimeOf(result.protectedHeaders).registrationTime,
-      );
+    if (result.ok) return report("PASS", name, parsed.time);
     if (result.unavailable) unavailable = true;
   }
   return report(unavailable ? "NOT_CHECKED" : "FAIL");

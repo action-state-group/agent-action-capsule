@@ -215,12 +215,12 @@ that to every object it defines.
 | Envelope members | `profile`, `request_digest`, `subject`, `derivation`, `anchor`, `artifact_digest`, `verification`, `responder`, `issued_at`, `sig`, `artifact`, `verification_content`, `retention` | P-7 |
 | Anchor members | `digest`, `freshness` | P-7 |
 | Verification entry members | `kind`, `digest` | P-7 |
-| Verification material kinds | `cll-checkpoint`, `cll-inclusion-proof`, `cll-consistency-proof` | CLL §3; P-31 |
+| Verification material kinds | `cll-checkpoint`, `cll-inclusion-proof`, `cll-consistency-proof`; `cll-witness-receipt`, beside an answer (§6.2.2) | CLL §3; P-31; P-67 |
 | Absence record members | `outcome`, `request_digest`, `route`, `window`, `opened`, `closed`, `recorded_at`, `retention`, `key_id`, `sig` | ER §4.4; P-8 |
 | Property report members | `property`, `status`, `method`, `detail` | P-16 |
 | Outcome names | `artifact`, `refusal`, `recorded_absence`; the state `pending` | ER §4; ERV `registry.json` |
 | Property statuses | `PASS`, `FAIL`, `NOT_PRESENT`, `NOT_CHECKED`, `INCONCLUSIVE` | §7.1 |
-| Property names | the names in §7.2 | §7.2 |
+| Property names | the names in §7.2; `anchor_witnessed`, outside §7.2 (§6.2.2) | §7.2; P-67 |
 | Subprotocol | `evidence-request/1` | ER §10 |
 | Manifest members (JSON only) | `profiles`, `drafts`, `subject_forms`, `derivations`, `bindings`, `refusal_policy`, `retention` | P-2; P-41 |
 | Binding tokens | `evidence-request/1`, `http`, `a2a`, `mcp` | ER §10; P-41 |
@@ -593,24 +593,31 @@ about any artifact under the anchor, so it is not `anchor_inclusion` and not an 
 (§7.2), and it never enters the §8 mapping.
 
 **The kind.** `cll-witness-receipt` is this profile's own identifier [P-67]. Its octets are one
-COSE Receipt [RFC 9942] for an RFC 9162 transparency log, of at most 10,485,760 octets, in this
+COSE Receipt [RFC 9942] for an RFC 9162 transparency log, of at most 10,485,760 octets, in this one
 form:
 
-- a CBOR tag-18 COSE_Sign1 (RFC 9052) whose payload is detached (`nil`), so that the signature
-  covers the root the inclusion proof rebuilds;
-- a protected header with `alg` (1) EdDSA (-8) or ES256 (-7), `vds` (395) the integer 1,
-  RFC9162_SHA256, optionally CWT_Claims (15, RFC 9597) with `iat` (6), and no `crit` (2);
-- an unprotected header with `vdp` (396), a map whose key -1 holds an array of one to 16
-  inclusion proofs, each a byte string holding the CBOR array `[tree_size, leaf_index,
-  inclusion_path]`, where `tree_size` is an integer from 1 to 2^62 and `inclusion_path` an array
-  of at most 64 byte strings of 32 octets [RFC 9942; RFC 9162 §2.1.3].
+- a CBOR tag-18 COSE_Sign1 (RFC 9052) `[protected, unprotected, payload, signature]` whose
+  payload is `nil` (detached), so that the signature covers the root the inclusion proof
+  rebuilds, and whose signature is a byte string of 64 octets;
+- `protected`, a non-empty byte string holding a map with `alg` (1) EdDSA (-8) or ES256 (-7) and
+  `vds` (395) the integer 1, RFC9162_SHA256, and optionally `kid` (4) as a byte string,
+  CWT_Claims (15, RFC 9597) as a map, and labels below -65536 (private use) with any value. It
+  carries no other label, so no `crit` (2);
+- `unprotected`, a map with exactly one label, `vdp` (396), whose value is a map with exactly one
+  key, -1, holding an array of one to 16 inclusion proofs. Each is a byte string holding the CBOR
+  array `[tree_size, leaf_index, inclusion_path]`: `tree_size` an unsigned integer from 1 to
+  2^62, `leaf_index` an unsigned integer below `tree_size`, and `inclusion_path` an array of byte
+  strings of 32 octets, as many as RFC 9162 §2.1.3.1 gives for that index and size, and so at
+  most 62 [RFC 9942; RFC 9162 §2.1.3].
 
-The COSE_Sign1 and its protected header are each one CBOR item with no trailing octet, no
-repeated map key, definite lengths, and every argument and float in its shortest form; map order
-is not checked. Each inclusion proof's octets are one CBOR item with no trailing octet and no
-repeated map key, read as RFC 9942 verifiers commonly read them, so a longer argument or an
-indefinite length is accepted there. This is the form `vectors/bundle/strict/README.md` "COSE
-Receipts" fixes for a witness's Receipt over a Bundle checkpoint, with another leaf.
+The COSE_Sign1, its protected header and each inclusion proof are each one CBOR item with no
+trailing octet, definite lengths, every argument in its shortest form (RFC 8949 §4.2.1), no
+repeated map key, every map key an integer or a text string, no float, no simple value but
+`false`, `true` and `null`, no tag but the outer
+tag 18, and no item nested more than 16 levels deep (an item inside an array, a map or a tag is one
+level deeper than it); map order is not checked. This is the Receipt shape `vectors/bundle/strict/README.md`
+"COSE Receipts" checks for a witness over a Bundle checkpoint, with another leaf and these
+stricter encoding rules, so that every verifier decides the form the same way.
 
 **The entry.** The Receipt's leaf entry E is the 32 raw octets of the anchor's digest: SHA-256
 over the `cll-checkpoint` octets in the one form of §6.2.1, which is `anchor.digest` [P-31]. The
@@ -633,23 +640,27 @@ ER §4.7]. This profile does not decide which witnesses those are.
 **Check procedure for one Receipt.** Steps run in order, and the first that yields a status
 decides:
 
-1. If the octets are not a tag-18 COSE_Sign1 with a detached payload, or its protected header
-   does not carry `vds` 1 and an `alg` of EdDSA or ES256, or carries `crit`: `FAIL`.
-2. If the policy lists no key of the type `alg` needs: `NOT_CHECKED`.
-3. For each listed key of that type, in policy order: check the rest of the form above, and, for
-   each inclusion proof in order, rebuild the root from E and verify the signature under that
-   key over the `Signature1` Sig_structure with the protected header, an empty external AAD and
-   the root as payload (RFC 9052 §4.4). Every inclusion proof must decode, with `leaf_index`
-   below `tree_size` and the path as long as RFC 9162 makes it for that index and size, before
-   any is used. EdDSA is verified strictly: the key and the signature's R are canonical encodings
-   of points not of small order, S is below the group order, and the cofactorless equation holds
-   (RFC 8032 §5.1.7). The first key under which some proof verifies is the Receipt's witness.
-4. If no listed key and proof verify: `FAIL`. The Receipt is malformed, is not by an accepted
-   witness, or is not over this anchor.
-5. Otherwise: `PASS`. The **registration time** is the protected CWT_Claims `iat` when it is an
-   integer from 0 to 2^53 - 1: a NumericDate, seconds since 1970-01-01T00:00:00Z (RFC 8392
-   §2). A Receipt with no such `iat` passes with no registration time. An unprotected time is
-   never read.
+1. If the octets are not of the form above: `FAIL`.
+2. If the policy lists no key of the type `alg` needs: `NOT_CHECKED`. A policy key is lowercase
+   hex of a DER SubjectPublicKeyInfo of exactly one of two shapes: the 12 octets
+   `302a300506032b6570032100` followed by a 32-octet Ed25519 key, or the 27 octets
+   `3059301306072a8648ce3d020106082a8648ce3d03010703420004` followed by the 64-octet
+   uncompressed P-256 point. Any other entry lists no key. A listed key whose octets are not a
+   valid public key is still listed, and nothing verifies under it.
+3. For each listed key of that type, in policy order, and each inclusion proof, in order: rebuild
+   the root from E and verify the signature under that key over the `Signature1` Sig_structure
+   with the protected header, an empty external AAD and the root as payload (RFC 9052 §4.4). An
+   ES256 signature is the 64 octets `r || s`. EdDSA is verified strictly: the key and the
+   signature's R are canonical encodings of points not of small order, S is below the group
+   order, and the cofactorless equation holds (RFC 8032 §5.1.7). The first key under which some
+   proof verifies is the Receipt's witness. A verifier that cannot run the signature algorithm
+   at all reports `NOT_CHECKED` (§7.1).
+4. If no listed key and proof verify: `FAIL`. The Receipt is not by an accepted witness, or not
+   over this anchor.
+5. Otherwise: `PASS`. The **registration time** is the CWT_Claims `iat` (6) when it is an
+   unsigned integer no larger than 2^53 - 1: a NumericDate, seconds since 1970-01-01T00:00:00Z
+   (RFC 8392 §2). A Receipt whose CWT_Claims has no such `iat`, or that has no CWT_Claims,
+   passes with no registration time.
 
 **`anchor_witnessed`.** Over every Receipt received for one anchor:
 
@@ -658,6 +669,8 @@ decides:
   and `NOT_CHECKED` otherwise.
 
 A Receipt that fails takes nothing from one that passes: anyone can place octets beside an answer.
+For the same reason a `FAIL` is no finding against the anchor or the responder; it says only that
+nothing beside the answer shows a witness.
 The report names, for each Receipt, its status, its witness's name when it passed, and its
 registration time. The **witnessed time** of the anchor is the earliest registration time of a
 passing Receipt, and the **witness** it names is that Receipt's witness; of two Receipts with that
@@ -676,7 +689,8 @@ under its key, at the witnessed time when there is one [CLL §3.3]. It does not 
 - anything about an artifact under the anchor, its content or its inclusion. A derivation's
   artifact, such as a count, is still the responder's statement.
 
-`method` names the checks run, for example
+The report is `{property, status, receipts, witness, witnessed_time}`, with each Receipt's
+`{status, witness, registration_time}`, and MAY add `method` and `detail` as §7.1 does, for example
 `RFC 9942 Receipt (RFC9162_SHA256, EdDSA) over the CLL-01 anchor digest`.
 
 ### 6.3 Signed refusal
@@ -2910,7 +2924,7 @@ Each negative half changes one thing:
 #### 11.4.9 Not filled in this revision
 
 Still unspecified: the shape of a carried retention commitment (the envelope's `retention`,
-§6.2); verification-material kinds beyond §6.2.1 (P-13); where the HTTP binding serves the
+§6.2); verification-material kinds beyond §6.2.1 and §6.2.2 (P-13); where the HTTP binding serves the
 manifest; stream addressing (P-23); and MCP's tasks extension. Filling any of them only adds
 objects, rows and properties, so it keeps the identifier (§3.1) [P-1].
 
@@ -3026,8 +3040,9 @@ it defers.
 - **P-11** The verifier MUST run a foreign object's native check before reporting on it (§5.1).
 - **P-12** Time form with seconds precision; unsigned integers no larger than 2^53 − 1 and no
   floats; duplicate members rejected in JSON and CBOR (§5.2).
-- **P-13** Verification-material kinds cover only the Checkpointed Local Log, for a `record` subject
-  with no derivation (§6.2.1). Still without a kind:
+- **P-13** Verification-material kinds cover only the Checkpointed Local Log: an artifact of a
+  `record` subject with no derivation (§6.2.1), and a witness Receipt over the anchor itself,
+  beside an answer (§6.2.2). Still without a kind:
   - the other subject forms and every derivation;
   - the `checkpoints` subject and history_card/1, whose artifact is the material;
   - a witness countersignature over a checkpoint, and a witness Receipt (§6.2.2) carried in an
@@ -3327,8 +3342,9 @@ it defers.
   - the leaf entry as the 32 octets of `anchor.digest`, the SHA-256 of the checkpoint in the one
     form of §6.2.1, so a Receipt covers an anchor only when the witness registered that form;
   - the Receipt form: detached payload, RFC9162_SHA256, EdDSA (verified strictly) or ES256, at
-    most 16 proofs of at most 64 nodes, and no `crit`, so that no verifier has to decide which
-    critical labels it understands;
+    most 16 proofs, a closed set of protected labels and only `vdp` unprotected, no `crit`, and
+    strict CBOR throughout, so that every verifier decides the form the same way;
+  - a policy key as one of two exact SubjectPublicKeyInfo shapes;
   - the check `anchor_witnessed`, outside §7.2 and §8: any passing Receipt gives `PASS`, and a
     failing one takes nothing from it;
   - the registration time as the protected `iat` only, and the witnessed time as the earliest
