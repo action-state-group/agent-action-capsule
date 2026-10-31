@@ -378,11 +378,18 @@ in this repository:
   keys' holders, as both of them stated it.
 - A verifier that does not have the binding record, or does not implement this basis, reports the
   join as `not_derivable`, as EB requires for any basis it cannot derive. So does a verifier that
-  has the record but does not implement its `method` (EB `-02`). Under §6.2 such a record does not
+  has the record but does not implement its `method`, or a key type its `key_types` names (EB `-02`
+  defines only `ed25519`). Under §6.2 such a record does not
   apply, but a verifier that cannot check the signatures cannot derive the join either, and a
   method it lacks must not fail a block a verifier with the method passes. A record that is
   malformed, signed by one key, outside its window or revoked does not apply, and the join derives
   `unjoined`.
+- A member may be an EB `-02` *empty-history Bundle*: no records and no root, a stream with no
+  history (never started, or cleared by starting a new stream with a new `log_id` under the same
+  key). The join still derives. That member's key is the one that signed its `checkpoint.cose`,
+  and its T is that checkpoint's `timestamp`. Linked gives `one_sided`, never `agree`, since
+  nothing was compared; not linked gives `unjoined`; a member without a checkpoint that verifies
+  has no key, and the join is `not_derivable`.
 - A `controller_binding` join that derives `agree` is `redundant`: it is added to the cases in
   EB's "Observers and Redundancy". The linked members' keys are not independent issuers (§7), so
   their agreement is not corroboration.

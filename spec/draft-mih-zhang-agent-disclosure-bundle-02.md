@@ -2,7 +2,7 @@
 title: "AAC Evidence Bundle"
 abbrev: "AAC Evidence Bundle"
 docname: draft-mih-zhang-agent-disclosure-bundle-02
-date: 2026-10-29
+date: 2026-10-31
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -79,7 +79,7 @@ informative:
   I-D.mih-sokolov-scitt-payload-binding:
     title: "Canonicalization Declaration for SCITT Signed Statements"
     seriesinfo:
-      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-05
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-06
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -87,7 +87,7 @@ informative:
       - ins: A. Sokolov
         name: Anton Sokolov
         organization: Tyche Institute
-    date: 2026-09-13
+    date: 2026-10-26
 
 --- abstract
 
@@ -212,7 +212,8 @@ untyped replacement formats.
 
 `bundle_version` and `bundle_kind` are REQUIRED and MUST be respectively
 `"2"` and `"evidence-bundle/v2"`. `root`, `records`, and `completeness` are
-REQUIRED. `root` is the lowercase-hex `capsule_id` of one record in `records`.
+REQUIRED, except that an empty-history Bundle ({{empty-history}}) has no
+`root`. `root` is the lowercase-hex `capsule_id` of one record in `records`.
 Every `records` element MUST be an unmodified Capsule object conforming to
 {{I-D.mih-scitt-agent-action-capsule}}; duplicate `capsule_id` values are
 not permitted. All other members shown are OPTIONAL unless a claim in this
@@ -227,6 +228,38 @@ member. `selection`, when present, names the certificate mode of
 `completeness_certificate` ({{certificate-modes}}).
 `suppressed_fields` names fields intentionally not carried by the Bundle; it
 does not turn an absent disclosure into an empty value or a failure.
+
+## Empty-History Bundles {#empty-history}
+
+An *empty-history Bundle* shows that a log stream has no history to disclose.
+A stream that was never started and a history that was cleared read the same.
+Clearing a history starts a new stream, with a new `log_id`, under the same
+key. It never rewrites or truncates the old stream's log, and a checkpoint
+that does so is inconsistent with that log's earlier checkpoints.
+
+An empty-history Bundle has an empty `records` array and no `root` member.
+`root` MUST be absent exactly when `records` is empty. In an empty-history
+Bundle:
+
+- `completeness.records_mode` MUST be `complete`, `completeness.missing` MUST
+  be absent or empty, and `completeness.payloads_mode` MUST be `none`;
+- `completeness_certificate`, `disclosures` and `disclosure_record` MUST be
+  absent;
+- `checkpoint`, with `checkpoint.cose`, SHOULD be present when the stream has
+  a checkpoint: its first checkpoint, or its latest one while it still holds
+  no record. A stream that was never started has none.
+
+A Bundle with no `root` that is not a well-formed empty-history Bundle is
+malformed.
+
+A verifier reports a well-formed empty-history Bundle as *no history*. It is
+well formed: a verifier MUST NOT report it as failed, and MUST NOT report it
+as an absence ({{composed-members}}). Of its claims ({{completeness}}), graph
+closure passes, since there is nothing to close, and interval coverage and
+per-record membership are not established, with the finding `no_records`.
+When `checkpoint.cose` verifies, the verifier reports the checkpoint's signed
+`timestamp` with the result, as no history since that time. Otherwise it
+reports no history without a date.
 
 # Citation Closure {#closure}
 
@@ -886,6 +919,10 @@ An artifact that fails verification is still an `artifact` member. The
 verifier reports the failure on that member. It is not a fourth outcome, and
 the verifier MUST NOT report it as a successful grant.
 
+An empty-history Bundle ({{empty-history}}) is an `artifact` member that
+shows no history. It is neither a failure nor an `absence`. A responder whose
+history was cleared, or never started, can answer with one.
+
 **Each member keeps its own claims.** A verifier MUST verify every carried
 member bundle as an Evidence Bundle under this document. It MUST report that
 bundle's graph closure, interval coverage and per-record membership
@@ -931,8 +968,7 @@ block ({{composed-security}}).
 ### Controller Binding Records {#composed-binding}
 
 A *controller binding record* is a JSON object in which the holders of two
-Ed25519 {{RFC8032}} signing keys both sign one statement about how the two
-keys are related. It is the linkage evidence of the `controller_binding` join
+signing keys both sign one statement about how the two keys are related. It is the linkage evidence of the `controller_binding` join
 basis ({{composed-joins}}). Its signatures show only that whoever held each
 private key signed the record. They do not show who holds either key, and
 this document never states who a key holder is.
@@ -942,8 +978,9 @@ beside the containing Bundle, with any revocation statements that withdraw it;
 how they are delivered is outside this document. The block binds a record
 only through a join's `identifier_digest`.
 
-In this section a *key identifier* is a raw 32-byte Ed25519 public key as 64
-lowercase hexadecimal characters, and a *time* is an {{RFC3339}} date-time in
+In this section a *key identifier* is 64 lowercase hexadecimal characters;
+for an Ed25519 {{RFC8032}} key, the one key type this document defines, it is
+the raw 32-byte public key. A *time* is an {{RFC3339}} date-time in
 UTC with a "Z" suffix and seconds precision. A root record's `timestamp`,
 against which a binding is checked, can also carry fractional seconds. Times
 compare as instants.
@@ -960,6 +997,7 @@ controller-binding = {
   revocation: "revocation_statement/0",
   nonce: tstr,                   ; non-empty, chosen per ceremony
   sigs: [* binding-sig],
+  ? key_types: [tstr, tstr],     ; one per entry of keys, in order
   ? delegator: key-id,           ; delegated_by only: one of keys
   ? credential: binding-credential,
                                  ; same_organization_credentialed
@@ -967,7 +1005,7 @@ controller-binding = {
 
 binding-claim = "same_controller_asserted" / "delegated_by" /
                 "same_organization_credentialed"
-binding-sig = { key_id: key-id, sig: sig-hex }
+binding-sig = { key_id: key-id, sig: any }   ; sig-hex for ed25519
 binding-credential = {
   issuer: key-id,
   method: tstr,
@@ -1003,14 +1041,22 @@ A binding record is malformed when it lacks a member, carries a member the
 CDDL does not list, or has a value outside its form; when it carries
 `delegator` and its `claim` is not `delegated_by`, or `credential` and its
 `claim` is not `same_organization_credentialed`, or lacks the member its
-`claim` adds; when its
-two `keys` are equal or not in ascending order; when `not_before` is later
-than `issued_at` or `not_after` is not later than it; when `nonce` is empty; when `delegator` is not
-one of `keys`; or when its `method` is one this document defines for another
-claim type. A `method` token this document does not define is well formed. A
+`claim` adds; when its two `keys` are equal or not in ascending order; when
+`not_before` is later than `issued_at` or `not_after` is not later than it;
+when `nonce` is empty; when `delegator` is not one of `keys`; when both keys
+are `ed25519` keys and a `sig` is not a `sig-hex`; or when its `method` is one
+this document defines for another claim type. A `method` token this document does not define is well formed. A
 binding record or revocation statement that is not a JSON object is
 malformed. `delegated_by` states a relation, not a scope: a verifier reads no
 authority from it.
+
+**Key types.** `key_types`, when present, names the type of each key in
+`keys`, in its order. When it is absent, both keys are `ed25519` keys. This
+document defines one key type, `ed25519`: the key identifier is the raw
+Ed25519 public key, and the key signs with Ed25519. A record whose
+`key_types` names any other token is well formed. Its `sig` values are not
+held to `sig-hex`, and a verifier that does not implement that key type
+treats the record as under a method it does not implement.
 
 **Signing input and binding digest.** The signing input is the UTF-8 octets of
 the JCS {{RFC8785}} serialization of the record without `sigs`. Every other
@@ -1021,8 +1067,8 @@ and so have two digests.
 
 **Methods.** Under `dual_signature/0`, `sigs` has exactly two entries:
 `sigs[0].key_id` is `keys[0]`, `sigs[1].key_id` is `keys[1]`, and each `sig`
-is that key's Ed25519 signature over the signing input, in lowercase
-hexadecimal. A record with one signature, a third entry, or a signature that
+is that key's signature over the signing input; for an `ed25519` key, its
+Ed25519 signature in lowercase hexadecimal. A record with one signature, a third entry, or a signature that
 does not verify is not signed by both keys. One key cannot bind another key
 to itself, because each key signs the other key's identifier.
 `dual_signature_credential/0` requires the same two signatures. Its
@@ -1046,8 +1092,8 @@ never further. A verifier knows only the statements it received.
 at a set of times T when all of these hold:
 
 1. it is well formed;
-2. the verifier implements its `method`, and both bound keys signed it under
-   that method;
+2. the verifier implements its `method` and the type of both keys, and both
+   bound keys signed it under that method;
 3. its `keys` are exactly the two key identifiers, in either order;
 4. for every T, `not_before` <= T < `not_after`;
 5. no revocation statement the verifier received that applies to it has a
@@ -1071,16 +1117,23 @@ is never a pass.
 
 The states derive as follows:
 
-- **`one_sided`**: exactly one of the two members has outcome `artifact`.
-- **`unjoined`**: neither member has outcome `artifact`; or both do, but the
-  linkage basis does not establish that their records are about the same
+- **`one_sided`**: exactly one of the two members has outcome `artifact`
+  with records, and the other has none: it is not an artifact, or it is an
+  empty-history Bundle ({{empty-history}}). Under `controller_binding`, a
+  join with an empty-history member is `one_sided` only when the two are
+  linked (below).
+- **`unjoined`**: neither member has outcome `artifact` with records; or one
+  has records, the other is an empty-history Bundle, and the
+  `controller_binding` linkage does not link them; or both have records, but
+  the linkage basis does not establish that their records are about the same
   thing.
-- **`agree`**: both members are artifacts and are linked, and every `compare`
-  pointer resolves in both root records to values with identical JCS
-  serializations. A join with no `compare` and a link is `agree`.
-- **`mismatch`**: both members are artifacts and are linked, and at least one
-  `compare` pointer resolves to different values, or does not resolve on one
-  side.
+- **`agree`**: both members are artifacts with records and are linked, and
+  every `compare` pointer resolves in both root records to values with
+  identical JCS serializations. A join with no `compare` and a link is
+  `agree`.
+- **`mismatch`**: both members are artifacts with records and are linked, and
+  at least one `compare` pointer resolves to different values, or does not
+  resolve on one side.
 
 Linkage is evaluated on each artifact member's root record (its bundle's
 `root`). This document defines the derivation for three bases:
@@ -1098,12 +1151,21 @@ Linkage is evaluated on each artifact member's root record (its bundle's
   the two selected values, with T the `timestamp` of each root record
   ({{I-D.mih-scitt-agent-action-capsule}}). A verifier that received no
   record with that digest, or only well-formed records with that digest whose
-  `method` it does not implement, reports the join as `not_derivable`; so
-  does a join without `pointer` or `identifier_digest`. Any other record with
+  `method` or key types it does not implement, reports the join as
+  `not_derivable`; so does a join without `pointer` or `identifier_digest`. Any other record with
   that digest that does not apply (malformed, not signed by both keys, other
   keys, outside its window, or revoked) leaves the members unjoined. A join on this basis states that the
   two root records are under keys whose holders bound them, as both of them
   stated it; it says nothing about who those holders are.
+
+  When one member is an empty-history Bundle ({{empty-history}}), the
+  derivation still runs. That member's key identifier is the key that signed
+  its `checkpoint.cose`, as that signature authenticates it, and its T is
+  that checkpoint's `timestamp`; `pointer` selects the key identifier in the
+  other member's root record only. Linked gives `one_sided`, never `agree`,
+  because nothing was compared; not linked gives `unjoined`. An empty-history
+  member without a `checkpoint.cose` that verifies has no key, and the join is
+  `not_derivable`.
 
 The bases `issued_receipt` (the two records cite one Receipt) and
 `same_interval` (the two records fall in one declared interval) are reserved
@@ -1207,8 +1269,9 @@ separately:
 
 1. the recomputed composed digest, and whether it matches;
 2. per member: outcome, body carried or declared missing, digest reproduced,
-   and, for a carried member bundle, its own three completeness claims and,
-   when it carries `response`, whether the response's digests match and its
+   and, for a carried member bundle, its own three completeness claims, no
+   history for an empty-history Bundle ({{empty-history}}), and, when it
+   carries `response`, whether the response's digests match and its
    signature state;
 3. composition closure;
 4. per join: the declared state, the derived state (or `not_derivable`), and
@@ -1471,6 +1534,14 @@ are listed per check and never combined, because an aggregate would hide a
   `controller_binding` agreement is then reported redundant all the same,
   never more. A revocation the producer did not account for derives
   `unjoined` and fails a declared `agree` (`join_state_mismatch`).
+- **No history.** An empty-history Bundle ({{empty-history}}) is its
+  producer's statement that its stream holds no record. Its signed checkpoint
+  shows that the stream exists, under which key, and the size of its log at
+  that time. It carries no certificate, so nothing shows that no leaf of that
+  log is a record. A verifier MUST NOT present no history as
+  evidence that no action took place. Because it is an `artifact`, never an
+  `absence`, a cleared or unstarted history cannot be read as a responder
+  that did not answer.
 - **Outcomes.** Keeping refusal and absence distinct is evidentiary:
   synthesizing either one from the other forges the stronger record from the
   weaker.
@@ -1500,6 +1571,10 @@ padding exists to blur (Section 12.1 of {{I-D.mih-agent-evidence-layer}}).
 A producer that does not want to show them uses a producer-selected
 certificate ({{producer-selected}}), which carries no positions other than
 those of the records it carries.
+
+A cleared history's empty-history Bundle ({{empty-history}}) carries a
+checkpoint signed by the same key as the cleared stream. Clearing a history
+therefore does not unlink that key from it.
 
 For the `composed/v1` extension ({{composed}}):
 
@@ -1582,8 +1657,21 @@ Since -01:
   never corroborating ({{composed-observers}}). A verifier that implements
   only -01 reads a block that carries a `controller_binding` join as
   malformed, since -01's `join-basis` does not list it. Security and Privacy
-  Considerations: controller bindings.
-- Cites Evidence Request -01 and, informatively, Evidence Layer -00.
+  Considerations: controller bindings. A binding record MAY carry
+  `key_types`; this document defines the `ed25519` key type, and a record
+  under any other is treated as under a method a verifier does not
+  implement.
+- Empty-history Bundles ({{empty-history}}): a Bundle with no records and no
+  `root` shows that a stream has no history to disclose, whether it was never
+  started or its history was cleared (a new stream, with a new `log_id`).
+  It is well formed and reported as no history, never as failed and never as
+  an absence. In `composed/v1` it is an `artifact` member, and a join with it
+  derives `one_sided`; a `controller_binding` join derives from the key that
+  signed its checkpoint, and is `not_derivable` without one. Security
+  Considerations: no history. Privacy Considerations: a cleared history's
+  checkpoint is signed by the cleared stream's key.
+- Cites Evidence Request -01 and, informatively, Evidence Layer -00 and the
+  Canonicalization Declaration -06.
 
 Since -00:
 
