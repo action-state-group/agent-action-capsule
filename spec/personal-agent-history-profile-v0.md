@@ -34,6 +34,13 @@ the acceptance rule (§6), the History container (§8.2), and the units a Histor
 Section numbers for ER and EL are those of the rendered `.txt` of the revision IP pins. A
 requirement written `[IP §6.5]` is taken from IP; `[PA-n]` marks one this profile adds.
 
+**Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
+`spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
+frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). `evidence-interop/1` adds two
+refusal rows to the result mapping this profile applies (IP v1 §8.1), and the requests and envelopes
+of its vectors name `evidence-interop/0` (§4.3). Re-pinning to `evidence-interop/1` is a revision of
+this profile.
+
 **Does not define:** any record format, any identity scheme, any trust policy, who may receive a
 History, or what a recipient should conclude. It defines no figure that combines deals, records or
 steps, and no ordering of deals, holders or counterparties.

@@ -3,9 +3,10 @@
 
 use ed25519_dalek::SigningKey;
 use evidence_request::envelope::{
-    parse_reply, sign, Anchor, AnchorFreshness, Binding, Envelope, EnvelopeError, EnvelopeParts,
-    Reply, ReplyError, SignError, PROFILE,
+    parse_reply, refusal_reasons, sign, sign_with_profile, Anchor, AnchorFreshness, Binding,
+    Envelope, EnvelopeError, EnvelopeParts, Reply, ReplyError, SignError, PROFILE, PROFILE_V1,
 };
+use evidence_request::registry::Reason;
 use evidence_request::request::{Derivation, Subject};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -117,11 +118,51 @@ fn verify_names_what_is_wrong() {
         Err(EnvelopeError::WrongRequest)
     );
     let mut t = env.clone();
-    t.profile = "evidence-interop/1".into();
+    t.profile = "evidence-interop/2".into();
     assert_eq!(
         t.verify_for(&k.verifying_key(), REQUEST),
         Err(EnvelopeError::Profile)
     );
+    // v1 shares the envelope (spec/interop-profile-v1.md §6.2), and the
+    // envelope must name the identifier requested (§3.3 step 5).
+    let v1 = sign_with_profile(PROFILE_V1, REQUEST, parts(), &k).unwrap();
+    assert_eq!(v1.profile, PROFILE_V1);
+    assert_eq!(
+        v1.verify_for_profile(PROFILE_V1, &k.verifying_key(), REQUEST),
+        Ok(())
+    );
+    assert_eq!(
+        v1.verify_for(&k.verifying_key(), REQUEST),
+        Err(EnvelopeError::Profile)
+    );
+    assert_eq!(
+        env.verify_for_profile(PROFILE_V1, &k.verifying_key(), REQUEST),
+        Err(EnvelopeError::Profile)
+    );
+}
+
+#[test]
+fn sign_with_profile_refuses_an_unknown_identifier() {
+    let k = key("responder");
+    assert_eq!(
+        sign_with_profile("evidence-interop/2", REQUEST, parts(), &k),
+        Err(SignError::Profile)
+    );
+}
+
+/// Each revision's §9.1: /0 pins ER -01's eight, /1 ER -02's ten (v1 §6.3).
+#[test]
+fn refusal_reasons_per_identifier() {
+    let v0 = refusal_reasons(PROFILE);
+    let v1 = refusal_reasons(PROFILE_V1);
+    assert_eq!(v0.len(), 8);
+    assert_eq!(v1.len(), 10);
+    for r in [Reason::CapacityExceeded, Reason::RequestUnauthenticated] {
+        assert!(!v0.contains(&r) && v1.contains(&r), "{r}");
+    }
+    assert!(v0.contains(&Reason::PolicyDeclined));
+    // An identifier the crate does not implement: every token of /0 and /1.
+    assert_eq!(refusal_reasons("evidence-interop/9"), v1);
 }
 
 #[test]
@@ -236,13 +277,21 @@ fn parse_reply_reads_only_what_it_can_authenticate() {
 
 /// Re-signing the corpus's own envelopes with its test responder key gives
 /// the corpus octets, in both bindings: the members, their encodings and the
-/// signing input are those of `vectors/interop-profile-v0/`.
+/// signing input are those of `vectors/interop-profile-v0/` and of its v1
+/// regeneration.
 #[test]
 fn reproduces_the_corpus_envelopes_byte_for_byte() {
-    let path = concat!(
+    reproduces_corpus_envelopes(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../vectors/interop-profile-v0/vectors.json"
-    );
+    ));
+    reproduces_corpus_envelopes(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../vectors/interop-profile-v1/vectors.json"
+    ));
+}
+
+fn reproduces_corpus_envelopes(path: &str) {
     let corpus: Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
     let responder = key(corpus["test_keys"]["keys"]["responder"]["seed_label"]
         .as_str()
@@ -276,7 +325,8 @@ fn reproduces_the_corpus_envelopes_byte_for_byte() {
                 .iter()
                 .find(|r| evidence_request::digest::request_digest(r) == got.request_digest)
                 .unwrap_or_else(|| panic!("{id}: no request for the reply's digest"));
-            let again = sign(
+            let again = sign_with_profile(
+                &got.profile,
                 request,
                 EnvelopeParts {
                     subject: got.subject.clone(),

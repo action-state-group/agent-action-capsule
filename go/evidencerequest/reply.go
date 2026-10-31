@@ -79,32 +79,48 @@ func (r Refusal) Verify() error {
 // VerifyFor authenticates the refusal as the answer of the responder whose
 // key is responderKey (lowercase hex) to the request whose digest is
 // requestDigest: the key and the digest must be those, the signature must
-// verify, and the refusal must conform. Conforming is the profile's check, so
-// a refusal with one of the two -02 reasons is ErrInvalid here until the
-// profile re-pins (AAC#479); a caller that reads ER -02 alone uses
-// CheckRefusal.
+// verify, and the refusal must conform under evidence-interop/0, so a refusal
+// with one of the two -02 reasons is ErrInvalid here. For a refusal answering
+// a request under another identifier use VerifyForProfile; a caller that
+// reads ER -02 alone uses CheckRefusal.
 func (r Refusal) VerifyFor(responderKey, requestDigest string) error {
+	return r.VerifyForProfile(ProfileID, responderKey, requestDigest)
+}
+
+// VerifyForProfile is VerifyFor for a refusal answering a request that asks
+// for profile: it must conform under that identifier (ConformingUnder), so
+// capacity_exceeded is accepted for an evidence-interop/1 request.
+func (r Refusal) VerifyForProfile(profile, responderKey, requestDigest string) error {
 	if r.KeyID != responderKey || r.RequestDigest != requestDigest {
 		return fmt.Errorf("%w: refusal is not for this request under the pinned responder key", ErrInvalid)
 	}
 	if err := r.Verify(); err != nil {
 		return err
 	}
-	if !r.Conforming() {
-		return fmt.Errorf("%w: refusal does not conform", ErrInvalid)
+	if !r.ConformingUnder(profile) {
+		return fmt.Errorf("%w: refusal does not conform under %s", ErrInvalid, profile)
 	}
 	return nil
 }
 
-// Conforming reports whether a verified refusal is a conforming one: exactly
-// one registered reason, exact case, and well-formed members (profile §7.2
-// reason_registered, issued_at_form). issued_at is the profile's seconds
-// form (§5.2); CheckRefusal reads it as the request draft alone does. The
-// reasons are the profile's eight (§9.1), not the ten of ER -02, until the
-// profile re-pins (AAC#479).
+// Conforming reports whether a verified refusal is a conforming one under
+// evidence-interop/0: exactly one registered reason, exact case, and
+// well-formed members (profile §7.2 reason_registered, issued_at_form).
+// issued_at is the profile's seconds form (§5.2); CheckRefusal reads it as
+// the request draft alone does. The reasons are /0's eight (§9.1), not the
+// ten of ER -02; ConformingUnder checks a refusal to a request under another
+// identifier.
 func (r Refusal) Conforming() bool {
+	return r.ConformingUnder(ProfileID)
+}
+
+// ConformingUnder is Conforming for a refusal answering a request that asks
+// for profile (v1 §6.3): its reason is checked against that identifier's
+// §9.1 tokens, or, for an identifier this package does not implement,
+// against every token of those it does.
+func (r Refusal) ConformingUnder(profile string) bool {
 	_, timeOK := ParseProfileTime(r.IssuedAt)
-	return slices.Contains(profileRefusalReasons, r.Reason) && timeOK && IsDigest(r.RequestDigest)
+	return slices.Contains(refusalReasonsFor(profile, Profiles), r.Reason) && timeOK && IsDigest(r.RequestDigest)
 }
 
 // Value is the refusal's wire value.
@@ -222,7 +238,10 @@ func (e Envelope) Value() map[string]any {
 // Verify checks the envelope signature under its own responder key, that
 // the artifact hashes to the signed digest, and that each verification item
 // hashes to the digest at its position. It does not decide whether the key
-// is trusted or whether the artifact answers the request.
+// is trusted or whether the artifact answers the request, and it does not
+// compare e.Profile with the identifier the request asked for (ProfileID when
+// it named none, profile §3.3 step 5): the Verifier does, and so must a
+// caller that accepts an envelope with Verify alone.
 func (e Envelope) Verify() error {
 	body, err := e.SigningBody()
 	if err != nil {

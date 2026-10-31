@@ -22,6 +22,11 @@ from ._cbor import Tag
 
 __all__ = [
     "PROFILE_ID",
+    "PROFILE_V1",
+    "PROFILE_IDS",
+    "DEFAULT_REQUEST_PROFILE",
+    "REFUSAL_REASONS_BY_PROFILE",
+    "refusal_reasons_for",
     "PASS",
     "FAIL",
     "NOT_PRESENT",
@@ -36,7 +41,14 @@ __all__ = [
     "KeyStatusResolver",
 ]
 
+#: ``spec/interop-profile-v0.md``, frozen; the name keeps its meaning for existing callers.
 PROFILE_ID = "evidence-interop/0"
+#: ``spec/interop-profile-v1.md``: ER -02 and its two refusal reasons (P-65).
+PROFILE_V1 = "evidence-interop/1"
+#: Every identifier this verifier implements, each checked under its own rules.
+PROFILE_IDS = frozenset({PROFILE_ID, PROFILE_V1})
+#: §3.3 step 2, both revisions: a request with no ``profile`` asks for evidence-interop/0.
+DEFAULT_REQUEST_PROFILE = PROFILE_ID
 
 # §7.1: the five property statuses.
 PASS = "PASS"
@@ -50,11 +62,26 @@ STATUSES = (PASS, FAIL, NOT_PRESENT, NOT_CHECKED, INCONCLUSIVE)
 MEDIA_CBOR = "application/cbor"
 MEDIA_JSON = "application/json"
 
-# §9.1: the eight registered refusal reasons [ER §13].
+# v0 §9.1: the eight refusal reasons of the ER -01 registry [ER §13].
 REFUSAL_REASONS = frozenset({
     "not_authorized", "no_such_subject", "coverage_unsatisfiable", "derivation_unsupported",
     "policy_declined", "deadline_unmet", "request_malformed", "retention_expired",
 })
+# §9.1 of each revision: v1 pins ER -02, which adds two.
+REFUSAL_REASONS_BY_PROFILE = {
+    PROFILE_ID: REFUSAL_REASONS,
+    PROFILE_V1: REFUSAL_REASONS | {"capacity_exceeded", "request_unauthenticated"},
+}
+
+
+def refusal_reasons_for(asked: Any, implemented: Iterable[str]) -> frozenset:
+    """v1 §6.3: a refusal carries no ``profile``, so its reason is checked against the tokens of the
+    identifier its request asks for, or, when the verifier does not implement that one, against
+    every token of those it does."""
+    implemented = [p for p in implemented if p in REFUSAL_REASONS_BY_PROFILE]
+    if asked in implemented:
+        return REFUSAL_REASONS_BY_PROFILE[asked]
+    return frozenset().union(*(REFUSAL_REASONS_BY_PROFILE[p] for p in implemented))
 
 # §6.2.1: the three verification material kinds this revision registers.
 CLL_KINDS = ("cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof")
@@ -469,13 +496,13 @@ class VerificationPolicy:
     """
 
     online: bool = False
-    profiles_implemented: frozenset = frozenset({PROFILE_ID})
+    profiles_implemented: frozenset = PROFILE_IDS
     kinds_implemented: frozenset = frozenset(CLL_KINDS)
     key_status: KeyStatusResolver | None = None
 
     @classmethod
     def from_dict(cls, pin: Mapping[str, Any], key_status: KeyStatusResolver | None = None) -> VerificationPolicy:
         return cls(online=bool(pin.get("online", False)),
-                   profiles_implemented=frozenset(pin.get("profiles_implemented", (PROFILE_ID,))),
+                   profiles_implemented=frozenset(pin.get("profiles_implemented", PROFILE_IDS)),
                    kinds_implemented=frozenset(pin.get("kinds_implemented", CLL_KINDS)),
                    key_status=key_status)

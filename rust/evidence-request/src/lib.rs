@@ -31,7 +31,8 @@
 //! future revision may change are marked in each module.
 //!
 //! - [`envelope`]: the artifact response in the interop profile's form
-//!   (`evidence-interop/0` §6.2): build and sign it ([`envelope::sign`]),
+//!   (`evidence-interop/0` and `/1` §6.2): build and sign it ([`envelope::sign`],
+//!   [`envelope::sign_with_profile`]),
 //!   encode it in either binding, read a reply as carried
 //!   ([`envelope::parse_reply`]), and accept it as a responder's answer to a
 //!   request ([`envelope::Envelope::verify_for`]).

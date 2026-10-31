@@ -36,6 +36,12 @@ selection and requirement sets (§10).
 ER §3.1.1 is in the -01 text of the Evidence Request source, which has not been posted yet. This
 level cites it by section and needs nothing from it beyond what §5.2 states.
 
+**Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
+`spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
+frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). It is built on the Basic level
+(PH), which stays on `evidence-interop/0`, and the requests and envelopes of its vectors name that
+identifier. Re-pinning to `evidence-interop/1` is a revision of this profile.
+
 **Does not define:** any record format of another party, any adapter, any judge, any trust policy,
 who may receive a History, or what a recipient should conclude. It defines no figure that combines
 claims, sources, deals, holders or counterparties, and no ordering of any of them.

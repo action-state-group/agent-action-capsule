@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The reference verifier for ``evidence-interop/0`` against the conformance vectors and the
-profile's worked examples.
+"""The reference verifier for ``evidence-interop/0`` and ``evidence-interop/1`` against the
+conformance vectors and the profile's worked examples.
 
-Every case of ``vectors/interop-profile-v0/vectors.json`` is run through the library verifier
+Every case of ``vectors/interop-profile-v0/vectors.json`` and ``vectors/interop-profile-v1/`` is run through the library verifier
 (``agent_action_capsule.interop_profile``) from its inputs alone, and the result is compared with
 the case's whole ``expected`` block. Only one thing in that block is not compared: the corpus's
 own labels for statements (``name``), which no verifier can know. Cases are dispatched by the
@@ -54,6 +54,10 @@ CONTRACT = DATA["contract"]["document"]
 FACTS = json.loads((ROOT / "vectors" / "interop-profile-v0-requirement-facts" / "vectors.json")
                    .read_text(encoding="utf-8"))
 PROFILE_TEXT = (ROOT / "spec" / "interop-profile-v0.md").read_text(encoding="utf-8")
+# evidence-interop/1: the same builders, the ER -02 reasons, and three more cases (P-65).
+DATA_V1 = json.loads((ROOT / "vectors" / "interop-profile-v1" / "vectors.json").read_text(encoding="utf-8"))
+FACTS_V1 = json.loads((ROOT / "vectors" / "interop-profile-v1-requirement-facts" / "vectors.json")
+                      .read_text(encoding="utf-8"))
 
 
 def sha(b: bytes) -> str:
@@ -291,6 +295,60 @@ def test_verifier_reproduces_the_requirement_facts_set(case):
         assert dated == {"r-obligation-dated", "r-outcome-dated"}
 
 
+def test_v1_corpus_size_and_contract_pin():
+    assert DATA_V1["count"] == len(DATA_V1["cases"]) == 58
+    assert DATA_V1["contract"]["contract_digest"] == DATA["contract"]["contract_digest"]
+    assert {c["id"] for c in DATA_V1["cases"]} - {c["id"] for c in CASES} == {
+        "capacity-exceeded", "request-unauthenticated", "capacity-exceeded-under-v0"}
+
+
+@pytest.mark.parametrize("case", DATA_V1["cases"], ids=lambda c: c["id"])
+def test_verifier_reproduces_every_v1_expected_value(case):
+    assert run_case(case) == comparable(case["expected"])
+
+
+@pytest.mark.parametrize("case", FACTS_V1["cases"], ids=lambda c: c["id"])
+def test_verifier_reproduces_the_v1_requirement_facts_set(case):
+    assert run_exchange_case(case, FACTS_V1["contract"]["document"]) == case["expected"]
+
+
+def _capacity_refusal(profile: str | None, implemented: set[str]) -> dict:
+    """capacity_exceeded answering a request under ``profile``, checked by a verifier implementing
+    ``implemented`` (v1 §6.3, §9.1)."""
+    case = copy.deepcopy(next(c for c in DATA_V1["cases"] if c["id"] == "capacity-exceeded"))
+    if profile != "evidence-interop/1":
+        request = json.loads(case["inputs"]["request"]["octets_text"])
+        if profile is None:
+            del request["profile"]
+        else:
+            request["profile"] = profile
+        octets = jcs(request)
+        reply = json.loads(case["inputs"]["replies"][0]["octets_text"])
+        body = {"issued_at": reply["issued_at"], "reason": reply["reason"], "request_digest": sha(octets)}
+        signed = dict(body, key_id=reply["key_id"], sig=_responder_key().sign(jcs(body)).hex())
+        case["inputs"]["request"]["octets_text"] = octets.decode()
+        case["inputs"]["replies"][0]["octets_text"] = jcs(signed).decode()
+    case["pins"]["verification_policy"]["profiles_implemented"] = sorted(implemented)
+    out = run_exchange_case(case)["replies"][0]
+    return {"reason_registered": out["properties"]["reason_registered"],
+            "status": out["requirements"]["r-record"]["status"]}
+
+
+@pytest.mark.parametrize("profile, implemented, registered", [
+    ("evidence-interop/1", {"evidence-interop/1"}, "PASS"),
+    ("evidence-interop/1", {"evidence-interop/0", "evidence-interop/1"}, "PASS"),
+    ("evidence-interop/0", {"evidence-interop/0", "evidence-interop/1"}, "FAIL"),
+    ("evidence-interop/0", {"evidence-interop/0"}, "FAIL"),
+    (None, {"evidence-interop/0", "evidence-interop/1"}, "FAIL"),  # §3.3 step 2: no profile asks for /0
+    ("evidence-interop/9", {"evidence-interop/0", "evidence-interop/1"}, "PASS"),  # every implemented token
+    ("evidence-interop/9", {"evidence-interop/0"}, "FAIL"),
+])
+def test_capacity_exceeded_is_registered_under_v1_only(profile, implemented, registered):
+    """A /1 verifier accepts a conforming capacity_exceeded and maps it to UNKNOWN; under /0 it is
+    unregistered, a response received and failed, which is UNKNOWN too (v1 §8.1, never WITHHELD)."""
+    assert _capacity_refusal(profile, implemented) == {"reason_registered": registered, "status": "UNKNOWN"}
+
+
 def test_no_claim_from_the_verifier_breaks_the_met_rule():
     """§8.2 invariant 1 over everything the verifier produced for the corpus."""
     seen = 0
@@ -359,11 +417,11 @@ def test_mutant_is_check_read_as_supports(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def _block_after(marker: str, fence: str = "```") -> str:
-    start = PROFILE_TEXT.index(marker)
-    open_at = PROFILE_TEXT.index(fence, start)
-    body_at = PROFILE_TEXT.index("\n", open_at) + 1
-    return PROFILE_TEXT[body_at:PROFILE_TEXT.index("```", body_at)].strip()
+def _block_after(marker: str, fence: str = "```", text: str = PROFILE_TEXT) -> str:
+    start = text.index(marker)
+    open_at = text.index(fence, start)
+    body_at = text.index("\n", open_at) + 1
+    return text[body_at:text.index("```", body_at)].strip()
 
 
 RESPONDER = "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
@@ -487,6 +545,54 @@ def test_section_11_4_examples_one_request_digest():
     assert sent_a2a is not None and sent_mcp is not None
     assert len(sent_a2a[0]) == 228 and sent_a2a == sent_mcp
     assert sha(sent_a2a[0]) == "ba7fee76b7afe9f3ec5ce46975865e06040492f0da733b28cbc86bd2be609d5e"
+
+
+V1_TEXT = (ROOT / "spec" / "interop-profile-v1.md").read_text(encoding="utf-8")
+
+
+def _v1_value_after(marker: str, label: str) -> str:
+    """The first backquoted value after ``label`` that follows ``marker`` in the v1 text."""
+    at = V1_TEXT.index(label, V1_TEXT.index(marker)) + len(label)
+    return re.match(r"\s*`([0-9a-f]+)`", V1_TEXT[at:]).group(1)
+
+
+def test_v1_worked_examples_verify_under_evidence_interop_1():
+    """The §10 and §11.4 bytes of spec/interop-profile-v1.md, which re-signs the v0 examples under
+    evidence-interop/1: every printed digest and signature checks, under the v1 identifier."""
+    block = lambda marker: _block_after(marker, text=V1_TEXT)  # noqa: E731
+    request_a = block("**Request A, JSON binding**").encode("utf-8")
+    request_b = bytes.fromhex(block("**Request B, CBOR stream binding.**"))
+    assert b"evidence-interop/1" in request_a and b"evidence-interop/1" in request_b
+    digest_a = _v1_value_after("**Request A, JSON binding**", "request digest")
+    digest_b = _v1_value_after("**Request B, CBOR stream binding.**", "request digest")
+    assert (sha(request_a), sha(request_b)) == (digest_a, digest_b)
+    env_a = json.loads(block("The complete response object for request A"))
+    env_b = dict(env_a, issued_at="2026-10-12T00:00:06Z", request_digest=digest_b,
+                 sig=_v1_value_after("**Envelope for request B.**", "`sig` ="))
+    assert env_a["profile"] == "evidence-interop/1"
+    verifier = InteropVerifier(SECTION_10_TRUST, VerificationPolicy(), "2026-10-12T01:00:00Z", contract=CONTRACT)
+    result = verifier.verify(
+        [Exchange(Message(request_a, "application/json"), [Message(jcs(env_a), "application/json")]),
+         Exchange(Message(request_b, "application/cbor"), [Message(jcs(env_b), "application/json")])],
+        requirements=["r-record"])
+    for ex in result.exchanges:
+        reply = ex.replies[0]
+        assert [reply.status(p) for p in ("profile_version", "envelope_signature", "request_binding")] == ["PASS"] * 3
+    refusal = dict(json.loads(block("**Refusal.** Had the responder")), key_id=RESPONDER,
+                   sig=_v1_value_after("**Refusal.** Had the responder", "`sig` ="))
+    absence = block("**Absence record.**").encode("utf-8")
+    result = verifier.verify(
+        [Exchange(Message(request_a, "application/json"), [Message(jcs(refusal), "application/json")]),
+         Exchange(Message(request_b, "application/cbor"), [], Message(absence, "application/json"))],
+        requirements=["r-record"])
+    assert result.exchanges[0].replies[0].requirements["r-record"].status == "NOT_FOUND"
+    assert result.exchanges[1].absence.evidence[0]["digest"] == _v1_value_after(
+        "**Absence record.**", "absence record digest")
+    a2a = json.loads(re.sub(r"^.*?\n\n", "", block("**Example (informative).** Request B of §10"), flags=re.S))
+    mcp = json.loads(block("**Example (informative).** The same request B, as a `tools/call`"))
+    assert carriage_mod.a2a_request_octets(a2a["params"]["message"])[0] == request_b
+    assert carriage_mod.mcp_request_octets(mcp["params"])[0] == request_b
+    assert V1_TEXT.count(digest_b) >= 4  # §10, §11.4.4 and §11.4.5 name request B's v1 digest
 
 
 # ---------------------------------------------------------------------------

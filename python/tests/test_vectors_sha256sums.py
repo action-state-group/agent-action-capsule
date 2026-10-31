@@ -36,4 +36,5 @@ def test_full_regeneration_runs_every_generator():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     on_disk = {p.name for p in scripts.glob("generate_*.py")} - {"generate_all_vectors.py"}
-    assert set(module.GENERATORS) == on_disk
+    # An entry is a script name, or a tuple of a script name and its arguments.
+    assert {entry if isinstance(entry, str) else entry[0] for entry in module.GENERATORS} == on_disk

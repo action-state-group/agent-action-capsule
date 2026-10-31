@@ -32,7 +32,7 @@
 //! responder's business, not this crate's.
 
 use crate::digest::request_digest;
-use crate::registry::is_digest;
+use crate::registry::{is_digest, Reason};
 use crate::request::{Derivation, Subject};
 use crate::time::parse_utc;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -41,8 +41,28 @@ use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 
-/// The profile identifier the envelope carries (profile §3.1).
+/// The profile identifier an envelope carries by default (profile §3.1):
+/// `evidence-interop/0`, frozen.
 pub const PROFILE: &str = "evidence-interop/0";
+
+/// `evidence-interop/1` (`spec/interop-profile-v1.md`): ER -02 and its two
+/// refusal reasons. Its envelope is the same.
+pub const PROFILE_V1: &str = "evidence-interop/1";
+
+/// Every identifier whose envelope this module reads.
+pub const PROFILES: [&str; 2] = [PROFILE, PROFILE_V1];
+
+/// The refusal reasons registered under `profile` (each revision's §9.1):
+/// /0 pins ER -01 and its eight, /1 pins ER -02 and its ten. A refusal
+/// carries no profile, so read it under the identifier its request asked
+/// for (v1 §6.3). For an identifier this crate does not implement, every
+/// token of those it does: the ten.
+pub fn refusal_reasons(profile: &str) -> &'static [Reason] {
+    match profile {
+        PROFILE => &Reason::ALL[..8],
+        _ => &Reason::ALL[..],
+    }
+}
 
 /// The largest integer the profile's data model holds exactly: 2^53 - 1.
 const MAX_INTEGER: u64 = (1 << 53) - 1;
@@ -230,16 +250,29 @@ impl Envelope {
 
     /// Accept the envelope as the answer of the responder whose key is
     /// `responder_key` to the request whose octets as sent are
-    /// `request_bytes`: the profile, the key and the request digest must be
-    /// those, and [`Envelope::verify`] must pass. Whether the artifact is the
-    /// answer you wanted (its subject, its anchor, its material) is for you
-    /// to judge from the verified members.
+    /// `request_bytes`, a request that named [`PROFILE`] or no profile:
+    /// [`Envelope::verify_for_profile`] with [`PROFILE`].
     pub fn verify_for(
         &self,
         responder_key: &VerifyingKey,
         request_bytes: &[u8],
     ) -> Result<(), EnvelopeError> {
-        if self.profile != PROFILE {
+        self.verify_for_profile(PROFILE, responder_key, request_bytes)
+    }
+
+    /// Accept the envelope as the answer to a request that asked for
+    /// `profile`: the envelope must name exactly that identifier (profile
+    /// §3.3 step 5), one of [`PROFILES`], the key and the request digest must
+    /// be those, and [`Envelope::verify`] must pass. Whether the artifact is
+    /// the answer you wanted (its subject, its anchor, its material) is for
+    /// you to judge from the verified members.
+    pub fn verify_for_profile(
+        &self,
+        profile: &str,
+        responder_key: &VerifyingKey,
+        request_bytes: &[u8],
+    ) -> Result<(), EnvelopeError> {
+        if !PROFILES.contains(&profile) || self.profile != profile {
             return Err(EnvelopeError::Profile);
         }
         if self.responder != hex::encode(responder_key.to_bytes()) {
@@ -267,7 +300,7 @@ pub enum EnvelopeError {
     VerificationCount,
     #[error("verification item {0} does not hash to its signed digest")]
     VerificationDigest(usize),
-    #[error("the envelope is not the profile's evidence-interop/0")]
+    #[error("the envelope does not name the profile requested, or that profile is not evidence-interop/0 or /1")]
     Profile,
     #[error("the envelope is signed by another key than the responder's")]
     WrongKey,
@@ -353,6 +386,8 @@ pub enum SignError {
     Kind,
     #[error("the signer signed under a key other than its key_id")]
     SignerKey,
+    #[error("the profile is not evidence-interop/0 or evidence-interop/1")]
+    Profile,
     #[error("the signer failed: {0}")]
     Signer(String),
 }
@@ -362,12 +397,27 @@ pub enum SignError {
 /// before anything is signed, an envelope the profile does not allow: a
 /// subject or derivation a request could not carry, an anchor that is not a
 /// digest, an empty artifact, an `issued_at` or time freshness outside the
-/// §5.2 form, or a size freshness outside the profile's integers.
+/// §5.2 form, or a size freshness outside the profile's integers. The
+/// envelope names [`PROFILE`]; [`sign_with_profile`] signs under another.
 pub fn sign(
     request_bytes: &[u8],
     parts: EnvelopeParts,
     signer: &dyn Signer,
 ) -> Result<Envelope, SignError> {
+    sign_with_profile(PROFILE, request_bytes, parts, signer)
+}
+
+/// [`sign`] under `profile`, one of [`PROFILES`]: sign under the identifier
+/// the request asked for (profile §3.3).
+pub fn sign_with_profile(
+    profile: &str,
+    request_bytes: &[u8],
+    parts: EnvelopeParts,
+    signer: &dyn Signer,
+) -> Result<Envelope, SignError> {
+    if !PROFILES.contains(&profile) {
+        return Err(SignError::Profile);
+    }
     check_subject(&parts.subject).map_err(SignError::Subject)?;
     if let Some(d) = &parts.derivation {
         check_derivation(d).map_err(SignError::Subject)?;
@@ -390,7 +440,7 @@ pub fn sign(
         return Err(SignError::Kind);
     }
     let mut envelope = Envelope {
-        profile: PROFILE.to_string(),
+        profile: profile.to_string(),
         request_digest: request_digest(request_bytes),
         subject: parts.subject,
         derivation: parts.derivation,

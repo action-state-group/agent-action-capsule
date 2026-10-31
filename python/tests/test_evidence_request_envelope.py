@@ -48,11 +48,22 @@ ISSUED_AT = "2026-10-15T00:00:00Z"
 
 @pytest.mark.parametrize("binding,media_type", [("json", "application/json"), ("cbor", "application/cbor")])
 @pytest.mark.parametrize("material", [MATERIAL, []])
-def test_matches_the_vector_generator_byte_for_byte(gen, binding, media_type, material):
+@pytest.mark.parametrize("profile", ["evidence-interop/0", "evidence-interop/1"])
+def test_matches_the_vector_generator_byte_for_byte(gen, binding, media_type, material, profile):
     env = er.sign_envelope(REQUEST, er.Subject("record", RECORD), ANCHOR, ARTIFACT,
-                           signer=_Signer(gen, "responder"), issued_at=ISSUED_AT, verification=material)
-    want = gen.envelope(REQUEST, RECORD, ANCHOR, ARTIFACT, material, ISSUED_AT, media_type)
+                           signer=_Signer(gen, "responder"), issued_at=ISSUED_AT, verification=material,
+                           profile=profile)
+    want = gen.envelope(REQUEST, RECORD, ANCHOR, ARTIFACT, material, ISSUED_AT, media_type, profile=profile)
     assert env.encode(binding) == want
+
+
+def test_default_profile_and_unknown_profile(gen):
+    signer = _Signer(gen, "responder")
+    assert er.sign_envelope(REQUEST, er.Subject("record", RECORD), ANCHOR, ARTIFACT, signer=signer,
+                            issued_at=ISSUED_AT).profile == er.PROFILE == "evidence-interop/0"
+    with pytest.raises(ValueError, match="profile"):
+        er.sign_envelope(REQUEST, er.Subject("record", RECORD), ANCHOR, ARTIFACT, signer=signer,
+                         issued_at=ISSUED_AT, profile="evidence-interop/2")
 
 
 def test_signature_covers_the_jcs_of_the_signed_members(gen):

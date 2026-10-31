@@ -67,10 +67,14 @@ func TestParseRequestReasons(t *testing.T) {
 		})
 	}
 	unknown := er.ParseRequest(er.Message{Octets: []byte(`{` + subject + `,` + coverage + `,"profile":"evidence-interop/9"}`), MediaType: er.MediaTypeJSON})
-	assert.Contains(t, unknown.Detail, er.ProfileID, "an unknown profile's refusal lists the one supported")
+	assert.Equal(t, "profiles supported: evidence-interop/0, evidence-interop/1", unknown.Detail,
+		"an unknown profile's refusal lists the ones supported")
 	plain := er.ParseRequest(er.Message{Octets: []byte(`{` + subject + `,` + coverage + `}`), MediaType: er.MediaTypeJSON})
-	assert.Equal(t, er.ProfileID, plain.Request.Profile, "a request without a profile is answered as the profile")
+	assert.Equal(t, er.ProfileID, plain.Request.Profile, "a request without a profile asks for evidence-interop/0 (v1 §3.3 step 2)")
 	assert.Empty(t, plain.Detail)
+	v1 := er.ParseRequest(er.Message{Octets: []byte(`{` + subject + `,` + coverage + `,"profile":"evidence-interop/1"}`), MediaType: er.MediaTypeJSON})
+	assert.Empty(t, v1.Reason, v1.Why)
+	assert.Equal(t, er.ProfileIDv1, v1.Request.Profile)
 }
 
 // A request round-trips through either encoding, and Request.Value refuses
@@ -248,6 +252,11 @@ func TestRefusalSignatureCoversReasonAndTime(t *testing.T) {
 	assert.NoError(t, unregistered.Verify(), "the signature alone does not judge the reason")
 	assert.False(t, unregistered.Conforming())
 	assert.Error(t, unregistered.VerifyFor(keyID, digestOf("req")))
+	capacity, err := er.Refusal{RequestDigest: digestOf("req"), Reason: er.ReasonCapacityExceeded, IssuedAt: "2026-09-28T00:00:00Z", KeyID: keyID}.Sign(context.Background(), s)
+	require.NoError(t, err)
+	assert.Error(t, capacity.VerifyFor(keyID, digestOf("req")), "capacity_exceeded is unregistered under evidence-interop/0")
+	assert.NoError(t, capacity.VerifyForProfile(er.ProfileIDv1, keyID, digestOf("req")), "and registered under /1")
+	assert.Error(t, capacity.VerifyForProfile(er.ProfileIDv1, otherKey, digestOf("req")), "another responder's key")
 
 	for _, mediaType := range []string{er.MediaTypeJSON, er.MediaTypeCBOR} {
 		reply, err := er.EncodeReply(mediaType, nil, &original)

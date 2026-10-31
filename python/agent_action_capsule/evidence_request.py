@@ -135,6 +135,7 @@ __all__ = [
     "Signer",
     "Artifact",
     "PROFILE",
+    "PROFILES",
     "Envelope",
     "sign_envelope",
     "VerificationError",
@@ -169,9 +170,16 @@ DRAFT = "draft-mih-agent-evidence-request-00"
 SUBPROTOCOL = "evidence-request/1"
 
 #: The interoperability profile whose artifact envelope :class:`Envelope`
-#: implements (``spec/interop-profile-v0.md`` §6.2). -00 says what an artifact
+#: implements (``spec/interop-profile-v0.md`` §6.2), and the one
+#: :func:`sign_envelope` signs under by default. -00 says what an artifact
 #: response carries but fixes no wire members (§4.1); the profile does.
 PROFILE = "evidence-interop/0"
+
+#: Every profile identifier whose envelope :class:`Envelope` reads:
+#: ``evidence-interop/0`` and ``evidence-interop/1``
+#: (``spec/interop-profile-v1.md``), which share the envelope and differ in
+#: the refusal reasons they register.
+PROFILES = frozenset({"evidence-interop/0", "evidence-interop/1"})
 
 #: The one derivation -00 registers (§8.1, §13).
 DERIVATION_HISTORY_CARD = "history_card/1"
@@ -807,14 +815,18 @@ class Envelope:
             if hashlib.sha256(octets).hexdigest() != entry["digest"]:
                 raise VerificationError(f"verification item {i} does not hash to its signed digest")
 
-    def verify_for(self, request_bytes: bytes, responder: str) -> None:
-        """:meth:`verify`, and that the envelope is this profile's
-        (:data:`PROFILE`), is signed by ``responder`` (the key you pinned for
-        the responder, as lowercase hex) and answers the request whose octets
-        you sent were ``request_bytes`` (§6.2 ``request_digest``). Raises
-        :class:`VerificationError`."""
-        if self.profile != PROFILE:
-            raise VerificationError(f"profile is {self.profile!r}, not {PROFILE}")
+    def verify_for(self, request_bytes: bytes, responder: str, *, profile: str = PROFILE) -> None:
+        """:meth:`verify`, and that the envelope names ``profile``, the
+        identifier your request asked for (:data:`PROFILE` when it named
+        none, profile §3.3 steps 2 and 5), is signed by ``responder`` (the key
+        you pinned for the responder, as lowercase hex) and answers the
+        request whose octets you sent were ``request_bytes`` (§6.2
+        ``request_digest``). Raises :class:`VerificationError`, and
+        :class:`ValueError` for a ``profile`` not in :data:`PROFILES`."""
+        if profile not in PROFILES:
+            raise ValueError(f"profile must be one of {sorted(PROFILES)}")
+        if self.profile != profile:
+            raise VerificationError(f"profile is {self.profile!r}, not the {profile!r} requested")
         if self.responder != responder:
             raise VerificationError("the envelope is signed by another key than the responder's")
         if self.request_digest != request_digest(request_bytes):
@@ -833,6 +845,7 @@ def sign_envelope(
     derivation: str | None = None,
     freshness: int | str | None = None,
     verification: Iterable[tuple[str, bytes]] = (),
+    profile: str = PROFILE,
 ) -> Envelope:
     """Build and sign the profile envelope (§6.2) for an artifact served under
     ``anchor_digest`` in answer to the request whose octets as received are
@@ -841,7 +854,11 @@ def sign_envelope(
     anything is signed, for an envelope the profile does not allow: a subject
     or derivation a request could not carry, an ``anchor_digest`` that is not
     a digest, an empty ``artifact`` (§6.2), an ``issued_at`` not in the §5.2
-    time form, or a ``freshness`` that is neither a size nor a §5.2 time."""
+    time form, a ``freshness`` that is neither a size nor a §5.2 time, or a
+    ``profile`` not in :data:`PROFILES`. Sign under the identifier the
+    request asked for (profile §3.3)."""
+    if profile not in PROFILES:
+        raise ValueError(f"profile must be one of {sorted(PROFILES)}")
     try:
         _parse_subject(subject.to_wire())
         if derivation is not None:
@@ -866,6 +883,7 @@ def sign_envelope(
         derivation=derivation,
         freshness=freshness,
         verification=tuple((kind, bytes(octets)) for kind, octets in verification),
+        profile=profile,
     )
     sig, key_id = signer.sign(stub.signing_body())
     if key_id != stub.responder:
@@ -1122,9 +1140,9 @@ def check_cll_material(envelope: Envelope, trust: TrustPolicy) -> PropertyReport
     whose material is never checked, or one of another profile) or
     ``INCONCLUSIVE``. This decides anchor inclusion only; authenticate the
     envelope with :meth:`Envelope.verify_for` as well."""
-    if envelope.profile != PROFILE:
+    if envelope.profile not in PROFILES:
         return PropertyReport("anchor_inclusion", NOT_CHECKED, "§6.2.1 Checkpointed Local Log procedure",
-                              f"the envelope is not {PROFILE}, so this profile's kinds do not apply")
+                              f"the envelope is not one of {sorted(PROFILES)}, so this profile's kinds do not apply")
     try:
         envelope.verify()
         bound = PASS

@@ -28,7 +28,9 @@ pytest.importorskip("cryptography")
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat  # noqa: E402
 
-CORPUS = Path(__file__).resolve().parents[2] / "vectors" / "interop-profile-v0" / "vectors.json"
+CORPORA = [Path(__file__).resolve().parents[2] / "vectors" / name / "vectors.json"
+           for name in ("interop-profile-v0", "interop-profile-v1")]
+CORPUS = CORPORA[0]
 
 
 class _SeedSigner:
@@ -184,12 +186,18 @@ def test_verify_for_binds_profile_responder_and_request():
         env.verify_for(REQUEST, OTHER.key_id)
     with pytest.raises(er.VerificationError, match="request_digest"):
         env.verify_for(REQUEST + b" ", SIGNER.key_id)
-    other_profile = er.Envelope(**{**{f.name: getattr(env, f.name) for f in dataclasses.fields(env)},
-                                   "profile": "evidence-interop/1", "sig": ""})
-    signed = dataclasses.replace(other_profile, sig=SIGNER.sign(other_profile.signing_body())[0])
-    signed.verify()
+    v1 = er.Envelope(**{**{f.name: getattr(env, f.name) for f in dataclasses.fields(env)},
+                        "profile": "evidence-interop/1", "sig": ""})
+    v1 = dataclasses.replace(v1, sig=SIGNER.sign(v1.signing_body())[0])
+    v1.verify()
+    # §3.3 step 5: the envelope must name the identifier requested; a request with none asks for /0.
+    v1.verify_for(REQUEST, SIGNER.key_id, profile="evidence-interop/1")
     with pytest.raises(er.VerificationError, match="profile"):
-        signed.verify_for(REQUEST, SIGNER.key_id)
+        v1.verify_for(REQUEST, SIGNER.key_id)
+    with pytest.raises(er.VerificationError, match="profile"):
+        env.verify_for(REQUEST, SIGNER.key_id, profile="evidence-interop/1")
+    with pytest.raises(ValueError, match="profile"):
+        env.verify_for(REQUEST, SIGNER.key_id, profile="evidence-interop/2")
 
 
 # --- parse_reply refusals ---------------------------------------------------------------
@@ -288,8 +296,8 @@ def test_a_cbor_frame_need_not_be_deterministic():
 # --- the interop profile corpus ----------------------------------------------------------
 
 
-def _corpus_replies():
-    corpus = json.loads(CORPUS.read_text())
+def _corpus_replies(path: Path = CORPUS):
+    corpus = json.loads(path.read_text())
     for case in corpus["cases"]:
         expected = case["expected"].get("replies") or []
         for i, (reply, want) in enumerate(zip(case["inputs"].get("replies") or [], expected)):
@@ -297,9 +305,10 @@ def _corpus_replies():
                 yield case, i, reply, want["properties"]
 
 
-def test_corpus_envelopes_verify_and_check_anchor_inclusion():
+@pytest.mark.parametrize("path", CORPORA, ids=lambda p: p.parent.name)
+def test_corpus_envelopes_verify_and_check_anchor_inclusion(path):
     checked = passed = 0
-    for case, i, reply, props in _corpus_replies():
+    for case, i, reply, props in _corpus_replies(path):
         where = f"{case['id']} reply {i}"
         octets = reply["octets_text"].encode() if "octets_text" in reply else bytes.fromhex(reply["octets_hex"])
         binding = "cbor" if reply["media_type"] == "application/cbor" else "json"
@@ -320,6 +329,12 @@ def test_corpus_envelopes_verify_and_check_anchor_inclusion():
                 verified = False
             assert verified == bound, where
         report = er.check_cll_material(envelope, TrustPolicy.from_dict(case["pins"]["trust_policy"]))
+        if props["profile_version"] in ("FAIL", "NOT_CHECKED") and envelope.profile in er.PROFILES:
+            # A mismatch with the request, or an identifier the case's policy does not implement
+            # (§3.3 step 5), is the verifier's to find; this function sees the envelope alone,
+            # under a profile it reads.
+            checked += 1
+            continue
         assert report.status == props["anchor_inclusion"], f"{where}: {report.detail}"
         checked += 1
         if report.status == "PASS":

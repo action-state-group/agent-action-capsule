@@ -149,9 +149,9 @@ type VerificationPolicy struct {
 }
 
 // VerificationPolicyFromPin reads the verification_policy pin; absent lists
-// default to this profile and the three CLL kinds.
+// default to both profile identifiers and the three CLL kinds.
 func VerificationPolicyFromPin(pin map[string]any) VerificationPolicy {
-	v := VerificationPolicy{ProfilesImplemented: []string{ProfileID}, KindsImplemented: slices.Clone(CLLKinds)}
+	v := VerificationPolicy{ProfilesImplemented: slices.Clone(Profiles), KindsImplemented: slices.Clone(CLLKinds)}
 	v.Online, _ = pin["online"].(bool)
 	for name, list := range map[string]*[]string{"profiles_implemented": &v.ProfilesImplemented, "kinds_implemented": &v.KindsImplemented} {
 		raw, present := pin[name].([]any)
