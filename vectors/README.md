@@ -87,9 +87,10 @@ same-commit files in CI.
   of Evidence Bundle -02's `composed/v1`: a linked join (redundant, never
   corroborating), unjoined joins (revoked, one key signing for both, other
   keys, outside the window), a declared state a revocation contradicts, and
-  joins that cannot be derived (no binding record delivered, a method not
-  implemented); `python/scripts/generate_bundle_composed_cb_vectors.py`
-  regenerates them.
+  joins that cannot be derived (no binding record delivered, a method or key
+  type not implemented), and joins with an empty-history member (linked:
+  `one_sided`; revoked: `unjoined`; no checkpoint: not derivable);
+  `python/scripts/generate_bundle_composed_cb_vectors.py` regenerates them.
 - `judgment/`: PROVISIONAL judgment extension cases (the `x-judgment-v1`
   Capsule member: `rubric_digest`, `rubric_version`, `judge_parameters_digest`,
   schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are

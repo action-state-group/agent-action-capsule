@@ -37,12 +37,12 @@ func bindingCases(t *testing.T) map[string]bindingCase {
 		Cases []bindingCase `json:"cases"`
 	}
 	require.NoError(t, decoder.Decode(&file))
-	require.Equal(t, json.Number("8"), file.Count)
+	require.Equal(t, json.Number("14"), file.Count)
 	cases := map[string]bindingCase{}
 	for _, c := range file.Cases {
 		cases[c.ID] = c
 	}
-	require.Len(t, cases, 8)
+	require.Len(t, cases, 14)
 	return cases
 }
 
@@ -266,7 +266,22 @@ func TestControllerBindingForm(t *testing.T) {
 			r["claim"], r["method"] = "same_organization_credentialed", "dual_signature_credential/0"
 			r["credential"] = map[string]interface{}{"issuer": keys[0], "method": "m"}
 		},
+		"key_types one entry":    func(r map[string]interface{}) { r["key_types"] = []interface{}{"ed25519"} },
+		"key_types not strings":  func(r map[string]interface{}) { r["key_types"] = []interface{}{"ed25519", 1} },
+		"key_types not an array": func(r map[string]interface{}) { r["key_types"] = "ed25519" },
+		"key_types ed25519 sig": func(r map[string]interface{}) {
+			r["key_types"] = []interface{}{"ed25519", "ed25519"}
+			r["sigs"].([]interface{})[0].(map[string]interface{})["sig"] = "zz"
+		},
 	}
+	// key_types is optional; a type -02 does not define frees sig from its hex form.
+	typed := cloneJSON(t, base)
+	typed["key_types"] = []interface{}{"ed25519", "x-example-type"}
+	typed["sigs"].([]interface{})[1].(map[string]interface{})["sig"] = map[string]interface{}{"x": "y"}
+	require.True(t, bindingForm(typed))
+	require.False(t, ed25519Keys(typed))
+	typed["key_types"] = []interface{}{"ed25519", "ed25519"}
+	require.True(t, ed25519Keys(typed))
 	for name, mutate := range cases {
 		record := cloneJSON(t, base)
 		mutate(record)

@@ -96,7 +96,15 @@ func exactMembers(value map[string]interface{}, names []string) bool {
 func bindingForm(record map[string]interface{}) bool {
 	claim, _ := record["claim"].(string)
 	spec, known := bindingClaims[claim]
-	if !known || !exactMembers(record, append(append([]string(nil), bindingMembers...), spec.added...)) {
+	members := append(append([]string(nil), bindingMembers...), spec.added...)
+	if _, typed := record["key_types"]; typed {
+		members = append(members, "key_types")
+		types, ok := record["key_types"].([]interface{})
+		if !ok || len(types) != 2 || !isString(types[0]) || !isString(types[1]) {
+			return false
+		}
+	}
+	if !known || !exactMembers(record, members) {
 		return false
 	}
 	method, ok := record["method"].(string)
@@ -131,7 +139,12 @@ func bindingForm(record map[string]interface{}) bool {
 	for _, raw := range sigs {
 		entry, ok := raw.(map[string]interface{})
 		sig, _ := entry["sig"].(string)
-		if !ok || !exactMembers(entry, []string{"key_id", "sig"}) || !isDigest(entry["key_id"]) || !signatureHexRE.MatchString(sig) {
+		if !ok || !exactMembers(entry, []string{"key_id", "sig"}) || !isDigest(entry["key_id"]) {
+			return false
+		}
+		// A key type other than ed25519 signs in its own form (draft -02
+		// leaves it to the document defining that type).
+		if ed25519Keys(record) && !signatureHexRE.MatchString(sig) {
 			return false
 		}
 	}
@@ -144,6 +157,18 @@ func bindingForm(record map[string]interface{}) bool {
 			isDigest(credential["issuer"]) && isString(credential["method"]) && isDigest(credential["digest"])
 	}
 	return true
+}
+
+// ed25519Keys reports whether both bound keys are Ed25519 keys: key_types
+// is absent, or names ed25519 twice. The draft defines no other key type, so
+// a record under one is skipped like a record under an unimplemented method.
+func ed25519Keys(record map[string]interface{}) bool {
+	raw, typed := record["key_types"]
+	if !typed {
+		return true
+	}
+	types, ok := raw.([]interface{})
+	return ok && len(types) == 2 && types[0] == "ed25519" && types[1] == "ed25519"
 }
 
 // bindingSignatures checks that sigs carries exactly one signature by each
@@ -199,17 +224,12 @@ func revocationRevokes(statement map[string]interface{}, digest string, keys []i
 // exactly the two values pointer selects, in effect at both root records'
 // timestamps, and revoked by no delivered statement at or before either. A
 // join without pointer or identifier_digest names no record: not derivable.
-func controllerBindingLink(j composedJoin, ra, rb map[string]interface{}, opts Options) (linked, derivable bool) {
-	if j.pointer == nil || j.identifier == nil {
+func controllerBindingLink(j composedJoin, a, b bindingSide, opts Options) (linked, derivable bool) {
+	if j.identifier == nil {
 		return false, false
 	}
-	// Asserted as strings: two resolved objects would not compare.
-	rawA, _ := resolvePointer(ra, *j.pointer)
-	rawB, _ := resolvePointer(rb, *j.pointer)
-	va, okA := rawA.(string)
-	vb, okB := rawB.(string)
-	ta, okTA := recordTime(ra["timestamp"])
-	tb, okTB := recordTime(rb["timestamp"])
+	va, okA, ta, okTA := a.key, a.okKey, a.at, a.okAt
+	vb, okB, tb, okTB := b.key, b.okKey, b.at, b.okAt
 	for _, record := range opts.ControllerBindings {
 		input, ok := signingInput(record, "sigs")
 		if !ok {
@@ -224,7 +244,7 @@ func controllerBindingLink(j composedJoin, ra, rb map[string]interface{}, opts O
 			derivable = true
 			continue
 		}
-		if method := record["method"].(string); method != methodDual && method != methodCredential {
+		if method := record["method"].(string); method != methodDual && method != methodCredential || !ed25519Keys(record) {
 			continue
 		}
 		derivable = true
@@ -249,4 +269,36 @@ func controllerBindingLink(j composedJoin, ra, rb map[string]interface{}, opts O
 		}
 	}
 	return false, derivable
+}
+
+// bindingSide is one member's side of a controller_binding join: the key
+// identifier the binding must name and the time T it must cover.
+type bindingSide struct {
+	key   string
+	okKey bool
+	at    time.Time
+	okAt  bool
+}
+
+// recordSide reads a side from a root record: the key identifier pointer
+// selects, and the record's timestamp. Asserted as a string: two resolved
+// objects would not compare.
+func recordSide(record map[string]interface{}, pointer string) bindingSide {
+	raw, _ := resolvePointer(record, pointer)
+	key, okKey := raw.(string)
+	at, okAt := recordTime(record["timestamp"])
+	return bindingSide{key: key, okKey: okKey, at: at, okAt: okAt}
+}
+
+// checkpointSide reads an empty-history member's side from its signed
+// checkpoint: the key that signed checkpoint.cose and its timestamp. A
+// member without a checkpoint that verifies has no key, so the join is not
+// derivable.
+func checkpointSide(body map[string]interface{}) (bindingSide, bool) {
+	claim, signed, _ := VerifyCheckpoint(body)
+	if claim.Status != "pass" || signed == nil {
+		return bindingSide{}, false
+	}
+	at, okAt := recordTime(signed.Timestamp)
+	return bindingSide{key: signed.KeyID, okKey: true, at: at, okAt: okAt}, true
 }

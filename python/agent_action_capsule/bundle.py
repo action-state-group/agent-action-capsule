@@ -192,6 +192,11 @@ class BundleVerificationResult:
     """The ``category_coverage`` member's five properties, in report order
     (:mod:`agent_action_capsule.category_coverage`), or ``None`` when the
     Bundle carries no such member. Filled in both modes."""
+    history: dict[str, Any] | None = None
+    """Set only for a well-formed empty-history Bundle (draft -02,
+    "Empty-History Bundles"): ``{"state": "none", "since": <timestamp>}``.
+    ``since`` is the signed checkpoint's timestamp when ``checkpoint.cose``
+    verifies, else ``None`` (a stream never started has no checkpoint)."""
 
     @property
     def claims(self) -> tuple[tuple[str, ClaimResult], ...]:
@@ -400,8 +405,18 @@ def _verify_bundle(
         digest = None
 
     records, capsule_results, record_findings = _records(bundle.get("records"))
-    graph = _verify_graph(bundle, records, record_findings)
-    interval, membership = _verify_completeness(bundle, records)
+    history = None
+    if is_empty_history(bundle):
+        graph = _empty_history_form(bundle)
+        interval = membership = ClaimResult("withheld", ("no_records",))
+        if graph.status == "pass":
+            checkpoint = bundle.get("checkpoint")
+            # The signed fields are empty unless checkpoint.cose verified.
+            _, signed, _ = _strict_checkpoint(checkpoint, {}) if isinstance(checkpoint, Mapping) else (None, {}, None)
+            history = {"state": "none", "since": signed.get("timestamp")}
+    else:
+        graph = _verify_graph(bundle, records, record_findings)
+        interval, membership = _verify_completeness(bundle, records)
     disclosures = _verify_disclosures(bundle["disclosures"] if "disclosures" in bundle else {}, records)
     extensions = _extensions(bundle.get("extensions"))
     countersignatures = bundle.get("countersignatures")
@@ -419,6 +434,7 @@ def _verify_bundle(
     from .category_coverage import check_category_coverage
 
     result.category_coverage = check_category_coverage(bundle, **coverage_inputs)
+    result.history = history
     if strict:
         _apply_strict(result, bundle, require_signature, witness_directory)
     return result
@@ -703,6 +719,37 @@ def _safe_int(value: Any) -> bool:
     verifiers reject (for example a ``closure_depth`` of 2**60) is accepted.
     """
     return isinstance(value, int) and not isinstance(value, bool) and -MAX_SAFE_INTEGER <= value <= MAX_SAFE_INTEGER
+
+
+def is_empty_history(bundle: Mapping[str, Any]) -> bool:
+    """Whether ``bundle`` has the shape of an empty-history Bundle: an empty
+    ``records`` array and no ``root`` member. Whether it is well formed is a
+    separate check."""
+    return isinstance(bundle.get("records"), list) and not bundle["records"] and "root" not in bundle
+
+
+def _empty_history_form(bundle: Mapping[str, Any]) -> ClaimResult:
+    """Graph closure for an empty-history Bundle: nothing to close, so it
+    passes when the Bundle is well formed. ``records_mode`` is ``complete``,
+    ``payloads_mode`` ``none``, and no certificate, disclosures or disclosure
+    record is carried."""
+    findings = []
+    if bundle.get("bundle_version") != "2" or bundle.get("bundle_kind") != "evidence-bundle/v2":
+        findings.append("bundle_version_or_kind_invalid")
+    completeness = bundle.get("completeness")
+    if (
+        not isinstance(completeness, Mapping)
+        or completeness.get("records_mode") != "complete"
+        or completeness.get("payloads_mode") != "none"
+        or ("missing" in completeness and completeness["missing"] != [])
+    ):
+        findings.append("empty_history_completeness_invalid")
+    findings += [
+        f"empty_history_carries:{name}"
+        for name in ("completeness_certificate", "disclosures", "disclosure_record")
+        if name in bundle
+    ]
+    return ClaimResult("fail", tuple(findings)) if findings else ClaimResult("pass")
 
 
 def _verify_graph(bundle: Mapping[str, Any], records: Mapping[str, Mapping[str, Any]], record_findings: list[str]) -> ClaimResult:

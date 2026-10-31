@@ -399,17 +399,44 @@ func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[stri
 
 func derivedState(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options) (string, []JoinDifference) {
 	a, b := byID[j.members[0]], byID[j.members[1]]
-	artifacts := 0
+	// An artifact member counts as having records unless its carried Bundle
+	// is an empty-history Bundle, which shows no history.
+	var withRecords, empty []composedMember
 	for _, m := range []composedMember{a, b} {
-		if m.outcome == "artifact" {
-			artifacts++
+		switch {
+		case m.outcome != "artifact":
+		case !missing[m.id] && m.body != nil && EmptyHistory(m.body):
+			empty = append(empty, m)
+		default:
+			withRecords = append(withRecords, m)
 		}
 	}
-	switch artifacts {
+	switch len(withRecords) {
 	case 0:
 		return "unjoined", nil
 	case 1:
-		return "one_sided", nil
+		if len(empty) == 0 || j.basis != "controller_binding" {
+			return "one_sided", nil
+		}
+		// controller_binding still derives against an empty-history member,
+		// from the key that signed its checkpoint at that checkpoint's time.
+		full := withRecords[0]
+		if missing[full.id] || j.pointer == nil {
+			return "", nil
+		}
+		record := rootRecord(full)
+		side, keyed := checkpointSide(empty[0].body)
+		if record == nil || !keyed {
+			return "", nil
+		}
+		linked, derivable := controllerBindingLink(j, recordSide(record, *j.pointer), side, opts)
+		switch {
+		case !derivable:
+			return "", nil
+		case linked:
+			return "one_sided", nil
+		}
+		return "unjoined", nil
 	}
 	if missing[a.id] || missing[b.id] {
 		return "", nil
@@ -432,8 +459,11 @@ func derivedState(j composedJoin, byID map[string]composedMember, missing map[st
 			linked = okA && okB && strA && strB && sa == sb
 		}
 	case "controller_binding":
+		if j.pointer == nil {
+			return "", nil
+		}
 		var derivable bool
-		if linked, derivable = controllerBindingLink(j, ra, rb, opts); !derivable {
+		if linked, derivable = controllerBindingLink(j, recordSide(ra, *j.pointer), recordSide(rb, *j.pointer), opts); !derivable {
 			return "", nil
 		}
 	default:

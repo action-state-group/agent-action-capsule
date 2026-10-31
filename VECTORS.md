@@ -86,6 +86,10 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/cross-language/` | Class-1 and Evidence Bundle inputs shared by every implementation | record, pack, verify | 72 |
 | `vectors/bundle/vectors.json` | `draft-mih-zhang-agent-disclosure-bundle-00` | pack, verify | 14 |
 | `vectors/bundle/composed/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`composed/v1`) | pack, verify | 6 |
+| `vectors/bundle/composed-controller-binding/` | `draft-mih-zhang-agent-disclosure-bundle-02` (`composed/v1` `controller_binding`, empty-history members) | verify | 14 |
+| `vectors/bundle/non-record-leaves/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Non-Record Leaves) | verify | 26 |
+| `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 8 |
+| `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 32 |
 | `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`) | pack, verify | 8 |
 | `vectors/bundle/report-single-record.json` | `draft-mih-zhang-agent-disclosure-bundle-00` (report of one record) | report | 3 |
 | `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 83 |
