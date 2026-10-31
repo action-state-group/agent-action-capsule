@@ -50,13 +50,13 @@
     {
       "close": {
         "close_ref": {
-          "digest": "761923a4e7b90174ee1a8a5b8bd878b33c3316da8fa348c6f77d37a47c2a9b0d",
+          "digest": "7b9e508ea9d171b390fb5010fac13b7adef103b90f04b40dc5fc29db1ee7e4b1",
           "digest_alg": "SHA-256"
         },
         "close_state": "AGREED",
         "peer": "example-org-sor",
         "peer_close_ref": {
-          "digest": "1b811ae53ec41ee70d9ccb21becc6b90299b1234bbdd8bf859dc061fba720a19",
+          "digest": "b54df1dc7c2e703e816e21e592a001bcdfa56b89890eba205e389cb79285f4ee",
           "digest_alg": "SHA-256"
         },
         "period": {
@@ -67,11 +67,11 @@
       "contract_ref": "ec:example-org-outcomes-reconcile:2026-09-25@1",
       "evidence": [
         {
-          "digest": "761923a4e7b90174ee1a8a5b8bd878b33c3316da8fa348c6f77d37a47c2a9b0d",
+          "digest": "7b9e508ea9d171b390fb5010fac13b7adef103b90f04b40dc5fc29db1ee7e4b1",
           "digest_alg": "SHA-256"
         },
         {
-          "digest": "1b811ae53ec41ee70d9ccb21becc6b90299b1234bbdd8bf859dc061fba720a19",
+          "digest": "b54df1dc7c2e703e816e21e592a001bcdfa56b89890eba205e389cb79285f4ee",
           "digest_alg": "SHA-256"
         }
       ],
@@ -80,11 +80,11 @@
       "presentation": {
         "evidence": [
           {
-            "digest": "761923a4e7b90174ee1a8a5b8bd878b33c3316da8fa348c6f77d37a47c2a9b0d",
+            "digest": "7b9e508ea9d171b390fb5010fac13b7adef103b90f04b40dc5fc29db1ee7e4b1",
             "digest_alg": "SHA-256"
           },
           {
-            "digest": "1b811ae53ec41ee70d9ccb21becc6b90299b1234bbdd8bf859dc061fba720a19",
+            "digest": "b54df1dc7c2e703e816e21e592a001bcdfa56b89890eba205e389cb79285f4ee",
             "digest_alg": "SHA-256"
           }
         ],

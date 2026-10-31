@@ -43,6 +43,8 @@ import (
 	"io"
 	"regexp"
 	"strings"
+
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 )
 
 // Bindings a witness URL names.
@@ -152,6 +154,9 @@ func ParseDirectory(data []byte) (Directory, error) {
 	}
 	if _, err := decoder.Token(); err != io.EOF {
 		return Directory{}, errors.New("witness directory has trailing data")
+	}
+	if canonical.TooDeep(value) {
+		return Directory{}, fmt.Errorf("witness directory is nested more than %d levels deep", canonical.MaxNestingDepth)
 	}
 	switch value.(type) {
 	case map[string]interface{}, []interface{}:
@@ -551,7 +556,8 @@ func verifyCLL(signed SignedCheckpoint, record map[string]interface{}, key crypt
 }
 
 // decodeJSON reads one JSON value with json.Number numbers and no trailing
-// data.
+// data, nested at most canonical.MaxNestingDepth levels deep, the limit
+// every implementation shares (vectors/json-nesting/).
 func decodeJSON(data []byte) (interface{}, error) {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
@@ -561,6 +567,9 @@ func decodeJSON(data []byte) (interface{}, error) {
 	}
 	if _, err := decoder.Token(); err != io.EOF {
 		return nil, errors.New("trailing data after JSON value")
+	}
+	if canonical.TooDeep(value) {
+		return nil, fmt.Errorf("nested more than %d levels deep", canonical.MaxNestingDepth)
 	}
 	return value, nil
 }

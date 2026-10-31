@@ -114,16 +114,19 @@ describe("verify number findings", () => {
     },
   );
 
-  it("still refuses input nested beyond the stack after both caps are reached", async () => {
-    // verifyBundle relies on this RangeError to refuse such input as
-    // bundle_malformed (test/deep-input.test.ts), so the walk visits every
-    // member even after it has 64 paths of each kind.
+  it("refuses input nested beyond the stack before the walk, after both caps would be reached", async () => {
+    // Nested past the shared limit (vectors/json-nesting/), the record is
+    // refused before any walk, so neither cap nor the stack is reached.
     const record = decodeCapsuleJson(
       `{"a":[${Array(64).fill("0.5").join(",")}],"b":[${Array(64).fill("9007199254740993").join(",")}]}`,
     );
     let deep: unknown = 0;
     for (let i = 0; i < 1_000_000; i++) deep = [deep];
     (record as Record<string, unknown>).z = deep;
-    await expect(verifyClass1(record)).rejects.toThrow(RangeError);
+    const result = await verifyClass1(record);
+    expect(result.ok).toBe(false);
+    expect(result.findings.map((f) => f.code)).toEqual([
+      "verifier_internal_error",
+    ]);
   });
 });

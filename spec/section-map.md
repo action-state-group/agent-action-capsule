@@ -1,10 +1,10 @@
 # Section map: draft-mih-scitt-agent-action-capsule
 
-This reader's guide follows the editor's [-05 source](draft-mih-scitt-agent-action-capsule-05.md)
-and [rendered section numbers](draft-mih-scitt-agent-action-capsule-05.txt).
+This reader's guide follows the editor's [-06 source](draft-mih-scitt-agent-action-capsule-06.md)
+and [rendered section numbers](draft-mih-scitt-agent-action-capsule-06.txt).
 The current posted revision is -05 on the
 [Datatracker](https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/).
-This map describes the editor's -05 source. Git history preserves earlier maps.
+This map describes the editor's -06 source, which is not posted yet. Git history preserves earlier maps.
 
 The seven base-profile vocabularies are `verdict_class`,
 `disposition.decision`, `effect.type`, `irreversibility_class`,

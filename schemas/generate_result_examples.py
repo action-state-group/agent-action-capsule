@@ -17,7 +17,7 @@ negative fixtures, each a byte-for-byte copy of the positive with exactly one
 field changed, each spec/evidence-result-v0.md rule this document requires
 MUST reject.
 
-Claim types (the 2026-09-25 ruling; reconcile normative, close PROPOSED):
+Claim types (the 2026-09-25 ruling; reconcile and close both normative):
 five more positives --
 one reconcile Result, one AGREED close, one UNILATERAL close (no peer
 named), one UNILATERAL close that names the peer it closed against, one
@@ -245,7 +245,7 @@ neg_disclosure_carrier_under_withheld["claims"][2]["presentation"] = {
 }
 
 # ===========================================================================
-# Claim types, reconcile normative and close PROPOSED (the 2026-09-25
+# Claim types, reconcile and close both normative (the 2026-09-25
 # ruling: "close + reconcile as claim types in result v0, so they feed
 # the same result"). Each positive
 # below keeps the untouched requirement claim-1 beside its typed claims, so
@@ -373,8 +373,26 @@ pos_example_org_reconcile_result: EvidenceResultDoc = {
 #     statement) -- and each close fixture ships them beside it as
 #     `<name>.records.json`, a JSON array, so the checker can walk the links
 #     and recompute the state. Every digest a claim cites is json_digest of
-#     the record object exactly as written in the sidecar.
+#     the record object exactly as written in the sidecar. Every
+#     `record_type: close` record's statement is a close/v1 body
+#     (schemas/judge/close-v1.json, spec section 4.1), counts only.
 close_bound_set_content = {"note": "EXAMPLE-ORG 2026-09-01 record set bound by the Close, v0 placeholder"}
+
+
+def _close_v1_body(book_id: str, seq: int, closed_at: str, bound_set_note: str) -> dict:
+    """A counts-only close/v1 body for the 2026-09-01 period. `head` is the
+    last record of the range the Close covers and `counts_by_kind` counts
+    that range (judge-record-family-v1 section 3); both are placeholders here."""
+    return {
+        "record_version": "close/v1",
+        "record_id": f"{book_id}#{seq}",
+        "epistemic_type": "producer_claim",
+        "closed_at": closed_at,
+        "period": DAY_1,
+        "counts_by_kind": {"observation": 3},
+        "head": digest_ref({"note": f"last record of {bound_set_note}, v0 placeholder"}),
+    }
+
 
 own_close_content: RecordDoc = {
     "v": 1,
@@ -386,12 +404,12 @@ own_close_content: RecordDoc = {
     "event_time_claim": "2026-09-02T00:00:00Z",
     "links": [{"type": "closes", "target": json_digest(close_bound_set_content)}],
     "subject_ref": RECONCILE_CONTRACT_REF,
-    "statement": {"period": DAY_1, "note": "EXAMPLE-ORG own Close record for 2026-09-01, v0 placeholder"},
+    "statement": _close_v1_body("example-org", 41, "2026-09-02T00:05:00Z", "the EXAMPLE-ORG 2026-09-01 record set"),
 }
 OWN_CLOSE_DIGEST = json_digest(own_close_content)
 
 
-def _peer_record(seq: int, link_type: str | None, note: str) -> RecordDoc:
+def _peer_record(seq: int, link_type: str | None) -> RecordDoc:
     """The peer's (example-org-sor) record for the same period: acknowledging ours
     (AGREED), rebutting ours (CONTESTED), or carrying no link back at all
     (the peer's own Close we reconciled with, which leaves ours UNILATERAL)."""
@@ -408,24 +426,18 @@ def _peer_record(seq: int, link_type: str | None, note: str) -> RecordDoc:
         "event_time_claim": "2026-09-02T00:00:00Z",
         "links": links,
         "subject_ref": RECONCILE_CONTRACT_REF,
-        "statement": {"period": DAY_1, "note": note},
+        "statement": _close_v1_body("example-org-sor", seq, "2026-09-02T01:00:00Z", "the example-org-sor 2026-09-01 record set"),
     }
 
 
 # The peer's Close that `acknowledges` ours -- AGREED is read from this link.
-peer_close_content = _peer_record(
-    17, "acknowledges", "EXAMPLE-ORG peer (example-org-sor) Close record for 2026-09-01 acknowledging EXAMPLE-ORG's, v0 placeholder"
-)
+peer_close_content = _peer_record(17, "acknowledges")
 # The peer's record that `rebuts` ours -- CONTESTED is read from this link.
-peer_rebuttal_content = _peer_record(
-    18, "rebuts", "EXAMPLE-ORG peer (example-org-sor) record for 2026-09-01 rebutting EXAMPLE-ORG's Close, v0 placeholder"
-)
+peer_rebuttal_content = _peer_record(18, "rebuts")
 # The peer's Close for the period that links to nothing of ours: reconciled
 # with, never answered. Its presence in a bundle changes nothing -- the
 # state is read from links TO our Close, and this record carries none.
-peer_silent_close_content = _peer_record(
-    19, None, "EXAMPLE-ORG peer (example-org-sor) Close record for 2026-09-01, no link back to EXAMPLE-ORG's, v0 placeholder"
-)
+peer_silent_close_content = _peer_record(19, None)
 # A record from EXAMPLE-ORG's OWN book that `acknowledges` EXAMPLE-ORG's own Close
 # (an `acknowledges` link has to come from the counterparty). Same `book_id` as the Close, so the link makes no state:
 # a producer cannot agree with itself. The walk ignores it and reads
@@ -440,7 +452,7 @@ own_ack_content: RecordDoc = {
     "event_time_claim": "2026-09-02T00:00:00Z",
     "links": [{"type": "acknowledges", "target": OWN_CLOSE_DIGEST}],
     "subject_ref": RECONCILE_CONTRACT_REF,
-    "statement": {"period": DAY_1, "note": "EXAMPLE-ORG record from EXAMPLE-ORG's own book acknowledging EXAMPLE-ORG's own Close, v0 placeholder"},
+    "statement": _close_v1_body("example-org", 42, "2026-09-02T00:10:00Z", "the EXAMPLE-ORG 2026-09-01 record set"),
 }
 # A record from a THIRD book -- `example-org-audit`, neither EXAMPLE-ORG's own book nor the
 # named peer `example-org-sor` -- that `acknowledges` EXAMPLE-ORG's Close (a
@@ -457,7 +469,7 @@ third_book_ack_content: RecordDoc = {
     "event_time_claim": "2026-09-02T00:00:00Z",
     "links": [{"type": "acknowledges", "target": OWN_CLOSE_DIGEST}],
     "subject_ref": RECONCILE_CONTRACT_REF,
-    "statement": {"period": DAY_1, "note": "record from a third book (example-org-audit) acknowledging EXAMPLE-ORG's Close, v0 placeholder"},
+    "statement": _close_v1_body("example-org-audit", 7, "2026-09-02T00:20:00Z", "the example-org-audit 2026-09-01 record set"),
 }
 # EXAMPLE-ORG's Close with NO `book_id` at all: a Close that names no
 # book has no counterparty, so no linker -- not even the named peer's --
@@ -468,7 +480,7 @@ bookless_close_content: RecordDoc = {
 }
 BOOKLESS_CLOSE_DIGEST = json_digest(bookless_close_content)
 peer_ack_of_bookless_close_content: RecordDoc = {
-    **_peer_record(20, None, "EXAMPLE-ORG peer (example-org-sor) Close record acknowledging EXAMPLE-ORG's book-less Close, v0 placeholder"),
+    **_peer_record(20, None),
     "links": [
         {"type": "closes", "target": json_digest({"note": "example-org-sor 2026-09-01 record set, v0 placeholder"})},
         {"type": "acknowledges", "target": BOOKLESS_CLOSE_DIGEST},

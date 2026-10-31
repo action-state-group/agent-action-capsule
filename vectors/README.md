@@ -1,5 +1,7 @@
 # Authoritative conformance vectors
 
+The index of every vector set, with case counts, is [`../VECTORS.md`](../VECTORS.md).
+
 This directory is the language-agnostic, releasable conformance surface for
 the Agent Action Capsule repository. Python, Go, and TypeScript consume these
 same-commit files in CI.
@@ -25,9 +27,11 @@ same-commit files in CI.
   cases the witness receipt tests of every
   implementation run.
 - `interop/`: established composition and run-under interoperability suites.
-- `evidence-request/`: draft-mih-agent-evidence-request-00 cases (request map,
-  subject forms, request digest, signed refusal, outcomes, caller invariance,
-  retention), derived from the draft text;
+- `evidence-request/`: draft-mih-agent-evidence-request-00, -01 and -02 cases
+  (request map, subject forms, which record members carry a correlation
+  identifier or cite an exchange half, request digest, signed refusal,
+  outcomes, caller invariance, retention, the `categories` field, A2A and MCP
+  carriage, unavailable-window statements), derived from the draft text;
   `python/scripts/generate_evidence_request_vectors.py` regenerates them.
 - `settlement/`: draft-mih-agent-settlement-records-00 cases (two-party
   payer/payee leg records, the payment reference join, wrapped objects by
@@ -44,6 +48,14 @@ same-commit files in CI.
   responder's inputs and the exact `cll-inclusion-proof` and
   `cll-consistency-proof` octets, including the §10.1 worked example's;
   `python/scripts/generate_cll_material_vectors.py` regenerates them.
+- `anchor-witness-v1/`: profile `evidence-interop/1` §6.2.2 witness Receipts
+  over an anchor and the `anchor_witnessed` report, positive and MUST-reject;
+  `python/scripts/generate_anchor_witness_v1_vectors.py` regenerates them.
+- `json-nesting/`: the nesting limit every implementation shares: JSON text
+  nested 128 levels deep is read and canonicalized, 129 levels is refused as
+  malformed, and a value past the limit has no RFC 8785 form; `spec/interop-profile-v1.md` §5.2
+  states the limit (#498);
+  `python/scripts/generate_json_nesting_vectors.py` regenerates them.
 - `minimum-necessary/`: provisional registry entries held for ratification
   (`spec/REGISTRY.md` §10, §14, §16): SD-JWT (RFC 9901) presentations as a
   revealed `agent_input`, the `disclosure-policy-decisions/v1` and
@@ -85,7 +97,12 @@ same-commit files in CI.
   (`evidence-interop/0`): the exchange, a carried foreign object, the acceptance
   record, lifecycle links and carriage over A2A and MCP, each pinning its trust
   policy, verification policy, contract version and evaluation time;
-  `python/scripts/generate_interop_profile_v0_vectors.py` regenerates them.
+  `python/scripts/generate_interop_profile_v0_vectors.py` regenerates them. Frozen with
+  `evidence-interop/0`.
+- `interop-profile-v1/` and `interop-profile-v1-requirement-facts/`: the same cases for
+  `spec/interop-profile-v1.md` (`evidence-interop/1`, ER -02), plus the two -02 refusal reasons
+  and `capacity_exceeded` answering a request for `evidence-interop/0`;
+  `python/scripts/generate_interop_profile_v0_vectors.py --profile 1` regenerates them.
 - `personal-history-basic-v0/`: the acceptance run of
   `spec/personal-agent-history-profile-v0.md` §6.4 (Basic level): one History answered by an
   IP responder at a pinned commit (`responder-run.json`, reproduced by `producer/main.go`), the
@@ -98,7 +115,7 @@ same-commit files in CI.
   `python/scripts/generate_coverage_declaration_v0_vectors.py` regenerates them.
 - `controller-binding-v0/`: the controller binding record of `spec/controller-binding-v0.md` and
   its use in issuer independence (`spec/interop-profile-v0.md` §6.7.4): one valid binding per claim
-  type, and expired, revoked, one-key-signed, same-key, other-keys, forged-credential,
+  type, and expired, revoked, one-key-signed, same-key, other-keys, no-half-key-bound, forged-credential,
   unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
   `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
 - `deal-reconcile-v0/`: the Evidence Contract `ec:deal-reconcile@1` of
@@ -112,6 +129,26 @@ same-commit files in CI.
   wrongly opened, and one mutant per property the level adds. Derived from the personal-history run
   and the x402 adapter corpus;
   `python/scripts/generate_personal_history_outcome_v0_vectors.py` regenerates them.
+- `standard-history-v0/`: the derivation `standard_history/1` of `spec/standard-history-v0.md`:
+  positive cards for a person and a node, checked with and without the policy, the anchor and the
+  deal entries, the month-end window clamp and an empty window, and one negative per property of
+  its §6 (a percentage, a count without its denominator, a counted shop purchase, a window not in
+  the policy, among others); `python/scripts/generate_standard_history_v0_vectors.py` regenerates
+  them.
+- `inference-service-history-v0/`: the Inference-Service History Profile
+  `spec/inference-service-history-profile-v0.md`: a served-only Standard History, the period
+  negatives, two anchors over the same closed periods, peer confirmation and labels at the
+  Detailed level, and the interval and recipient refusals. Constructed;
+  `python/scripts/generate_inference_service_history_v0_vectors.py` regenerates them. Frozen
+  with `evidence-interop/0`.
+- `inference-service-history-v0-interop-v1/`: the same cases under `evidence-interop/1`, plus
+  `refused-capacity-exceeded` (a History the node declines for its own load, `UNKNOWN`);
+  `python/scripts/generate_inference_service_history_v0_vectors.py --profile 1` regenerates them.
+- `history-frame-v0/`: the History frame `spec/history-frame-v0.md`: each instance's counting
+  table and wording pack with the digests the frame lists, and negatives for a mismatched pack
+  digest, a translated pack, a changed table, a pack carrying a checked string and a pack naming
+  another instance. Constructed; `python/scripts/generate_history_frame_v0_vectors.py`
+  regenerates them.
 - `adapters/x402/`: the x402 adapter declaration `spec/adapters/x402-v0.md`: a positive and a
   native-check-fails case for an `exact`/`eip3009` payment, with the wrapped objects' octets, the
   relying party's policy and recorded lookup, and the expected `native_check` reports. Constructed,

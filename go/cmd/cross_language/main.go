@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Command cross_language is the stdin/stdout adapter for the CI interlock.
 //
-// seal and verify read a Capsule. bundle-produce <kind> reads the producer
+// seal and verify read a Capsule. signature reads one record (a Capsule with
+// its local-only signature and key_id) and prints its producer-signature
+// verdict. binding reads a Controller Binding v0 record with what was
+// received beside it and prints its report. bundle-produce <kind> reads the producer
 // fixture (vectors/cross-language/bundle-producer-log.json) and writes the
 // JCS bytes of the Bundle kind names in its builds. bundle-verify reads a
 // Bundle's JSON text and prints its strict verdict.
@@ -20,11 +23,12 @@ import (
 
 	"github.com/action-state-group/agent-action-capsule/go/bundle"
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
+	"github.com/action-state-group/agent-action-capsule/go/envelope"
 	"github.com/action-state-group/agent-action-capsule/go/verify"
 	"github.com/action-state-group/checkpointed-local-log/go/cll"
 )
 
-const usage = "usage: cross_language seal|verify|bundle-produce <kind>|bundle-verify"
+const usage = "usage: cross_language seal|verify|signature|binding|bundle-produce <kind>|bundle-verify"
 
 func main() {
 	args := os.Args[1:]
@@ -33,42 +37,62 @@ func main() {
 		os.Exit(bundleProduce(args[1]))
 	case len(args) == 1 && args[0] == "bundle-verify":
 		os.Exit(bundleVerify())
-	case len(args) != 1 || (args[0] != "seal" && args[0] != "verify"):
-		fmt.Fprintln(os.Stderr, usage)
-		os.Exit(2)
+	case len(args) == 1 && args[0] == "signature":
+		os.Exit(signature(os.Stdin, os.Stdout, os.Stderr))
+	case len(args) == 1 && args[0] == "binding":
+		os.Exit(binding(os.Stdin, os.Stdout, os.Stderr))
+	case len(args) == 1 && (args[0] == "seal" || args[0] == "verify"):
+		os.Exit(capsuleMode(args[0], os.Stdin, os.Stdout, os.Stderr))
 	}
-	decoder := json.NewDecoder(os.Stdin)
-	decoder.UseNumber()
-	var capsule map[string]interface{}
-	if err := decoder.Decode(&capsule); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+	fmt.Fprintln(os.Stderr, usage)
+	os.Exit(2)
+}
+
+// capsuleMode runs seal or verify on the Capsule read from in.
+func capsuleMode(mode string, in io.Reader, out, errOut io.Writer) int {
+	raw, err := io.ReadAll(in)
+	if err != nil {
+		fmt.Fprintln(errOut, err)
+		return 2
 	}
-	if args[0] == "seal" {
+	// The verifier's strict decoder: one value, numbers as written, and no
+	// invalid UTF-8 or lone surrogate that encoding/json would repair.
+	value, err := verify.DecodeCapsuleJSON(raw)
+	if err != nil {
+		fmt.Fprintln(errOut, err)
+		return 2
+	}
+	capsule, ok := value.(map[string]interface{})
+	if !ok {
+		fmt.Fprintln(errOut, "stdin is not a JSON object")
+		return 2
+	}
+	if mode == "seal" {
 		id, err := canonical.ComputeCapsuleID(capsule)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			fmt.Fprintln(errOut, err)
+			return 1
 		}
 		capsule["capsule_id"] = id
-		encoder := json.NewEncoder(os.Stdout)
+		encoder := json.NewEncoder(out)
 		encoder.SetEscapeHTML(false)
 		if err := encoder.Encode(capsule); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			fmt.Fprintln(errOut, err)
+			return 1
 		}
-		return
+		return 0
 	}
 	result := verify.Verify(capsule, nil, nil)
 	if !result.OK {
 		for _, finding := range result.Findings {
-			fmt.Fprintln(os.Stderr, finding.Code)
+			fmt.Fprintln(errOut, finding.Code)
 		}
-		os.Exit(1)
+		return 1
 	}
 	if result.CapsuleID != nil {
-		fmt.Println(*result.CapsuleID)
+		fmt.Fprintln(out, *result.CapsuleID)
 	}
+	return 0
 }
 
 // hexBytes is a JSON string of lowercase hex, decoded to its bytes.
@@ -199,6 +223,42 @@ func bundleProduce(kind string) int {
 		return 1
 	}
 	return 0
+}
+
+// signatureExit is each producer-signature verdict's exit code. A caller
+// tells unclaimed (unsigned, not checked) from invalid (a forgery or a
+// malformed claim) by the code alone; 2 stays the usage and input code.
+var signatureExit = map[string]int{envelope.Authored: 0, envelope.Invalid: 1, envelope.Unclaimed: 3}
+
+// signature prints the producer-signature verdict of the one JSON value on
+// in; anything after that value is refused, so a stream of records is never
+// read as its first. authored means the Producer Envelope verifies under the record's own
+// key_id over its recomputed Capsule ID; that key is self-attested, so the
+// caller still decides whether it is the key it expects.
+func signature(in io.Reader, out, errOut io.Writer) int {
+	raw, err := io.ReadAll(in)
+	if err != nil {
+		fmt.Fprintln(errOut, err)
+		return 2
+	}
+	// The verifier's strict decoder: one value, numbers as written, and no
+	// invalid UTF-8 or lone surrogate that encoding/json would repair.
+	record, err := verify.DecodeCapsuleJSON(raw)
+	if err != nil {
+		fmt.Fprintln(errOut, err)
+		return 2
+	}
+	verdict, messages := envelope.VerifyRecordSignature(record)
+	for _, message := range messages {
+		fmt.Fprintln(errOut, message)
+	}
+	code, known := signatureExit[verdict]
+	if !known {
+		fmt.Fprintf(errOut, "unknown verdict %q\n", verdict)
+		return 1
+	}
+	fmt.Fprintln(out, verdict)
+	return code
 }
 
 func bundleVerify() int {

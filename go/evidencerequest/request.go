@@ -6,15 +6,26 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 	"time"
 )
 
-// ProfileID identifies the revision of the Minimum Evidence
-// Interoperability Profile this package implements (profile §3.1).
+// ProfileID identifies the first revision of the Minimum Evidence
+// Interoperability Profile (spec/interop-profile-v0.md §3.1, frozen). A
+// request without a profile asks for it, under both revisions (§3.3 step 2).
 const ProfileID = "evidence-interop/0"
 
-// RequestDraft is the Internet-Draft whose request map this package accepts
-// (profile §11.4.2 `drafts`).
+// ProfileIDv1 identifies the revision that pins ER -02 and registers its two
+// refusal reasons (spec/interop-profile-v1.md §3.1, P-65).
+const ProfileIDv1 = "evidence-interop/1"
+
+// Profiles are the profile identifiers this package implements, each
+// checked under its own rules.
+var Profiles = []string{ProfileID, ProfileIDv1}
+
+// RequestDraft is the Internet-Draft this package implements. Its request map
+// is also a valid -01 map, so a manifest's `drafts` (profile §11.4.2) may list
+// it; the profile now pins -01.
 const RequestDraft = "draft-mih-agent-evidence-request-00"
 
 // Subprotocol is the stream binding's subprotocol identifier (ER §10).
@@ -39,8 +50,9 @@ const (
 // SubjectForms lists the six forms in code-point order.
 var SubjectForms = []SubjectKind{SubjectCheckpoints, SubjectCorrelation, SubjectExchange, SubjectFullHistory, SubjectRange, SubjectRecord}
 
-// Refusal reason tokens: the request draft's registry, verbatim (ER §13,
-// profile §9.1). No other token is ever emitted.
+// Refusal reason tokens: the request draft's registry, verbatim (ER §13):
+// the eight of -00, which profile §9.1 lists, then the two -02 adds. No
+// other token is ever emitted.
 const (
 	ReasonNotAuthorized         = "not_authorized"
 	ReasonNoSuchSubject         = "no_such_subject"
@@ -50,12 +62,19 @@ const (
 	ReasonDeadlineUnmet         = "deadline_unmet"
 	ReasonRequestMalformed      = "request_malformed"
 	ReasonRetentionExpired      = "retention_expired"
+	// ReasonCapacityExceeded (-02): a limit of the responder's own (load,
+	// size, a transient fault).
+	ReasonCapacityExceeded = "capacity_exceeded"
+	// ReasonRequestUnauthenticated (-02): a requester authentication a
+	// deployment profile defines does not verify.
+	ReasonRequestUnauthenticated = "request_unauthenticated"
 )
 
 // RefusalReasons is the registry, in the draft's order.
 var RefusalReasons = []string{
 	ReasonNotAuthorized, ReasonNoSuchSubject, ReasonCoverageUnsatisfiable, ReasonDerivationUnsupported,
 	ReasonPolicyDeclined, ReasonDeadlineUnmet, ReasonRequestMalformed, ReasonRetentionExpired,
+	ReasonCapacityExceeded, ReasonRequestUnauthenticated,
 }
 
 // Subject names what is asked for, in one of the six forms. Digest serves
@@ -342,7 +361,7 @@ func ParseRequest(m Message) RequestCheck {
 	}
 	// Step 5: a profile this responder does not implement (§3.3 step 4).
 	if out.Request.Profile != "" && !slices.Contains(supportedProfiles, out.Request.Profile) {
-		return RequestCheck{Reason: ReasonRequestMalformed, Why: "profile is not supported", Detail: "profiles supported: " + ProfileID}
+		return RequestCheck{Reason: ReasonRequestMalformed, Why: "profile is not supported", Detail: "profiles supported: " + strings.Join(supportedProfiles, ", ")}
 	}
 	if out.Request.Profile == "" {
 		out.Request.Profile = ProfileID
@@ -350,7 +369,7 @@ func ParseRequest(m Message) RequestCheck {
 	return out
 }
 
-var supportedProfiles = []string{ProfileID}
+var supportedProfiles = Profiles
 
 // floorTime is a time-valued min_freshness as a time.
 func (r Request) floorTime() (time.Time, bool) {

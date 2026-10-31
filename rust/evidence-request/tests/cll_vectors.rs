@@ -41,10 +41,21 @@ fn status(name: &str) -> Status {
 
 #[test]
 fn anchor_inclusion_matches_the_corpus() {
-    let path = concat!(
+    anchor_inclusion_matches(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../vectors/interop-profile-v0/vectors.json"
-    );
+    ));
+}
+
+#[test]
+fn anchor_inclusion_matches_the_v1_corpus() {
+    anchor_inclusion_matches(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../vectors/interop-profile-v1/vectors.json"
+    ));
+}
+
+fn anchor_inclusion_matches(path: &str) {
     let corpus: Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
     let mut checked = 0;
     let mut passed = 0;
@@ -113,6 +124,17 @@ fn anchor_inclusion_matches_the_corpus() {
                 );
             }
             let got = check_anchor_inclusion(&envelope, &pins);
+            if matches!(
+                props["profile_version"].as_str(),
+                Some("FAIL" | "NOT_CHECKED")
+            ) && evidence_request::envelope::PROFILES.contains(&envelope.profile.as_str())
+            {
+                // A mismatch with the request, or an identifier the case's
+                // policy does not implement (§3.3 step 5), is the verifier's
+                // to find; this check sees the envelope alone.
+                checked += 1;
+                continue;
+            }
             assert_eq!(
                 got.status, want_inclusion,
                 "{id}: reply {i}: {}",

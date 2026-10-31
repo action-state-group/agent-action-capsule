@@ -24,7 +24,7 @@ from ._common import (
     NOT_CHECKED,
     NOT_PRESENT,
     PASS,
-    PROFILE_ID,
+    PROFILE_IDS,
     PropertyReport,
     TrustPolicy,
     ceil_seconds,
@@ -80,13 +80,17 @@ class ExecutionRecord:
 def read_fixture_execution_record(octets: bytes) -> ExecutionRecord | None:
     """The execution record format §11.5 fixes for the conformance vectors only (not registered):
     ``action_at``, ``issuer``, ``links`` (EL link shape, type ``cites``), ``transaction``, ``sig``;
-    ``sig`` is Ed25519 by ``issuer`` over UTF-8 of JCS of the other members."""
+    ``sig`` is Ed25519 by ``issuer`` over UTF-8 of JCS of the other members. A record JCS cannot
+    represent (for example one holding an unpaired surrogate) is unreadable, as an acceptance record
+    or receipt is."""
     parsed = parse_json(octets)
     if parsed is None or not parsed.well_formed or not isinstance(parsed.value, dict):
         return None
     rec = parsed.value
     body = unsigned_jcs(rec)
-    verified = body is not None and ed25519_verify_hex(rec.get("issuer"), rec.get("sig"), body)
+    if body is None or json_value_digest(rec) is None:  # sig included
+        return None
+    verified = ed25519_verify_hex(rec.get("issuer"), rec.get("sig"), body)
     links = rec.get("links") if isinstance(rec.get("links"), list) else []
     cites = frozenset(link["target"] for link in links if isinstance(link, dict) and link.get("type") == "cites"
                       and is_digest(link.get("target")))
@@ -142,8 +146,8 @@ def _form_problems(r: Mapping[str, Any]) -> list[str]:
     """§11.1.2 and §11.1.3, as ``acceptance_form`` checks them."""
     out = []
     state = r.get("state")
-    if r.get("profile") != PROFILE_ID:
-        out.append("profile is not evidence-interop/0")
+    if not member_of(r.get("profile"), PROFILE_IDS):
+        out.append("profile is not evidence-interop/0 or evidence-interop/1")
     if state not in STATES:
         out.append("state is not one of the four tokens, exact case")
     for name in ("contract_ref",):
@@ -196,7 +200,7 @@ def evaluate_acceptance(
     *,
     session: bool = False,
     form_ii_objects: Sequence[Any] = (),
-    profiles_implemented: frozenset = frozenset({PROFILE_ID}),
+    profiles_implemented: frozenset = PROFILE_IDS,
     read_execution_record: Callable[[bytes], ExecutionRecord | None] = read_fixture_execution_record,
 ) -> AcceptanceResult:
     """The §11.1.8 finding for one contract version and one transaction.
@@ -212,11 +216,15 @@ def evaluate_acceptance(
     if contract_digest is None:
         raise ValueError("the contract carries a value JCS cannot represent, or a number outside 0 to 2^53 - 1; "
                          "no contract_digest (§11.3.7)")
+    if not (isinstance(contract.get("id"), str) and isinstance(contract.get("version"), str)
+            and isinstance(contract.get("requirements", []), list)):
+        raise ValueError("the contract's id or version is not text, or its requirements are not an array "
+                         "(§11.3.7)")
     ids = [q.get("id") if isinstance(q, dict) else None for q in contract.get("requirements", [])]
     if len({json_value_digest(i) for i in ids}) != len(ids):
         raise ValueError("two requirements share one id; the contract version is not evaluated (§11.3.7)")
     contract_ref = contract_ref_of(contract)
-    implemented = profiles_implemented & {PROFILE_ID}
+    implemented = profiles_implemented & PROFILE_IDS
 
     held: dict[str, dict] = {}  # by record digest: two copies of one record are one record
     unreadable: list = []
@@ -445,9 +453,12 @@ def _ordering(r, rps, action_times, other_times, trust, form_ii) -> tuple[Proper
     if not action_times:
         return PropertyReport("acceptance_ordering", NOT_PRESENT, method, "rule 1: no time for the action"), []
     issued = parse_time(r.get("issued_at"))
-    if issued is not None and any(issued >= t for t in action_times):
+    # Strictly later only: an equal time, after the reduction to the second, does not order the
+    # acceptance after the action (a producer holding committed times to the minute writes equal
+    # times for a same-minute acceptance and action).
+    if issued is not None and any(issued > t for t in action_times):
         return PropertyReport("acceptance_ordering", FAIL, method,
-                              "rule 2: the record's own issued_at is not earlier than a time held for the action"), []
+                              "rule 2: the record's own issued_at is later than a time held for the action"), []
     if trust.require_action_time_from_other_party and not other_times:
         return PropertyReport("acceptance_ordering", NOT_PRESENT, method,
                               "rule 3: the policy requires a time for the action from another party; none held"), []

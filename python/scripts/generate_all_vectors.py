@@ -68,6 +68,7 @@ GENERATORS = (
     "generate_settlement_vectors.py",
     "generate_evidence_layer_padding_vectors.py",
     "generate_cll_material_vectors.py",
+    "generate_anchor_witness_v1_vectors.py",
     "generate_min_necessary_vectors.py",
     "generate_bundle_producer_key_vectors.py",
     "generate_bundle_composed_vectors.py",
@@ -81,10 +82,15 @@ GENERATORS = (
     "generate_judgment_extension_vectors.py",
     "generate_profile_vectors.py",
     "generate_interop_profile_v0_vectors.py",
+    ("generate_interop_profile_v0_vectors.py", "--profile", "1"),
     "generate_personal_history_basic_v0_vectors.py",
     "generate_coverage_declaration_v0_vectors.py",
     "generate_controller_binding_v0_vectors.py",
     "generate_deal_reconcile_v0_vectors.py",
+    "generate_standard_history_v0_vectors.py",
+    "generate_inference_service_history_v0_vectors.py",
+    ("generate_inference_service_history_v0_vectors.py", "--profile", "1"),
+    "generate_history_frame_v0_vectors.py",
     "generate_registry_conformance_vectors.py",
     "generate_adapter_x402_vectors.py",
     "generate_ucp_adapter_vectors.py",
@@ -95,13 +101,15 @@ GENERATORS = (
     "generate_envelope_encoding_vectors.py",
     # Appends to the capsule manifest.
     "generate_negative_zero_vectors.py",
+    "generate_json_nesting_vectors.py",
 )
 
 
 def main() -> None:
     python = sys.executable
-    for script in GENERATORS:
-        subprocess.run([python, str(Path(__file__).with_name(script))], check=True, cwd=ROOT / "python")
+    for entry in GENERATORS:
+        script, *args = (entry,) if isinstance(entry, str) else entry
+        subprocess.run([python, str(Path(__file__).with_name(script)), *args], check=True, cwd=ROOT / "python")
     viewer_core_text()
     for corpus in (
         VECTORS / "capsule",

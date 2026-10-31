@@ -5,3 +5,6 @@
 vectors/** -text
 vectors/**/*.cose binary
 vectors/**/*.bin binary
+# Adapter declarations are pinned by the SHA-256 of their committed bytes
+# (spec/adapters/README.md §2), so a checkout must not convert them either.
+spec/adapters/*.md -text

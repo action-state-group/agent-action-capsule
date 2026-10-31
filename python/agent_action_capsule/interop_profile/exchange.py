@@ -22,6 +22,7 @@ from typing import Any, Callable, Optional
 
 from ._cbor import CborError, decode
 from ._common import (
+    DEFAULT_REQUEST_PROFILE,
     FAIL,
     INCONCLUSIVE,
     MEDIA_CBOR,
@@ -29,8 +30,7 @@ from ._common import (
     NOT_CHECKED,
     NOT_PRESENT,
     PASS,
-    PROFILE_ID,
-    REFUSAL_REASONS,
+    PROFILE_IDS,
     PropertyReport,
     TrustPolicy,
     VerificationPolicy,
@@ -47,6 +47,7 @@ from ._common import (
     numbers_in_domain,
     parse_json,
     parse_time,
+    refusal_reasons_for,
     sha256_hex,
     unsigned_jcs,
 )
@@ -96,10 +97,13 @@ _ROW_STATUS = {
     "refusal-coverage_unsatisfiable": "UNKNOWN", "refusal-withheld": "WITHHELD",
     "refusal-deadline_or_malformed": "UNKNOWN", "refusal-failed": "UNKNOWN", "received-and-failed": "UNKNOWN",
     "absence": "UNKNOWN",
+    # v1 only: the reasons ER -02 adds are registered under evidence-interop/1 alone (§9.1).
+    "refusal-capacity_exceeded": "UNKNOWN", "refusal-request_unauthenticated": "UNKNOWN",
 }
 # §8: the rows a contract's uncertainty.on_missing applies to.
 _MISSING_ROWS = frozenset({"envelope-3", "envelope-4", "refusal-no_such_subject", "refusal-retention_expired",
-                           "refusal-coverage_unsatisfiable", "refusal-deadline_or_malformed", "absence"})
+                           "refusal-coverage_unsatisfiable", "refusal-deadline_or_malformed", "absence",
+                           "refusal-capacity_exceeded", "refusal-request_unauthenticated"})
 _ROW_7_NOTE = ("§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, "
                "where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable "
                "[RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is "
@@ -348,7 +352,8 @@ def _apply_uncertainty(req: Mapping[str, Any] | None, row: str, status: str) -> 
 
 
 class InteropVerifier:
-    """A verifier for ``evidence-interop/0`` exchanges.
+    """A verifier for ``evidence-interop/0`` and ``evidence-interop/1`` exchanges, each checked
+    under the rules of the identifier it names (§3.3).
 
     ``evaluation_time`` is required and is the only "now" the verifier knows. ``contract`` is the
     contract version document evaluated; the claims carry its ``contract_ref``. Requirements are
@@ -416,10 +421,10 @@ class InteropVerifier:
     def _envelope_properties(self, env: dict, well_formed: bool, why: str, media_type: str,
                              request_octets: bytes, request: dict) -> tuple[dict, list | None]:
         props: dict[str, PropertyReport] = {}
-        asked = request.get("profile", PROFILE_ID)
-        # §3.3 step 5. This verifier implements evidence-interop/0 rules only, whatever else the
-        # policy lists.
-        implemented = self.policy.profiles_implemented & {PROFILE_ID}
+        asked = request.get("profile", DEFAULT_REQUEST_PROFILE)
+        # §3.3 step 5. This verifier implements the rules of evidence-interop/0 and /1 only,
+        # whatever else the policy lists.
+        implemented = self.policy.profiles_implemented & PROFILE_IDS
         method = "§3.3 step 5: the envelope's profile against the identifier requested"
         if "profile" not in env:
             pv = PropertyReport("profile_version", NOT_PRESENT, method, "no profile member: ER alone (§3.3)")
@@ -555,7 +560,8 @@ class InteropVerifier:
 
     # ------------------------------------------------------------------ refusal (§6.3, §7.3)
 
-    def _refusal_properties(self, ref: dict, well_formed: bool, why: str, request_octets: bytes) -> dict:
+    def _refusal_properties(self, ref: dict, well_formed: bool, why: str, request_octets: bytes,
+                            request: dict) -> dict:
         props: dict[str, PropertyReport] = {}
         key_id, issued_at = ref.get("key_id"), ref.get("issued_at")
         method = "Ed25519 over JCS of {issued_at, reason, request_digest} (§6.3, ERV A7)"
@@ -586,9 +592,13 @@ class InteropVerifier:
             ok = ref["request_digest"] == sha256_hex(request_octets)
             props["request_binding"] = PropertyReport("request_binding", PASS if ok else FAIL, method)
         reason = ref.get("reason")
+        asked = request.get("profile", DEFAULT_REQUEST_PROFILE)
+        reasons = refusal_reasons_for(asked, self.policy.profiles_implemented & PROFILE_IDS)
         props["reason_registered"] = PropertyReport(
-            "reason_registered", PASS if isinstance(reason, str) and reason in REFUSAL_REASONS else FAIL,
-            "exactly one token of the ER §13 registry, exact case (§9.1, ERV A13)")
+            "reason_registered", PASS if isinstance(reason, str) and reason in reasons else FAIL,
+            "exactly one token of the ER §13 registry the requested identifier pins, exact case "
+            "(§6.3, §9.1, ERV A13)", None if member_of(asked, PROFILE_IDS) else
+            f"the request asks for {asked!r}; checked against every identifier implemented")
         method = "§5.2 time form"
         if "issued_at" not in ref:
             props["issued_at_form"] = PropertyReport("issued_at_form", NOT_PRESENT, method)
@@ -637,7 +647,7 @@ class InteropVerifier:
                                                          "the reply octets",
                                _envelope={"value": env, "props": props}, _octets=message.octets)
         if has_ref:
-            props = self._refusal_properties(obj, well_formed, why, request_octets)
+            props = self._refusal_properties(obj, well_formed, why, request_octets, request)
             result = ReplyResult("refusal", [props[k] for k in REFUSAL_PROPERTIES],
                                  evidence=[{"digest_alg": "SHA-256", "digest": sha256_hex(message.octets)}],
                                  _octets=message.octets)

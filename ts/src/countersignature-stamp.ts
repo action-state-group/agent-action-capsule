@@ -1,3 +1,4 @@
+import { strictEd25519 } from "./ed25519-strict.js";
 import { jcs, probeEd25519, sha256Hex } from "./json.js";
 import { hexToBytes, producerPublicKeySpki } from "./producer-envelope-wire.js";
 
@@ -256,11 +257,15 @@ async function checkCountersignV1Signature(
       ? undefined
       : false;
   }
+  // Strict Ed25519 first: a countersigner listing resolves the key to a
+  // name, and a small-order key would verify a forgery over any entry.
+  const signature = hexToBytes(signatureHex);
+  if (!strictEd25519(hexToBytes(keyId), signature)) return false;
   try {
     return await globalThis.crypto.subtle.verify(
       { name: "Ed25519" },
       key,
-      hexToBytes(signatureHex) as BufferSource,
+      signature as BufferSource,
       countersignV1SigningInput(entry) as BufferSource,
     );
   } catch {

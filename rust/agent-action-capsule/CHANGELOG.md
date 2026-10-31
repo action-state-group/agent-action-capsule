@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-10-31
+
+Tag `crates/agent-action-capsule-v0.6.0`.
+
+- Witness Receipts over an anchor (feature `strict`, AAC#508):
+  `witness::check_anchor_witnessed` runs `anchor_witnessed` of
+  `spec/interop-profile-v1.md` §6.2.2 over `cll-witness-receipt` Receipts
+  (RFC 9942, RFC9162_SHA256, leaf entry the anchor digest) under a witness
+  policy, and passes `vectors/anchor-witness-v1/`.
+- Breaking: `canonical::jcs` (and `json_digest`, `compute_capsule_id`) refuses a value nested more
+  than 128 levels deep with the new `CanonicalError::TooDeep` instead of recursing, and
+  `verify::verify` reports only `verifier_internal_error` for such a Capsule, as Go, Python and
+  TypeScript now do. The decoder's limit is unchanged (128); the four implementations now share it
+  and `tests/json_nesting.rs` runs the shared `vectors/json-nesting/` (AAC#498).
+- Registry predicate table (AAC#496, closes #407): `REGISTRY.md` §19 lists nine predicates
+  (`performed`, `acknowledged`, `settled`, `refunded`, `disputed`, `adjudicated(outcome, judge, pack)`,
+  `controls-domain`, `key-continuous-since`, `answered-within-deadline`), each with its version,
+  allowed sources, unit and work class, and a verifier reports a predicate the table does not list
+  as `NOT_CHECKED`. The section is a table, not a registry. The Go, Python and Rust embedded copies
+  of `REGISTRY.md` are updated byte for byte.
+- Security, settlement: the `wrapped_resigned` check verifies a wrapped JWS
+  under the leg key with dalek's `verify_strict`, not `verify`, so a
+  small-order key (such as the identity key's forgery, R the identity and
+  S = 0) or a small-order R no longer counts as a signature by that key, as
+  in Go, Python and TypeScript. dalek's `verify` already refused a
+  non-canonical R (#448).
+
+## 0.5.0 — 2026-10-30
+
+Tag `crates/agent-action-capsule-v0.5.0`.
+
 - Security, strict witness receipts (feature `strict`): an EdDSA witness
   receipt now verifies only under strict Ed25519. scitt-cose-receipt 0.1.1
   verifies with dalek's `verify`, which accepts a small-order key, so a

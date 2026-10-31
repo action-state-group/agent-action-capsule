@@ -38,8 +38,16 @@ type Case = {
 };
 type CoseCase = { name: string; cose_hex: string; valid: boolean };
 type Runtime = {
-  /** The banner's checkpoint word and the strict result, if any. */
-  read(bundle: unknown): Promise<{ checkpoint: string; strict?: Strict }>;
+  /**
+   * The banner's checkpoint word, the page's gate (bundleVerified), the
+   * membership claim the page read and the strict result, if any.
+   */
+  read(bundle: unknown): Promise<{
+    checkpoint: string;
+    verified: boolean;
+    membership: string;
+    strict?: Strict;
+  }>;
   strict(bundle: unknown, options: Obj): Promise<Strict>;
   /** The function bundle.ts loads from CLL, as the page bundle resolved it. */
   checkpointMetadata(cose: Uint8Array): Promise<unknown>;
@@ -102,6 +110,8 @@ function runtime(withCrypto: boolean): Runtime {
         const context = await Page.buildVerifiedBundleContext(JSON.parse(text));
         return {
           checkpoint: Page.verificationBanner(context, []).checkpoint,
+          verified: Page.bundleVerified(context.verification),
+          membership: context.verification.perRecordMembership.status,
           strict: context.strict,
         };
       },
@@ -215,6 +225,37 @@ describe.each([
       true,
     );
     expect(coseCases.some((c) => c.valid)).toBe(true);
+  });
+});
+
+// A producer-selected Bundle (records 1 and 3 of a log) as a page reads it.
+// With WebCrypto Ed25519 the strict checks run, authenticate the checkpoint
+// and prove each record, so the page's gate (bundleVerified) passes and the
+// strict verdict is INCOMPLETE. Without it there is no strict result: the
+// plain checks read the selection as an interval, so the page refuses it
+// rather than show records a full verifier may call INVALID.
+describe("a page's producer-selected Bundle", () => {
+  const selected = strictVectors.cases.find(
+    (c) => c.id === "incomplete-producer-selected",
+  )!.bundle;
+
+  it("renders as incomplete with WebCrypto", async () => {
+    const { checkpoint, verified, membership, strict } =
+      await runtime(true).read(selected);
+    expect(verified).toBe(true);
+    expect(membership).toBe("pass");
+    expect(checkpoint).toBe("verified");
+    expect(strict?.verdict).toBe("INCOMPLETE");
+  });
+
+  it("is refused without a crypto global", async () => {
+    const { verified, membership, strict } =
+      await runtime(false).read(selected);
+    expect(strict).toBeUndefined();
+    // Refused because the plain checks read the selection as an interval,
+    // so its records fail membership, not for any other reason.
+    expect(membership).toBe("fail");
+    expect(verified).toBe(false);
   });
 });
 

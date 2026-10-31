@@ -13,11 +13,21 @@
     "record_type": "close",
     "seq": 41,
     "statement": {
-      "note": "EXAMPLE-ORG own Close record for 2026-09-01, v0 placeholder",
+      "closed_at": "2026-09-02T00:05:00Z",
+      "counts_by_kind": {
+        "observation": 3
+      },
+      "epistemic_type": "producer_claim",
+      "head": {
+        "digest": "77aefa563af72b23bdbb81cdc3f0174a85d6eebda0e39be1870df43f01201cc2",
+        "digest_alg": "SHA-256"
+      },
       "period": {
         "end": "2026-09-02T00:00:00Z",
         "start": "2026-09-01T00:00:00Z"
-      }
+      },
+      "record_id": "example-org#41",
+      "record_version": "close/v1"
     },
     "subject_ref": "ec:example-org-outcomes-reconcile:2026-09-25@1",
     "v": 1
@@ -33,18 +43,28 @@
         "type": "closes"
       },
       {
-        "target": "761923a4e7b90174ee1a8a5b8bd878b33c3316da8fa348c6f77d37a47c2a9b0d",
+        "target": "7b9e508ea9d171b390fb5010fac13b7adef103b90f04b40dc5fc29db1ee7e4b1",
         "type": "acknowledges"
       }
     ],
     "record_type": "close",
     "seq": 17,
     "statement": {
-      "note": "EXAMPLE-ORG peer (example-org-sor) Close record for 2026-09-01 acknowledging EXAMPLE-ORG's, v0 placeholder",
+      "closed_at": "2026-09-02T01:00:00Z",
+      "counts_by_kind": {
+        "observation": 3
+      },
+      "epistemic_type": "producer_claim",
+      "head": {
+        "digest": "d54cf359b166ead52ff3f57e80701c925bed80bcf80e190dcb88cb5ab45bde46",
+        "digest_alg": "SHA-256"
+      },
       "period": {
         "end": "2026-09-02T00:00:00Z",
         "start": "2026-09-01T00:00:00Z"
-      }
+      },
+      "record_id": "example-org-sor#17",
+      "record_version": "close/v1"
     },
     "subject_ref": "ec:example-org-outcomes-reconcile:2026-09-25@1",
     "v": 1

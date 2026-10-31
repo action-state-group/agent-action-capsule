@@ -13,7 +13,22 @@ credential. CB §10 lists the cases:
   undefined method, or naming a delegator that is not bound: ``issuer_independence`` stays
   ``NOT_CHECKED``;
 - a binding of a key to itself over two halves under that key: form ``FAIL``, and ``FAIL`` by the
-  same-key rule.
+  same-key rule;
+- bindings of an Ed25519 key to a ``bip340`` (Nostr) key, signed by the Nostr event of CB §4.1: a
+  valid one, one read as two Ed25519 keys, one whose event names another digest, one whose event
+  is of another kind, one revoked by the Nostr key, one whose nonce is too short and one whose
+  ``sig`` object has a third member, and two whose validly signed event has a ``created_at`` that
+  is negative or text. None binds the pair;
+- ``key_types`` holding one token (form ``FAIL``) and naming an unlisted token (signatures
+  ``NOT_CHECKED``, and a revocation by that key does not apply);
+- a valid binding that names neither half's key: it does not bind the pair;
+- a revocation list a using profile declared complete (CB §5.1): ones that count (revocation
+  ``PASS``), including one under a ``max_age`` of 10^10 seconds and one that holds a statement by a
+  key the binding does not bind (ignored); ones that hold a statement that applies (``FAIL``), under
+  a declaration that counts and under a malformed one; and ones that do not count
+  (``NOT_CHECKED``): stale, past the freshness bound, dated after the evaluation time, for another
+  binding, with another digest, not a JSON array, and malformed declarations (an extra member, a
+  ``max_age`` that is negative, fractional or 2^53, and an ``as_of`` that names no calendar date).
 
 It states every expected status by hand from CB §6 and §7 and IP §6.7.4. Each case cites the
 sections it comes from. Nothing here imports or runs a verifier. The credential and its method are
@@ -22,11 +37,13 @@ fixed for these vectors only and are not registered (CB §10).
 Output: ``vectors/controller-binding-v0/`` (or ``--out DIR``). Deterministic: no clock, no
 randomness. ``README.md`` is never rewritten; every file in the directory is listed in
 ``SHA256SUMS``. Dependencies: the standard library, ``cryptography`` (Ed25519 only) and the
-generators beside this script, for their encodings, keys, halves and contract.
+generators beside this script, for their encodings, keys, halves and contract. BIP-340 signing is
+written here from BIP-340 itself, with the all-zero ``aux_rand``, so it is deterministic too.
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -54,6 +71,81 @@ SEED_LABELS = {
 PRIV = {name: Ed25519PrivateKey.from_private_bytes(sha(label.encode())) for name, label in SEED_LABELS.items()}
 PRIV |= {name: coverage_vectors.PRIV[name] for name in ("producer-a", "producer-b")}
 PUB = {name: k.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex() for name, k in PRIV.items()}
+
+# ---------------------------------------------------------------------------
+# BIP-340 (Schnorr over secp256k1), signing only, from the BIP's specification
+# ---------------------------------------------------------------------------
+
+_P = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+_N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+_G = (0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
+      0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8)
+
+
+def _tagged(tag: str, msg: bytes) -> bytes:
+    t = hashlib.sha256(tag.encode()).digest()
+    return hashlib.sha256(t + t + msg).digest()
+
+
+def _add(a: tuple[int, int] | None, b: tuple[int, int] | None) -> tuple[int, int] | None:
+    if a is None or b is None:
+        return a or b
+    if a[0] == b[0] and a[1] != b[1]:
+        return None
+    lam = (3 * a[0] * a[0] * pow(2 * a[1], _P - 2, _P) if a == b
+           else (b[1] - a[1]) * pow(b[0] - a[0], _P - 2, _P)) % _P
+    x = (lam * lam - a[0] - b[0]) % _P
+    return x, (lam * (a[0] - x) - a[1]) % _P
+
+
+def _mul(pt: tuple[int, int] | None, n: int) -> tuple[int, int]:
+    r = None
+    for i in range(256):
+        if (n >> i) & 1:
+            r = _add(r, pt)
+        pt = _add(pt, pt)
+    assert r is not None
+    return r
+
+
+def bip340_public(secret: bytes) -> str:
+    return _mul(_G, int.from_bytes(secret, "big"))[0].to_bytes(32, "big").hex()
+
+
+def bip340_sign(secret: bytes, msg: bytes) -> str:
+    """BIP-340's default signing, with ``aux_rand`` all zero."""
+    d0 = int.from_bytes(secret, "big")
+    assert 1 <= d0 < _N
+    pt = _mul(_G, d0)
+    d = d0 if pt[1] % 2 == 0 else _N - d0
+    px = pt[0].to_bytes(32, "big")
+    t = (d ^ int.from_bytes(_tagged("BIP0340/aux", bytes(32)), "big")).to_bytes(32, "big")
+    k0 = int.from_bytes(_tagged("BIP0340/nonce", t + px + msg), "big") % _N
+    r = _mul(_G, k0)
+    k = k0 if r[1] % 2 == 0 else _N - k0
+    rx = r[0].to_bytes(32, "big")
+    e = int.from_bytes(_tagged("BIP0340/challenge", rx + px + msg), "big") % _N
+    return (rx + ((k + e * d) % _N).to_bytes(32, "big")).hex()
+
+
+# CB §3.3 and §4.1: a ``bip340`` key, the operator's Nostr identity in these vectors.
+NOSTR_LABEL = "controller-binding-v0 vectors: an operator's Nostr key (bip340)"
+NOSTR_SECRET = sha(NOSTR_LABEL.encode())
+NOSTR = "operator-nostr"
+PUB[NOSTR] = bip340_public(NOSTR_SECRET)
+NOSTR_KIND = 3374
+CREATED_AT = 1790812800  # ISSUED, as the signer's clock gives it; nothing checks it (CB §4.1)
+# CB §9.3: a record with a bip340 key carries a nonce of 128 random bits. Fixed here, so the
+# vectors reproduce; a real ceremony draws it from a secure random source.
+NOSTR_NONCES = [shx(f"controller-binding-v0 vectors: nonce {i}".encode())[:32] for i in (1, 2)]
+
+
+def nostr_sig(version: str, signed_octets: bytes, *, kind: int = NOSTR_KIND, digest: str | None = None,
+              created_at: Any = CREATED_AT) -> dict:
+    """CB §4.1: the signing event's BIP-340 signature, with its ``created_at``."""
+    content = f"{version}:{digest or shx(signed_octets)}"
+    event = json.dumps([0, PUB[NOSTR], created_at, kind, [], content], separators=(",", ":"), ensure_ascii=False)
+    return {"created_at": created_at, "sig": bip340_sign(NOSTR_SECRET, sha(event.encode()))}
 
 BINDING_PROPS = ["controller_binding_form", "controller_binding_signatures", "controller_binding_window",
                  "controller_binding_revocation", "controller_binding_credential"]
@@ -84,6 +176,8 @@ EVAL = "2026-10-19T01:00:00Z"
 
 
 def signed(body: dict, signer: str) -> dict:
+    if signer == NOSTR:
+        return dict(body, sig=nostr_sig(body["revocation_version"], jcs(body).encode()))
     return dict(body, sig=PRIV[signer].sign(jcs(body).encode()).hex())
 
 
@@ -93,17 +187,24 @@ def octets(value: dict) -> dict:
 
 def binding(claim: str, holders: tuple[str, str], *, signers: tuple[str, ...] | None = None,
             not_after: str = NOT_AFTER, method: str | None = None, nonce: str = "ceremony-1",
-            **added: Any) -> dict:
+            typed: bool | None = None, types: list[Any] | None = None, **added: Any) -> dict:
     """A binding record over the two named keys (CB §3), signed by ``signers`` (default: both keys,
-    in the order of ``keys``) over the record without ``sigs`` (CB §4)."""
+    in the order of ``keys``) over the record without ``sigs`` (CB §4), each key as its type signs
+    (CB §4.1). ``key_types`` is present when a key is the ``bip340`` key, unless ``typed`` is
+    False; ``types`` sets it as given."""
     keys = sorted(PUB[h] for h in holders)
     by_key = {PUB[h]: h for h in holders}
     body = {"binding_version": "controller-binding/0", "claim": claim, "method": method or METHODS[claim],
             "keys": keys, "issued_at": ISSUED, "not_before": ISSUED, "not_after": not_after,
             "revocation": "revocation_statement/0", "nonce": nonce, **added}
+    if typed if typed is not None else NOSTR in holders:
+        body["key_types"] = ["bip340" if by_key[k] == NOSTR else "ed25519" for k in keys]
+    if types is not None:
+        body["key_types"] = types
     names = signers if signers is not None else tuple(by_key[k] for k in keys)
     data = jcs(body).encode()
-    return dict(body, sigs=[{"key_id": PUB[n], "sig": PRIV[n].sign(data).hex()} for n in names])
+    return dict(body, sigs=[{"key_id": PUB[n], "sig": nostr_sig("controller-binding/0", data) if n == NOSTR
+                             else PRIV[n].sign(data).hex()} for n in names])
 
 
 def binding_digest(record: dict) -> str:
@@ -115,6 +216,34 @@ def revocation(record: dict, by: str, revoked_at: str) -> dict:
     """A revocation statement (CB §5), signed by ``by``."""
     return signed({"revocation_version": "controller-binding-revocation/0", "binding": binding_digest(record),
                    "key_id": PUB[by], "revoked_at": revoked_at}, by)
+
+
+# CB §5.1: the declaration a using profile gives beside a revocation list.
+LIST_PROFILE = "controller-binding-v0 vectors (CB §10)"
+LIST_ASSERTED_BY = "the vectors' run that pins the revocation list"
+LIST_AS_OF = "2026-10-19T00:00:00Z"
+LIST_MAX_AGE = 86400
+
+
+def declared(record: dict, statements: list[dict] | None = None, *, as_of: str = LIST_AS_OF,
+             max_age: Any = LIST_MAX_AGE, binding: str | None = None, digest: str | None = None,
+             text: str | None = None, extra: dict | None = None) -> dict:
+    """A revocation list (a JSON array of statements, CB §5.1) and its declaration. ``binding``,
+    ``digest`` and ``text`` replace the binding digest, the list digest and the list's octets;
+    ``extra`` adds members."""
+    octets_text = text if text is not None else jcs(statements or [])
+    return {"declaration": {"profile": LIST_PROFILE, "asserted_by": LIST_ASSERTED_BY,
+                            "binding": binding or binding_digest(record),
+                            "list_digest": digest or shx(octets_text.encode()),
+                            "as_of": as_of, "max_age": max_age, **(extra or {})},
+            "media_type": J, "octets_text": octets_text}
+
+
+def list_report(rl: dict, counts: bool) -> dict:
+    """CB §6.1: a declaration's method, as a verifier reports it."""
+    d = rl["declaration"]
+    return {"profile": d["profile"], "asserted_by": d["asserted_by"],
+            "list_digest": shx(rl["octets_text"].encode()), "as_of": d["as_of"], "counts": counts}
 
 
 def credential(holders: tuple[str, str], signer: str) -> dict:
@@ -147,7 +276,8 @@ def pins() -> dict:
 
 def case(cid: str, title: str, cites: list[str], record: dict, props: dict, *, binds_pair: bool, applies: bool,
          independence: str, reason: str | None, second: str = "producer-b",
-         revocations: list[dict] | None = None, cred: dict | None = None, fails: list[str]) -> dict:
+         revocations: list[dict] | None = None, cred: dict | None = None, fails: list[str],
+         revocation_list: dict | None = None, list_counts: bool | None = None) -> dict:
     halves = [half(CLAIM, HALF_TIMES[0], "producer-a"), half(CLAIM, HALF_TIMES[1], second)]
     proves: list[str] = []
     if props.get("controller_binding_form") == "PASS" and props.get("controller_binding_signatures") == "PASS":
@@ -159,10 +289,14 @@ def case(cid: str, title: str, cites: list[str], record: dict, props: dict, *, b
         inputs["revocations"] = [octets(r) for r in revocations]
     if cred is not None:
         inputs["credential"] = cred
+    if revocation_list is not None:
+        inputs["revocation_list"] = revocation_list
     expected = {
         "halves": {"signatures": ["PASS", "PASS"], "agree": True},
         "binding": {"claim": record["claim"], "binding_digest": binding_digest(record), "properties": props,
-                    "binds_pair": binds_pair, "applies": applies, "proves": proves},
+                    "binds_pair": binds_pair, "applies": applies, "proves": proves,
+                    **({"revocation_list": list_report(revocation_list, bool(list_counts))}
+                       if revocation_list is not None and props.get("controller_binding_form") == "PASS" else {})},
         "issuer_independence": {"status": independence, "shown_as": SHOWN[independence], "reason": reason,
                                 "satisfied_becomes": {"r-corroborated": BECOMES[independence]}},
         "fails": fails,
@@ -269,6 +403,151 @@ def cases() -> list[dict]:
                     ["CB §5", "CB §6.1", "IP §6.7.4"], r, ok(),
                     binds_pair=True, applies=True, independence="FAIL", reason=by_binding(r),
                     revocations=[revocation(r, "producer-c", "2026-10-12T00:00:00Z")], fails=[]))
+
+    an = ("producer-a", NOSTR)
+    n1, n2 = NOSTR_NONCES
+    r = binding("same_controller_asserted", an, nonce=n1)
+    out.append(case("valid-nostr-key", "A half's Ed25519 key bound to a bip340 (Nostr) key, signed by the Nostr event",
+                    ["CB §3.3", "CB §4.1", "CB §6.1", "CB §6.2", "IP §6.7.4"], r, ok(),
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None, fails=[]))
+
+    r = binding("same_controller_asserted", an, typed=False, nonce=n1)
+    out.append(case("nostr-key-read-as-ed25519", "The same keys and signatures with no key_types: both keys are ed25519",
+                    ["CB §3.1", "CB §3.3", "CB §4.1", "CB §6.1"], r, ok(controller_binding_signatures="FAIL"),
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                    fails=["controller_binding_signatures"]))
+
+    r = binding("same_controller_asserted", an, nonce=n1)
+    other = binding("same_controller_asserted", an, nonce=n2)
+    r["sigs"] = [dict(s, sig=nostr_sig("controller-binding/0", b"", digest=binding_digest(other)))
+                 if s["key_id"] == PUB[NOSTR] else s for s in r["sigs"]]
+    out.append(case("nostr-wrong-digest", "The Nostr event names the digest of another record",
+                    ["CB §4.1", "CB §6.1"], r, ok(controller_binding_signatures="FAIL"),
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                    fails=["controller_binding_signatures"]))
+
+    r = binding("same_controller_asserted", an, nonce=n1)
+    signing_input = jcs({k: v for k, v in r.items() if k != "sigs"}).encode()
+    r["sigs"] = [dict(s, sig=nostr_sig("controller-binding/0", signing_input, kind=1))
+                 if s["key_id"] == PUB[NOSTR] else s for s in r["sigs"]]
+    out.append(case("nostr-other-kind", "The Nostr event is a text note (kind 1) over the right content",
+                    ["CB §4.1", "CB §6.1"], r, ok(controller_binding_signatures="FAIL"),
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                    fails=["controller_binding_signatures"]))
+
+    r = binding("same_controller_asserted", an, nonce=n1)
+    out.append(case("nostr-revoked", "A revocation by the bip340 key, signed by the Nostr event, before the halves",
+                    ["CB §4.1", "CB §5", "CB §6.1"], r, ok(controller_binding_revocation="FAIL"),
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                    revocations=[revocation(r, NOSTR, "2026-10-12T00:00:00Z")],
+                    fails=["controller_binding_revocation"]))
+
+    r = binding("same_controller_asserted", an, nonce="ceremony-1")
+    out.append(case("nostr-nonce-short", "A binding with a bip340 key whose nonce is not 32 hex characters",
+                    ["CB §3.1", "CB §9.3", "CB §6.1"], r, {"controller_binding_form": "FAIL"},
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                    fails=["controller_binding_form"]))
+
+    r = binding("same_controller_asserted", an, nonce=n1)
+    r["sigs"] = [dict(s, sig=dict(s["sig"], kind=NOSTR_KIND)) if s["key_id"] == PUB[NOSTR] else s
+                 for s in r["sigs"]]
+    out.append(case("nostr-sig-malformed", "The bip340 key's sig object carries a third member beside a valid signature",
+                    ["CB §4.1", "CB §6.1"], r, ok(controller_binding_signatures="FAIL"),
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                    fails=["controller_binding_signatures"]))
+
+    signing_input = jcs({k: v for k, v in binding("same_controller_asserted", an, nonce=n1).items()
+                         if k != "sigs"}).encode()
+    for cid, created_at, what in [("nostr-created-at-negative", -1, "a negative created_at"),
+                                  ("nostr-created-at-text", str(CREATED_AT), "a created_at written as text")]:
+        r = binding("same_controller_asserted", an, nonce=n1)
+        r["sigs"] = [dict(s, sig=nostr_sig("controller-binding/0", signing_input, created_at=created_at))
+                     if s["key_id"] == PUB[NOSTR] else s for s in r["sigs"]]
+        out.append(case(cid, f"The Nostr event, validly signed, has {what}",
+                        ["CB §4.1", "CB §6.1"], r, ok(controller_binding_signatures="FAIL"),
+                        binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None,
+                        fails=["controller_binding_signatures"]))
+
+    r = binding("same_controller_asserted", ab, types=["ed25519"])
+    out.append(case("key-types-malformed", "key_types names one type for two keys",
+                    ["CB §3.1", "CB §6.1"], r, {"controller_binding_form": "FAIL"},
+                    binds_pair=True, applies=False, independence="NOT_CHECKED", reason=None,
+                    fails=["controller_binding_form"]))
+
+    r = binding("same_controller_asserted", ab, types=["ed25519", "org.example.key-type"])
+    second = next(h for h in ab if PUB[h] == r["keys"][1])
+    out.append(case("key-types-unknown",
+                    "A key type this revision does not list, and a revocation by that key signed with Ed25519",
+                    ["CB §3.3", "CB §5", "CB §6.1", "CB §6.2", "IP §6.7.4"], r,
+                    ok(controller_binding_signatures="NOT_CHECKED"),
+                    binds_pair=True, applies=False, independence="NOT_CHECKED", reason=None,
+                    revocations=[revocation(r, second, "2026-10-12T00:00:00Z")], fails=[]))
+
+    r = binding("same_controller_asserted", ("producer-c", NOSTR), nonce=n1)
+    out.append(case("no-half-key-bound", "A valid binding of a third key to the bip340 key: it names neither half's key",
+                    ["CB §6.2", "IP §6.7.4"], r, ok(),
+                    binds_pair=False, applies=False, independence="NOT_CHECKED", reason=None, fails=[]))
+
+    # CB §5.1: a revocation list a using profile declared complete.
+    def listed(cid: str, title: str, record: dict, rl: dict, counts: bool, status: str) -> None:
+        applies = status != "FAIL"
+        out.append(case(cid, title, ["CB §5", "CB §5.1", "CB §6.1", "CB §6.2", "IP §6.7.4"], record,
+                        ok(controller_binding_revocation=status), binds_pair=True, applies=applies,
+                        independence="FAIL" if applies else "NOT_CHECKED",
+                        reason=by_binding(record) if applies else None,
+                        revocation_list=rl, list_counts=counts,
+                        fails=[] if applies else ["controller_binding_revocation"]))
+
+    r = binding("same_controller_asserted", ab)
+    listed("complete-list", "A revocation list declared complete after both halves, with no statement in it",
+           r, declared(r), True, "PASS")
+
+    listed("complete-list-statement-by-other-key",
+           "A list declared complete that holds a statement by a key the binding does not bind: it is ignored",
+           r, declared(r, [revocation(r, "producer-c", "2026-10-12T00:00:00Z")]), True, "PASS")
+
+    listed("complete-list-revoked", "A list declared complete that holds a statement by a bound key before the halves",
+           r, declared(r, [revocation(r, "producer-b", "2026-10-12T00:00:00Z")]), True, "FAIL")
+
+    listed("complete-list-stale", "A list declared complete as of the first half's time, before the second half",
+           r, declared(r, as_of=HALF_TIMES[0], max_age=7 * 86400), False, "NOT_CHECKED")
+
+    listed("complete-list-past-max-age", "A list declared complete after the halves, but older than the freshness bound",
+           r, declared(r, as_of="2026-10-16T00:00:00Z"), False, "NOT_CHECKED")
+
+    listed("complete-list-as-of-future", "A list declared complete as of a time after the evaluation time",
+           r, declared(r, as_of="2026-10-20T00:00:00Z"), False, "NOT_CHECKED")
+
+    other = binding("same_controller_asserted", ab, nonce="ceremony-2")
+    listed("complete-list-other-binding", "A list declared complete for another binding of the same keys",
+           r, declared(r, binding=binding_digest(other)), False, "NOT_CHECKED")
+
+    listed("complete-list-digest-mismatch", "A declaration whose list digest is not that of the list delivered",
+           r, declared(r, digest=shx(b"[]\n")), False, "NOT_CHECKED")
+
+    listed("complete-list-not-an-array", "A declared list whose octets are a JSON object, not an array",
+           r, declared(r, text=jcs({"statements": []})), False, "NOT_CHECKED")
+
+    listed("complete-list-large-max-age",
+           "A list declared complete three days before E under a max_age of 10^10 seconds",
+           r, declared(r, as_of="2026-10-16T00:00:00Z", max_age=10**10), True, "PASS")
+
+    # CB §5.1: a declaration not in its form does not count; the list's entries are still read.
+    sig = {"sig": "00" * 64}
+    listed("complete-list-extra-member", "A declaration with a seventh member, sig",
+           r, declared(r, extra=sig), False, "NOT_CHECKED")
+
+    for cid, value, what in [("complete-list-max-age-negative", -1, "negative"),
+                             ("complete-list-max-age-fractional", 86400.5, "fractional"),
+                             ("complete-list-max-age-too-large", 2**53, "2^53, above 2^53 - 1")]:
+        listed(cid, f"A declaration whose max_age is {what}", r, declared(r, max_age=value), False, "NOT_CHECKED")
+
+    listed("complete-list-as-of-malformed", "A declaration whose as_of names no calendar date (30 February)",
+           r, declared(r, as_of="2026-02-30T00:00:00Z"), False, "NOT_CHECKED")
+
+    listed("complete-list-malformed-revoked",
+           "A malformed declaration beside a list that holds a statement by a bound key before the halves",
+           r, declared(r, [revocation(r, "producer-b", "2026-10-12T00:00:00Z")], extra=sig), False, "FAIL")
     return out
 
 
@@ -292,9 +571,11 @@ def build() -> dict[str, bytes]:
         "profile": PROFILE,
         "spec": SPEC,
         "test_keys": {
-            "note": "TEST-ONLY. Each private key is the 32-byte Ed25519 seed SHA-256(seed_label).",
-            "keys": {name: {"seed_label": labels[name], "public": PUB[name]}
-                     for name in ("producer-a", "producer-b", "producer-c", "credential-issuer", "other-issuer")},
+            "note": ("TEST-ONLY. Each private key is the 32-byte Ed25519 seed SHA-256(seed_label), except "
+                     "operator-nostr, whose BIP-340 secret key is SHA-256(seed_label)."),
+            "keys": {**{name: {"seed_label": labels[name], "public": PUB[name]}
+                        for name in ("producer-a", "producer-b", "producer-c", "credential-issuer", "other-issuer")},
+                     NOSTR: {"seed_label": NOSTR_LABEL, "public": PUB[NOSTR], "key_type": "bip340"}},
         },
         "contract": {"document": CONTRACT, "document_jcs": jcs(CONTRACT), "contract_ref": CONTRACT_REF,
                      "contract_digest": CONTRACT_DIGEST, "schema": EC_SCHEMA},

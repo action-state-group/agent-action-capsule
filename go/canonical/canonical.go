@@ -204,8 +204,8 @@ func jcsValue(v interface{}) (string, error) {
 
 // JCS returns the RFC 8785 JCS serialization of v as UTF-8 bytes (no normalization).
 // A value nested more than MaxNestingDepth levels deep, or one that contains
-// itself (only a value built in Go can be either), is an error rather than a
-// stack overflow.
+// itself (only a value built in Go can), is an error rather than a stack
+// overflow.
 func JCS(v interface{}) ([]byte, error) {
 	if TooDeep(v) {
 		return nil, fmt.Errorf("value is nested too deeply or contains itself")

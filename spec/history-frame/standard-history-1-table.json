@@ -1,0 +1,29 @@
+{
+  "document": "counting_table",
+  "frame": "history-frame/0",
+  "instance": "standard_history/1",
+  "inputs": {
+    "deal_entry": ["deal", "agreed_at", "counterparty_class", "role", "amount", "outcome", "happened", "disputes"],
+    "dispute_entry": ["side", "outcome", "forum"],
+    "counterparty_class": ["person_agent", "business_agent", "shop_preauth"],
+    "not_counted": ["shop_preauth"],
+    "record_kinds": ["receipt_document"]
+  },
+  "card_members": ["derivation", "holder_kind", "controller_class", "anchor", "since", "window", "policy",
+                   "in_window", "class_missing", "outcomes", "bands", "roles", "happened", "disputes"],
+  "tallies": {
+    "in_window": ["of", "counted", "not_counted"],
+    "class_missing": ["of", "count"],
+    "outcomes": ["of", "held", "did_not_hold", "undecided"],
+    "band": ["currency", "decade", "of", "held", "did_not_hold", "undecided"],
+    "roles": ["of", "provided", "bought"],
+    "happened": ["of", "stamped_by_both", "receipt_only", "no_record"],
+    "disputes": ["raised", "received"],
+    "dispute": ["of", "by_outcome", "by_forum"],
+    "by_outcome": ["of", "open", "for", "against", "split", "no_finding", "withdrawn"],
+    "by_forum": ["of", "auto", "network", "rail", "external"]
+  },
+  "units": ["deals", "disputes"],
+  "properties": ["card_form", "counts_integral", "denominator", "window_from_policy", "as_of", "counts_recompute"],
+  "may_be_not_checked": ["window_from_policy", "as_of", "counts_recompute"]
+}

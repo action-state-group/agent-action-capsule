@@ -33,6 +33,7 @@ import (
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/envelope"
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 	"github.com/action-state-group/agent-action-capsule/go/verify"
 )
 
@@ -239,9 +240,9 @@ func Verify(in Input) Result {
 		if text, isString := capsule["capsule_id"].(string); isString {
 			cid = &text
 		}
-		// A leg nested deeper than any JSON text decodes to (only a value
-		// built in Go can be) is refused before the recursive Capsule checks
-		// can exhaust the stack; it takes no part in any state.
+		// A leg nested more than canonical.MaxNestingDepth levels deep is
+		// refused before the recursive Capsule checks run; it takes no part
+		// in any state.
 		if canonical.TooDeep(capsule) {
 			report.Failures = append(report.Failures, Entry{Records: []*string{cid}, Code: "capsule_invalid"})
 			continue
@@ -636,7 +637,7 @@ func b64urlDecode(value interface{}) ([]byte, error) {
 var errNotBase64URL = errors.New("not unpadded base64url")
 
 // jwsVerifies reports whether octets are a compact JWS whose Ed25519
-// signature verifies under the hex key. An SD-JWT is the issuer-signed JWS,
+// signature verifies, strictly, under the hex key. An SD-JWT is the issuer-signed JWS,
 // then "~" and any disclosures: only the part before the first "~" is signed.
 func jwsVerifies(octets []byte, publicHex string) bool {
 	issuer, _, _ := bytes.Cut(octets, []byte("~"))
@@ -653,7 +654,7 @@ func jwsVerifies(octets []byte, publicHex string) bool {
 		return false
 	}
 	signed := append(append(append([]byte(nil), parts[0]...), '.'), parts[1]...)
-	return ed25519.Verify(ed25519.PublicKey(key), signed, signature)
+	return ed25519strict.Verify(ed25519.PublicKey(key), signed, signature)
 }
 
 // x402Scheme is the x402 scheme, from the first wrapped offer or payment
@@ -718,7 +719,9 @@ func x402Scheme(legs []map[string]interface{}, objects map[string][]byte) interf
 	return nil
 }
 
-// decodeJSON reads one JSON value, or returns nil when it is not JSON.
+// decodeJSON reads one JSON value, or returns nil when it is not JSON or
+// nests more than canonical.MaxNestingDepth levels deep (as Rust and Python
+// read it; vectors/json-nesting/).
 func decodeJSON(data []byte) interface{} {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
@@ -727,6 +730,9 @@ func decodeJSON(data []byte) interface{} {
 		return nil
 	}
 	if _, err := decoder.Token(); err != io.EOF {
+		return nil
+	}
+	if canonical.TooDeep(value) {
 		return nil
 	}
 	return value

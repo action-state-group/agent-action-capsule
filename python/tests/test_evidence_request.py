@@ -136,8 +136,10 @@ def test_registry_strings_are_the_modules():
     assert er.DRAFT == REGISTRY["draft"]
     assert er.SUBJECT_FORMS == tuple(REGISTRY["subject_forms"])
     assert er.COVERAGE_MEMBERS == tuple(REGISTRY["coverage_members"])
-    assert er.REFUSAL_REASONS == frozenset(REGISTRY["refusal_reasons"])
-    assert len(REGISTRY["refusal_reasons"]) == 8
+    # registry.json is the -00 registry; -02 adds two (refusal-02.json).
+    reasons_02 = json.loads((VECTORS / "refusal-02.json").read_text(encoding="utf-8"))["refusal_reasons"]
+    assert reasons_02[:8] == REGISTRY["refusal_reasons"] and len(REGISTRY["refusal_reasons"]) == 8
+    assert er.REFUSAL_REASONS == frozenset(reasons_02)
     assert er.OUTCOMES == tuple(REGISTRY["outcomes"])
     assert er.REQUEST_STATES == tuple(REGISTRY["request_states"])
     assert er.SUBPROTOCOL == REGISTRY["subprotocol"]
@@ -318,6 +320,28 @@ def test_invariance_vector(case):
     for o in case["observations"]:
         assert hashlib.sha256(bytes.fromhex(o["artifact_hex"])).hexdigest() == o["artifact_digest"]
     assert er.compare_observations(observations) == case["expect"]["invariance"]
+
+
+# --- refusal-02.json ---------------------------------------------------------------------------
+
+
+@_params("refusal-02")
+def test_refusal_02_vector(case):
+    """The -02 reasons as this module checks and classifies them; the load-shedding and mapping
+    cases state requirements no function here decides."""
+    expect, facts = case["expect"], case.get("facts", {})
+    if "refusal" in case:
+        check = er.check_refusal(case["refusal"])
+        assert (check.signature_valid, check.reason_registered, check.conformant) == (
+            expect["signature"] == "valid", expect["reason_registered"], expect["conformant"])
+    elif "commitment" in facts:
+        assert er.classify_refusal(facts["commitment"], facts["refusal_reason"]) == expect["classification"]
+
+
+def test_refusal_02_cases_are_all_read():
+    # The parametrized test above checks the cases it recognizes; a renamed key would skip one.
+    cases = _cases("refusal-02")
+    assert sum("refusal" in c or "commitment" in c.get("facts", {}) for c in cases) == 7
 
 
 # --- retention.json -----------------------------------------------------------------------------
@@ -568,7 +592,26 @@ def test_a_small_order_key_never_verifies():
                "key_id": key, "sig": "01" + "00" * 63}
         assert check_refusal(obj) == er.RefusalCheck(False, True, False), key
         assert not verify_refusal_offline(Refusal(**obj))
-    assert not er._small_order(bytes.fromhex(PRIMARY.key_id))
+    honest = sign_refusal("ab" * 32, REASON_NO_SUCH_SUBJECT, signer=PRIMARY, issued_at=NOW)
+    assert verify_refusal_offline(honest)
+
+
+def test_a_small_order_r_never_verifies():
+    """The responder's own key signs with R the identity (the "identity R"
+    case of cll-ed25519-vectors.json, over this refusal): ``cryptography``
+    accepts it, and strict Ed25519 refuses it."""
+    from _ed25519_forgeries import identity_r, lenient
+
+    stub = sign_refusal("ab" * 32, REASON_NO_SUCH_SUBJECT, signer=PRIMARY, issued_at=NOW)
+    body = stub.signing_body()
+    sig = identity_r(PRIMARY._key, body)
+    assert lenient(bytes.fromhex(PRIMARY.key_id), sig, body)
+    forged = Refusal(request_digest=stub.request_digest, reason=stub.reason, issued_at=stub.issued_at,
+                     key_id=stub.key_id, sig=sig.hex())
+    assert not verify_refusal_offline(forged)
+    obj = {"request_digest": forged.request_digest, "reason": forged.reason, "issued_at": forged.issued_at,
+           "key_id": forged.key_id, "sig": forged.sig}
+    assert not check_refusal(obj).signature_valid
 
 
 def test_a_refusal_member_with_no_canonical_form_is_unsigned_not_a_crash():
@@ -589,3 +632,83 @@ def test_a_refusal_frame_may_carry_any_integer_in_an_unknown_member():
 def test_issued_at_is_whole_second_utc():
     now = er._now_iso()
     assert er.parse_utc(now) is not None and "." not in now
+
+
+# --- unavailable-window statements (-02 §4.7) ---------------------------------------
+
+
+def _statement(signer: _Signer = PRIMARY, **members) -> dict:
+    body = {"start": "2026-10-29T10:00:00Z", "end": "2026-10-29T10:40:00Z", "reason_class": "flood"}
+    body.update(members)
+    body = {k: v for k, v in body.items() if v is not None}
+    sig, key_id = signer.sign(er.jcs({k: body[k] for k in er.UNAVAILABLE_SIGNED_MEMBERS if k in body}))
+    return {**body, "key_id": key_id, "sig": sig}
+
+
+def _accepted(*times: str) -> list:
+    return [er.RegistrationReceipt(t, True) for t in times]
+
+
+def test_an_unavailable_window_ending_before_it_starts_is_malformed():
+    st = _statement(start="2026-10-29T10:40:00Z", end="2026-10-29T10:39:59Z")
+    reading = er.recognize_unavailable_window(st, _accepted("2026-10-29T10:06:00Z"), PRIMARY.key_id)
+    assert reading == er.StatementReading(False, "malformed")
+    # A fraction is the deadline representation too, and orders as an instant.
+    st = _statement(start="2026-10-29T10:00:00.5Z", end="2026-10-29T10:00:00.25Z")
+    assert er.recognize_unavailable_window(st, _accepted(NOW), PRIMARY.key_id).why == "malformed"
+
+
+def test_an_unavailable_window_reason_outside_the_closed_list_is_malformed():
+    for reason in ("ddos", "Outage", "", None, 7):
+        st = _statement(reason_class=reason)
+        reading = er.recognize_unavailable_window(st, _accepted("2026-10-29T10:06:00Z"), PRIMARY.key_id)
+        assert reading.why == "malformed", reason
+    assert er.recognize_unavailable_window(["not", "a", "map"], [], PRIMARY.key_id).why == "malformed"
+
+
+def test_only_an_accepted_receipt_that_attests_a_time_registers_a_statement():
+    st = _statement()
+    for receipts in ([], [er.RegistrationReceipt("2026-10-29T10:06:00Z", False)],
+                     [er.RegistrationReceipt("not a time", True)]):
+        assert er.recognize_unavailable_window(st, receipts, PRIMARY.key_id).why == "not_registered"
+    receipts = [er.RegistrationReceipt("2026-10-29T09:00:00Z", False),
+                *_accepted("2026-10-29T10:30:00Z", "2026-10-29T10:06:00Z")]
+    assert er.recognize_unavailable_window(st, receipts, PRIMARY.key_id) == er.StatementReading(
+        True, None, "2026-10-29T10:06:00Z")
+
+
+def test_receipts_at_the_same_instant_give_the_first_ones_registration_time():
+    st = _statement()
+    for first, second in (("2026-10-29T10:06:00Z", "2026-10-29T10:06:00.0Z"),
+                          ("2026-10-29T10:06:00.0Z", "2026-10-29T10:06:00Z")):
+        reading = er.recognize_unavailable_window(st, _accepted(first, second), PRIMARY.key_id)
+        assert reading.registration_time == first
+
+
+def test_an_unavailable_window_under_a_small_order_key_is_not_the_responders():
+    identity = "01" + "00" * 31
+    st = {"start": "2026-10-29T10:00:00Z", "end": "2026-10-29T10:40:00Z", "reason_class": "flood",
+          "key_id": identity, "sig": identity + "00" * 32}
+    assert er.recognize_unavailable_window(st, _accepted(NOW), identity).why == "not_signed_by_responder"
+
+
+def test_a_statement_registered_after_the_window_closes_is_stated_afterwards():
+    statements = [("late", _statement(), _accepted("2026-10-29T10:20:01Z")),
+                  ("at-close", _statement(reason_class="outage"), _accepted("2026-10-29T10:20:00Z"))]
+    shown = er.display_absence("recorded_absence", statements, responder_key=PRIMARY.key_id,
+                               sent_at="2026-10-29T10:10:00Z", closed_at="2026-10-29T10:20:00Z")
+    assert shown.shown_as == er.UNAVAILABLE_SHOWN_AS
+    assert shown.covered_by == ("late", "at-close")
+    assert shown.labels["late"].stated_afterwards and not shown.labels["at-close"].stated_afterwards
+    assert shown.labels["late"].stated_period == ("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z")
+
+
+def test_only_a_recorded_absence_is_covered():
+    statements = [("s1", _statement(), _accepted("2026-10-29T10:06:00Z"))]
+    for state in ("pending", "refusal", "refusal_nonconformant", "artifact_verified"):
+        shown = er.display_absence(state, statements, responder_key=PRIMARY.key_id,
+                                   sent_at="2026-10-29T10:10:00Z", closed_at="2026-10-29T10:20:00Z")
+        assert shown == er.AbsenceDisplay(state, state, (), {}), state
+    with pytest.raises(ValueError):
+        er.display_absence("recorded_absence", statements, responder_key=PRIMARY.key_id,
+                           sent_at="2026-10-29T10:10:00Z", closed_at=None)

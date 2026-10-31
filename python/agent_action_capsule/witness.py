@@ -37,11 +37,18 @@ import binascii
 import hashlib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from ._ed25519_strict import strict_encoding as _strict_ed25519
+from .canonical import loads_bounded
+
 __all__ = [
+    "ANCHOR_WITNESS_KIND",
+    "ANCHOR_WITNESS_PROPERTY",
+    "AnchorReceiptReport",
+    "AnchorWitnessReport",
     "BINDING_CLL",
     "BINDING_REKOR",
     "BINDING_SCRAPI",
@@ -50,6 +57,8 @@ __all__ = [
     "REGISTRATION_TIME_REASONS",
     "WitnessReceiptResult",
     "binding_of",
+    "check_anchor_receipt",
+    "check_anchor_witnessed",
     "checkpoint_digest",
     "endpoint_of",
     "row_for",
@@ -298,30 +307,6 @@ def _receipt_shape_error(receipt: bytes, key_pem: bytes | str | None = None) -> 
     return None
 
 
-# The y coordinates (mod p) of the eight small-order points of edwards25519:
-# order 4 (0), the identity (1), order 2 (p - 1) and order 8 (Y8, p - Y8).
-# Either sign of x gives the same set.
-_P25519 = (1 << 255) - 19
-_Y8 = int.from_bytes(bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"), "little")
-_SMALL_ORDER_Y = frozenset({0, 1, _P25519 - 1, _Y8, _P25519 - _Y8})
-_ED25519_L = (1 << 252) + 27742317777372353535851937790883648493
-
-
-def _strict_ed25519(public_key: bytes, signature: bytes) -> bool:
-    """The strict Ed25519 conditions of checkpointed-local-log's
-    ``ed25519-vectors.json`` that do not need the message: A and R canonical
-    (y < p) and not of small order, and S < L. ``cryptography`` checks the
-    cofactorless equation but accepts a small-order A, and a small-order A
-    verifies a forged signature over any message."""
-    if len(public_key) != 32 or len(signature) != 64:
-        return False
-    for point in (public_key, signature[:32]):
-        y = int.from_bytes(point, "little") & ((1 << 255) - 1)
-        if y >= _P25519 or y in _SMALL_ORDER_Y:
-            return False
-    return int.from_bytes(signature[32:], "little") < _ED25519_L
-
-
 def _grade(result: Any) -> str | None:
     label = (getattr(result, "protected_header_ext", None) or {}).get(_GRADE_LABEL)
     return _GRADES.get(label) if isinstance(label, str) else None
@@ -441,7 +426,7 @@ def verify_rekor_receipt(
             rekor_key.verify(_b64_canonical(set_b64), signed, ec.ECDSA(hashes.SHA256()))
         except InvalidSignature:
             return False, "signedEntryTimestamp does not verify under the pinned Rekor key"
-        entry = json.loads(_b64_canonical(receipt["body"]))
+        entry = loads_bounded(_b64_canonical(receipt["body"]))
         if entry.get("kind") != "dsse":
             return False, f"entry kind {entry.get('kind')!r}, expected 'dsse'"
         spec = entry.get("spec") or {}
@@ -505,7 +490,7 @@ def verify_receipt(
         return False, "not checked: checkpoint COSE statement not available", None
     if binding == BINDING_REKOR:
         try:
-            receipt = json.loads(_b64_canonical(record["receipt_b64"]))
+            receipt = loads_bounded(_b64_canonical(record["receipt_b64"]))
         except (ValueError, TypeError, RecursionError) as exc:
             return False, f"unreadable receipt: {exc}", None
         ok, reason = verify_rekor_receipt(
@@ -603,3 +588,293 @@ def verify_witness_receipts(
     else:
         overall = "withheld"
     return overall, tuple(findings), tuple(results)
+
+
+#: The verification-material kind of a witness Receipt over a Checkpointed Local
+#: Log anchor, and the check over it (``spec/interop-profile-v1.md`` §6.2.2).
+#: ``anchor_witnessed`` is not an envelope property and never enters the
+#: profile's §8 mapping: it says when a witness the relying party accepts
+#: registered the anchor, and nothing about any artifact under it. Statuses
+#: are the profile's §7.1 values.
+ANCHOR_WITNESS_KIND = "cll-witness-receipt"
+ANCHOR_WITNESS_PROPERTY = "anchor_witnessed"
+_PASS, _FAIL, _NOT_PRESENT, _NOT_CHECKED = "PASS", "FAIL", "NOT_PRESENT", "NOT_CHECKED"
+_ANCHOR_DIGEST = re.compile(r"[0-9a-f]{64}")
+
+_ALG_EDDSA, _ALG_ES256 = -8, -7
+_METHOD = "RFC 9942 Receipt (RFC9162_SHA256) over the CLL-01 anchor digest (§6.2.2)"
+
+
+@dataclass(frozen=True)
+class AnchorReceiptReport:
+    """One Receipt's status, its witness's name when it passed, and its registration time
+    (a NumericDate) when it passed with a protected ``iat``."""
+
+    status: str
+    witness: str | None = None
+    registration_time: int | None = None
+    detail: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"status": self.status, "witness": self.witness, "registration_time": self.registration_time}
+
+
+@dataclass(frozen=True)
+class AnchorWitnessReport:
+    """``anchor_witnessed`` over every Receipt for one anchor (§6.2.2). ``witness`` and
+    ``witnessed_time`` always come from the same Receipt."""
+
+    status: str
+    method: str
+    receipts: tuple[AnchorReceiptReport, ...]
+    witness: str | None
+    witnessed_time: int | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "property": ANCHOR_WITNESS_PROPERTY,
+            "status": self.status,
+            "receipts": [r.to_dict() for r in self.receipts],
+            "witness": self.witness,
+            "witnessed_time": self.witnessed_time,
+        }
+
+
+_ED25519_PREFIX = bytes.fromhex("302a300506032b6570032100")
+_P256_PREFIX = bytes.fromhex("3059301306072a8648ce3d020106082a8648ce3d03010703420004")
+_LOWER_HEX = re.compile(r"(?:[0-9a-f]{2})*")
+_MAX_RECEIPT_OCTETS = 10 * 1024 * 1024
+_MAX_PROOFS = 16
+_MAX_TREE_SIZE = 1 << 62
+_MAX_DEPTH = 16
+_PRIVATE_LABEL = -65536  # labels below this are private use (RFC 9052 §16.4)
+
+
+class _NotTheForm(Exception):
+    pass
+
+
+def _anchor_key_type(spki: bytes) -> str:
+    """``ed25519`` or ``p256`` for the two exact SubjectPublicKeyInfo shapes of §6.2.2 step 2,
+    else ``other``."""
+    if len(spki) == 44 and spki.startswith(_ED25519_PREFIX):
+        return "ed25519"
+    if len(spki) == 91 and spki.startswith(_P256_PREFIX):
+        return "p256"
+    return "other"
+
+
+def _anchor_policy_keys(policy: Any) -> list[tuple[str, bytes]]:
+    """``(name, spki)`` in policy order: every key entry that is lowercase hex. An entry of any
+    other shape lists no key."""
+    rows = policy.get("witnesses") if isinstance(policy, Mapping) else None
+    out: list[tuple[str, bytes]] = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, Mapping) or not isinstance(row.get("name"), str):
+            continue
+        for key in row.get("keys") if isinstance(row.get("keys"), list) else []:
+            if isinstance(key, str) and _LOWER_HEX.fullmatch(key):
+                out.append((row["name"], bytes.fromhex(key)))
+    return out
+
+
+def _strict(octets: bytes, top_tag: bool = False) -> Any:
+    """One CBOR item under the §6.2.2 encoding rules: no trailing octet, definite lengths, every
+    argument shortest, no repeated key, no float, no tag but an outer 18 when ``top_tag``."""
+    from .interop_profile._cbor import CborError, Tag, decode
+
+    try:
+        decoded = decode(octets)
+    except CborError as exc:
+        raise _NotTheForm(str(exc)) from exc
+    if decoded.duplicate_keys or decoded.irregular or not decoded.shortest:
+        raise _NotTheForm("not strict CBOR: a repeated key, a float or a longer argument")
+
+    def walk(value: Any, depth: int) -> None:
+        if depth > _MAX_DEPTH:
+            raise _NotTheForm("an item nested more than 16 levels deep")
+        if _int(value) and not -(1 << 63) <= value < (1 << 64):
+            raise _NotTheForm("an integer below -2^63")
+        if isinstance(value, Tag):
+            if not (depth == 0 and top_tag and value.number == 18):
+                raise _NotTheForm("a CBOR tag other than the outer tag 18")
+            walk(value.value, depth + 1)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item, depth + 1)
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                if not (_int(key) or isinstance(key, str)):
+                    raise _NotTheForm("a map key that is not an integer or a text string")
+                walk(key, depth + 1)
+                walk(item, depth + 1)
+
+    walk(decoded.value, 0)
+    return decoded.value
+
+
+def _int(value: Any) -> bool:
+    return type(value) is int
+
+
+def _anchor_path_length(size: int, index: int) -> int:
+    count = 0
+    while size > 1:
+        k = 1 << ((size - 1).bit_length() - 1)
+        size, index = (k, index) if index < k else (size - k, index - k)
+        count += 1
+    return count
+
+
+def _anchor_root(entry: bytes, index: int, size: int, path: list[bytes]) -> bytes:
+    """The RFC 9162 §2.1.3.2 root from leaf ``entry`` up ``path`` (outermost sibling last)."""
+    siblings = list(path)
+
+    def fold(n: int, m: int) -> bytes:
+        if n == 1:
+            return hashlib.sha256(b"\x00" + entry).digest()
+        k = 1 << ((n - 1).bit_length() - 1)
+        sibling = siblings.pop()
+        if m < k:
+            return hashlib.sha256(b"\x01" + fold(k, m) + sibling).digest()
+        return hashlib.sha256(b"\x01" + sibling + fold(n - k, m - k)).digest()
+
+    return fold(size, index)
+
+
+def _anchor_parse(octets: Any) -> tuple[int, bytes, list[tuple[int, int, list[bytes]]], bytes, int | None]:
+    """Step 1 of §6.2.2: ``(alg, protected, proofs, signature, registration_time)`` of a Receipt
+    in the one form, or :class:`_NotTheForm`."""
+    from .interop_profile._cbor import Tag
+
+    if not isinstance(octets, (bytes, bytearray)) or not 0 < len(octets) <= _MAX_RECEIPT_OCTETS:
+        raise _NotTheForm("not 1 to 10,485,760 octets")
+    outer = _strict(bytes(octets), top_tag=True)
+    if not isinstance(outer, Tag) or outer.number != 18 or not isinstance(outer.value, list) \
+            or len(outer.value) != 4:
+        raise _NotTheForm("not a tag-18 COSE_Sign1")
+    protected, unprotected, payload, signature = outer.value
+    if not isinstance(protected, bytes) or not protected or payload is not None:
+        raise _NotTheForm("no protected header, or an attached payload")
+    if not isinstance(signature, bytes) or len(signature) != 64:
+        raise _NotTheForm("the signature is not 64 octets")
+    headers = _strict(protected)
+    if not isinstance(headers, dict):
+        raise _NotTheForm("the protected header is not a map")
+    for label, value in headers.items():
+        known = {1: lambda v: v in (_ALG_EDDSA, _ALG_ES256), 395: lambda v: v == 1,
+                 4: lambda v: isinstance(v, bytes), 15: lambda v: isinstance(v, dict)}
+        if _int(label) and label in known:
+            if not (_int(value) or label in (4, 15)) or not known[label](value):
+                raise _NotTheForm(f"protected label {label} has the wrong value")
+        elif not (_int(label) and label < _PRIVATE_LABEL):
+            raise _NotTheForm(f"protected label {label!r} is not allowed")
+    if 1 not in headers or 395 not in headers:
+        raise _NotTheForm("the protected header lacks alg or vds")
+    if not isinstance(unprotected, dict) or list(unprotected) != [396]:
+        raise _NotTheForm("the unprotected header is not exactly vdp")
+    vdp = unprotected[396]
+    if not isinstance(vdp, dict) or list(vdp) != [-1]:
+        raise _NotTheForm("vdp is not exactly the inclusion proofs (-1)")
+    raw_proofs = vdp[-1]
+    if not isinstance(raw_proofs, list) or not 1 <= len(raw_proofs) <= _MAX_PROOFS:
+        raise _NotTheForm("not one to 16 inclusion proofs")
+    proofs = []
+    for raw in raw_proofs:
+        proof = _strict(raw) if isinstance(raw, bytes) else None
+        if not isinstance(proof, list) or len(proof) != 3:
+            raise _NotTheForm("an inclusion proof is not [tree_size, leaf_index, inclusion_path]")
+        size, index, path = proof
+        if not (_int(size) and _int(index)) or not 0 <= index < size <= _MAX_TREE_SIZE:
+            raise _NotTheForm("an inclusion proof's tree_size or leaf_index is out of range")
+        if not isinstance(path, list) or len(path) != _anchor_path_length(size, index) or not all(
+                isinstance(node, bytes) and len(node) == 32 for node in path):
+            raise _NotTheForm("an inclusion path does not fit its tree_size and leaf_index")
+        proofs.append((size, index, path))
+    iat = headers.get(15, {}).get(6)
+    time = iat if _int(iat) and 0 <= iat <= _MAX_IAT else None
+    return headers[1], protected, proofs, signature, time
+
+
+def _anchor_sig_structure(protected: bytes, root: bytes) -> bytes:
+    """The ``Signature1`` Sig_structure with an empty external AAD (RFC 9052 §4.4)."""
+    from .interop_profile._cbor import encode_head
+
+    out = encode_head(4, 4) + encode_head(3, 10) + b"Signature1"
+    for part in (protected, b"", root):
+        out += encode_head(2, len(part)) + part
+    return out
+
+
+def _anchor_verify(alg: int, spki: bytes, signature: bytes, message: bytes) -> bool:
+    from cryptography.exceptions import InvalidSignature
+
+    from ._ed25519_strict import verify_strict
+
+    if alg == _ALG_EDDSA:
+        return verify_strict(spki[-32:], message, signature)
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+
+    try:
+        key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), spki[-65:])
+        der = encode_dss_signature(int.from_bytes(signature[:32], "big"), int.from_bytes(signature[32:], "big"))
+        key.verify(der, message, ec.ECDSA(hashes.SHA256()))
+    except (InvalidSignature, ValueError):
+        return False
+    return True
+
+
+def check_anchor_receipt(anchor_digest: str, octets: bytes, policy: Any) -> AnchorReceiptReport:
+    """Steps 1 to 5 of §6.2.2 for one Receipt over the anchor whose digest is ``anchor_digest``
+    (64 lowercase hex characters), under the relying party's witness ``policy``. Needs
+    ``cryptography``; without it a Receipt in the form is ``NOT_CHECKED``."""
+    if not isinstance(anchor_digest, str) or not _ANCHOR_DIGEST.fullmatch(anchor_digest):
+        return AnchorReceiptReport(_FAIL, detail="the anchor digest is not 64 lowercase hex characters")
+    try:
+        alg, protected, proofs, signature, time = _anchor_parse(octets)
+    except _NotTheForm as exc:
+        return AnchorReceiptReport(_FAIL, detail=str(exc))
+    wanted = "ed25519" if alg == _ALG_EDDSA else "p256"
+    keys = [(name, spki) for name, spki in _anchor_policy_keys(policy) if _anchor_key_type(spki) == wanted]
+    if not keys:
+        return AnchorReceiptReport(_NOT_CHECKED, detail=f"the witness policy lists no {wanted} key")
+    entry = bytes.fromhex(anchor_digest)
+    roots = [_anchor_root(entry, index, size, path) for size, index, path in proofs]
+    try:
+        for name, spki in keys:
+            for root in roots:
+                if _anchor_verify(alg, spki, signature, _anchor_sig_structure(protected, root)):
+                    return AnchorReceiptReport(_PASS, witness=name, registration_time=time)
+    except ImportError:
+        return AnchorReceiptReport(_NOT_CHECKED, detail="the cryptography package is not installed")
+    return AnchorReceiptReport(_FAIL, detail="no accepted witness key verifies the Receipt over this anchor")
+
+
+def check_anchor_witnessed(anchor_digest: str, receipts: Sequence[bytes] | None, policy: Any) -> AnchorWitnessReport:
+    """``anchor_witnessed`` over ``receipts`` (each the octets of a ``cll-witness-receipt``, in the
+    order received) for the anchor ``anchor_digest``, under the relying party's witness
+    ``policy`` (§6.2.2)."""
+    method = _METHOD
+    reports = tuple(check_anchor_receipt(anchor_digest, octets, policy) for octets in receipts or ())
+    statuses = {r.status for r in reports}
+    if not reports:
+        status = _NOT_PRESENT
+    elif _PASS in statuses:
+        status = _PASS
+    elif _FAIL in statuses:
+        status = _FAIL
+    else:
+        status = _NOT_CHECKED
+    passed = [r for r in reports if r.status == _PASS]
+    timed = [r for r in passed if r.registration_time is not None]
+    # min keeps the first of equal times; with no time, the first passing Receipt names the witness.
+    chosen = min(timed, key=lambda r: r.registration_time) if timed else (passed[0] if passed else None)
+    return AnchorWitnessReport(
+        status=status,
+        method=method,
+        receipts=reports,
+        witness=chosen.witness if chosen else None,
+        witnessed_time=chosen.registration_time if chosen else None,
+    )

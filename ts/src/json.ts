@@ -1,4 +1,5 @@
 import { hexToBytes, producerPublicKeySpki } from "./producer-envelope-wire.js";
+import { MAX_NESTING_DEPTH } from "./nesting.js";
 import { sha256 } from "./sha256.js";
 
 export type JsonPrimitive = null | boolean | string | number;
@@ -9,7 +10,6 @@ export type JsonValue =
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 const encoder = new TextEncoder();
-const MAX_DEPTH = 1_000;
 const numberToken = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/;
 
 /** A JSON number whose original spelling must survive parsing for validation. */
@@ -103,12 +103,13 @@ export function decodeStrictJson(
     )
       offset += 1;
   };
+  /** One value, enclosed by `depth` objects and arrays. */
   const parse = (depth: number): ParsedJson => {
-    if (depth > MAX_DEPTH)
-      throw new SyntaxError(`JSON nesting exceeds ${MAX_DEPTH}`);
     ws();
     const c = text[offset];
     if (c === '"') return parseString();
+    if ((c === "{" || c === "[") && depth >= MAX_NESTING_DEPTH)
+      throw new SyntaxError(`JSON nesting exceeds ${MAX_NESTING_DEPTH}`);
     if (c === "{") {
       offset += 1;
       const value: Record<string, ParsedJson> = {};
@@ -237,8 +238,6 @@ function render(
   seen: Set<object>,
   depth: number,
 ): string {
-  if (depth > MAX_DEPTH)
-    throw new TypeError(`JSON nesting exceeds ${MAX_DEPTH}`);
   if (value === null) return "null";
   if (typeof value === "boolean") return value ? "true" : "false";
   if (typeof value === "string") return renderString(value);
@@ -260,6 +259,8 @@ function render(
   }
   if (typeof value !== "object" || value === undefined)
     throw new TypeError(`unsupported JSON value at ${path}`);
+  if (depth >= MAX_NESTING_DEPTH)
+    throw new TypeError(`JSON nesting exceeds ${MAX_NESTING_DEPTH}`);
   if (seen.has(value)) throw new TypeError(`cyclic JSON value at ${path}`);
   seen.add(value);
   try {

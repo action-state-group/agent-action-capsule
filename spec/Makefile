@@ -8,7 +8,7 @@
 #   gem install kramdown-rfc
 #   python3 -m venv ~/.venvs/x2r && ~/.venvs/x2r/bin/pip install xml2rfc==3.34.1
 
-DRAFT    = draft-mih-scitt-agent-action-capsule-05
+DRAFT    = draft-mih-scitt-agent-action-capsule-06
 # NOTE: this draft is NOT covered by the spec staleness gate, which follows
 # DRAFT above.  It cannot be, yet: a rebuild of -02 today renders
 # I-D.mih-agent-reputation-predicates as "*** BROKEN REFERENCE ***" because
@@ -19,7 +19,7 @@ DRAFT    = draft-mih-scitt-agent-action-capsule-05
 BILATERAL = draft-mih-agent-bilateral-attestation-03
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
 BUNDLE   = draft-mih-zhang-agent-disclosure-bundle-02
-EVREQ    = draft-mih-agent-evidence-request-00
+EVREQ    = draft-mih-agent-evidence-request-02
 EVIDENCELAYER = draft-mih-agent-evidence-layer-00
 XML2RFC  ?= $(shell command -v xml2rfc)
 KDRFC    ?= $(shell command -v kramdown-rfc || ruby -e 'puts Gem.bindir + "/kramdown-rfc"')

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the draft-mih-agent-evidence-request-00 conformance vectors.
+"""Generate the draft-mih-agent-evidence-request conformance vectors.
 
 Every expected result below is written by hand from the text of
-``spec/draft-mih-agent-evidence-request-00.md`` and cites the section it comes
+``spec/draft-mih-agent-evidence-request-00.md``, or of the later revision a
+corpus names in its ``draft`` member, and cites the section it comes
 from. Nothing here imports or runs an implementation of the interaction: the
 script only encodes the literal inputs (JSON per RFC 8785, CBOR per RFC 8949
 section 4.2.1), hashes them, and signs the refusal cases with a fixed Ed25519
@@ -20,6 +21,7 @@ Dependencies: the standard library and ``cryptography`` (Ed25519 only).
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 from pathlib import Path
@@ -31,6 +33,10 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "evidence-request"
 DRAFT = "draft-mih-agent-evidence-request-00"
+# Corpora written from text that first appears in -01 name that revision. The
+# -00 corpora keep DRAFT, which also seeds the refusal keys.
+DRAFT_01 = "draft-mih-agent-evidence-request-01"
+DRAFT_02 = "draft-mih-agent-evidence-request-02"
 
 # ---------------------------------------------------------------------------
 # Encodings
@@ -198,6 +204,7 @@ R3 = label_digest("record 3")
 R_UNKNOWN = label_digest("record never written")
 HALF = label_digest("requester's own exchange half")
 HALF_UNKNOWN = label_digest("an exchange half nobody cites")
+HALF_OTHER = label_digest("another exchange's half")
 ANCHOR_40 = label_digest("checkpoint at size 40")
 ANCHOR_42 = label_digest("checkpoint at size 42")
 ANCHOR_UNKNOWN = label_digest("a checkpoint this responder never issued")
@@ -314,6 +321,7 @@ S_DEADLINE = "§3.4 Deadline"
 S_NONCE = "§3.5 Nonce"
 S_ROUTE = "§3.6 Route"
 S_RECREQ = "§3.8 Recording the Request"
+S_CAT = "§3.9 Categories"
 S_OUT = "§4 Interaction Outcomes"
 S_ART = "§4.1 The Artifact Response"
 S_REF = "§4.2 The Signed Refusal"
@@ -324,6 +332,9 @@ S_INV = "§5 Caller Invariance"
 S_HC = "§8.1 The History Card"
 S_RET = "§9 Retention Commitments"
 S_BIND = "§10 Transport Bindings"
+S_CARRY = "§10.1 Carriage Rules"
+S_A2A = "§10.2 A2A Binding"
+S_MCP = "§10.3 MCP Binding"
 S_PRIV = "§12 Privacy Considerations"
 S_IANA = "§13 IANA Considerations"
 
@@ -563,6 +574,61 @@ def resolution_cases() -> list[dict]:
           "no_such_subject.",
           _req({"record": R_UNKNOWN}, PIN_42, nonce="n-0119"), ref("policy_declined"),
           overrides={"uniform_policy_declined": True}),
+    ]
+
+
+# ---------------------------------------------------------------------------
+# carries.json: which record members carry a correlation id or cite a half
+# ---------------------------------------------------------------------------
+
+S_CARRIES = "§3.1.1 What a Record Carries"
+
+
+def _layer_record(**header: Any) -> dict:
+    """An Evidence Layer record header: seq, record_id, record_type, epistemic_type and links, plus ``header``."""
+    return {"seq": 7, "record_id": R1, "record_type": "observation",
+            "epistemic_type": "observed_event", "links": [], **header}
+
+
+def _capsule_reference(citation_purpose: str, digest: str = HALF) -> dict:
+    """A Capsule's ``references`` member holding one entry (by default, the half's digest)."""
+    return {"references": [{"type": "agent-action-capsule", "digest_alg": "SHA-256",
+                            "digest": digest, "citation_purpose": citation_purpose}]}
+
+
+def carries_cases() -> list[dict]:
+    def c(case_id: str, description: str, record_format: str, record: dict, subject: dict,
+          expect: dict) -> dict:
+        return {"id": case_id, "section": [S_CARRIES], "description": description,
+                "record_format": record_format, "record": record, "subject": subject,
+                "expect": expect}
+
+    return [
+        c("carries-correlation-subject-ref",
+          "the identifier is the whole value of the header's subject_ref: the record carries it.",
+          "evidence-layer", _layer_record(subject_ref=CORRELATION),
+          {"correlation": CORRELATION}, {"carries": True}),
+        c("carries-correlation-undesignated-member",
+          "the identifier is the whole value of principal_ref, which the format defines as a party "
+          "reference and not a correlation field, while subject_ref holds another identifier: the "
+          "record does not carry it.",
+          "evidence-layer", _layer_record(subject_ref="c-0b44f2e1", principal_ref=CORRELATION),
+          {"correlation": CORRELATION}, {"carries": False}),
+        c("cites-exchange-counterparty-half",
+          "a references entry with citation_purpose counterparty_half whose digest is the half's: "
+          "the record cites the half.",
+          "capsule", _capsule_reference("counterparty_half"),
+          {"exchange": HALF}, {"cites": True}),
+        c("cites-exchange-responds-to",
+          "a references entry whose digest is the half's, with citation_purpose responds_to: the "
+          "record does not cite the half.",
+          "capsule", _capsule_reference("responds_to"),
+          {"exchange": HALF}, {"cites": False}),
+        c("cites-exchange-counterparty-half-other-digest",
+          "a references entry with citation_purpose counterparty_half whose digest is another "
+          "half's: the record does not cite this half.",
+          "capsule", _capsule_reference("counterparty_half", HALF_OTHER),
+          {"exchange": HALF}, {"cites": False}),
     ]
 
 
@@ -879,6 +945,217 @@ def invariance_cases() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# categories.json: the OPTIONAL categories request field (-01)
+# ---------------------------------------------------------------------------
+
+# An x- set: well-formedness does not depend on a set being registered, and
+# no category-set registry exists yet (§3.9 leaves it to a companion document).
+CAT_SET = "x-example-set"
+CATS = {"set": CAT_SET, "names": ["alpha", "beta"]}
+CATEGORIES_NOTES = {
+    "B1": "§3.9: the request cases apply to a responder that implements categories. A responder that "
+    "does not implement it ignores the field, malformed or not, and answers as if it were absent.",
+    "B2": "§3.9 leaves open whether the order of names carries meaning. No case compares two requests "
+    "whose names differ only in order.",
+    "B3": "§3.9 does not say whether a member other than set and names is malformed. No case has one.",
+}
+
+
+def categories_cases() -> list[dict]:
+    def c(case_id: str, description: str, categories: Any, expect: dict,
+          section: list[str] | None = None) -> dict:
+        case = request_case(case_id, section or [S_CAT], description,
+                            _req({"record": R1}, PIN_42, categories=categories), expect)
+        case["kind"] = "request"
+        return case
+
+    content = {"anchor": ANCHOR_42, "category_declaration": {"set": CAT_SET, "alpha": "available",
+                                                              "beta": "withheld"}, "records": [R1]}
+    declared = jcs(content).encode()
+    declared_alpha = jcs({"anchor": ANCHOR_42, "category_declaration": {"set": CAT_SET, "alpha": "available"},
+                          "records": [R1]}).encode()
+
+    def obs(requester: str, request: dict, art: bytes) -> dict:
+        return {"requester": requester, "request": request, "resolved_anchor": ANCHOR_42,
+                "artifact_hex": art.hex(), "artifact_digest": sha256_hex(art)}
+
+    def inv(case_id: str, description: str, observations: list[dict], verdict: str) -> dict:
+        return {"id": case_id, "kind": "invariance", "section": [S_INV, S_CAT],
+                "description": description, "observations": observations,
+                "expect": {"invariance": verdict}}
+
+    subj = {"record": R1}
+    return [
+        c("cat-two-names", "A set identifier and two distinct names: well formed.", CATS, WELL_FORMED),
+        c("cat-one-name", "One name is enough: names is non-empty.", {"set": CAT_SET, "names": ["alpha"]},
+          WELL_FORMED),
+        c("cat-names-any-order", "Names in descending order: well formed. §3.9 leaves open whether the order "
+          "carries meaning, and does not make it a well-formedness rule.",
+          {"set": CAT_SET, "names": ["beta", "alpha"]}, WELL_FORMED),
+        c("neg-cat-not-a-map", "categories is a text string, not a map.", "alpha",
+          MALFORMED("request_malformed")),
+        c("neg-cat-missing-set", "categories lacks set.", {"names": ["alpha"]},
+          MALFORMED("request_malformed")),
+        c("neg-cat-missing-names", "categories lacks names.", {"set": CAT_SET},
+          MALFORMED("request_malformed")),
+        c("neg-cat-names-empty", "names is an empty array.", {"set": CAT_SET, "names": []},
+          MALFORMED("request_malformed")),
+        c("neg-cat-names-duplicate", "names repeats a name.", {"set": CAT_SET, "names": ["alpha", "alpha"]},
+          MALFORMED("request_malformed")),
+        c("neg-cat-names-not-array", "names is a text string, not an array.", {"set": CAT_SET, "names": "alpha"},
+          MALFORMED("request_malformed")),
+        c("neg-cat-set-not-text", "set is an integer, not a text string.", {"set": 7, "names": ["alpha"]},
+          MALFORMED("request_malformed")),
+        c("neg-cat-name-not-text", "A name is an integer, not a text string.", {"set": CAT_SET, "names": [1]},
+          MALFORMED("request_malformed")),
+        inv("cat-inv-same-categories",
+            "Same subject, pin and categories from two requesters: the same bytes, declaration included.",
+            [obs("requester-a", _req(subj, PIN_42, nonce="n-0901", categories=CATS), declared),
+             obs("requester-b", _req(subj, PIN_42, nonce="n-0902", categories=CATS), declared)],
+            "holds"),
+        inv("cat-inv-different-categories-not-comparable",
+            "Same subject and pin, different categories: categories is an input of the artifact when "
+            "honored (§5), so different bytes are expected and no invariance claim applies.",
+            [obs("requester-a", _req(subj, PIN_42, nonce="n-0903", categories=CATS), declared),
+             obs("requester-b", _req(subj, PIN_42, nonce="n-0904",
+                                     categories={"set": CAT_SET, "names": ["alpha"]}), declared_alpha)],
+            "not_comparable"),
+        inv("neg-cat-inv-same-categories-divergent",
+            "Same subject, pin and categories, different declarations for different requesters: a violation.",
+            [obs("requester-a", _req(subj, PIN_42, nonce="n-0905", categories=CATS), declared),
+             obs("requester-b", _req(subj, PIN_42, nonce="n-0906", categories=CATS), declared_alpha)],
+            "violated"),
+    ]
+
+
+# ---------------------------------------------------------------------------
+# carriage.json: A2A and MCP carriage and the envelope's request digest (-01)
+# ---------------------------------------------------------------------------
+
+
+def _b64(raw: bytes) -> str:
+    return base64.b64encode(raw).decode("ascii")
+
+
+def _b64url(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+
+
+def _carriage_request() -> tuple[dict, bytes]:
+    """A request whose CBOR needs padding and holds '+' or '/' in base64, so the
+    A2A text and the MCP text differ and a decoder for the wrong one fails."""
+    for i in range(1, 64):
+        value = _req({"record": R1}, PIN_42, nonce="n-carriage-" + "~" * i)
+        raw = cbor(value)
+        text = _b64(raw)
+        if len(raw) % 3 and ("+" in text or "/" in text):
+            return value, raw
+    raise SystemExit("no carriage request found")
+
+
+def carriage_cases() -> list[dict]:
+    value, raw = _carriage_request()
+    digest = sha256_hex(raw)
+    other_raw = cbor(_req({"record": R1}, PIN_42, nonce="n-carriage-other"))
+    a2a_text, mcp_text = _b64(raw), _b64url(raw)
+    assert a2a_text != mcp_text and a2a_text.endswith("=")
+
+    def dig(case_id: str, section: list[str], description: str, carriage: str, text: str,
+            digest_over: str, candidate: str, matches: bool) -> dict:
+        return {"id": case_id, "kind": "digest", "section": section, "description": description,
+                "carriage": carriage, "carried_text": text, "digest_over": digest_over,
+                "candidate_digest": candidate, "expect": {"is_request_digest": matches}}
+
+    def bind(case_id: str, description: str, envelope_digest: str, answers: bool) -> dict:
+        return {"id": case_id, "kind": "binding", "section": [S_ART], "description": description,
+                "retained_request_hex": raw.hex(), "envelope_request_digest": envelope_digest,
+                "expect": {"answers": answers}}
+
+    def media(case_id: str, media_type: str, ok: bool, description: str) -> dict:
+        return {"id": case_id, "kind": "media_type", "section": [S_CARRY], "description": description,
+                "media_type": media_type, "expect": {"accepted": ok}}
+
+    def raw_part(media_type: str = "application/cbor") -> dict:
+        return {"kind": "raw", "media_type": media_type}
+
+    def a2a(task_state: str, parts: list[dict] | None) -> dict:
+        return {"carriage": "a2a", "request_media_type": "application/cbor", "task_state": task_state,
+                "reply_artifact": None if parts is None else {"parts": parts}}
+
+    def mcp(is_error: bool, structured: dict | None) -> dict:
+        return {"carriage": "mcp", "request_media_type": "application/cbor", "is_error": is_error,
+                "structured_content": structured}
+
+    def cls(case_id: str, section: list[str], description: str, received: dict, state: str) -> dict:
+        expect: dict[str, Any] = {"classified_as": state}
+        if state != "reply":
+            expect["must_not_classify_as"] = ["refusal"]
+        return {"id": case_id, "kind": "classify", "section": section, "description": description,
+                "received": received, "expect": expect}
+
+    return [
+        dig("carry-a2a-raw-part", [S_CARRY, S_A2A],
+            "A2A JSON writes the raw part as base64 with padding. The digest is over the decoded octets.",
+            "a2a", a2a_text, "decoded", digest, True),
+        dig("carry-mcp-request-argument", [S_CARRY, S_MCP],
+            "MCP writes the request argument as base64url without padding. The digest is over the decoded "
+            "octets, and equals the A2A one.", "mcp", mcp_text, "decoded", digest, True),
+        dig("neg-carry-digest-over-text", [S_CARRY],
+            "A digest over the base64 text instead of the decoded octets is not the request digest.",
+            "a2a", a2a_text, "text", sha256_hex(a2a_text.encode("ascii")), False),
+        dig("neg-carry-digest-over-reencoding", [S_CARRY],
+            "A digest over a JSON re-encoding of the decoded request is not the request digest.",
+            "mcp", mcp_text, "reencoded_json", sha256_hex(jcs(value).encode("utf-8")), False),
+        bind("bind-envelope-answers-own-request",
+             "The envelope's request digest is the digest of the requester's retained bytes: it answers.",
+             digest, True),
+        bind("neg-bind-envelope-other-request",
+             "The envelope's request digest is that of another request (a different nonce): it does not "
+             "answer this one, however well it verifies otherwise.", sha256_hex(other_raw), False),
+        media("media-cbor", "application/cbor", True, "Deterministic CBOR."),
+        media("media-json", "application/json", True, "JCS."),
+        media("neg-media-parameter", "application/cbor; charset=binary", False,
+              "Compared as an exact string with no parameters."),
+        media("neg-media-case", "Application/CBOR", False, "Compared as an exact string."),
+        cls("classify-a2a-completed-with-reply", [S_A2A],
+            "A completed task with one reply Artifact carrying one raw part of the request's media type.",
+            a2a("TASK_STATE_COMPLETED", [raw_part()]), "reply"),
+        cls("neg-classify-a2a-reply-two-parts", [S_A2A],
+            "A reply Artifact with two parts is not of the reply's form: not a reply.",
+            a2a("TASK_STATE_COMPLETED", [raw_part(), raw_part()]), "no_reply"),
+        cls("neg-classify-a2a-reply-other-media-type", [S_A2A, S_CARRY],
+            "A reply Artifact whose raw part has a media type other than the request's: not a reply.",
+            a2a("TASK_STATE_COMPLETED", [raw_part("application/json")]), "no_reply"),
+        cls("neg-classify-a2a-reply-text-part", [S_A2A],
+            "A reply Artifact whose one part is text, not raw: not a reply.",
+            a2a("TASK_STATE_COMPLETED", [{"kind": "text", "media_type": "text/plain"}]), "no_reply"),
+        cls("neg-classify-a2a-rejected-no-reply", [S_A2A, S_CARRY],
+            "A rejected task with no reply Artifact is the responder sending no reply, never a refusal. "
+            "The request stays pending until the window closes, then is a recorded absence.",
+            a2a("TASK_STATE_REJECTED", None), "no_reply"),
+        cls("classify-a2a-working-no-reply", [S_A2A, S_PEND],
+            "A working task with no reply Artifact yet: pending.",
+            a2a("TASK_STATE_WORKING", None), "pending"),
+        cls("classify-a2a-unspecified-no-reply", [S_A2A, S_PEND],
+            "A task in an unspecified state with no reply Artifact: pending.",
+            a2a("TASK_STATE_UNSPECIFIED", None), "pending"),
+        cls("classify-mcp-error-flag-with-reply", [S_MCP, S_CARRY],
+            "The error flag is set but structuredContent carries a reply with the request's media type: "
+            "it is the reply.", mcp(True, {"reply": "AA", "media_type": "application/cbor"}), "reply"),
+        cls("neg-classify-mcp-reply-other-media-type", [S_MCP],
+            "structuredContent carries a reply labeled with a media type other than the request's: not a "
+            "reply.", mcp(False, {"reply": "AA", "media_type": "application/json"}), "no_reply"),
+        cls("neg-classify-mcp-reply-not-base64url", [S_MCP],
+            "structuredContent.reply is padded base64, not base64url without padding: not a reply.",
+            mcp(False, {"reply": "AA==", "media_type": "application/cbor"}), "no_reply"),
+        cls("neg-classify-mcp-error-text-no-reply", [S_MCP, S_CARRY],
+            "The error flag is set, no structuredContent, text saying the caller is not authorized: "
+            "not a reply, and never a refusal. The request stays pending until the window closes.",
+            mcp(True, None), "no_reply"),
+    ]
+
+
+# ---------------------------------------------------------------------------
 # retention.json
 # ---------------------------------------------------------------------------
 
@@ -951,6 +1228,307 @@ def retention_cases() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# unavailable-window.json: unavailable-window statements and how a reader
+# shows an absence they cover (-02)
+# ---------------------------------------------------------------------------
+
+S_UW = "§4.7 Unavailable-Window Statements"
+S_MAP = "§4.6 Mapping to a Requirement-Satisfaction Status"
+UW_CLASSES = ["flood", "maintenance", "outage", "other_declared"]
+UW_SHOWN = "no answer; holder states unavailability"
+UW_SIGNED_MEMBERS = ("end", "reason_class", "start")
+UW_SIGNATURE_PROFILE = {
+    "note": (
+        "-02 section 4.7 item 3 leaves the signature format to the deployment. These vectors use the "
+        "refusal.json profile: Ed25519 over the RFC 8785 serialization of the JSON object with "
+        "exactly the members of the statement present among end, reason_class and start, signed "
+        "with the primary key of refusal.json."
+    ),
+    "algorithm": "Ed25519",
+    "signed_members": list(UW_SIGNED_MEMBERS),
+    "signing_body": "RFC 8785 (JCS) of the signed members",
+    "key_id": "raw Ed25519 public key, lowercase hex",
+    "sig": "Ed25519 signature, lowercase hex",
+}
+UW_NOTES = (
+    "Times are RFC 3339 UTC strings and compare chronologically. A statement's receipts are those "
+    "on checkpoints covering it that attest a time; accepted is true when the receipt comes from a "
+    "transparency service the reader accepts as independent of the responder. Only accepted "
+    "receipts register a statement and give its registration time. An absence's waiting window runs from sent_at, when the requester sent the request, to closed_at, both included. "
+    "A statement case expects whether a reader recognizes it (well formed, signed by the key named, "
+    "registered) and its registration time. A display case expects which statements cover the "
+    "absence, how the reader shows it, and per covering statement the reason class and whether it "
+    "is labelled stated afterwards."
+)
+
+
+def uw_statement(start: Any, end: Any, reason_class: Any = "flood", *,
+                 private: Ed25519PrivateKey = PRIMARY, public: str = PRIMARY_PUB,
+                 tamper: bool = False, **extra: Any) -> dict:
+    body = {k: v for k, v in (("start", start), ("end", end), ("reason_class", reason_class))
+            if v is not None}
+    sig = sign_body(body, private)
+    if tamper:
+        sig = ("0" if sig[0] != "0" else "1") + sig[1:]
+    return {**body, **extra, "key_id": public, "sig": sig}
+
+
+def unavailable_window_cases() -> list[dict]:
+    cases: list[dict] = []
+
+    def receipts_of(times: list) -> list[dict]:
+        return [t if isinstance(t, dict) else {"time": t, "accepted": True} for t in times]
+
+    def stmt_case(case_id: str, description: str, statement: dict, receipts: list,
+                  recognized: bool, *, registration_time: str | None = None,
+                  why: str | None = None, shown_reason: str | None = None) -> None:
+        expect: dict[str, Any] = {"recognized": recognized}
+        if recognized:
+            expect["registration_time"] = registration_time
+            expect["shown_reason"] = shown_reason or statement["reason_class"]
+        else:
+            expect["why"] = why
+        cases.append({"id": case_id, "kind": "statement", "section": [S_UW], "description": description,
+                      "responder_key": PRIMARY_PUB, "statement": statement,
+                      "receipts": receipts_of(receipts), "expect": expect})
+
+    for cls in UW_CLASSES:
+        stmt_case(f"uw-class-{cls}", f"A registered statement with reason_class {cls}.",
+                  uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", cls),
+                  ["2026-10-29T10:06:00Z"], True, registration_time="2026-10-29T10:06:00Z")
+    stmt_case("uw-neg-class-unlisted", "A reason_class outside the closed list: malformed.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "ddos"),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-class-free-text", "A reason_class that is free text: malformed.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "flooded by a botnet"),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-class-wrong-case", "A reason_class differing from a listed token only in case: "
+              "malformed (exact token comparison).",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "Flood"),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-class-missing", "A statement with no reason_class: malformed.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", None),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-extra-member-not-the-reason", "An extra prose member beside a listed class: the "
+              "statement is recognized, and the reader shows only the class as the reason.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "flood",
+                           detail="a botnet hit us"),
+              ["2026-10-29T10:06:00Z"], True, registration_time="2026-10-29T10:06:00Z",
+              shown_reason="flood")
+    stmt_case("uw-neg-start-missing", "A statement with no start: malformed.",
+              uw_statement(None, "2026-10-29T10:40:00Z"), ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-end-missing", "A statement with no end is malformed, not open-ended.",
+              uw_statement("2026-10-29T10:00:00Z", None), ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-neg-time-unparseable", "An end that is not a time in the deployment's representation: "
+              "malformed.",
+              uw_statement("2026-10-29T10:00:00Z", "later today"), ["2026-10-29T10:06:00Z"], False,
+              why="malformed")
+    stmt_case("uw-neg-end-before-start", "end earlier than start: malformed.",
+              uw_statement("2026-10-29T10:40:00Z", "2026-10-29T10:00:00Z"),
+              ["2026-10-29T10:06:00Z"], False, why="malformed")
+    stmt_case("uw-end-equals-start", "end equal to start: well formed (end MUST NOT be earlier).",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:00:00Z"),
+              ["2026-10-29T10:06:00Z"], True, registration_time="2026-10-29T10:06:00Z")
+    stmt_case("uw-neg-bad-signature", "A statement whose signature does not verify is not the "
+              "responder's statement.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", tamper=True),
+              ["2026-10-29T10:06:00Z"], False, why="not_signed_by_responder")
+    stmt_case("uw-neg-other-key", "A statement validly signed by a key other than the responder's.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", private=OTHER, public=OTHER_PUB),
+              ["2026-10-29T10:06:00Z"], False, why="not_signed_by_responder")
+    stmt_case("uw-neg-unregistered", "A statement no receipt covers is not registered.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z"), [], False,
+              why="not_registered")
+    stmt_case("uw-neg-receipt-not-accepted", "The only receipt comes from a transparency service the "
+              "responder operates: not accepted, so the statement is not registered.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z"),
+              [{"time": "2026-10-29T10:06:00Z", "accepted": False}], False, why="not_registered")
+    stmt_case("uw-registration-earliest-receipt", "Two receipts: the registration time is the earliest.",
+              uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z"),
+              ["2026-10-29T10:30:00Z", "2026-10-29T10:06:00Z"], True,
+              registration_time="2026-10-29T10:06:00Z")
+
+    flood = uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "flood")
+    outage = uw_statement("2026-10-29T09:30:00Z", "2026-10-29T09:58:00Z", "outage")
+    never = ["refusal", "proof_of_attack", "absence_without_statement"]
+
+    def disp(case_id: str, description: str, absence: dict, statements: list[dict],
+             covered_by: list[str], labels: dict[str, dict], *, section: list[str] | None = None,
+             state: str = "recorded_absence", shown_as: str | None = None) -> None:
+        if shown_as is None:
+            shown_as = UW_SHOWN if covered_by else "recorded_absence"
+        # §4.7 item 1: the reader shows each covering statement's stated period too.
+        by_id = {entry["id"]: entry["statement"] for entry in statements}
+        labels = {sid: {**label, "stated_period": [by_id[sid]["start"], by_id[sid]["end"]]}
+                  for sid, label in labels.items()}
+        expect: dict[str, Any] = {"state": state, "covered_by": covered_by, "shown_as": shown_as,
+                                  "labels": labels}
+        expect["must_not_show_as"] = never if covered_by else ["refusal", "proof_of_attack"]
+        cases.append({"id": case_id, "kind": "display", "section": section or [S_UW, S_ABS],
+                      "description": description, "responder_key": PRIMARY_PUB, "absence": absence,
+                      "statements": statements, "expect": expect})
+
+    def st(sid: str, statement: dict, receipts: list[str]) -> dict:
+        return {"id": sid, "statement": statement, "receipts": receipts_of(receipts)}
+
+    def lab(cls: str, afterwards: bool, registered: str) -> dict:
+        return {"reason_class": cls, "registration_time": registered, "stated_afterwards": afterwards}
+
+    a_window = {"sent_at": "2026-10-29T10:10:00Z", "closed_at": "2026-10-29T10:20:00Z",
+                "received": "nothing"}
+    b_window = {"sent_at": "2026-10-29T09:40:00Z", "closed_at": "2026-10-29T09:55:00Z",
+                "received": "nothing"}
+    disp("uw-show-stated-before-close", "The worked example's requester A: a flood statement "
+         "registered at 10:06 covers an absence whose window closed at 10:20.",
+         a_window, [st("s1", flood, ["2026-10-29T10:06:00Z"])], ["s1"],
+         {"s1": lab("flood", False, "2026-10-29T10:06:00Z")},
+         section=[S_UW, S_ABS, S_DISC])
+    disp("uw-show-stated-afterwards", "The worked example's requester B: an outage statement "
+         "registered at 11:31 covers an absence whose window closed at 09:55, so it is stated "
+         "afterwards.",
+         b_window, [st("s1", flood, ["2026-10-29T10:06:00Z"]),
+                    st("s2", outage, ["2026-10-29T11:31:00Z"])], ["s2"],
+         {"s2": lab("outage", True, "2026-10-29T11:31:00Z")},
+         section=[S_UW, S_ABS, S_DISC])
+    disp("uw-backdated-receipt-not-accepted", "Requester B again, but the outage statement also carries "
+         "a receipt dated 09:50 from a service the responder runs. Only the accepted 11:31 receipt "
+         "counts, so the statement is still stated afterwards.",
+         b_window, [st("s2", outage, [{"time": "2026-10-29T09:50:00Z", "accepted": False},
+                                      {"time": "2026-10-29T11:31:00Z", "accepted": True}])], ["s2"],
+         {"s2": lab("outage", True, "2026-10-29T11:31:00Z")})
+    disp("uw-registered-at-close", "Registration time equal to the window's close is not later than "
+         "it: not stated afterwards.",
+         a_window, [st("s1", flood, ["2026-10-29T10:20:00Z"])], ["s1"],
+         {"s1": lab("flood", False, "2026-10-29T10:20:00Z")})
+    disp("uw-registered-after-close-by-a-second", "Registration one second after the close: stated "
+         "afterwards.",
+         a_window, [st("s1", flood, ["2026-10-29T10:20:01Z"])], ["s1"],
+         {"s1": lab("flood", True, "2026-10-29T10:20:01Z")})
+    disp("uw-long-period-shown", "A flood statement stating a year-long period: the reader shows that "
+         "period, so it does not read like a 40-minute window.",
+         a_window, [st("s1", uw_statement("2026-01-01T00:00:00Z", "2026-12-31T23:59:59Z", "flood"),
+                       ["2026-10-29T10:06:00Z"])], ["s1"],
+         {"s1": lab("flood", False, "2026-10-29T10:06:00Z")})
+    disp("uw-partial-overlap", "A statement that ends inside the waiting window still covers it.",
+         a_window, [st("s1", uw_statement("2026-10-29T09:00:00Z", "2026-10-29T10:12:00Z", "maintenance"),
+                       ["2026-10-29T08:55:00Z"])], ["s1"],
+         {"s1": lab("maintenance", False, "2026-10-29T08:55:00Z")})
+    disp("uw-touching-boundary", "A statement whose end equals the time the request was sent shares one "
+         "instant with the window: it covers.",
+         a_window, [st("s1", uw_statement("2026-10-29T09:00:00Z", "2026-10-29T10:10:00Z", "outage"),
+                       ["2026-10-29T10:11:00Z"])], ["s1"],
+         {"s1": lab("outage", False, "2026-10-29T10:11:00Z")})
+    disp("uw-no-overlap", "A statement that ends before the request was sent does not cover the "
+         "absence: the reader shows the absence as it is.",
+         a_window, [st("s1", uw_statement("2026-10-29T09:00:00Z", "2026-10-29T10:09:59Z", "outage"),
+                       ["2026-10-29T10:11:00Z"])], [], {})
+    disp("uw-other-key-does-not-cover", "A statement signed by another key does not cover an absence "
+         "from this responder.",
+         a_window, [st("s1", uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z",
+                                          private=OTHER, public=OTHER_PUB), ["2026-10-29T10:06:00Z"])],
+         [], {})
+    disp("uw-unregistered-does-not-cover", "An unregistered statement does not cover.",
+         a_window, [st("s1", flood, [])], [], {})
+    disp("uw-malformed-does-not-cover", "A statement with an unlisted class does not cover.",
+         a_window, [st("s1", uw_statement("2026-10-29T10:00:00Z", "2026-10-29T10:40:00Z", "ddos"),
+                       ["2026-10-29T10:06:00Z"])], [], {})
+    disp("uw-two-statements-cover", "Two statements cover one absence: the reader labels each.",
+         a_window, [st("s1", flood, ["2026-10-29T10:06:00Z"]),
+                    st("s2", uw_statement("2026-10-29T10:15:00Z", "2026-10-29T11:00:00Z", "maintenance"),
+                       ["2026-10-29T12:00:00Z"])], ["s1", "s2"],
+         {"s1": lab("flood", False, "2026-10-29T10:06:00Z"),
+          "s2": lab("maintenance", True, "2026-10-29T12:00:00Z")})
+    disp("uw-commitment-unchanged", "An absence citing a retention commitment and covered by a "
+         "statement still cites the commitment and is still attributable to the responder.",
+         {**a_window, "retention_commitment": "in_force"},
+         [st("s1", flood, ["2026-10-29T10:06:00Z"])], ["s1"],
+         {"s1": lab("flood", False, "2026-10-29T10:06:00Z")}, section=[S_UW, S_ABS, S_RET])
+    cases[-1]["expect"]["retention_classification"] = "attributable_absence"
+    disp("uw-refusal-not-affected", "A request that received a signed refusal has no absence: a "
+         "statement over the same period changes nothing.",
+         {**a_window, "received": "refusal", "refusal_reason": "policy_declined"},
+         [st("s1", flood, ["2026-10-29T10:06:00Z"])], [], {}, section=[S_UW, S_DISC],
+         state="refusal", shown_as="refusal")
+    cases[-1]["expect"]["must_not_show_as"] = ["recorded_absence", UW_SHOWN]
+    disp("uw-pending-not-absence", "A request still inside its window is pending; a statement does not "
+         "make it an absence.",
+         {"sent_at": "2026-10-29T10:10:00Z", "closed_at": None, "received": "nothing"},
+         [st("s1", flood, ["2026-10-29T10:06:00Z"])], [], {}, section=[S_UW, S_PEND, S_DISC],
+         state="pending", shown_as="pending")
+    cases[-1]["expect"]["must_not_show_as"] = ["recorded_absence", "refusal", UW_SHOWN]
+    for c in cases:
+        if c["kind"] == "display" and c["expect"]["covered_by"]:
+            c["section"] = list(dict.fromkeys(c["section"] + [S_MAP]))
+    return cases
+
+
+# ---------------------------------------------------------------------------
+# refusal-02.json: the two refusal reasons -02 adds
+# ---------------------------------------------------------------------------
+
+S_SEC = "§11 Security Considerations"
+REASONS_02_ADDED = ["capacity_exceeded", "request_unauthenticated"]
+REASONS_02 = REASONS + REASONS_02_ADDED
+REFUSAL_02_NOTES = (
+    "-02 adds capacity_exceeded (a limit of the responder's own: load, a size limit, a full replay "
+    "cache, a transient fault) and request_unauthenticated (a requester authentication a deployment "
+    "profile defines does not verify). registry.json and refusal.json stay as -00 fixes them; under "
+    "-00 and -01 both tokens are unregistered. Signatures use the profile in refusal.json."
+)
+
+
+def refusal_02_cases(requests: list[dict]) -> list[dict]:
+    digest = {c["id"]: c for c in requests}["pos-subject-record"]["request_json_digest"]
+    cases: list[dict] = []
+    for reason in REASONS_02_ADDED:
+        obj = refusal(digest, reason)
+        cases.append({
+            "id": f"r02-reason-{reason}", "section": [S_REF, S_IANA],
+            "description": f"A signed refusal of request pos-subject-record (JSON binding) with reason {reason}, "
+            "registered by -02.",
+            "refusal": obj, "request_case": "pos-subject-record",
+            "signing_body": jcs({k: obj[k] for k in ("issued_at", "reason", "request_digest")}),
+            "expect": {"signature": "valid", "reason_registered": True, "conformant": True}})
+    obj = refusal(digest, "rate_limited")
+    cases.append({
+        "id": "r02-neg-unregistered-rate_limited", "section": [S_REF, S_IANA],
+        "description": "Correctly signed, but rate_limited is not registered: a limit of the responder's own is "
+        "capacity_exceeded.",
+        "refusal": obj, "request_case": "pos-subject-record",
+        "expect": {"signature": "valid", "reason_registered": False, "conformant": False}})
+    for reason in REASONS_02_ADDED:
+        for commitment, side in (("in_force", "inside"), ("lapsed", "after")):
+            cases.append({
+                "id": f"r02-ret-{side}-{reason}", "section": [S_RET],
+                "description": f"A refusal with reason {reason} {side} until: never a breach"
+                + (" (flooding a responder cannot manufacture broken commitments)."
+                   if reason == "capacity_exceeded" else " (a property of the request)."),
+                "facts": {"commitment": commitment, "refusal_reason": reason},
+                "expect": {"classification": "no_breach"}})
+    cases.append({
+        "id": "r02-load-shedding-is-capacity_exceeded", "section": [S_SEC, S_REF],
+        "description": "A responder declines for its own load. It refuses capacity_exceeded; policy_declined and "
+        "not_authorized are statements about policy and are not used for load shedding.",
+        "facts": {"cause": "responder_load"},
+        "expect": {"reason": "capacity_exceeded", "not_reason": ["policy_declined", "not_authorized"]}})
+    cases.append({
+        "id": "r02-deadline-missed-under-load", "section": [S_DEADLINE, S_SEC],
+        "description": "A responder cannot answer by the deadline only because of its own load. It refuses "
+        "capacity_exceeded, not deadline_unmet, which states that the deadline itself cannot be met.",
+        "facts": {"cause": "responder_load", "deadline": "would_be_missed"},
+        "expect": {"reason": "capacity_exceeded", "not_reason": ["deadline_unmet"]}})
+    for reason in REASONS_02_ADDED:
+        cases.append({
+            "id": f"r02-map-{reason}", "section": [S_MAP],
+            "description": f"The illustrative status mapping of a refusal with reason {reason}: the requirement's "
+            "status stays unknown; never withheld by policy, never evidence of non-satisfaction.",
+            "facts": {"refusal_reason": reason},
+            "expect": {"status_unknown": True, "withheld_by_policy": False,
+                       "evidence_of_non_satisfaction": False}})
+    return cases
+
+
+# ---------------------------------------------------------------------------
 # registry.json: the exact strings -00 fixes
 # ---------------------------------------------------------------------------
 
@@ -986,9 +1564,9 @@ def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def _corpus(name: str, description: str, cases: list[dict], **extra: Any) -> dict:
+def _corpus(name: str, description: str, cases: list[dict], *, draft: str = DRAFT, **extra: Any) -> dict:
     out: dict[str, Any] = {
-        "draft": DRAFT,
+        "draft": draft,
         "provenance": "spec-derived",
         "corpus": name,
         "description": description,
@@ -1008,6 +1586,19 @@ def build() -> dict[str, bytes]:
         "resolution.json": _dump(_corpus(
             "resolution", "Exact-match subject resolution and the most specific refusal reason, against "
             "one declared responder state.", resolution_cases(), responder=RESPONDER)),
+        "carries.json": _dump(_corpus(
+            "carries", "Which record members carry a correlation identifier or cite an exchange half, "
+            "per record format. Each record is reduced to the members the designation reads.",
+            carries_cases(), draft=DRAFT_01)),
+        "categories.json": _dump(_corpus(
+            "categories", "The OPTIONAL categories request field, for a responder that implements it "
+            "(one that does not ignores the field, §3.9): well formed or request_malformed, and "
+            "categories as an input of the artifact for caller invariance.", categories_cases(),
+            draft=DRAFT_01, notes=CATEGORIES_NOTES)),
+        "carriage.json": _dump(_corpus(
+            "carriage", "A2A and MCP carriage: the request digest over decoded octets, the envelope's "
+            "request digest, media types, and classification by the reply alone.", carriage_cases(),
+            draft=DRAFT_01)),
         "digest.json": _dump(_corpus(
             "digest", "The request digest: SHA-256 over the request bytes as received.", digest_cases())),
         "refusal.json": _dump(_corpus(
@@ -1024,6 +1615,15 @@ def build() -> dict[str, bytes]:
         "retention.json": _dump(_corpus(
             "retention", "Retention commitments: the breach table and commitment subject forms.",
             retention_cases())),
+        "refusal-02.json": _dump(_corpus(
+            "refusal-02", "The two refusal reasons -02 adds: signed refusals, the retention breach table and "
+            "the status mapping.", refusal_02_cases(requests), draft=DRAFT_02, notes=REFUSAL_02_NOTES,
+            refusal_reasons=REASONS_02, signature_profile=SIGNATURE_PROFILE)),
+        "unavailable-window.json": _dump(_corpus(
+            "unavailable-window", "Unavailable-window statements: which a reader recognizes, which "
+            "cover an absence, and how the reader shows a covered absence.", unavailable_window_cases(),
+            draft=DRAFT_02, notes=UW_NOTES, reason_classes=UW_CLASSES, shown_as=UW_SHOWN,
+            signature_profile=UW_SIGNATURE_PROFILE)),
     }
     if sha256_hex(files["refusal-imported.json"]) != IMPORTED_REFUSAL_SHA256:
         raise SystemExit("imported refusal vector bytes drifted")

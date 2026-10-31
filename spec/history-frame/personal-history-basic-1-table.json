@@ -1,0 +1,25 @@
+{
+  "document": "counting_table",
+  "frame": "history-frame/0",
+  "instance": "personal_history_basic/1",
+  "definition_members": ["name", "kind", "subject_form", "selection", "reads", "completeness", "recipient"],
+  "definition_fixed": {
+    "name": "personal_history_basic/1",
+    "kind": "projection",
+    "subject_form": "correlation",
+    "reads": ["committed_at", "epistemic_type", "event_time_claim", "record_type"],
+    "completeness": "not_asserted"
+  },
+  "record_kinds": ["step_completed", "step_failed"],
+  "artifact_members": ["anchor", "derivation", "evidence_stream", "records", "subject"],
+  "record_entry": ["digest", "leaf_index"],
+  "deal_states": [
+    {"id": "failed_step", "when": "at least one record is step_failed"},
+    {"id": "completed_only", "when": "at least one record is step_completed, and none is step_failed"},
+    {"id": "no_step", "when": "neither"}
+  ],
+  "units": ["selected_deals", "records"],
+  "properties": ["definition_form", "definition_binding", "selection_coverage", "single_signer", "single_anchor",
+                 "artifact_form", "record_kinds"],
+  "may_be_not_checked": []
+}

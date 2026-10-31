@@ -160,8 +160,8 @@ parties `basis` judges (a rubric citation via `method`, vs. one or two `parties`
 
 `epistemic_type: producer_claim` — a store's own statement about its own history. Direct schema
 encoding of the Evidence Layer's reconcile model (`draft-mih-agent-evidence-layer-00.md`, section
-"Reconcile and Close"): period, counts by kind, and the head digest at close time, with an optional
-reconcile block.
+"Reconcile and Close"): period, counts by kind, and the head digest of the range it covers, with an
+optional reconcile block. Result v0's `type: close` claim cites a Close of this shape (Result v0 §4.1).
 
 ```
 close:
@@ -170,8 +170,8 @@ close:
   epistemic_type: "producer_claim"
   closed_at: date-time
   period: { start: date-time, end: date-time }
-  counts_by_kind: { <record_type>: integer, ... }
-  head: digest-ref
+  counts_by_kind: { <record_type>: integer, ... }   # over the range the Close covers
+  head: digest-ref                                  # the last record of that range
   reconcile?:
     tallies: { matched, a_only, b_only, conflicting, insufficient, unresolved: integer }
     status: AGREED | UNILATERAL | CONTESTED
@@ -179,6 +179,20 @@ close:
                                                  #   exactly one `cites` link: target = the
                                                  #   peer's Close for the same period
 ```
+
+**`head` and `counts_by_kind` describe the range the Close covers**, not the period and not the
+store. The range a Close covers is a contiguous run of its own store's records, in the store's
+append order, ending at the record `head` names. Its `closes` links name the records in that range
+it binds as reconciled, which can be all of them or a subset; the Evidence Layer's "range or set of
+records it binds" is that link's target, not the covered range. `head` is the digest of the last
+record in the covered range, which is not necessarily the store's last record when the Close is
+appended: a store can append records after the covered ones and before the Close. When the covered
+range is empty, `head` is the digest of the record immediately before it; a store with no record
+before that empty range, such as an empty store, has nothing for `head` to name and seals no such
+Close. `counts_by_kind` counts every record in the covered range by `record_type`, and never the
+Close itself. `period` is the period the Close is for, which is how Closes of the same period are
+matched across stores; the covered range can begin before `period.start`, for example when a store
+covers every record since its previous Close, and the counts include those records.
 
 **One schema serves both the single-store period Close and capsule-emit-mesh's two-party Close** —
 no mesh-specific record kind exists for the latter; mesh's own repo has no formal schema for it

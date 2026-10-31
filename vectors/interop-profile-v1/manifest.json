@@ -1,0 +1,14 @@
+{
+  "set": "aac-interop-profile-v1",
+  "status": "Conformance vectors for the pre-Internet-Draft profile evidence-interop/1. Every key is a test key derived from a public seed; never use one for anything else.",
+  "provenance": "spec-derived",
+  "spec": "spec/interop-profile-v1.md",
+  "generator": "python/scripts/generate_interop_profile_v0_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "fa30d86915fc342162b78eb53e516be645da28419c6e42686b688feb12509415",
+      "count": 58
+    }
+  ]
+}

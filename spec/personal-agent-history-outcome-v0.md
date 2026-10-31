@@ -32,13 +32,49 @@ selection and requirement sets (§10).
 | JR | `spec/judge-record-family-v1.md` | `evaluation-report/v1`, its `cases[].verdict` and `acts` |
 | VD | `spec/verification-display-v0.md` | the commitment construction `sha256-jcs-nonce256` (§7.2) |
 | RES | `spec/evidence-result-v0.md` | sufficiency and verdict |
+| HF | `spec/history-frame-v0.md` | the History frame: its rules (§4), its parameters (§3), and this level's counting table and wording pack (§5, §6.1) |
 
 ER §3.1.1 is in the -01 text of the Evidence Request source, which has not been posted yet. This
 level cites it by section and needs nothing from it beyond what §5.2 states.
 
+**Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
+`spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
+frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). It is built on the Basic level
+(PH), which stays on `evidence-interop/0`, and the requests and envelopes of its vectors name that
+identifier. Re-pinning to `evidence-interop/1` is a revision of this profile.
+
 **Does not define:** any record format of another party, any adapter, any judge, any trust policy,
 who may receive a History, or what a recipient should conclude. It defines no figure that combines
 claims, sources, deals, holders or counterparties, and no ordering of any of them.
+
+## Instance of the History frame
+
+The Outcome level, `personal_history_outcome/1`, is an instance of the History frame (HF). This
+section names its values; it changes no member, value, identifier, digest or vector of this level.
+
+- **Parameters** (HF §3; the PO column of HF §6.1): as the Basic level's (PH "Instance of the
+  History frame"), except `coverage_kind`: any IP §6.7.1 kind, with a `stream_interval` rule of
+  `all_records`, carried in the definition's `coverage_declaration` (§3); and `claims`
+  `requirement_results` (§8.4), the one instance whose requirements can be `SATISFIED`
+  (HF §4.13).
+- **Counting table:** `spec/history-frame/personal-history-outcome-1-table.json`, digest
+  `a332d408c5ea2566b8f650769f92044c1b075c028cfcd64b112b626fc7b7e97c`: the definition's members
+  and fixed values (§3), the record kinds and what each carries (§4), the sources and their
+  members (§5), the predicate table `outcome_predicates/1` by its digest (§6.1), the deal
+  bindings (§5), the units, the History properties (§8.2), none of which may be `NOT_CHECKED`,
+  and the claim properties (§8.3), of which `issuer_independence` may be `NOT_CHECKED`. The
+  predicate table stays pinned by `predicates` in the definition, as §6.1 says.
+- **Wording pack:** `spec/history-frame/personal-history-outcome-1-pack.json`, digest
+  `00dce14b0bfdda0187b274727dd34d7b6a8bd5d5bf3884b934f6840604fc6d47`: "not established" for a
+  predicate with no claim (§9), "committed and not opened" (§7), and that outcomes are shown per
+  source and never combined (§9). Source labels are claim members that `outcome_form` checks, so
+  they are counting-table strings, not pack strings (HF §5.3).
+- **Pinning.** The definition's `name`, `personal_history_outcome/1`, pins both documents' bytes
+  (HF §5.4): any change to either is `personal_history_outcome/2`. Where a document and this
+  text disagree, HF §6.3 applies.
+- **Frame rules.** As at the Basic level, and acceptance with claims (HF §4.5): a claim counts
+  under §8.3's rule, which is HF §4.5's with `issuer_independence` as the property that may be
+  `NOT_CHECKED`.
 
 ## 1. Conventions
 
@@ -515,8 +551,8 @@ The Basic level's vectors are unchanged.
   An opening, once released, is the text: release it only to the recipient.
 - **Linkage.** Evidence digests are stable across Histories, as deal references and record digests
   are (PH §4.5). Two recipients holding the same half can tell they hold the same deal.
-- **No ordering.** This level defines no figure that orders or grades deals, holders,
-  counterparties, judges or sources.
+- **No ordering.** As HF §4.6: this level defines no figure that orders or grades deals,
+  holders, counterparties, judges or sources.
 
 ## 14. Open points
 

@@ -22,6 +22,7 @@ import {
   sha256Hex,
   type ParsedJson,
 } from "./json.js";
+import { MAX_NESTING_DEPTH, nestedTooDeep } from "./nesting.js";
 import {
   DISCLOSURE_INELIGIBLE_FIELD,
   DISCLOSURE_MATCH,
@@ -344,6 +345,12 @@ async function verifyPlainAndStrict(
   strict?: StrictBundleVerificationResult;
 }> {
   try {
+    // A Bundle nested more than MAX_NESTING_DEPTH levels deep is refused
+    // before any recursive check, as in Go, Python and Rust.
+    if (nestedTooDeep(bundle))
+      throw new RangeError(
+        `Bundle nests more than ${MAX_NESTING_DEPTH} levels`,
+      );
     const plain = await verifyPlain(bundle);
     return options.strict === true
       ? {
@@ -356,9 +363,10 @@ async function verifyPlainAndStrict(
         }
       : { plain };
   } catch (error) {
-    // A Bundle nested beyond what this implementation can read overflows
-    // the stack (a RangeError). It is refused, never raised: every claim is
-    // bundle_malformed and, in strict mode, the verdict is INVALID.
+    // A Bundle nested too deeply, or beyond what this implementation can
+    // read (a stack overflow), is a RangeError. It is refused, never raised:
+    // every claim is bundle_malformed and, in strict mode, the verdict is
+    // INVALID.
     if (!(error instanceof RangeError)) throw error;
     const plain = malformedBundle();
     return options.strict === true

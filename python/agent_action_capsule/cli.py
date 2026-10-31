@@ -44,7 +44,7 @@ from pathlib import Path
 from typing import Any
 
 from . import verify, verify_store
-from .canonical import json_digest
+from .canonical import json_digest, loads_bounded
 
 EXIT_OK = 0
 EXIT_NOT_OK = 1
@@ -54,7 +54,7 @@ EXIT_CANNOT_RUN = 2
 # --------------------------------------------------------------------------- IO
 def _load_json(path: str) -> Any:
     with open(path, encoding="utf-8") as fh:
-        return json.load(fh)
+        return loads_bounded(fh.read())
 
 
 #: The lines a capsule ledger may hold that are not Capsules: the ledger's own
@@ -185,7 +185,7 @@ def _add_lines(store: _Store, data: bytes, name: str, *, segment: str | None = N
             store.notices.append(f"{where}: unterminated last line of the active segment, skipped")
             continue
         try:
-            item = json.loads(raw)
+            item = loads_bounded(raw)
         except ValueError:
             if segment is None:
                 store.notices.append(f"{where}: {'unterminated last line' if last else 'not JSON'}, skipped")
@@ -258,7 +258,7 @@ def _load_store(path: str) -> _Store:
     if not data.strip():
         return store
     try:
-        doc = json.loads(data)
+        doc = loads_bounded(data)
     except ValueError:
         _add_lines(store, data, p.name)
         if not (store.capsules or store.bookkeeping or store.padding or store.problems):
@@ -327,7 +327,7 @@ def _print_result(res, *, label: str | None = None) -> None:
 def _cmd_payload(args) -> int:
     try:
         capsule = _load_json(args.capsule)
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError) as exc:
         print(f"error: cannot read capsule {args.capsule!r}: {exc}", file=sys.stderr)
         return EXIT_CANNOT_RUN
     res = verify(capsule)  # never raises
@@ -353,7 +353,7 @@ def _cmd_store(args) -> int:
         # Verify one capsule in the context of the store (chain-aware, check 6).
         try:
             capsule = _load_json(args.capsule)
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, ValueError) as exc:
             print(f"error: cannot read capsule {args.capsule!r}: {exc}", file=sys.stderr)
             return EXIT_CANNOT_RUN
         res = verify(capsule, store=store)

@@ -13,6 +13,7 @@ import {
   sha256Hex,
   type ParsedJson,
 } from "./json.js";
+import { nestedTooDeep } from "./nesting.js";
 
 export {
   asJsonObject,
@@ -101,9 +102,9 @@ type PathStep = string | number;
  * code point order of their keys, each cut to `maxChars` code points followed
  * by `...`. The walk keeps only each open container's step: a path is written
  * only for a number that matches, so the work is linear in the input plus the
- * paths returned. It recurses on purpose and visits every member, even past
- * `limit`: input nested beyond the stack raises a RangeError, which
- * verifyBundle refuses as bundle_malformed (vectors/bundle/strict/README.md).
+ * paths returned. It recurses and visits every member, even past `limit`;
+ * verifyClass1 refuses input nested more than MAX_NESTING_DEPTH levels deep
+ * before it runs.
  */
 function pathFind(
   value: ParsedJson,
@@ -205,6 +206,19 @@ export async function verifyClass1(
         : { code, detail, severity, check },
     );
   };
+  // Refused before any check walks it, as Go, Python and Rust refuse it.
+  if (nestedTooDeep(capsule))
+    return {
+      ok: false,
+      findings: [
+        {
+          code: "verifier_internal_error",
+          detail: "Capsule is nested too deeply or contains itself",
+          severity: "error",
+        },
+      ],
+      assurance: {},
+    };
   const top = object(capsule);
   if (top === undefined)
     return {

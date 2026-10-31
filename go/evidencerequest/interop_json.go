@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"unicode/utf16"
 	"unicode/utf8"
+
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 )
 
 // The JSON reader a verifier reads received objects with (§5.2), matching
@@ -70,8 +72,14 @@ func (p *jsonParser) literal(word string) bool {
 	return false
 }
 
+// value reads one value enclosed by depth objects and arrays. An object or
+// array that would nest more than canonical.MaxNestingDepth deep is not a
+// value (vectors/json-nesting/).
 func (p *jsonParser) value(depth int) (any, error) {
-	if depth > maxReceivedNesting || p.i >= len(p.data) {
+	if p.i >= len(p.data) {
+		return nil, errJSON
+	}
+	if c := p.data[p.i]; (c == '{' || c == '[') && depth >= canonical.MaxNestingDepth {
 		return nil, errJSON
 	}
 	switch c := p.data[p.i]; {

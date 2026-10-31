@@ -262,9 +262,10 @@ function membershipProvenOrUnbound(result: BundleVerificationResult): boolean {
 // A producer-selected Bundle, as the context reads it (bundle.ts
 // readSelection, only when the strict verdict is not INVALID): no interval
 // to check, and each record's own inclusion proof read against the signed
-// checkpoint, gated like any Bundle's membership. Where the checkpoint
-// cannot be authenticated (the browser build) the strict checks withhold
-// those proofs, so the page refuses the Bundle there.
+// checkpoint, gated like any Bundle's membership. The strict checks run only
+// where WebCrypto has Ed25519 (buildVerifiedBundleContext); a page in a
+// browser without it has no strict result, so it refuses the Bundle there
+// (test/checkpoint-browser.test.ts).
 /**
  * The viewer's verification gate: what "verified" means for a page
  * (spec/verification-display-v0.md section 1).

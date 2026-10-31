@@ -2,6 +2,81 @@
 
 ## Unreleased
 
+- Breaking: `jcs::to_string` refuses a value nested more than 128 levels deep with the new
+  `JcsError::TooDeep` instead of recursing. The acceptance record's contract digest now has the
+  same limit (it was 64). The strict decoders' limit is unchanged (128); Go, Python and TypeScript
+  now share it, and the unit tests run the shared `vectors/json-nesting/` (AAC#498).
+- `request::parse_json` and `envelope::parse_reply` (JSON binding) read through the crate's strict
+  decoder instead of `serde_json`, whose default limit refused the 128th level: both now read 128
+  levels and refuse 129, as Go and Python do (`tests/json_nesting.rs`). Breaking for
+  `request::parse_json`: a duplicate member name is now `Malformed("not well-formed JSON")`, as in
+  Go and Python; before, the last duplicate won.
+- **`unavailable_window`**: ER -02 §4.7 unavailable-window statements. `recognize` reads a
+  statement for a responder key and the receipts held for it: a `ReasonClass` from the closed list,
+  `start` <= `end`, the responder key's signature checked in the vectors' signature profile
+  (`verify_strict` Ed25519 over the RFC 8785 form of the present members among `end`,
+  `reason_class` and `start`; -02 §4.7 item 3 leaves the format to the deployment), and at least
+  one accepted `RegistrationReceipt`. It gives the registration time, the earliest accepted
+  receipt's (the first given on a tie), or why the statement is `Ignored` (`malformed`,
+  `not_signed_by_responder`, `not_registered`). `display` shows a recorded absence beside the
+  statements held: covered by closed-interval overlap with the waiting window, shown as `SHOWN_AS`
+  with a `Label` per covering statement (class, stated period, registration time,
+  `stated_afterwards`). Any other state is shown as itself. `tests/vectors.rs` reads
+  `unavailable-window.json` (35 cases).
+- **`controller-binding` feature: Controller Binding v0** (`controller_binding`;
+  `spec/controller-binding-v0.md`), the Rust sibling of Go's `controllerbinding`. `verify` reports
+  a binding record's §6.1 properties (form, signatures, window, revocation, and the credential
+  through a `CredentialVerifier` the caller passes) and what it proves (§7 item 2);
+  `Report::applies_to` says whether it applies to a pair (§6.2), and `pair_independence` gives the
+  `issuer_independence` (§7 item 4, IP §6.7.4). An `ed25519` key verifies with `verify_strict`; a
+  `bip340` (Nostr) key verifies the BIP-340 signature over its NIP-01 signing event (§4.1), with
+  k256 0.13 (new optional dependency). A revocation list a using profile declared complete
+  (§5.1): `Options::revocation_list` carries the declaration's JSON object as received, the
+  list's octets and the evaluation time E, and `Report::revocation_list` reports the declaration
+  as delivered, whether it `counts`, and a diagnostic `reason` when it does not. A malformed
+  declaration does not count, and the list's entries are still received statements, so an
+  applying one is still `FAIL`. With no time T, no declaration counts; `max_age` is compared in
+  whole seconds. Under a declaration that counts, `controller_binding_revocation` is `PASS`.
+  `parse_declaration` checks a declaration's form. Every case of
+  `vectors/controller-binding-v0/` (42) gives its whole expected block.
+
+## 0.3.0
+
+- **`evidence-interop/1`** (`spec/interop-profile-v1.md`, ER -02): `envelope::PROFILE_V1` and
+  `envelope::PROFILES`. `Envelope::verify_for_profile` accepts an envelope that names the identifier
+  the request asked for (`verify_for` is it with /0), and `cll_material::check_anchor_inclusion`
+  reads an envelope under either identifier; `envelope::sign_with_profile` signs under one (`sign` keeps
+  `evidence-interop/0`). `envelope::refusal_reasons` gives each identifier's §9.1 tokens: /0's
+  eight, /1's ten, so `capacity_exceeded` is registered under /1 only. `acceptance` checks records
+  and receipts under either identifier the caller's `profiles_implemented` lists
+  (`acceptance::PROFILE_IDS`). The v1 corpora run beside the v0 ones. **Breaking** for an
+  exhaustive `match` on `SignError` (new `Profile`).
+- `registry::Reason` gains the two -02 refusal reasons, `CapacityExceeded` (`capacity_exceeded`)
+  and `RequestUnauthenticated` (`request_unauthenticated`); `Reason::ALL` has ten.
+  `retention::classify_refusal` reads both as `NoBreach` inside and after `until`
+  (`capacity_exceeded` is never a breach). `tests/vectors.rs` reads `refusal-02.json`. A refusal
+  with either token is now `reason_registered`. **Breaking** for an exhaustive `match` on `Reason`.
+- `acceptance`: §11.1.5 rule 2 is `FAIL` only for an `issued_at` later than a time held for the
+  action; an equal time no longer is (the profile's change; corpus cases
+  `acceptance-equal-time-H` and `acceptance-after-action-by-a-second-I`).
+- **`acceptance` feature: the interop profile's acceptance records** (`acceptance`;
+  `spec/interop-profile-v0.md` §11.1), a port of the profile's Python verifier.
+  `acceptance::evaluate` reports each candidate's and each receipt's §11.1.7 properties and the
+  §11.1.8 finding, for a transaction or a session, with the execution-record reader supplied by
+  the caller (`read_fixture_execution_record` reads the §11.5 fixture format). `sign`,
+  `record_digest` and `parse` build and read records and receipts. `parse` is a strict decoder of
+  its own (not serde_json's, whose `arbitrary_precision` feature reads the member
+  `$serde_json::private::Number` as a number): it refuses duplicate member names, numbers other
+  than digits from 0 to 2^53 − 1, unpaired surrogates and nesting deeper than 128, so both
+  parties compute the same record digest. `TrustPolicy::from_pin` reads a vectors-form
+  `trust_policy` pin. Statuses and findings are the result; `method` and `detail` texts are
+  informative.
+  Every `acceptance-*` case in `vectors/interop-profile-v0/` gives its expected report, and
+  session-scoped cases frozen from the Python verifier give its report. No new dependency.
+- `status::Status`: the §7.1 statuses, now shared by `cll_material` (still re-exported there as
+  `cll_material::Status`) and `acceptance`, with `Status::as_str`.
+- `time::parse_rfc3339` reads any RFC 3339 time (offsets, lower-case `t`/`z`, a leap second), to
+  the microsecond, as the profile's verifier does; ASCII digits only, year 0001 or later.
 - `refusal::sign_with_detail` signs a refusal with the optional `detail` (profile P-6), carried
   outside the signed members as in the Go signer; `Refusal` gains `detail: Option<String>`, which
   `to_json` and `to_cbor` emit when present. `sign` is unchanged, and the signature is the same with

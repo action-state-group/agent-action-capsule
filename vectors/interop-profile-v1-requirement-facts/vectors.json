@@ -1,0 +1,409 @@
+{
+  "set": "aac-interop-profile-v1-requirement-facts",
+  "status": "Conformance vectors for the requirement facts evidence-interop/1 copies into the claim (§8.3). Every key is a test key derived from a public seed; never use one for anything else.",
+  "provenance": "spec-derived",
+  "profile": "evidence-interop/1",
+  "spec": "spec/interop-profile-v1.md",
+  "test_keys": {
+    "note": "TEST-ONLY. Each private key is the 32-byte Ed25519 seed SHA-256(seed_label).",
+    "keys": {
+      "responder": {
+        "seed_label": "draft-mih-agent-evidence-request-00 conformance vectors: primary responder key",
+        "public": "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+      },
+      "log": {
+        "seed_label": "evidence-interop/0 worked example: CLL log key",
+        "public": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+      },
+      "impostor": {
+        "seed_label": "evidence-interop/0 conformance vectors: key impostor",
+        "public": "89787d3b350075c8a32fb00397204edcd437d30da54d773031c1294bc34d362d"
+      },
+      "foreign-signer": {
+        "seed_label": "evidence-interop/0 conformance vectors: key foreign-signer",
+        "public": "74322f82fb8bd29ef804cbf7a116920a5b01c1cd455001e025e1050d6a16df79"
+      },
+      "P": {
+        "seed_label": "evidence-interop/0 conformance vectors: key P",
+        "public": "4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6"
+      },
+      "Q": {
+        "seed_label": "evidence-interop/0 conformance vectors: key Q",
+        "public": "c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415"
+      },
+      "I": {
+        "seed_label": "evidence-interop/0 conformance vectors: key I",
+        "public": "4587dde2be741edca000a5d8550d6851d665c20388ab09a3e8e80e276adbd4f3"
+      },
+      "N": {
+        "seed_label": "evidence-interop/0 conformance vectors: key N",
+        "public": "30b35087eb37cc40fbdbb724069f99202006d5ca4eb18aa9bcf0f42dc9ac2cc0"
+      },
+      "I2": {
+        "seed_label": "evidence-interop/0 conformance vectors: key I2",
+        "public": "5323c7f148ca12022e9fa49c1ed29caf619b21cd601e87b994903bde75d75b94"
+      },
+      "requester": {
+        "seed_label": "evidence-interop/0 conformance vectors: key requester",
+        "public": "1fdc3e56ad2204c8dc9ab5da9f96ca2239c13b7c3ee5ae6798dd8dfac3a325d0"
+      }
+    }
+  },
+  "contract": {
+    "document": {
+      "id": "C-facts",
+      "version": "1",
+      "requirements": [
+        {
+          "id": "r-obligation-dated",
+          "profile": "obligation",
+          "statement": "The evidence record named by the request is kept as the example instrument requires.",
+          "evidence_rule": "the record is served under a verified envelope",
+          "forward_verdict": "DETERMINISTIC",
+          "backward_verdict": "DETERMINISTIC",
+          "clause": {
+            "instrument": "Example Instrument A",
+            "article": "Article 1",
+            "effective_from": "2027-08-02"
+          }
+        },
+        {
+          "id": "r-outcome-dated",
+          "profile": "outcome",
+          "statement": "The evidence record named by the request is served under a verified envelope.",
+          "evidence_rule": "the record is served under a verified envelope",
+          "forward_verdict": "DETERMINISTIC",
+          "backward_verdict": "DETERMINISTIC",
+          "clause": {
+            "instrument": "Example Instrument B",
+            "article": "Article 2",
+            "effective_from": "2026-01-01"
+          }
+        },
+        {
+          "id": "r-outcome",
+          "profile": "outcome",
+          "statement": "The evidence record named by the request is served at all.",
+          "evidence_rule": "a reply names the record",
+          "forward_verdict": "DETERMINISTIC",
+          "backward_verdict": "DETERMINISTIC"
+        },
+        {
+          "id": "r-outcome-switched-on",
+          "profile": "outcome",
+          "statement": "The situation the evidence record answers arose in the session.",
+          "evidence_rule": "a reply names the record",
+          "forward_verdict": "DETERMINISTIC",
+          "backward_verdict": "DETERMINISTIC",
+          "out_of_scope_allowed": true
+        },
+        {
+          "id": "r-process-stub",
+          "profile": "process",
+          "statement": "The steps were taken in order.",
+          "out_of_scope_allowed": true
+        }
+      ]
+    },
+    "document_jcs": "{\"id\":\"C-facts\",\"requirements\":[{\"backward_verdict\":\"DETERMINISTIC\",\"clause\":{\"article\":\"Article 1\",\"effective_from\":\"2027-08-02\",\"instrument\":\"Example Instrument A\"},\"evidence_rule\":\"the record is served under a verified envelope\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-obligation-dated\",\"profile\":\"obligation\",\"statement\":\"The evidence record named by the request is kept as the example instrument requires.\"},{\"backward_verdict\":\"DETERMINISTIC\",\"clause\":{\"article\":\"Article 2\",\"effective_from\":\"2026-01-01\",\"instrument\":\"Example Instrument B\"},\"evidence_rule\":\"the record is served under a verified envelope\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-outcome-dated\",\"profile\":\"outcome\",\"statement\":\"The evidence record named by the request is served under a verified envelope.\"},{\"backward_verdict\":\"DETERMINISTIC\",\"evidence_rule\":\"a reply names the record\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-outcome\",\"profile\":\"outcome\",\"statement\":\"The evidence record named by the request is served at all.\"},{\"backward_verdict\":\"DETERMINISTIC\",\"evidence_rule\":\"a reply names the record\",\"forward_verdict\":\"DETERMINISTIC\",\"id\":\"r-outcome-switched-on\",\"out_of_scope_allowed\":true,\"profile\":\"outcome\",\"statement\":\"The situation the evidence record answers arose in the session.\"},{\"id\":\"r-process-stub\",\"out_of_scope_allowed\":true,\"profile\":\"process\",\"statement\":\"The steps were taken in order.\"}],\"version\":\"1\"}",
+    "contract_ref": "C-facts@1",
+    "contract_digest": "1760bd4feecad1d279a92bdb95d242a97595ffc8ca5a43df04f324788b9aee5b",
+    "schema": {
+      "name": "evidence-contract-v0.json",
+      "sha256": "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770"
+    }
+  },
+  "logs": {
+    "log-1": {
+      "iss": "https://producer.example",
+      "sub": "evidence-stream-1",
+      "log_key": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af",
+      "entries": [
+        "09db50f3aed718e0cbf2ba2fe6511552ea05d89c1582042e75e26609cf64d1a2",
+        "dc2f4bbbffb30f081396c3b197faa2492627ccfcaf1626bb8368259098dbd85e",
+        "2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244",
+        "cbfff69177f9b7425e821132b9c1fcebc946492308fc43c22bb6641f32de2431",
+        "c68907754ef3fc1b806916cb97cfc5bd522961cda9d1c3ee2d2e328418bbe85a",
+        "4db597ba4b1f714ce08604529d301887e01c127d2b4fbc2536f34e47ed78206c",
+        "995ecf2d6d4f93dc330ee9264054843ee13145d243cac0fe4c1712d10b8b4de3"
+      ],
+      "checkpoint_hex": "d2845856a30127045820c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af0fa201781868747470733a2f2f70726f64756365722e6578616d706c65027165766964656e63652d73747265616d2d31a059011fa7646b696e646e636c6c2d636865636b706f696e7467636164656e6365190e10686c6f675f73697a6507696973737565645f617474323032362d31302d31325430303a30303a30305a69707265765f73697a65036a636f6d6d69746d656e745867835820361efe575f427af6b6cee7de0f21a4c5ac4bb768741ba10495ca03023d854a22582000606ac0b2fbff9aea2afaee91782d5fdf59b23c6c1dc80faf18528094c8a5d3582041c3925fe360c20b027ba9429cd61455902efb32b1096e3d412d1eeb42184d3f6f707265765f636f6d6d69746d656e74584582582017752cda0f5ae552687612bfe2edb35ce414b769d27de369b3860e04475c2e1f5820614c868161c3d559bf541d1966141ea1b7269da3c4215504eda9fd4882263f8d5840ef5f2f56ba5f5ed2c497274bcc942d8193a7d318d11989de3b409009fa895e739e8fa08adb12406de5f2b6be2e77e9f33988fb19c7cdf57344083306fc8eb30b",
+      "anchor_digest": "16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99"
+    }
+  },
+  "count": 2,
+  "cases": [
+    {
+      "id": "facts-row-7",
+      "description": "A verified envelope for the record, evaluated against three native requirements: a dated obligation, a dated outcome and an undated outcome. §8.1 row 7 with no content evaluator, so each is UNKNOWN; each dated block carries its clause's effective_from as applies_from, whether or not that date has passed at the evaluation time.",
+      "cites": [
+        "§8.1 row 7",
+        "§8.3",
+        "§11.3.4",
+        "§11.3.7"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C-facts@1",
+        "contract_digest": "1760bd4feecad1d279a92bdb95d242a97595ffc8ca5a43df04f324788b9aee5b",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:02:10Z/facts-e\",\"profile\":\"evidence-interop/1\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [
+          {
+            "carriage": "http",
+            "media_type": "application/json",
+            "octets_text": "{\"anchor\":{\"digest\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"artifact\":\"eyJleGFtcGxlIjoiZXZpZGVuY2UgcmVjb3JkIiwic2VxIjoxfQ\",\"artifact_digest\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\",\"issued_at\":\"2026-10-12T00:02:11Z\",\"profile\":\"evidence-interop/1\",\"request_digest\":\"27d5dc75cc08c3406f7e93b37521b1812c2631f23efc669e9251aa1a91b0cf5a\",\"responder\":\"e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117\",\"sig\":\"df326488da4e7584ce24f3273fe59f73b1144ca984feabb683f6a3e81c6354cb6935758157dbfcd50c049db919cbbfcce11b8e4820de863ffba11d18d3560c0f\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"},\"verification\":[{\"digest\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\",\"kind\":\"cll-checkpoint\"},{\"digest\":\"013ac5a3bdff9cf62a3ea2816b3cd197151930f6dd49d67d9286f12c3c47527a\",\"kind\":\"cll-inclusion-proof\"},{\"digest\":\"06550cca75319242ea40e7f3fd9ff0b8e5e3bfa8a06122f678578a57cb4bdc71\",\"kind\":\"cll-consistency-proof\"}],\"verification_content\":[\"0oRYVqMBJwRYIMgqz2bvK9wQYBdUS5GHPfvckvCWOwmdSbD2Ib7fduKvD6IBeBhodHRwczovL3Byb2R1Y2VyLmV4YW1wbGUCcWV2aWRlbmNlLXN0cmVhbS0xoFkBH6dka2luZG5jbGwtY2hlY2twb2ludGdjYWRlbmNlGQ4QaGxvZ19zaXplB2lpc3N1ZWRfYXR0MjAyNi0xMC0xMlQwMDowMDowMFppcHJldl9zaXplA2pjb21taXRtZW50WGeDWCA2Hv5XX0J69rbO594PIaTFrEu3aHQboQSVygMCPYVKIlggAGBqwLL7_5rqKvrukXgtX99ZsjxsHcgPrxhSgJTIpdNYIEHDkl_jYMILAnupQpzWFFWQLvsysQluPUEtHutCGE0_b3ByZXZfY29tbWl0bWVudFhFglggF3Us2g9a5VJodhK_4u2zXOQUt2nSfeNps4YOBEdcLh9YIGFMhoFhw9VZv1QdGWYUHqG3Jp2jxCFVBO2p_UiCJj-NWEDvXy9Wul9e0sSXJ0vMlC2Bk6fTGNEZid47QJAJ-olec56PoIrbEkBt5fK2vi536fM5iPsZx831c0QIMwb8jrML\",\"ggOCWCBFM6JlYBMmRSZBwsJwARda_HwkBzP_qfTteo-1NSM9dVggF3Us2g9a5VJodhK_4u2zXOQUt2nSfeNps4YOBEdcLh8\",\"hAQLgoFYIF_WvN_6EdtXpovlEsNtCc4KvQBEhFcktjedHHfhr47cglggRTOiZWATJkUmQcLCcAEXWvx8JAcz_6n07XqPtTUjPXVYIBd1LNoPWuVSaHYSv-Lts1zkFLdp0n3jabOGDgRHXC4fglggAGBqwLL7_5rqKvrukXgtX99ZsjxsHcgPrxhSgJTIpdNYIEHDkl_jYMILAnupQpzWFFWQLvsysQluPUEtHutCGE0_\"]}"
+          }
+        ],
+        "requirements": [
+          "r-obligation-dated",
+          "r-outcome-dated",
+          "r-outcome",
+          "r-outcome-switched-on",
+          "r-process-stub"
+        ]
+      },
+      "expected": {
+        "request_digest": "27d5dc75cc08c3406f7e93b37521b1812c2631f23efc669e9251aa1a91b0cf5a",
+        "replies": [
+          {
+            "message_type": "envelope",
+            "properties": {
+              "profile_version": "PASS",
+              "envelope_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "issued_at_form": "PASS",
+              "request_binding": "PASS",
+              "subject_binding": "PASS",
+              "artifact_digest": "PASS",
+              "verification_binding": "PASS",
+              "anchor_match": "PASS",
+              "anchor_inclusion": "PASS"
+            },
+            "requirements": {
+              "r-obligation-dated": {
+                "row": "envelope-7",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7).",
+                "applies_from": "2027-08-02"
+              },
+              "r-outcome-dated": {
+                "row": "envelope-7",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7).",
+                "applies_from": "2026-01-01"
+              },
+              "r-outcome": {
+                "row": "envelope-7",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
+              },
+              "r-outcome-switched-on": {
+                "row": "envelope-7",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7).",
+                "out_of_scope_allowed": true
+              },
+              "r-process-stub": {
+                "row": "envelope-7",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable",
+                "note": "§8.1 row 7: the contract evaluates the Artifact's content; SATISFIED gives met, not_met or, where the requirement allows it, out_of_scope, and any other sufficiency gives not_evaluable [RES §1]. This profile fixes no content rule, so with no content evaluator the requirement is UNKNOWN (§11.3.7)."
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244"
+                }
+              ],
+              "proofs": [
+                {
+                  "kind": "inclusion_proof",
+                  "digest_alg": "SHA-256",
+                  "digest": "013ac5a3bdff9cf62a3ea2816b3cd197151930f6dd49d67d9286f12c3c47527a"
+                }
+              ]
+            }
+          }
+        ],
+        "set_properties": {
+          "caller_invariance": "NOT_CHECKED"
+        }
+      }
+    },
+    {
+      "id": "facts-refusal",
+      "description": "A conforming refusal with reason no_such_subject for the same requirements. NOT_FOUND, projecting to GAP; the copied facts do not depend on the row.",
+      "cites": [
+        "§6.3",
+        "§8.1 no_such_subject",
+        "§8.3"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C-facts@1",
+        "contract_digest": "1760bd4feecad1d279a92bdb95d242a97595ffc8ca5a43df04f324788b9aee5b",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:02:20Z/facts-r\",\"profile\":\"evidence-interop/1\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [
+          {
+            "carriage": "http",
+            "media_type": "application/json",
+            "octets_text": "{\"issued_at\":\"2026-10-12T00:02:21Z\",\"key_id\":\"e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117\",\"reason\":\"no_such_subject\",\"request_digest\":\"b9c9a961e48e38b1dd1d56de24b338b527ad30fc6a8e7cc34825825926f10951\",\"sig\":\"67fb51b90483e5befe974e6585f639a753731ca1b1f96f9a5a3f076074ebbb81cd86d371f91bdd9c2d3a0db9d5a43e0dd86c1a86f528bb07502b5513dee6d30c\"}"
+          }
+        ],
+        "requirements": [
+          "r-obligation-dated",
+          "r-outcome-dated",
+          "r-outcome",
+          "r-outcome-switched-on",
+          "r-process-stub"
+        ]
+      },
+      "expected": {
+        "request_digest": "b9c9a961e48e38b1dd1d56de24b338b527ad30fc6a8e7cc34825825926f10951",
+        "replies": [
+          {
+            "message_type": "refusal",
+            "properties": {
+              "refusal_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "request_binding": "PASS",
+              "reason_registered": "PASS",
+              "issued_at_form": "PASS"
+            },
+            "requirements": {
+              "r-obligation-dated": {
+                "row": "refusal-no_such_subject",
+                "status": "NOT_FOUND",
+                "sufficiency": "GAP",
+                "verdict": "not_evaluable",
+                "applies_from": "2027-08-02"
+              },
+              "r-outcome-dated": {
+                "row": "refusal-no_such_subject",
+                "status": "NOT_FOUND",
+                "sufficiency": "GAP",
+                "verdict": "not_evaluable",
+                "applies_from": "2026-01-01"
+              },
+              "r-outcome": {
+                "row": "refusal-no_such_subject",
+                "status": "NOT_FOUND",
+                "sufficiency": "GAP",
+                "verdict": "not_evaluable"
+              },
+              "r-outcome-switched-on": {
+                "row": "refusal-no_such_subject",
+                "status": "NOT_FOUND",
+                "sufficiency": "GAP",
+                "verdict": "not_evaluable",
+                "out_of_scope_allowed": true
+              },
+              "r-process-stub": {
+                "row": "refusal-no_such_subject",
+                "status": "NOT_FOUND",
+                "sufficiency": "GAP",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "aa6332bd9a09cfd9bf0fca492e801a92a468ea86a5039f8b9cd4386b90bcedd7"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

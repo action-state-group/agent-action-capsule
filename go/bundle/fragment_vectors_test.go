@@ -3,6 +3,7 @@ package bundle
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -38,5 +39,30 @@ func TestFragmentCodecMatchesFragmentPyVectors(t *testing.T) {
 		decoded, err := DecodeFragment(c.FragmentPy)
 		require.NoError(t, err, c.Name)
 		require.Equal(t, c.Payload, decoded, c.Name)
+	}
+}
+
+// vectors/json-nesting/: a fragment or Bundle text nested 128 levels deep is
+// decoded and one nested 129 levels is refused, as in Python, TypeScript and
+// Rust.
+func TestFragmentAndDecodeShareTheNestingLimit(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "vectors", "json-nesting", "cases.json"))
+	require.NoError(t, err)
+	var doc struct {
+		Cases []struct {
+			ID     string `json:"id"`
+			Accept bool   `json:"accept"`
+			JSON   string `json:"json"`
+		} `json:"cases"`
+	}
+	require.NoError(t, json.Unmarshal(data, &doc))
+	require.Len(t, doc.Cases, 9)
+	for _, c := range doc.Cases {
+		_, err := DecodeFragment(base64.RawURLEncoding.EncodeToString([]byte(c.JSON)))
+		require.Equal(t, c.Accept, err == nil, "fragment %s: %v", c.ID, err)
+		if c.JSON[0] == '{' {
+			_, err = Decode([]byte(c.JSON))
+			require.Equal(t, c.Accept, err == nil, "Decode %s: %v", c.ID, err)
+		}
 	}
 }

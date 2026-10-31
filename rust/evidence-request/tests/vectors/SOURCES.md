@@ -9,6 +9,14 @@ Copied verbatim from the source; not edited here.
 `scitt-proof-array/SHA256SUMS` pins every copied file and is checked by
 `receipt_vectors.rs` before any vector is read.
 
+`acceptance-session.json` is generated here, not copied:
+`tests/scripts/acceptance_session_cases.py` runs this repository's Python
+verifier (`agent_action_capsule.interop_profile.acceptance`, session scope) on
+backdated-acceptance fixtures and writes its inputs and report, which
+`acceptance_vectors.rs` compares with the Rust port. These are test fixtures
+for this crate, not conformance vectors. Nothing in CI regenerates them: rerun the script
+whenever `acceptance.py` or `_common.py` changes, and commit the result.
+
 The draft-mih-agent-evidence-request-00 conformance vectors are not copied:
 `vectors.rs` reads this repository's `vectors/evidence-request/` in place and
 checks it against that directory's `SHA256SUMS` first.

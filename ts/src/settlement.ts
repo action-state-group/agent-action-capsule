@@ -14,7 +14,9 @@
 // the legs by `terms_ref` and derives the draft's payment and delivery states.
 // Amounts are compared exactly, as decimal digit strings. WebCrypto only.
 
+import { verifyEd25519Strict } from "./ed25519-strict.js";
 import { JsonNumber, sha256Hex, type ParsedJson } from "./json.js";
+import { nestedTooDeep } from "./nesting.js";
 import { verifyProducerEnvelope } from "./producer-envelope-verification.js";
 import { verifyClass1 } from "./verify.js";
 import { fromHex } from "./witness.js";
@@ -499,7 +501,7 @@ const ascii = (bytes: Uint8Array): string => {
 };
 
 /** Whether `octets` is a JWS compact object whose Ed25519 signature
- * verifies under `publicHex`. An SD-JWT is the issuer-signed JWS, then "~"
+ * verifies, strictly, under `publicHex`. An SD-JWT is the issuer-signed JWS, then "~"
  * and any disclosures: only the part before the first "~" is signed. */
 async function jwsVerifies(
   octets: Uint8Array,
@@ -510,19 +512,10 @@ async function jwsVerifies(
   const dots = [...text.keys()].filter((i) => text[i] === 0x2e);
   if (dots.length !== 2) return false;
   try {
-    const subtle = globalThis.crypto.subtle;
-    const key = await subtle.importKey(
-      "raw",
-      fromHex(publicHex) as BufferSource,
-      { name: "Ed25519" },
-      false,
-      ["verify"],
-    );
-    return await subtle.verify(
-      { name: "Ed25519" },
-      key,
-      b64u(ascii(text.subarray(dots[1]! + 1))) as BufferSource,
-      text.subarray(0, dots[1]) as BufferSource,
+    return await verifyEd25519Strict(
+      fromHex(publicHex),
+      b64u(ascii(text.subarray(dots[1]! + 1))),
+      text.subarray(0, dots[1]),
     );
   } catch {
     return false;
@@ -565,8 +558,12 @@ async function wrappedFailures(
 }
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
-const parseJson = (bytes: Uint8Array): unknown =>
-  JSON.parse(utf8.decode(bytes));
+/** JSON nested at most MAX_NESTING_DEPTH levels deep, as Go, Python and Rust read it. */
+const parseJson = (bytes: Uint8Array): unknown => {
+  const value: unknown = JSON.parse(utf8.decode(bytes));
+  if (nestedTooDeep(value)) throw new SyntaxError("JSON nested too deeply");
+  return value;
+};
 // Python's `dict.get(name, fallback)` on a parsed JSON value: anything that is
 // not an object has no `get`, which ends that object's reading.
 const getOr = (value: unknown, name: string, fallback: unknown): unknown => {
@@ -789,6 +786,10 @@ export async function verifySettlements(
     // A capsule_id that is not a string is reported as null.
     const cid =
       typeof capsule.capsule_id === "string" ? capsule.capsule_id : null;
+    if (nestedTooDeep(capsule)) {
+      failures.push({ records: [cid], code: "capsule_invalid" });
+      continue;
+    }
     const ownFailures: string[] = [];
     let kid: string | undefined;
     let ok = false;

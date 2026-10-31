@@ -15,6 +15,7 @@ on:
       - "scripts/evidence-request-interlock.sh"
       - "scripts/browser-conformance.mjs"
       - "spec/draft-mih-scitt-agent-action-capsule-05.md"
+      - "spec/draft-mih-scitt-agent-action-capsule-06.md"
       - "spec/draft-mih-agent-disclosure-envelope-00.md"
       - "spec/REGISTRY.md"
       - ".github/workflows/conformance.yml"
@@ -32,6 +33,7 @@ on:
       - "scripts/evidence-request-interlock.sh"
       - "scripts/browser-conformance.mjs"
       - "spec/draft-mih-scitt-agent-action-capsule-05.md"
+      - "spec/draft-mih-scitt-agent-action-capsule-06.md"
       - "spec/draft-mih-agent-disclosure-envelope-00.md"
       - "spec/REGISTRY.md"
       - ".github/workflows/conformance.yml"
@@ -143,7 +145,7 @@ jobs:
       # must each build alone.
       - name: Check evidence-request's feature combinations
         run: |
-          for features in "--no-default-features" "--no-default-features --features receipt" "--no-default-features --features cll"; do
+          for features in "--no-default-features" "--no-default-features --features receipt" "--no-default-features --features cll" "--no-default-features --features acceptance"; do
             cargo clippy --locked -p evidence-request --all-targets $features -- -D warnings
             cargo test --locked -p evidence-request $features
           done

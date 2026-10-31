@@ -29,6 +29,13 @@ a claim cites no Close (§7.4).
 | EL | `draft-mih-agent-evidence-layer-00` | the six per-pairing states and "one half unavailable is not disagreement" ("Reconcile and Close") |
 | IP | `spec/interop-profile-v0.md` (`evidence-interop/0`) | the value conventions (§5.2), the as-transmitted rule (§5.1), the coverage declaration, its properties and what a verifier reports (§6.7.1 to §6.7.3), the Evidence Contract prose (§11.3) |
 
+**Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
+`spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
+frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). The IP sections it cites (§5.1,
+§5.2, §6.7.1 to §6.7.3, §11.3) are the same in `evidence-interop/1`, which changes only the ER pin,
+the refusal reasons and their mapping (IP v1 P-65). Re-pinning to `evidence-interop/1` is a revision
+of this profile.
+
 **Does not define:** any deal record format (a profile maps its own onto §4's members), any book,
 any disclosure rule (PO §7 is the only one), any coverage check (IP §6.7 is the only one), any
 normalization of amounts or currency codes (DR-1), any judgment over a reconcile as a whole, or

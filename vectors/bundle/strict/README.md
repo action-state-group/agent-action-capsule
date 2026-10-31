@@ -308,11 +308,10 @@ When `registration_time` is set, `registration_time_reason` is `null`. An
 The `reason` text a verifier reports for a receipt is not part of these
 vectors.
 
-A verifier never raises on its input. A Bundle or record nested more deeply
-than an implementation can read (Python's limit is its recursion limit) is
-refused: the Bundle with `bundle_malformed` on every claim (INVALID), a record
-signature as `invalid`. The depth limit differs between languages, so no
-vector reaches it. A record or settlement leg whose `capsule_id` is not a string is
+A verifier never raises on its input. A Bundle or record nested more than 128
+levels deep, the limit every implementation shares (`vectors/json-nesting/`),
+is refused: the Bundle with `bundle_malformed` on every claim (INVALID), a
+record signature as `invalid`. A record or settlement leg whose `capsule_id` is not a string is
 reported with `""` in strict `records` and with `null` in settlement
 `failures`. `membership_record_unknown` findings come in sorted Capsule ID
 order.

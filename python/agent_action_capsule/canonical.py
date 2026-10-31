@@ -13,12 +13,19 @@ than serialized by a best-effort number algorithm.
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from typing import Any
 
 __all__ = [
     "FloatInDigestError",
     "UnsafeIntegerError",
+    "NestingTooDeepError",
     "MAX_SAFE_INTEGER",
+    "MAX_NESTING_DEPTH",
+    "too_deep",
+    "json_text_too_deep",
+    "loads_bounded",
     "jcs",
     "normalize",
     "json_digest",
@@ -58,6 +65,94 @@ class UnsafeIntegerError(ValueError):
     """An integer outside the ±(2^53 - 1) JS-safe range reached a digest-bearing
     field. Not reproducible across ECMAScript-Number-based readers; represent
     large integers as exact decimal strings instead (§5.1)."""
+
+
+# The deepest nesting of objects and arrays a reader or verifier accepts:
+# ``[]`` is one level, ``[[]]`` two. Go (``canonical.MaxNestingDepth``),
+# TypeScript and Rust refuse the same documents (vectors/json-nesting/), so one
+# value never reads differently across implementations, and every recursive
+# walk here stays far below the interpreter's recursion limit.
+MAX_NESTING_DEPTH = 128
+
+
+class NestingTooDeepError(ValueError):
+    """A value nests objects and arrays more than MAX_NESTING_DEPTH levels deep."""
+
+
+def too_deep(v: Any) -> bool:
+    """Whether ``v`` nests dicts and lists more than MAX_NESTING_DEPTH levels deep.
+
+    The walk is iterative and depth first, so it never recurses and stops on a
+    value that contains itself, which is infinitely deep.
+    """
+    stack = [(v, 0)]
+    while stack:
+        node, depth = stack.pop()
+        if isinstance(node, dict):
+            children: Any = node.values()
+        elif isinstance(node, list):
+            children = node
+        else:
+            continue
+        if depth >= MAX_NESTING_DEPTH:
+            return True
+        stack.extend((child, depth + 1) for child in children)
+    return False
+
+
+# The characters that change the scan's state: brackets, quotes, backslashes.
+_JSON_SIGNIFICANT = re.compile(r'[\[\]{}"\\]')
+
+
+def json_text_too_deep(text: str) -> bool:
+    """Whether JSON text opens more than MAX_NESTING_DEPTH objects and arrays.
+
+    Run before ``json.loads``, whose decoder recurses once per level, so a
+    reader refuses such text as malformed instead of raising RecursionError.
+    Brackets inside strings do not count. Text that is not JSON gives some
+    answer; the decoder refuses it either way.
+
+    One left-to-right pass over the significant characters, tracking whether
+    it is inside a string and whether the previous character was an escaping
+    backslash, so the cost is linear in the text whatever it holds (an
+    unterminated string full of escaped quotes included).
+    """
+    depth = 0
+    in_string = False
+    escaped_at = -1  # the index of the character a backslash escapes
+    for match in _JSON_SIGNIFICANT.finditer(text):
+        at = match.start()
+        if at == escaped_at:
+            continue
+        char = match.group()
+        if in_string:
+            if char == "\\":
+                escaped_at = at + 1
+            elif char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+        elif char in "[{":
+            depth += 1
+            if depth > MAX_NESTING_DEPTH:
+                return True
+        elif char in "]}":
+            depth -= 1
+    return False
+
+
+def loads_bounded(data: str | bytes | bytearray, **kwargs: Any) -> Any:
+    """``json.loads`` for text nested at most MAX_NESTING_DEPTH levels deep.
+
+    Deeper text raises NestingTooDeepError (a ValueError) before
+    ``json.loads`` runs, so it never raises RecursionError.
+    """
+    # Scan the text exactly as json.loads would decode bytes (it detects UTF-8, UTF-16
+    # and UTF-32), then hand it the original so the accepted encodings do not change.
+    text = data if isinstance(data, str) else bytes(data).decode(json.detect_encoding(data), "surrogatepass")
+    if json_text_too_deep(text):
+        raise NestingTooDeepError(f"JSON text is nested more than {MAX_NESTING_DEPTH} levels deep")
+    return json.loads(data, **kwargs)
 
 
 def _jcs_string(s: str) -> str:
@@ -126,7 +221,13 @@ def _jcs_value(v: Any) -> str:
 
 
 def jcs(v: Any) -> bytes:
-    """RFC 8785 JCS serialization of ``v`` as UTF-8 bytes (no normalization)."""
+    """RFC 8785 JCS serialization of ``v`` as UTF-8 bytes (no normalization).
+
+    Raises NestingTooDeepError for a value nested more than MAX_NESTING_DEPTH
+    levels deep.
+    """
+    if too_deep(v):
+        raise NestingTooDeepError(f"value is nested more than {MAX_NESTING_DEPTH} levels deep")
     return _jcs_value(v).encode("utf-8")
 
 
@@ -141,11 +242,20 @@ def normalize(v: Any) -> Any:
     (older records that normalize absent fields before JCS). Format-4 ``jcs``
     above deliberately does NOT normalize; this function is for callers that
     still read the pre-format-4 ``jcs-n`` shape.
+
+    Raises NestingTooDeepError for a value nested more than MAX_NESTING_DEPTH
+    levels deep.
     """
+    if too_deep(v):
+        raise NestingTooDeepError(f"value is nested more than {MAX_NESTING_DEPTH} levels deep")
+    return _normalize(v)
+
+
+def _normalize(v: Any) -> Any:
     if isinstance(v, dict):
         out: dict[str, Any] = {}
         for key, val in v.items():
-            nv = normalize(val)
+            nv = _normalize(val)
             if nv is None:
                 continue
             if isinstance(nv, (dict, list)) and len(nv) == 0:
@@ -153,7 +263,7 @@ def normalize(v: Any) -> Any:
             out[key] = nv
         return out
     if isinstance(v, list):
-        return [normalize(x) for x in v]
+        return [_normalize(x) for x in v]
     return v
 
 

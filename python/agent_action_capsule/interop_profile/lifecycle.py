@@ -23,7 +23,7 @@ from ._common import (
     NOT_CHECKED,
     NOT_PRESENT,
     PASS,
-    PROFILE_ID,
+    PROFILE_IDS,
     PropertyReport,
     TrustPolicy,
     ed25519_verify_hex,
@@ -202,8 +202,8 @@ def _form_problems(s: Mapping[str, Any]) -> list[str]:
     out = []
     link = s.get("link")
     token = link.get("type") if isinstance(link, dict) else None
-    if s.get("profile") != PROFILE_ID:
-        out.append("profile is not evidence-interop/0")
+    if not member_of(s.get("profile"), PROFILE_IDS):
+        out.append("profile is not evidence-interop/0 or evidence-interop/1")
     if not is_key_id(s.get("issuer")):
         out.append("issuer is not a key identifier")
     if not (isinstance(link, dict) and set(link) == {"type", "target"}):
@@ -249,11 +249,11 @@ def _form_problems(s: Mapping[str, Any]) -> list[str]:
 
 
 def evaluate_lifecycle(records: Sequence[HeldRecord], trust: TrustPolicy, evaluation_time: str,
-                       profiles_implemented: frozenset = frozenset({PROFILE_ID})) -> LifecycleResult:
+                       profiles_implemented: frozenset = PROFILE_IDS) -> LifecycleResult:
     """Report the §11.2.5 properties and finding of every lifecycle statement held."""
     if parse_time(evaluation_time) is None:
         raise ValueError("evaluation_time must be an RFC 3339 time; the verifier never reads the clock")
-    implemented = profiles_implemented & {PROFILE_ID}
+    implemented = profiles_implemented & PROFILE_IDS
     held: dict[str, tuple] = {}
     statements: list[StatementResult] = []
     for rec in records:

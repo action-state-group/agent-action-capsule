@@ -5,7 +5,10 @@ Every case is run from its inputs alone, by an evaluator written here from
 ``spec/controller-binding-v0.md`` (CB) §3 to §7 and IP §6.7.4:
 
 - the halves' signatures and agreement;
-- the binding properties of CB §6.1;
+- the binding properties of CB §6.1, with each key signing as its type says (CB §3.3, §4.1): an
+  ``ed25519`` key with Ed25519, a ``bip340`` key with a Nostr event checked here under BIP-340;
+- a revocation list a using profile declared complete, and whether its declaration counts
+  (CB §5.1);
 - whether the binding binds the pair and applies to it (CB §6.2);
 - what it proves (CB §7 item 2);
 - the pair's ``issuer_independence`` (CB §7 item 4).
@@ -26,6 +29,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, replace
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -57,7 +61,11 @@ REVOCATION_MEMBERS = {"revocation_version", "binding", "key_id", "revoked_at", "
 CREDENTIAL_MEMBERS = {"issued_at", "issuer", "keys", "organization", "sig"}
 HEX64 = re.compile(r"[0-9a-f]{64}")
 HEX128 = re.compile(r"[0-9a-f]{128}")
+NONCE = re.compile(r"[0-9a-f]{32,}")
 TIME = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+
+# CB §5.1: a declaration's members.
+DECLARATION_MEMBERS = {"profile", "asserted_by", "binding", "list_digest", "as_of", "max_age"}
 
 # CB §7 items 2 and 4; IP §6.7.4.
 PROVES = "control of both keys at the ceremony"
@@ -79,7 +87,14 @@ def is_hex64(v: Any) -> bool:
 
 
 def is_time(v: Any) -> bool:
-    return isinstance(v, str) and TIME.fullmatch(v) is not None
+    """IP §5.2: a time in the form, naming a real calendar instant."""
+    if not (isinstance(v, str) and TIME.fullmatch(v)):
+        return False
+    try:
+        datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return False
+    return True
 
 
 def ed25519_ok(key_hex: Any, sig_hex: Any, data: bytes) -> bool:
@@ -88,6 +103,95 @@ def ed25519_ok(key_hex: Any, sig_hex: Any, data: bytes) -> bool:
     except (InvalidSignature, ValueError, TypeError):
         return False
     return True
+
+
+# BIP-340 verification, written here from BIP-340's specification.
+_P = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+_N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+_G = (0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798,
+      0x483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8)
+
+
+def _tagged(tag: str, msg: bytes) -> bytes:
+    t = hashlib.sha256(tag.encode()).digest()
+    return hashlib.sha256(t + t + msg).digest()
+
+
+def _add(a: Any, b: Any) -> Any:
+    if a is None or b is None:
+        return a or b
+    if a[0] == b[0] and a[1] != b[1]:
+        return None
+    lam = (3 * a[0] * a[0] * pow(2 * a[1], _P - 2, _P) if a == b
+           else (b[1] - a[1]) * pow(b[0] - a[0], _P - 2, _P)) % _P
+    x = (lam * lam - a[0] - b[0]) % _P
+    return x, (lam * (a[0] - x) - a[1]) % _P
+
+
+def _mul(pt: Any, n: int) -> Any:
+    r = None
+    for i in range(256):
+        if (n >> i) & 1:
+            r = _add(r, pt)
+        pt = _add(pt, pt)
+    return r
+
+
+def bip340_ok(key: bytes, msg: bytes, sig: bytes) -> bool:
+    """BIP-340 Verify(pk, m, sig)."""
+    if len(key) != 32 or len(sig) != 64:
+        return False
+    x = int.from_bytes(key, "big")
+    y_sq = (pow(x, 3, _P) + 7) % _P
+    y = pow(y_sq, (_P + 1) // 4, _P)
+    if x >= _P or pow(y, 2, _P) != y_sq:
+        return False
+    pt = (x, y if y % 2 == 0 else _P - y)
+    r, s = int.from_bytes(sig[:32], "big"), int.from_bytes(sig[32:], "big")
+    if r >= _P or s >= _N:
+        return False
+    e = int.from_bytes(_tagged("BIP0340/challenge", sig[:32] + key + msg), "big") % _N
+    rr = _add(_mul(_G, s), _mul(pt, _N - e))
+    return rr is not None and rr[1] % 2 == 0 and rr[0] == r
+
+
+# CB §4.1.
+NOSTR_KIND = 3374
+KEY_TYPES = {"ed25519", "bip340"}
+MAX_CREATED_AT = 2**53 - 1
+
+
+def nostr_ok(key_hex: str, sig: Any, version: str, signed_octets: bytes, rules: Rules) -> bool:
+    """CB §4.1: ``sig`` is ``{created_at, sig}``, the BIP-340 signature over the id of the Nostr
+    event (NIP-01) of kind 3374, no tags, and content ``<version>:<SHA-256 of signed_octets>``."""
+    if not (isinstance(sig, dict) and set(sig) == {"created_at", "sig"} and isinstance(sig["sig"], str)
+            and HEX128.fullmatch(sig["sig"])):
+        return False
+    if rules.created_at_form and not (type(sig["created_at"]) is int and 0 <= sig["created_at"] <= MAX_CREATED_AT):
+        return False
+    content = f"{version}:{sha(signed_octets)}"
+    for kind in ([NOSTR_KIND] if rules.event_kind else [NOSTR_KIND, 1]):
+        event = json.dumps([0, key_hex, sig["created_at"], kind, [], content], separators=(",", ":"),
+                           ensure_ascii=False)
+        if bip340_ok(bytes.fromhex(key_hex), hashlib.sha256(event.encode()).digest(), bytes.fromhex(sig["sig"])):
+            return True
+    return False
+
+
+def key_types(r: dict, rules: Rules) -> list[str]:
+    """CB §3.1 and §3.3: the binding's key types, in the order of ``keys``; ``ed25519`` for both
+    when ``key_types`` is absent."""
+    if rules.key_types_read and "key_types" in r:
+        return list(r["key_types"])
+    return ["ed25519", "ed25519"]
+
+
+def sig_ok(key_hex: str, key_type: str, sig: Any, version: str, signed_octets: bytes, rules: Rules) -> bool:
+    if key_type == "bip340":
+        return nostr_ok(key_hex, sig, version, signed_octets, rules)
+    if key_type == "ed25519":
+        return isinstance(sig, str) and HEX128.fullmatch(sig) is not None and ed25519_ok(key_hex, sig, signed_octets)
+    return False  # §3.3: a key type the verifier does not know never verifies
 
 
 def without(d: dict, key: str) -> dict:
@@ -130,8 +234,23 @@ class Rules:
     credential: bool = True                 # §6.1
     credential_decides: bool = False        # §6.2: the credential never decides application
     binds_pair: bool = True                 # §6.2
+    binds_by_both_keys: bool = True         # §6.2: the record's two keys are the pair's, not merely alike in it
     not_checked_revocation_applies: bool = True  # §6.2: only a FAIL revocation blocks
     binding_gives: str = "FAIL"             # §7 item 4
+    key_types_read: bool = True             # §3.3: key_types gives each key's type
+    event_kind: bool = True                 # §4.1: the signing event is of kind 3374
+    created_at_form: bool = True            # §4.1: created_at is an integer in 0..2^53-1
+    bip340_nonce: bool = True               # §3.1, §9.3: a bip340 binding's nonce is 32+ hex
+    list_declared: bool = True              # §5.1: PASS only under a declaration that counts
+    list_covers_t: bool = True              # §5.1: as_of is not earlier than any T
+    list_max_age: bool = True               # §5.1: E is at most max_age seconds after as_of
+    list_not_future: bool = True            # §5.1: as_of is not later than E
+    list_names_binding: bool = True         # §5.1: the declaration names this binding
+    list_digest: bool = True                # §5.1: list_digest is the list's octets' digest
+    list_entries_read: bool = True          # §5.1: the list's entries are received statements
+    list_unreadable_fails: bool = False     # §9.4: a list that cannot be read gives NOT_CHECKED, never FAIL
+    list_max_age_overflows: bool = False    # §5.1: max_age up to 2^53 - 1 seconds, as a 64-bit nanosecond Duration overflows
+    list_form_drops_entries: bool = False   # §5.1: a malformed declaration's list entries are still received
 
 
 SPEC = Rules()
@@ -141,8 +260,14 @@ def form_ok(r: Any, rules: Rules) -> bool:
     if not isinstance(r, dict) or r.get("claim") not in CLAIMS:
         return False
     method, added = CLAIMS[r["claim"]]
-    if set(r) != COMMON | added or r["binding_version"] != "controller-binding/0":
+    if set(r) - {"key_types"} != COMMON | added or r["binding_version"] != "controller-binding/0":
         return False
+    if "key_types" in r and not (isinstance(r["key_types"], list) and len(r["key_types"]) == 2
+                                 and all(isinstance(k, str) for k in r["key_types"])):
+        return False
+    if (rules.bip340_nonce and "bip340" in r.get("key_types", [])
+            and not (isinstance(r["nonce"], str) and NONCE.fullmatch(r["nonce"]))):
+        return False  # §3.1, §9.3
     other_claims = {m for c, (m, _) in CLAIMS.items() if c != r["claim"]} - {method}
     if not isinstance(r["method"], str) or r["method"] in other_claims:
         return False
@@ -174,33 +299,104 @@ def signatures(r: dict, case: dict, rules: Rules) -> str:
     if rules.method_implemented and r["method"] not in case["pins"]["verification_policy"][
             "binding_methods_implemented"]:
         return "NOT_CHECKED"
+    types = key_types(r, rules)
+    if not set(types) <= KEY_TYPES:
+        return "NOT_CHECKED"
+    type_of = dict(zip(r["keys"], types))
     data = jcs(without(r, "sigs"))
     sigs = r["sigs"]
     if rules.both_sign:
         good = len(sigs) == 2 and [s["key_id"] for s in sigs] == r["keys"]
     else:
         good = 0 < len(sigs) <= 2 and all(s["key_id"] in r["keys"] for s in sigs)
-    return "PASS" if good and all(ed25519_ok(s["key_id"], s["sig"], data) for s in sigs) else "FAIL"
+    return "PASS" if good and all(sig_ok(s["key_id"], type_of[s["key_id"]], s["sig"], "controller-binding/0",
+                                         data, rules) for s in sigs) else "FAIL"
 
 
 def revocation_applies(statement: dict, r: dict, rules: Rules) -> bool:
+    type_of = dict(zip(r["keys"], key_types(r, rules)))
     return (set(statement) == REVOCATION_MEMBERS
             and statement["revocation_version"] == "controller-binding-revocation/0"
             and statement["binding"] == digest_of(r)
             and (statement["key_id"] in r["keys"] or not rules.revocation_by_bound_key)
             and is_time(statement["revoked_at"])
-            and ed25519_ok(statement["key_id"], statement["sig"], jcs(without(statement, "sig"))))
+            and sig_ok(statement["key_id"], type_of.get(statement["key_id"], "ed25519"), statement["sig"],
+                       "controller-binding-revocation/0", jcs(without(statement, "sig")), rules))
+
+
+def instant(t: str) -> datetime:
+    return datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ")
+
+
+def list_entries(case: dict) -> list | None:
+    """CB §5.1: the declared list's entries, or None when its octets are not a JSON array."""
+    rl = case["inputs"].get("revocation_list")
+    if rl is None:
+        return None
+    try:
+        value = parse(rl["octets_text"])
+    except ValueError:
+        return None
+    return value if isinstance(value, list) else None
+
+
+def declaration_form_ok(d: Any) -> bool:
+    """CB §5.1: exactly the six members, each in its form."""
+    return (isinstance(d, dict) and set(d) == DECLARATION_MEMBERS and isinstance(d["profile"], str)
+            and isinstance(d["asserted_by"], str) and is_hex64(d["binding"]) and is_hex64(d["list_digest"])
+            and is_time(d["as_of"]) and type(d["max_age"]) is int and 0 <= d["max_age"] <= MAX_CREATED_AT)
+
+
+def declaration_counts(r: dict, case: dict, times: list[str], rules: Rules) -> bool:
+    """CB §5.1: whether the declaration beside the list counts for this binding, at T and E. With
+    no T it does not."""
+    rl = case["inputs"].get("revocation_list")
+    if rl is None or not times:
+        return False
+    d = rl["declaration"]
+    if not declaration_form_ok(d):
+        return False
+    if list_entries(case) is None:
+        return False
+    if rules.list_max_age_overflows and d["max_age"] * 10**9 > 2**63 - 1:
+        return False
+    evaluated = case["pins"]["evaluation_time"]
+    return ((d["binding"] == digest_of(r) or not rules.list_names_binding)
+            and (d["list_digest"] == sha(rl["octets_text"].encode()) or not rules.list_digest)
+            and (all(d["as_of"] >= t for t in times) or not rules.list_covers_t)
+            and (d["as_of"] <= evaluated or not rules.list_not_future)
+            and ((instant(evaluated) - instant(d["as_of"])).total_seconds() <= d["max_age"]
+                 or not rules.list_max_age))
 
 
 def revocation_status(r: dict, case: dict, times: list[str], rules: Rules) -> str:
     if not rules.revocation:
         return "NOT_CHECKED"
-    for o in case["inputs"].get("revocations", []):
-        s = parse(o["octets_text"])
+    statements = [parse(o["octets_text"]) for o in case["inputs"].get("revocations", [])]
+    rl = case["inputs"].get("revocation_list")
+    if rules.list_entries_read and not (rules.list_form_drops_entries and rl is not None
+                                        and not declaration_form_ok(rl["declaration"])):
+        statements += [e for e in list_entries(case) or [] if isinstance(e, dict)]
+    for s in statements:
         if revocation_applies(s, r, rules) and (not rules.revocation_from_revoked_at
                                          or any(s["revoked_at"] <= t for t in times)):
             return "FAIL"
+    if "revocation_list" in case["inputs"] and rules.list_unreadable_fails and list_entries(case) is None:
+        return "FAIL"
+    if declaration_counts(r, case, times, rules) or (not rules.list_declared and "revocation_list" not in case["inputs"]):
+        return "PASS"
     return "NOT_CHECKED"
+
+
+def list_report(r: dict, case: dict, times: list[str], rules: Rules) -> dict:
+    """CB §6.1: the declaration, reported as the method of a PASS."""
+    rl = case["inputs"]["revocation_list"]
+    d = rl["declaration"]
+    def text(name: str) -> str:  # as delivered; empty when not a text string
+        return d.get(name) if isinstance(d.get(name), str) else ""
+    return {"profile": text("profile"), "asserted_by": text("asserted_by"),
+            "list_digest": sha(rl["octets_text"].encode()), "as_of": text("as_of"),
+            "counts": declaration_counts(r, case, times, rules)}
 
 
 def credential_status(r: dict, case: dict, rules: Rules) -> str:
@@ -242,7 +438,13 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
 
     r = parse(case["inputs"]["binding"]["octets_text"])
     props = binding_properties(r, case, times, rules)
-    binds = (not rules.binds_pair) or (isinstance(r.get("keys"), list) and sorted(r["keys"]) == pair)
+    keys = r.get("keys") if isinstance(r.get("keys"), list) else []
+    if not rules.binds_pair:
+        binds = True
+    elif rules.binds_by_both_keys:
+        binds = sorted(keys) == pair
+    else:  # the defect: the halves' keys are "bound" when the record names both or neither of them
+        binds = (pair[0] in keys) == (pair[1] in keys)
     blocking = {"FAIL"} if rules.not_checked_revocation_applies else {"FAIL", "NOT_CHECKED"}
     applies = (binds and all(props.get(p) == "PASS" for p in ("controller_binding_form",
                                                                "controller_binding_signatures",
@@ -254,6 +456,10 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
         proves = [PROVES, STATES[r["claim"]]] + ([CREDENTIALED] if props.get("controller_binding_credential")
                                                   == "PASS" else [])
     digest = digest_of(r)
+    binding_out = {"claim": r.get("claim"), "binding_digest": digest, "properties": props,
+                   "binds_pair": binds, "applies": applies, "proves": proves}
+    if "revocation_list" in case["inputs"] and props["controller_binding_form"] == "PASS":
+        binding_out["revocation_list"] = list_report(r, case, times, rules)
     if pair[0] == pair[1]:
         status, reason = "FAIL", "same key"
     elif applies:
@@ -262,8 +468,7 @@ def evaluate(case: dict, rules: Rules = SPEC) -> dict:
         status, reason = "NOT_CHECKED", None
     shown, becomes = SHOWN[status]
     return {"halves": {"signatures": sigs, "agree": halves[0]["claim"] == halves[1]["claim"]},
-            "binding": {"claim": r.get("claim"), "binding_digest": digest, "properties": props,
-                        "binds_pair": binds, "applies": applies, "proves": proves},
+            "binding": binding_out,
             "issuer_independence": {"status": status, "shown_as": shown, "reason": reason,
                                     "satisfied_becomes": {"r-corroborated": becomes}}}
 
@@ -280,7 +485,7 @@ def comparable(expected: dict) -> dict:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 14
+    assert DATA["count"] == len(CASES) == 42
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     for case in CASES:
         assert case["pins"]["contract_digest"] == DATA["contract"]["contract_digest"]
@@ -295,7 +500,11 @@ def test_test_keys_derive_from_their_labels():
     from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
     for k in DATA["test_keys"]["keys"].values():
-        priv = Ed25519PrivateKey.from_private_bytes(hashlib.sha256(k["seed_label"].encode()).digest())
+        secret = hashlib.sha256(k["seed_label"].encode()).digest()
+        if k.get("key_type") == "bip340":
+            assert _mul(_G, int.from_bytes(secret, "big"))[0].to_bytes(32, "big").hex() == k["public"]
+            continue
+        priv = Ed25519PrivateKey.from_private_bytes(secret)
         assert priv.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex() == k["public"]
 
 
@@ -333,8 +542,10 @@ def test_both_keys_sign_the_same_bytes():
         if case["expected"]["binding"]["properties"].get("controller_binding_signatures") != "PASS":
             continue
         data = jcs(without(r, "sigs"))
+        type_of = dict(zip(r["keys"], key_types(r, SPEC)))
         assert [s["key_id"] for s in r["sigs"]] == r["keys"]
-        assert all(ed25519_ok(s["key_id"], s["sig"], data) for s in r["sigs"])
+        assert all(sig_ok(s["key_id"], type_of[s["key_id"]], s["sig"], "controller-binding/0", data, SPEC)
+                   for s in r["sigs"])
 
 
 def test_one_key_signed_carries_a_valid_signature_by_one_bound_key():
@@ -371,9 +582,24 @@ DEFECTS = {
     "credential not checked": replace(SPEC, credential=False),
     "a failed credential discards the signatures": replace(SPEC, credential_decides=True),
     "binding applies to any pair": replace(SPEC, binds_pair=False),
+    "a pair is bound when the record names both or neither": replace(SPEC, binds_by_both_keys=False),
     "NOT_CHECKED revocation blocks a binding": replace(SPEC, not_checked_revocation_applies=False),
     "a binding gives PASS": replace(SPEC, binding_gives="PASS"),
     "a binding is ignored": replace(SPEC, binding_gives="NOT_CHECKED"),
+    "key_types ignored: every key is ed25519": replace(SPEC, key_types_read=False),
+    "a Nostr event of any kind signs": replace(SPEC, event_kind=False),
+    "any nonce with a bip340 key": replace(SPEC, bip340_nonce=False),
+    "any created_at": replace(SPEC, created_at_form=False),
+    "no declaration needed: PASS when nothing received applies": replace(SPEC, list_declared=False),
+    "a list counts whatever T": replace(SPEC, list_covers_t=False),
+    "no freshness bound": replace(SPEC, list_max_age=False),
+    "a list may be dated after E": replace(SPEC, list_not_future=False),
+    "a list counts for any binding": replace(SPEC, list_names_binding=False),
+    "the list digest is not checked": replace(SPEC, list_digest=False),
+    "a declared list's statements are not read": replace(SPEC, list_entries_read=False),
+    "an unreadable list gives FAIL": replace(SPEC, list_unreadable_fails=True),
+    "max_age as nanoseconds in 64 bits": replace(SPEC, list_max_age_overflows=True),
+    "a malformed declaration drops the list's entries": replace(SPEC, list_form_drops_entries=True),
 }
 
 
@@ -381,6 +607,49 @@ DEFECTS = {
 def test_every_defective_evaluator_is_caught(name):
     rules = DEFECTS[name]
     assert any(evaluate(c, rules) != comparable(c["expected"]) for c in CASES), name
+
+
+def test_a_binding_naming_neither_half_is_the_case_that_catches_membership_agreement():
+    """no-half-key-bound is the case a port deciding binds_pair by whether the record names both halves' keys
+    alike fails on (agent-action-capsule#468): other-keys names one of them, so it does not tell."""
+    rules = DEFECTS["a pair is bound when the record names both or neither"]
+    caught = [c["id"] for c in CASES if evaluate(c, rules) != comparable(c["expected"])]
+    assert caught == ["no-half-key-bound"]
+
+
+def test_revocation_is_pass_only_under_a_declaration_that_counts():
+    """CB §6.1: with no declared list, revocation is never PASS (CB-1); with one, PASS needs it to
+    count, and FAIL comes only from a statement that applies (§9.4)."""
+    for case in CASES:
+        status = case["expected"]["binding"]["properties"].get("controller_binding_revocation")
+        listed = case["expected"]["binding"].get("revocation_list")
+        if listed is None:
+            assert status != "PASS", case["id"]
+        elif status == "PASS":
+            assert listed["counts"], case["id"]
+        elif not listed["counts"]:
+            assert status == "NOT_CHECKED" or list_entries(case), case["id"]  # FAIL only by an entry
+
+
+def test_no_time_no_declaration_counts():
+    """CB §5.1: with no T asked about, a declaration does not count."""
+    case = next(c for c in CASES if c["id"] == "complete-list")
+    r = parse(case["inputs"]["binding"]["octets_text"])
+    assert declaration_counts(r, case, [], SPEC) is False
+    assert declaration_counts(r, case, [h for h in (parse(o["octets_text"])["issued_at"]
+                                                    for o in case["inputs"]["halves"])], SPEC) is True
+
+
+def test_is_time_needs_a_calendar_date():
+    assert is_time("2026-02-28T00:00:00Z") and not is_time("2026-02-30T00:00:00Z")
+
+
+def test_a_declared_list_never_changes_whether_a_binding_applies_unless_a_statement_does():
+    """CB §9.4: PASS and NOT_CHECKED both leave the binding applying."""
+    for case in CASES:
+        b = case["expected"]["binding"]
+        if "revocation_list" in b and b["properties"]["controller_binding_revocation"] != "FAIL":
+            assert b["applies"], case["id"]
 
 
 def test_ignoring_the_binding_is_the_unbound_keys_rule():
@@ -461,3 +730,35 @@ def test_revocation_names_the_signing_input_not_the_signed_record():
 def test_parse_rejects_duplicate_member_names():
     with pytest.raises(ValueError):
         parse('{"a":1,"a":2}')
+
+
+# BIP-340's own test vectors (bitcoin/bips, bip-0340/test-vectors.csv), rows 0, 1, 5, 6 and 9: the
+# BIP-340 check above against the BIP's answers, two valid and three invalid.
+BIP340_ROWS = [
+    ("F9308A019258C31049344F85F89D5229B531C845836F99B08601F113BCE036F9",
+     "0000000000000000000000000000000000000000000000000000000000000000",
+     "E907831F80848D1069A5371B402410364BDF1C5F8307B0084C55F1CE2DCA821525F66A4A85EA8B71E482A74F382D2CE5EBEEE8FDB2172F477DF4900D310536C0",
+     True),
+    ("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",
+     "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89",
+     "6896BD60EEAE296DB48A229FF71DFE071BDE413E6D43F917DC8DCF8C78DE33418906D11AC976ABCCB20B091292BFF4EA897EFCB639EA871CFA95F6DE339E4B0A",
+     True),
+    ("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34",
+     "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89",
+     "6CFF5C3BA86C69EA4B7376F31A9BCB4F74C1976089B2D9963DA2E5543E17776969E89B4C5564D00349106B8497785DD7D1D713A8AE82B32FA79D5F7FC407D39B",
+     False),
+    ("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",
+     "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89",
+     "FFF97BD5755EEEA420453A14355235D382F6472F8568A18B2F057A14602975563CC27944640AC607CD107AE10923D9EF7A73C643E166BE5EBEAFA34B1AC553E2",
+     False),
+    ("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659",
+     "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89",
+     "0000000000000000000000000000000000000000000000000000000000000000123DDA8328AF9C23A94C1FEECFD123BA4FB73476F0D594DCB65C6425BD186051",
+     False),
+]
+
+
+@pytest.mark.parametrize("row", range(len(BIP340_ROWS)))
+def test_the_bip340_check_agrees_with_the_bips_vectors(row):
+    key, msg, sig, valid = BIP340_ROWS[row]
+    assert bip340_ok(bytes.fromhex(key), bytes.fromhex(msg), bytes.fromhex(sig)) is valid

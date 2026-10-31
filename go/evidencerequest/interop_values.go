@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 )
 
 // The five property statuses (profile §7.1).
@@ -72,10 +74,6 @@ func decodeReceivedJSON(data []byte) (receivedValue, bool, string) {
 	}
 	return out, true, ""
 }
-
-// maxReceivedNesting bounds how deep a received value may nest before it is
-// treated as no value; no object the profile defines nests near it.
-const maxReceivedNesting = 512
 
 func decodeReceivedCBOR(data []byte) (receivedValue, bool, string) {
 	d, err := decodeCBORItem(data)
@@ -242,19 +240,22 @@ func isDigestValue(v any) bool {
 
 var hex128 = regexp.MustCompile(`^[0-9a-f]{128}$`)
 
-// verifyHexSignature is an Ed25519 check over message for the §5.2 hex
-// forms of a key and a signature; false when either form is wrong.
+// verifyHexSignature is a strict Ed25519 check over message for the §5.2
+// hex forms of a key and a signature; false when either form is wrong. Every
+// interop-profile signature (envelope, refusal, acceptance) is checked here,
+// as Python's interop_profile and Rust's evidence-request check it.
 func verifyHexSignature(key, sig any, message []byte) bool {
 	keyHex, ok1 := key.(string)
 	sigHex, ok2 := sig.(string)
 	if !ok1 || !ok2 || !IsDigest(keyHex) || !hex128.MatchString(sigHex) {
 		return false
 	}
-	signature, err := hex.DecodeString(sigHex)
-	if err != nil {
+	public, err1 := hex.DecodeString(keyHex)
+	signature, err2 := hex.DecodeString(sigHex)
+	if err1 != nil || err2 != nil {
 		return false
 	}
-	return VerifySignature(keyHex, message, signature) == nil
+	return ed25519strict.Verify(public, message, signature)
 }
 
 func uintMember(v any) (uint64, bool) {

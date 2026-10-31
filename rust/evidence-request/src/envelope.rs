@@ -32,7 +32,7 @@
 //! responder's business, not this crate's.
 
 use crate::digest::request_digest;
-use crate::registry::is_digest;
+use crate::registry::{is_digest, Reason};
 use crate::request::{Derivation, Subject};
 use crate::time::parse_utc;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -41,8 +41,28 @@ use ed25519_dalek::{Signature, SigningKey, VerifyingKey};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 
-/// The profile identifier the envelope carries (profile §3.1).
+/// The profile identifier an envelope carries by default (profile §3.1):
+/// `evidence-interop/0`, frozen.
 pub const PROFILE: &str = "evidence-interop/0";
+
+/// `evidence-interop/1` (`spec/interop-profile-v1.md`): ER -02 and its two
+/// refusal reasons. Its envelope is the same.
+pub const PROFILE_V1: &str = "evidence-interop/1";
+
+/// Every identifier whose envelope this module reads.
+pub const PROFILES: [&str; 2] = [PROFILE, PROFILE_V1];
+
+/// The refusal reasons registered under `profile` (each revision's §9.1):
+/// /0 pins ER -01 and its eight, /1 pins ER -02 and its ten. A refusal
+/// carries no profile, so read it under the identifier its request asked
+/// for (v1 §6.3). For an identifier this crate does not implement, every
+/// token of those it does: the ten.
+pub fn refusal_reasons(profile: &str) -> &'static [Reason] {
+    match profile {
+        PROFILE => &Reason::ALL[..8],
+        _ => &Reason::ALL[..],
+    }
+}
 
 /// The largest integer the profile's data model holds exactly: 2^53 - 1.
 const MAX_INTEGER: u64 = (1 << 53) - 1;
@@ -230,16 +250,29 @@ impl Envelope {
 
     /// Accept the envelope as the answer of the responder whose key is
     /// `responder_key` to the request whose octets as sent are
-    /// `request_bytes`: the profile, the key and the request digest must be
-    /// those, and [`Envelope::verify`] must pass. Whether the artifact is the
-    /// answer you wanted (its subject, its anchor, its material) is for you
-    /// to judge from the verified members.
+    /// `request_bytes`, a request that named [`PROFILE`] or no profile:
+    /// [`Envelope::verify_for_profile`] with [`PROFILE`].
     pub fn verify_for(
         &self,
         responder_key: &VerifyingKey,
         request_bytes: &[u8],
     ) -> Result<(), EnvelopeError> {
-        if self.profile != PROFILE {
+        self.verify_for_profile(PROFILE, responder_key, request_bytes)
+    }
+
+    /// Accept the envelope as the answer to a request that asked for
+    /// `profile`: the envelope must name exactly that identifier (profile
+    /// §3.3 step 5), one of [`PROFILES`], the key and the request digest must
+    /// be those, and [`Envelope::verify`] must pass. Whether the artifact is
+    /// the answer you wanted (its subject, its anchor, its material) is for
+    /// you to judge from the verified members.
+    pub fn verify_for_profile(
+        &self,
+        profile: &str,
+        responder_key: &VerifyingKey,
+        request_bytes: &[u8],
+    ) -> Result<(), EnvelopeError> {
+        if !PROFILES.contains(&profile) || self.profile != profile {
             return Err(EnvelopeError::Profile);
         }
         if self.responder != hex::encode(responder_key.to_bytes()) {
@@ -267,7 +300,7 @@ pub enum EnvelopeError {
     VerificationCount,
     #[error("verification item {0} does not hash to its signed digest")]
     VerificationDigest(usize),
-    #[error("the envelope is not the profile's evidence-interop/0")]
+    #[error("the envelope does not name the profile requested, or that profile is not evidence-interop/0 or /1")]
     Profile,
     #[error("the envelope is signed by another key than the responder's")]
     WrongKey,
@@ -353,6 +386,8 @@ pub enum SignError {
     Kind,
     #[error("the signer signed under a key other than its key_id")]
     SignerKey,
+    #[error("the profile is not evidence-interop/0 or evidence-interop/1")]
+    Profile,
     #[error("the signer failed: {0}")]
     Signer(String),
 }
@@ -362,12 +397,27 @@ pub enum SignError {
 /// before anything is signed, an envelope the profile does not allow: a
 /// subject or derivation a request could not carry, an anchor that is not a
 /// digest, an empty artifact, an `issued_at` or time freshness outside the
-/// §5.2 form, or a size freshness outside the profile's integers.
+/// §5.2 form, or a size freshness outside the profile's integers. The
+/// envelope names [`PROFILE`]; [`sign_with_profile`] signs under another.
 pub fn sign(
     request_bytes: &[u8],
     parts: EnvelopeParts,
     signer: &dyn Signer,
 ) -> Result<Envelope, SignError> {
+    sign_with_profile(PROFILE, request_bytes, parts, signer)
+}
+
+/// [`sign`] under `profile`, one of [`PROFILES`]: sign under the identifier
+/// the request asked for (profile §3.3).
+pub fn sign_with_profile(
+    profile: &str,
+    request_bytes: &[u8],
+    parts: EnvelopeParts,
+    signer: &dyn Signer,
+) -> Result<Envelope, SignError> {
+    if !PROFILES.contains(&profile) {
+        return Err(SignError::Profile);
+    }
     check_subject(&parts.subject).map_err(SignError::Subject)?;
     if let Some(d) = &parts.derivation {
         check_derivation(d).map_err(SignError::Subject)?;
@@ -390,7 +440,7 @@ pub fn sign(
         return Err(SignError::Kind);
     }
     let mut envelope = Envelope {
-        profile: PROFILE.to_string(),
+        profile: profile.to_string(),
         request_digest: request_digest(request_bytes),
         subject: parts.subject,
         derivation: parts.derivation,
@@ -670,76 +720,13 @@ impl Item {
         }
     }
 
-    /// Read JSON octets, refusing a duplicate member name at any depth and
-    /// any number that is not a profile integer.
+    /// Read JSON octets, refusing a duplicate member name at any depth, any
+    /// number that is not a profile integer, and nesting deeper than 128
+    /// levels, the limit every implementation shares (`vectors/json-nesting/`).
     fn from_json_octets(octets: &[u8]) -> Result<Item, ReplyError> {
-        use serde::de::{Deserializer as _, MapAccess, SeqAccess, Visitor};
-        struct V;
-        impl<'de> Visitor<'de> for V {
-            type Value = Item;
-            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.write_str("a value in the profile's data model")
-            }
-            fn visit_unit<E>(self) -> Result<Item, E> {
-                Ok(Item::Null)
-            }
-            fn visit_bool<E>(self, b: bool) -> Result<Item, E> {
-                Ok(Item::Bool(b))
-            }
-            fn visit_u64<E: serde::de::Error>(self, n: u64) -> Result<Item, E> {
-                if n > MAX_INTEGER {
-                    return Err(E::custom("an integer above 2^53 - 1"));
-                }
-                Ok(Item::UInt(n))
-            }
-            fn visit_i64<E: serde::de::Error>(self, n: i64) -> Result<Item, E> {
-                u64::try_from(n)
-                    .map_err(|_| E::custom("a negative integer"))
-                    .and_then(|u| self.visit_u64(u))
-            }
-            fn visit_f64<E: serde::de::Error>(self, _: f64) -> Result<Item, E> {
-                Err(E::custom("a number that is not an integer"))
-            }
-            fn visit_str<E>(self, s: &str) -> Result<Item, E> {
-                Ok(Item::Text(s.to_string()))
-            }
-            fn visit_string<E>(self, s: String) -> Result<Item, E> {
-                Ok(Item::Text(s))
-            }
-            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Item, A::Error> {
-                let mut out = Vec::new();
-                while let Some(item) = seq.next_element_seed(Seed)? {
-                    out.push(item);
-                }
-                Ok(Item::Array(out))
-            }
-            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Item, A::Error> {
-                let mut out: Vec<(String, Item)> = Vec::new();
-                let mut seen = std::collections::HashSet::new();
-                while let Some(key) = map.next_key::<String>()? {
-                    if !seen.insert(key.clone()) {
-                        return Err(serde::de::Error::custom("a duplicate member name"));
-                    }
-                    let value = map.next_value_seed(Seed)?;
-                    out.push((key, value));
-                }
-                Ok(Item::Map(out))
-            }
-        }
-        struct Seed;
-        impl<'de> serde::de::DeserializeSeed<'de> for Seed {
-            type Value = Item;
-            fn deserialize<D: serde::Deserializer<'de>>(self, d: D) -> Result<Item, D::Error> {
-                d.deserialize_any(V)
-            }
-        }
-        let mut de = serde_json::Deserializer::from_slice(octets);
-        let item = de
-            .deserialize_any(V)
-            .map_err(|_| ReplyError::Encoding("not JSON in the profile's data model"))?;
-        de.end()
-            .map_err(|_| ReplyError::Encoding("bytes after the reply"))?;
-        Ok(item)
+        crate::strict_json::decode(octets)
+            .map(|value| Item::from_json(&value))
+            .ok_or(ReplyError::Encoding("not JSON in the profile's data model"))
     }
 
     /// From a decoded CBOR item already checked deterministic: `None` for

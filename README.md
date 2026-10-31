@@ -23,8 +23,8 @@ denied Capsule is affirmative evidence that a gate worked.
 ## The draft
 
 - **Datatracker:** https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/
-- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-05.md`](spec/draft-mih-scitt-agent-action-capsule-05.md)
-  (kramdown-rfc source).
+- **Editor's source (this repo):** [`spec/draft-mih-scitt-agent-action-capsule-06.md`](spec/draft-mih-scitt-agent-action-capsule-06.md)
+  (kramdown-rfc source; -05 is the posted revision).
 - **Registry of record:** [`spec/REGISTRY.md`](spec/REGISTRY.md) — the interim
   registry for the seven profile vocabularies until IANA registries are
   established on RFC publication.
@@ -39,8 +39,8 @@ denied Capsule is affirmative evidence that a gate worked.
 
 The authoritative version of the draft is the one on the
 [Datatracker](https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/);
-`-05` is the current posted revision. The `.md` here is the editor's source
-from which it is built.
+`-05` is the current posted revision, built from its frozen `.md`. The
+editor's source is the unposted `-06` working revision.
 
 ## Quickstart — try the reference verifier
 
@@ -73,6 +73,13 @@ agent-action-capsule anchor --help     # submit a capsule_id digest to a SCITT T
 For the SCITT receipt + anchor paths: `pip install -e "python[transparent,anchor]"`. Full
 reference-library detail — the producer side, `--transparent` Signed-Statement verification, and
 every option — is in [`python/README.md`](python/README.md).
+
+## Run the conformance vectors
+
+One offline command per language runs the published vectors and prints pass/fail
+per set with case counts, and a `--break-one-byte` step shows a mutated vector
+fail: [`VECTORS.md`](VECTORS.md#run-the-vectors) lists the Python, TypeScript,
+Go and Rust commands and their one-time setup.
 
 ## Repository layout
 

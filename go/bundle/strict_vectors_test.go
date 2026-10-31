@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/action-state-group/agent-action-capsule/go/bundle"
+	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/envelope"
 	"github.com/action-state-group/agent-action-capsule/go/witness"
 	"github.com/stretchr/testify/require"
@@ -248,6 +249,31 @@ func TestStrictRefusesValuesNestedTooDeeply(t *testing.T) {
 	verdict, messages := envelope.VerifyRecordSignature(deep)
 	require.Equal(t, envelope.Invalid, verdict)
 	require.NotEmpty(t, messages)
+}
+
+// A Bundle nested one level past canonical.MaxNestingDepth is malformed in
+// plain and strict mode, as in Python, TypeScript and Rust; one at the limit
+// is verified as usual (vectors/json-nesting/).
+func TestBundleNestingLimit(t *testing.T) {
+	vectors := loadStrictVectors(t)
+	data, err := json.Marshal(vectors.Cases[0].Bundle)
+	require.NoError(t, err)
+	isMalformed := func(c bundle.ClaimResult) bool {
+		return c.Status == "fail" && len(c.Findings) == 1 && c.Findings[0] == "bundle_malformed"
+	}
+	// The Bundle, extensions and x are two levels around x's arrays.
+	for arrays, tooDeep := range map[int]bool{canonical.MaxNestingDepth - 2: false, canonical.MaxNestingDepth - 1: true} {
+		var value map[string]interface{}
+		decoder := json.NewDecoder(bytes.NewReader(data))
+		decoder.UseNumber()
+		require.NoError(t, decoder.Decode(&value))
+		value["extensions"] = map[string]interface{}{"x": nested(arrays)}
+		plain := bundle.VerifyBundle(value)
+		strict := bundle.VerifyStrict(value, bundle.StrictOptions{})
+		require.Equal(t, tooDeep, isMalformed(plain.GraphClosure), "plain, %d arrays", arrays)
+		require.Equal(t, tooDeep, isMalformed(plain.IntervalCoverage), "plain, %d arrays", arrays)
+		require.Equal(t, tooDeep, isMalformed(strict.GraphClosure), "strict, %d arrays", arrays)
+	}
 }
 
 // VerifyCheckpoint is VerifyStrict's checkpoint claim on its own: on every

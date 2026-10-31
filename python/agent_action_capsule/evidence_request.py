@@ -32,6 +32,9 @@ must agree on, and the responder's decision logic:
   :func:`classify_refusal`, :func:`classify_absence` and
   :func:`commitment_well_formed`: the three-state discipline, caller
   invariance and retention commitments, as a requester or auditor applies them.
+* :func:`recognize_unavailable_window` and :func:`display_absence`: -02 §4.7
+  unavailable-window statements, which ones a reader recognizes and how it
+  shows an absence one covers.
 
 **Wire shapes.** -00 leaves several shapes open; this module follows the
 readings the conformance vectors in ``vectors/evidence-request/`` document
@@ -90,7 +93,9 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
-from .canonical import jcs
+from . import _ed25519_strict
+from ._ed25519_strict import verify_strict
+from .canonical import MAX_NESTING_DEPTH, jcs, json_text_too_deep
 from .interop_profile import _cbor
 from .interop_profile import cll as _cll
 from .interop_profile._common import (
@@ -118,6 +123,8 @@ __all__ = [
     "REASON_DEADLINE_UNMET",
     "REASON_REQUEST_MALFORMED",
     "REASON_RETENTION_EXPIRED",
+    "REASON_CAPACITY_EXCEEDED",
+    "REASON_REQUEST_UNAUTHENTICATED",
     "REFUSAL_REASONS",
     "OUTCOMES",
     "REQUEST_STATES",
@@ -133,6 +140,7 @@ __all__ = [
     "Signer",
     "Artifact",
     "PROFILE",
+    "PROFILES",
     "Envelope",
     "sign_envelope",
     "VerificationError",
@@ -159,6 +167,15 @@ __all__ = [
     "classify_refusal",
     "classify_absence",
     "commitment_well_formed",
+    "UNAVAILABLE_REASON_CLASSES",
+    "UNAVAILABLE_SHOWN_AS",
+    "UNAVAILABLE_SIGNED_MEMBERS",
+    "RegistrationReceipt",
+    "StatementReading",
+    "StatementLabel",
+    "AbsenceDisplay",
+    "recognize_unavailable_window",
+    "display_absence",
 ]
 
 DRAFT = "draft-mih-agent-evidence-request-00"
@@ -167,9 +184,16 @@ DRAFT = "draft-mih-agent-evidence-request-00"
 SUBPROTOCOL = "evidence-request/1"
 
 #: The interoperability profile whose artifact envelope :class:`Envelope`
-#: implements (``spec/interop-profile-v0.md`` §6.2). -00 says what an artifact
+#: implements (``spec/interop-profile-v0.md`` §6.2), and the one
+#: :func:`sign_envelope` signs under by default. -00 says what an artifact
 #: response carries but fixes no wire members (§4.1); the profile does.
 PROFILE = "evidence-interop/0"
+
+#: Every profile identifier whose envelope :class:`Envelope` reads:
+#: ``evidence-interop/0`` and ``evidence-interop/1``
+#: (``spec/interop-profile-v1.md``), which share the envelope and differ in
+#: the refusal reasons they register.
+PROFILES = frozenset({"evidence-interop/0", "evidence-interop/1"})
 
 #: The one derivation -00 registers (§8.1, §13).
 DERIVATION_HISTORY_CARD = "history_card/1"
@@ -188,9 +212,14 @@ REASON_POLICY_DECLINED = "policy_declined"
 REASON_DEADLINE_UNMET = "deadline_unmet"
 REASON_REQUEST_MALFORMED = "request_malformed"
 REASON_RETENTION_EXPIRED = "retention_expired"
+#: -02: a limit of the responder's own (load, size, a transient fault).
+REASON_CAPACITY_EXCEEDED = "capacity_exceeded"
+#: -02: a requester authentication a deployment profile defines does not verify.
+REASON_REQUEST_UNAUTHENTICATED = "request_unauthenticated"
 
-#: The eight registered refusal reasons (§4.2, §13). Matching is exact: a
-#: different case, or a token such as ``no_such_record``, is not registered.
+#: The registered refusal reasons (§4.2, §13): the eight of -00 and the two
+#: -02 adds. Matching is exact: a different case, or a token such as
+#: ``no_such_record``, is not registered.
 REFUSAL_REASONS = frozenset(
     {
         REASON_NOT_AUTHORIZED,
@@ -201,6 +230,8 @@ REFUSAL_REASONS = frozenset(
         REASON_DEADLINE_UNMET,
         REASON_REQUEST_MALFORMED,
         REASON_RETENTION_EXPIRED,
+        REASON_CAPACITY_EXCEEDED,
+        REASON_REQUEST_UNAUTHENTICATED,
     }
 )
 
@@ -304,14 +335,17 @@ def _reject_constant(text: str) -> Any:
 
 def _decode_json(data: bytes) -> Any:
     try:
+        text = data.decode("utf-8")
+        if json_text_too_deep(text):
+            raise ValueError(f"nested more than {MAX_NESTING_DEPTH} levels deep")
         return json.loads(
-            data.decode("utf-8"),
+            text,
             object_pairs_hook=_json_object,
             parse_int=_json_int,
             parse_float=_json_float,
             parse_constant=_reject_constant,
         )
-    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+    except (UnicodeDecodeError, ValueError) as exc:
         raise RequestError(REASON_REQUEST_MALFORMED, f"not well-formed JSON: {exc}") from exc
 
 
@@ -524,7 +558,8 @@ class Resolution:
 
 class Decline(Exception):
     """Raised by :meth:`EvidenceStore.artifact` to refuse instead of serving,
-    for example ``policy_declined`` for a subject larger than the node serves.
+    for example ``capacity_exceeded`` for a subject larger than the node serves
+    (-02 §11: a size limit is the responder's own, not policy).
     ``reason`` must be a registered token; :func:`answer` signs the refusal."""
 
     def __init__(self, reason: str, message: str = ""):
@@ -797,14 +832,18 @@ class Envelope:
             if hashlib.sha256(octets).hexdigest() != entry["digest"]:
                 raise VerificationError(f"verification item {i} does not hash to its signed digest")
 
-    def verify_for(self, request_bytes: bytes, responder: str) -> None:
-        """:meth:`verify`, and that the envelope is this profile's
-        (:data:`PROFILE`), is signed by ``responder`` (the key you pinned for
-        the responder, as lowercase hex) and answers the request whose octets
-        you sent were ``request_bytes`` (§6.2 ``request_digest``). Raises
-        :class:`VerificationError`."""
-        if self.profile != PROFILE:
-            raise VerificationError(f"profile is {self.profile!r}, not {PROFILE}")
+    def verify_for(self, request_bytes: bytes, responder: str, *, profile: str = PROFILE) -> None:
+        """:meth:`verify`, and that the envelope names ``profile``, the
+        identifier your request asked for (:data:`PROFILE` when it named
+        none, profile §3.3 steps 2 and 5), is signed by ``responder`` (the key
+        you pinned for the responder, as lowercase hex) and answers the
+        request whose octets you sent were ``request_bytes`` (§6.2
+        ``request_digest``). Raises :class:`VerificationError`, and
+        :class:`ValueError` for a ``profile`` not in :data:`PROFILES`."""
+        if profile not in PROFILES:
+            raise ValueError(f"profile must be one of {sorted(PROFILES)}")
+        if self.profile != profile:
+            raise VerificationError(f"profile is {self.profile!r}, not the {profile!r} requested")
         if self.responder != responder:
             raise VerificationError("the envelope is signed by another key than the responder's")
         if self.request_digest != request_digest(request_bytes):
@@ -823,6 +862,7 @@ def sign_envelope(
     derivation: str | None = None,
     freshness: int | str | None = None,
     verification: Iterable[tuple[str, bytes]] = (),
+    profile: str = PROFILE,
 ) -> Envelope:
     """Build and sign the profile envelope (§6.2) for an artifact served under
     ``anchor_digest`` in answer to the request whose octets as received are
@@ -831,7 +871,11 @@ def sign_envelope(
     anything is signed, for an envelope the profile does not allow: a subject
     or derivation a request could not carry, an ``anchor_digest`` that is not
     a digest, an empty ``artifact`` (§6.2), an ``issued_at`` not in the §5.2
-    time form, or a ``freshness`` that is neither a size nor a §5.2 time."""
+    time form, a ``freshness`` that is neither a size nor a §5.2 time, or a
+    ``profile`` not in :data:`PROFILES`. Sign under the identifier the
+    request asked for (profile §3.3)."""
+    if profile not in PROFILES:
+        raise ValueError(f"profile must be one of {sorted(PROFILES)}")
     try:
         _parse_subject(subject.to_wire())
         if derivation is not None:
@@ -856,6 +900,7 @@ def sign_envelope(
         derivation=derivation,
         freshness=freshness,
         verification=tuple((kind, bytes(octets)) for kind, octets in verification),
+        profile=profile,
     )
     sig, key_id = signer.sign(stub.signing_body())
     if key_id != stub.responder:
@@ -1112,9 +1157,9 @@ def check_cll_material(envelope: Envelope, trust: TrustPolicy) -> PropertyReport
     whose material is never checked, or one of another profile) or
     ``INCONCLUSIVE``. This decides anchor inclusion only; authenticate the
     envelope with :meth:`Envelope.verify_for` as well."""
-    if envelope.profile != PROFILE:
+    if envelope.profile not in PROFILES:
         return PropertyReport("anchor_inclusion", NOT_CHECKED, "§6.2.1 Checkpointed Local Log procedure",
-                              f"the envelope is not {PROFILE}, so this profile's kinds do not apply")
+                              f"the envelope is not one of {sorted(PROFILES)}, so this profile's kinds do not apply")
     try:
         envelope.verify()
         bound = PASS
@@ -1260,35 +1305,12 @@ def sign_refusal(
     )
 
 
-# The y coordinates (mod p) of the eight small-order points of edwards25519:
-# the identity (1), order 2 (p - 1), order 4 (0) and order 8 (Y8, p - Y8).
-# Either sign of x gives the same set.
-_P25519 = (1 << 255) - 19
-_Y8 = int.from_bytes(bytes.fromhex("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"), "little")
-_SMALL_ORDER_Y = frozenset({0, 1, _P25519 - 1, _Y8, _P25519 - _Y8})
-
-
-def _small_order(key: bytes) -> bool:
-    """True for a public key encoding a small-order point, canonically or not.
-    Such a key "verifies" signatures over any message, so it is refused, as
-    strict verification (RFC 8032 with a small-order check) does."""
-    y = int.from_bytes(key, "little") & ((1 << 255) - 1)
-    return y % _P25519 in _SMALL_ORDER_Y
-
-
 def _ed25519_verifies(key_hex: Any, sig_hex: Any, body: bytes) -> bool:
+    """Strict Ed25519 (:mod:`._ed25519_strict`): a small-order or
+    non-canonical key or R, or S >= L, never verifies."""
     if not _is_hex_of_len(key_hex, 32) or not _is_hex_of_len(sig_hex, 64):
         return False
-    if _small_order(bytes.fromhex(key_hex)):
-        return False
-    from cryptography.exceptions import InvalidSignature
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-
-    try:
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(key_hex)).verify(bytes.fromhex(sig_hex), body)
-    except (InvalidSignature, ValueError):
-        return False
-    return True
+    return verify_strict(bytes.fromhex(key_hex), body, bytes.fromhex(sig_hex))
 
 
 def verify_refusal_offline(refusal: Refusal) -> bool:
@@ -1388,8 +1410,15 @@ def compare_observations(observations: Iterable[tuple[str, bytes]]) -> str:
     return "holds" if len({bytes(artifact) for _, artifact in pairs}) <= 1 else "violated"
 
 
-_ABOUT_THE_REQUEST = frozenset(
-    {REASON_NOT_AUTHORIZED, REASON_COVERAGE_UNSATISFIABLE, REASON_DERIVATION_UNSUPPORTED, REASON_REQUEST_MALFORMED}
+_KEEPS_THE_PROMISE = frozenset(
+    {
+        REASON_NOT_AUTHORIZED,
+        REASON_COVERAGE_UNSATISFIABLE,
+        REASON_DERIVATION_UNSUPPORTED,
+        REASON_REQUEST_MALFORMED,
+        REASON_REQUEST_UNAUTHENTICATED,
+        REASON_CAPACITY_EXCEEDED,
+    }
 )
 
 
@@ -1397,8 +1426,9 @@ def classify_refusal(commitment: str, reason: str) -> str:
     """How a refusal with ``reason`` stands against a retention commitment (§9)
     that is ``"in_force"``, ``"lapsed"`` or ``"none"``.
 
-    Inside ``until`` only the four reasons about the request or the
-    responder's capability keep the promise (``"no_breach"``); any other is a
+    Inside ``until`` only the reasons about the request or the responder's
+    capability keep the promise (``"no_breach"``), and ``capacity_exceeded``
+    is never a breach (-02: flooding must not manufacture one); any other is a
     ``"breach"`` (A9). After it, ``retention_expired`` is ``"correct"``,
     ``no_such_subject`` the ``"wrong_token"`` (a lapsed promise must not read
     as never held), and the rest ``"no_breach"`` (A10).
@@ -1406,7 +1436,7 @@ def classify_refusal(commitment: str, reason: str) -> str:
     if commitment == "none":
         return "no_commitment"
     if commitment == "in_force":
-        return "no_breach" if reason in _ABOUT_THE_REQUEST else "breach"
+        return "no_breach" if reason in _KEEPS_THE_PROMISE else "breach"
     if commitment == "lapsed":
         if reason == REASON_RETENTION_EXPIRED:
             return "correct"
@@ -1436,3 +1466,146 @@ def commitment_well_formed(commitment: Any) -> bool:
     except RequestError:
         return False
     return subject.form in ("record", "exchange", "range")
+
+
+# --- unavailable-window statements (-02 §4.7) ------------------------------------------
+
+#: The closed list of reason classes (-02 §4.7). Not a registry: it changes
+#: only with a revision of the draft.
+UNAVAILABLE_REASON_CLASSES = ("flood", "maintenance", "outage", "other_declared")
+
+#: How a reader shows an absence a statement covers (-02 §4.7 item 1).
+UNAVAILABLE_SHOWN_AS = "no answer; holder states unavailability"
+
+#: The statement members the signature covers, in the vectors' profile: those
+#: of these present, in RFC 8785 form (-02 §4.7 item 3 leaves the format to
+#: the deployment; ``unavailable-window.json`` ``signature_profile``).
+UNAVAILABLE_SIGNED_MEMBERS = ("end", "reason_class", "start")
+
+
+@dataclass(frozen=True)
+class RegistrationReceipt:
+    """One receipt on a checkpoint whose coverage includes a statement: the
+    time it attests, and whether it comes from a transparency service the
+    reader accepts as independent of the responder. Which services a reader
+    accepts is reader policy; a service the responder operates or controls is
+    never one (-02 §4.7)."""
+
+    time: str
+    accepted: bool
+
+
+@dataclass(frozen=True)
+class StatementReading:
+    """Whether a reader recognizes an unavailable-window statement. When it
+    does, ``why`` is ``None`` and ``registration_time`` is the earliest time an
+    accepted receipt attests, as that receipt spells it (the first given, when
+    several attest that instant). When not, ``why`` is
+    ``"malformed"``, ``"not_signed_by_responder"`` or ``"not_registered"``, and
+    the reader treats the statement as if it did not exist."""
+
+    recognized: bool
+    why: str | None = None
+    registration_time: str | None = None
+
+
+def recognize_unavailable_window(statement: Any, receipts: Iterable[RegistrationReceipt],
+                                 responder_key: str) -> StatementReading:
+    """Read one unavailable-window statement (-02 §4.7) as a reader holding
+    ``receipts`` for it, for the responder whose key is ``responder_key``
+    (lowercase hex of the raw Ed25519 key a response would be authenticated
+    by).
+
+    It is malformed unless ``reason_class`` is one of
+    :data:`UNAVAILABLE_REASON_CLASSES` exactly and ``start`` and ``end`` are
+    RFC 3339 UTC times with ``end`` not earlier than ``start``. It is signed
+    by the responder when ``key_id`` is ``responder_key`` and ``sig`` is a
+    strict Ed25519 signature under it over :data:`UNAVAILABLE_SIGNED_MEMBERS`.
+    It is registered when at least one accepted receipt attests a time. Other
+    members are ignored and are never the reason. Needs the ``cryptography``
+    package (the ``envelope`` extra)."""
+    if not isinstance(statement, Mapping):
+        return StatementReading(False, "malformed")
+    start, end = parse_utc(statement.get("start")), parse_utc(statement.get("end"))
+    reason_class = statement.get("reason_class")
+    if (not isinstance(reason_class, str) or reason_class not in UNAVAILABLE_REASON_CLASSES or start is None
+            or end is None or end < start):
+        return StatementReading(False, "malformed")
+    key_id, sig = statement.get("key_id"), statement.get("sig")
+    if key_id != responder_key or not _is_hex_of_len(key_id, 32) or not _is_hex_of_len(sig, 64):
+        return StatementReading(False, "not_signed_by_responder")
+    body = jcs({k: statement[k] for k in UNAVAILABLE_SIGNED_MEMBERS if k in statement})
+    if not _ed25519_strict.verify_strict(bytes.fromhex(key_id), body, bytes.fromhex(sig)):
+        return StatementReading(False, "not_signed_by_responder")
+    attested = [(parse_utc(r.time), r.time) for r in receipts if r.accepted]
+    attested = [(instant, text) for instant, text in attested if instant is not None]
+    if not attested:
+        return StatementReading(False, "not_registered")
+    # On a tie the first receipt given wins, as in the Go and Rust readers.
+    return StatementReading(True, registration_time=min(attested, key=lambda a: a[0])[1])
+
+
+@dataclass(frozen=True)
+class StatementLabel:
+    """What a reader shows for one statement covering an absence (-02 §4.7
+    items 1 to 3): its reason class, its stated period from ``start`` to
+    ``end``, its registration time, and whether that time is later than the
+    close of the absence's waiting window ("stated afterwards"). It is the
+    responder's own statement, never proof that it was attacked or flooded."""
+
+    reason_class: str
+    registration_time: str
+    stated_afterwards: bool
+    stated_period: tuple[str, str]
+
+
+@dataclass(frozen=True)
+class AbsenceDisplay:
+    """How a reader shows a recorded state beside the statements it holds.
+    ``covered_by`` lists the ids of the covering statements in the order
+    given, and ``labels`` maps each to its :class:`StatementLabel`."""
+
+    state: str
+    shown_as: str
+    covered_by: tuple[str, ...]
+    labels: Mapping[str, StatementLabel]
+
+
+def display_absence(state: str, statements: Iterable[tuple[str, Any, Iterable[RegistrationReceipt]]], *,
+                    responder_key: str, sent_at: str | None = None,
+                    closed_at: str | None = None) -> AbsenceDisplay:
+    """How a reader shows the request recorded as ``state`` (a
+    :func:`record_outcome` state) beside ``statements``, each an ``(id,
+    statement, receipts)`` triple with distinct ids (-02 §4.7).
+
+    Only a ``"recorded_absence"`` can be covered: any other state, a refusal
+    or a pending request among them, is shown as itself and no statement
+    covers it. For an absence, ``sent_at`` and ``closed_at`` are its waiting
+    window, RFC 3339 UTC times (:class:`ValueError` otherwise). A statement
+    covers it when :func:`recognize_unavailable_window` recognizes it for
+    ``responder_key`` and its period, both ends included, shares an instant
+    with the window, both ends included. A covered absence is shown as
+    :data:`UNAVAILABLE_SHOWN_AS` with a label per covering statement; one with
+    no covering statement as ``"recorded_absence"``. The absence record and
+    its retention classification (:func:`classify_absence`) are unchanged."""
+    if state != "recorded_absence":
+        return AbsenceDisplay(state, state, (), {})
+    opened, closed = parse_utc(sent_at), parse_utc(closed_at)
+    if opened is None or closed is None:
+        raise ValueError("a recorded absence needs sent_at and closed_at as RFC 3339 UTC times")
+    covered_by, labels = [], {}
+    for statement_id, statement, receipts in statements:
+        reading = recognize_unavailable_window(statement, receipts, responder_key)
+        if not reading.recognized:
+            continue
+        if parse_utc(statement["start"]) > closed or parse_utc(statement["end"]) < opened:
+            continue
+        covered_by.append(statement_id)
+        labels[statement_id] = StatementLabel(
+            reason_class=statement["reason_class"],
+            registration_time=reading.registration_time,
+            stated_afterwards=parse_utc(reading.registration_time) > closed,
+            stated_period=(statement["start"], statement["end"]),
+        )
+    shown_as = UNAVAILABLE_SHOWN_AS if covered_by else "recorded_absence"
+    return AbsenceDisplay(state, shown_as, tuple(covered_by), labels)

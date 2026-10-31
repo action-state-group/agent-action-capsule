@@ -3,7 +3,6 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   buildEvidenceGraph,
-  calibrationCount,
   EvidenceGraphError,
   recordTimes,
   zoneStatement,
@@ -163,7 +162,7 @@ describe("buildEvidenceGraph", () => {
     ).toEqual([]);
   });
 
-  it("maps disclosed calibration fields without confusing agreement and period window", async () => {
+  it("reads a disclosed calibration-summary/v1 record as its schema defines it", async () => {
     const { bundle } = await sealEvidenceBundle(
       (await fixture("week-bundle-calibration.json")) as Record<
         string,
@@ -173,37 +172,114 @@ describe("buildEvidenceGraph", () => {
     const graph = await buildEvidenceGraph(bundle);
     expect(graph.calibration).toEqual({
       capsuleId: expect.any(String),
-      confusion: { pass_pass: 2, fail_fail: 1, pass_fail: 1 },
-      agreement: { k: 3, n: 4 },
-      correctedRate: { k: 4, n: 5 },
-      periodWindow: { start: "2026-09-14", end: "2026-09-20" },
+      matchesSchema: true,
+      summary: {
+        recordId: "cal-example-org-2026-W38",
+        computedAt: "2026-09-21T00:00:00Z",
+        judgePin: {
+          type: "judge-pin",
+          digest:
+            "90b5b2951e3aaf6f864f3dd6d8e13ccef113569ff0c14000f47bce9249c6a935",
+        },
+        clauses: [
+          {
+            clauseRef: "task.resolved",
+            agreement: { k: 3, n: 4 },
+            drift: { k: 0, n: 4 },
+          },
+        ],
+      },
     });
     // no rate, no float, no decimal string anywhere in the calibration node
     expect(JSON.stringify(graph.calibration)).not.toMatch(/0\.\d/u);
   });
 
-  it("keeps a calibration figure stated only as a rate, as given, without k and n", async () => {
-    const source = (await fixture("week-bundle-calibration.json")) as {
-      disclosures: Record<string, { agent_input: Record<string, unknown> }>;
-    };
-    // a producer that states a rate (as a string -- the JCS profile could
-    // not have sealed a float) and a k/n object with a non-integer member
-    source.disclosures.calibration!.agent_input.agreement = "0.75";
-    source.disclosures.calibration!.agent_input.corrected_rate = {
-      k: "4",
-      n: 5,
-    };
+  type CalibrationSource = {
+    disclosures: Record<string, { agent_input: Record<string, unknown> }>;
+  };
+  const calibrationOf = async (
+    mutate: (summary: Record<string, unknown>) => void,
+  ) => {
+    const source = (await fixture(
+      "week-bundle-calibration.json",
+    )) as CalibrationSource;
+    mutate(source.disclosures.calibration!.agent_input);
     const { bundle } = await sealEvidenceBundle(
       source as unknown as Record<string, unknown>,
     );
-    const graph = await buildEvidenceGraph(bundle);
-    expect(graph.calibration?.agreement).toEqual({ rate: "0.75" });
-    expect(graph.calibration?.correctedRate).toEqual({
-      rate: { k: "4", n: 5 },
+    return (await buildEvidenceGraph(bundle)).calibration;
+  };
+
+  it.each([
+    [
+      "a stored rate member",
+      (summary: Record<string, unknown>) => {
+        summary.corrected_rate = { k: 4, n: 5 };
+      },
+    ],
+    [
+      "a rate inside a count",
+      (summary: Record<string, unknown>) => {
+        (summary.clauses as Record<string, unknown>[])[0]!.agreement = {
+          k: 3,
+          n: 4,
+          rate: "0.75",
+        };
+      },
+    ],
+    [
+      "k greater than n",
+      (summary: Record<string, unknown>) => {
+        (summary.clauses as Record<string, unknown>[])[0]!.drift = {
+          k: 5,
+          n: 4,
+        };
+      },
+    ],
+    [
+      "a count that is not an integer",
+      (summary: Record<string, unknown>) => {
+        (summary.clauses as Record<string, unknown>[])[0]!.agreement = {
+          k: "3",
+          n: 4,
+        };
+      },
+    ],
+    [
+      "a missing judge_pin",
+      (summary: Record<string, unknown>) => {
+        delete summary.judge_pin;
+      },
+    ],
+    [
+      "an empty clauses list",
+      (summary: Record<string, unknown>) => {
+        summary.clauses = [];
+      },
+    ],
+  ])(
+    "reads a calibration-summary/v1 record with %s as not matching, and reads none of it",
+    async (_name, mutate) => {
+      const calibration = await calibrationOf(mutate);
+      expect(calibration).toEqual({
+        capsuleId: expect.any(String),
+        matchesSchema: false,
+      });
+    },
+  );
+
+  it("does not read the retired shape (spec_version, confusion, corrected_rate, period_window) as a calibration summary", async () => {
+    const calibration = await calibrationOf((summary) => {
+      for (const key of Object.keys(summary)) delete summary[key];
+      Object.assign(summary, {
+        spec_version: "calibration-summary/v1",
+        confusion: { pass_pass: 2, fail_fail: 1, pass_fail: 1 },
+        agreement: { k: 3, n: 4 },
+        corrected_rate: { k: 4, n: 5 },
+        period_window: { start: "2026-09-14", end: "2026-09-20" },
+      });
     });
-    expect(calibrationCount({ k: 5, n: 4 })).toEqual({ rate: { k: 5, n: 4 } });
-    expect(calibrationCount({ k: 0, n: 0 })).toEqual({ k: 0, n: 0 });
-    expect(calibrationCount(undefined)).toBeUndefined();
+    expect(calibration).toBeUndefined();
   });
 });
 

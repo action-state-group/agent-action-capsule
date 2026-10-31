@@ -134,7 +134,7 @@
     "producer_record": "members claim, issued_at, producer, sig; sig is Ed25519 by producer over UTF-8 of JCS of the other members; the producer is its issuer (§11.2.3)",
     "record_digest": "SHA-256 over UTF-8 of JCS of the whole object, sig included"
   },
-  "count": 53,
+  "count": 55,
   "cases": [
     {
       "id": "valid-exchange",
@@ -3538,6 +3538,206 @@
       }
     },
     {
+      "id": "acceptance-equal-time-H",
+      "description": "§11.1.5 rule 2 at the boundary: the accepted record's issued_at equals the action time at the precision held, as when a producer holds times to the minute. Equal times do not order the two, so rule 2 does not apply; the proposer's receipt at that same time is not earlier: INCONCLUSIVE.",
+      "cites": [
+        "§11.1.1",
+        "§11.1.2",
+        "§11.1.4",
+        "§11.1.5",
+        "§11.1.7",
+        "§11.1.8",
+        "§11.1.9"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {
+            "4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6": "party-proposer",
+            "c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415": "party-acceptor"
+          },
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "transaction": {
+          "scheme": "example",
+          "id": "T"
+        },
+        "proposer": "4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6",
+        "acceptor": "c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415",
+        "acceptance_records": [
+          "{\"acceptor\":\"c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415\",\"contract_digest\":\"6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:00:00Z\",\"profile\":\"evidence-interop/0\",\"proposer\":\"4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6\",\"sig\":\"fe7bdc93e1cce442b7a31789bd6a70638338578503e8ca597b99ba0fc8e45aa8acbbc07faf09f157ba105ec0e943fef0945a8d80e2e13bef241fa00313d8ed06\",\"state\":\"proposed\",\"transaction\":{\"id\":\"T\",\"scheme\":\"example\"}}",
+          "{\"acceptor\":\"c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415\",\"contract_digest\":\"6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:10:00Z\",\"profile\":\"evidence-interop/0\",\"proposal_digest\":\"c40b0e4d844f33f0ab3a98ea5dc21ed3594bef3b8d38483adaa33f452b282fca\",\"proposer\":\"4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6\",\"sig\":\"995e788cca3856a04415c1edd27f233a0ca54b921ae65cc4704e2324871441f297a4e9c5b9b3f79186f8887107c572565097103662aa8612f99ecc3895c10f04\",\"state\":\"accepted\",\"transaction\":{\"id\":\"T\",\"scheme\":\"example\"}}"
+        ],
+        "execution_records": [
+          "{\"action_at\":\"2026-10-12T00:10:00Z\",\"issuer\":\"c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415\",\"links\":[{\"target\":\"ec78923f78df433a6698689da7cc822b357a07fa59f8bbfb889e9c52219d4944\",\"type\":\"cites\"}],\"sig\":\"4f211afed1eb7ca0bfec7a54e289534fdcb59d8f7c78cebbc8a921f18810ef9104e2876d4c6a9ae0e5ff9fc283e585d1cf058e1b0b1123e5db1e4d9ca3c56408\",\"transaction\":{\"id\":\"T\",\"scheme\":\"example\"}}"
+        ],
+        "acceptance_receipts": [
+          "{\"acceptance_digest\":\"ec78923f78df433a6698689da7cc822b357a07fa59f8bbfb889e9c52219d4944\",\"profile\":\"evidence-interop/0\",\"received_at\":\"2026-10-12T00:10:00Z\",\"receiver\":\"4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6\",\"sig\":\"77e76af9ae9abf49130e4dcb3718b76f9ef7cdcfc6d181c52755550d9e4ba461b2568169038020e080125b45abe34446fd5c7ce944ee322e35b15318644b760d\"}"
+        ]
+      },
+      "expected": {
+        "finding": "accepted_execution_cites",
+        "candidates": [
+          {
+            "record_digest": "ec78923f78df433a6698689da7cc822b357a07fa59f8bbfb889e9c52219d4944",
+            "properties": {
+              "acceptance_form": "PASS",
+              "acceptance_signature": "PASS",
+              "acceptance_signer_trust": "PASS",
+              "acceptance_binding": "PASS",
+              "proposal_binding": "PASS",
+              "acceptance_unique": "NOT_CHECKED",
+              "execution_cites_acceptance": "PASS",
+              "acceptance_ordering": "INCONCLUSIVE"
+            }
+          }
+        ],
+        "receipts": [
+          {
+            "receipt_digest": "f05a8863d8e7ebc4e25b1a26876fed919f259e08a474be06d0be6aee14a70a14",
+            "properties": {
+              "receipt_signature": "PASS",
+              "receipt_signer": "PASS"
+            }
+          }
+        ],
+        "claim": {
+          "contract_ref": "C@1",
+          "evidence_includes": [
+            {
+              "digest_alg": "SHA-256",
+              "digest": "ec78923f78df433a6698689da7cc822b357a07fa59f8bbfb889e9c52219d4944"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "acceptance-after-action-by-a-second-I",
+      "description": "§11.1.5 rule 2 at the boundary: the accepted record's issued_at is one second after the action time: acceptance_ordering FAIL, accepted_after_action.",
+      "cites": [
+        "§11.1.1",
+        "§11.1.2",
+        "§11.1.4",
+        "§11.1.5",
+        "§11.1.7",
+        "§11.1.8",
+        "§11.1.9"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {
+            "4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6": "party-proposer",
+            "c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415": "party-acceptor"
+          },
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/0"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "transaction": {
+          "scheme": "example",
+          "id": "T"
+        },
+        "proposer": "4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6",
+        "acceptor": "c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415",
+        "acceptance_records": [
+          "{\"acceptor\":\"c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415\",\"contract_digest\":\"6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:00:00Z\",\"profile\":\"evidence-interop/0\",\"proposer\":\"4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6\",\"sig\":\"fe7bdc93e1cce442b7a31789bd6a70638338578503e8ca597b99ba0fc8e45aa8acbbc07faf09f157ba105ec0e943fef0945a8d80e2e13bef241fa00313d8ed06\",\"state\":\"proposed\",\"transaction\":{\"id\":\"T\",\"scheme\":\"example\"}}",
+          "{\"acceptor\":\"c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415\",\"contract_digest\":\"6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561\",\"contract_ref\":\"C@1\",\"issued_at\":\"2026-10-12T00:10:01Z\",\"profile\":\"evidence-interop/0\",\"proposal_digest\":\"c40b0e4d844f33f0ab3a98ea5dc21ed3594bef3b8d38483adaa33f452b282fca\",\"proposer\":\"4d07edfe7a7f129b7761d232b3a92db1aae3b5b8641faa275e63126fbe40caa6\",\"sig\":\"2b8409ae8de3f843145ba322365fa8ce219893f26ae15b755d819609bcf77d990738eb191d3dad6f9b1638e1602990f68e29bbb4a3067570f6cf69c615748b03\",\"state\":\"accepted\",\"transaction\":{\"id\":\"T\",\"scheme\":\"example\"}}"
+        ],
+        "execution_records": [
+          "{\"action_at\":\"2026-10-12T00:10:00Z\",\"issuer\":\"c081a4d45df35cf57352fe0327bc88d7e49ba1ef8e9138b8a1e2cfd52e49a415\",\"links\":[{\"target\":\"3281920a344a7a132b3efc3d09f7f5a12809fb99e2c2c478b507d57c531b1b24\",\"type\":\"cites\"}],\"sig\":\"809ca5b7cdc8bfba20bd6707b728fa5786c392fa2922a8cbdcd27a6d02cef0756c7eaba3455de0ca31ed418398e349ed3ca17a53bdd56fe674fb3fef71df8703\",\"transaction\":{\"id\":\"T\",\"scheme\":\"example\"}}"
+        ],
+        "acceptance_receipts": []
+      },
+      "expected": {
+        "finding": "accepted_after_action",
+        "candidates": [
+          {
+            "record_digest": "3281920a344a7a132b3efc3d09f7f5a12809fb99e2c2c478b507d57c531b1b24",
+            "properties": {
+              "acceptance_form": "PASS",
+              "acceptance_signature": "PASS",
+              "acceptance_signer_trust": "PASS",
+              "acceptance_binding": "PASS",
+              "proposal_binding": "PASS",
+              "acceptance_unique": "NOT_CHECKED",
+              "execution_cites_acceptance": "PASS",
+              "acceptance_ordering": "FAIL"
+            }
+          }
+        ],
+        "receipts": [],
+        "claim": {
+          "contract_ref": "C@1",
+          "evidence_includes": [
+            {
+              "digest_alg": "SHA-256",
+              "digest": "3281920a344a7a132b3efc3d09f7f5a12809fb99e2c2c478b507d57c531b1b24"
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "acceptance-backdated-G-policy-requires-other-party",
       "description": "§11.1.9 G under a trust policy requiring a time for the action from a party other than the acceptor: none is held, so acceptance_ordering is NOT_PRESENT (§11.1.5 rule 3).",
       "cites": [
@@ -4766,7 +4966,7 @@
                 "mcp"
               ],
               "drafts": [
-                "draft-mih-agent-evidence-request-00"
+                "draft-mih-agent-evidence-request-01"
               ],
               "profiles": [
                 "evidence-interop/0"
@@ -4787,7 +4987,7 @@
                 "mcp"
               ],
               "drafts": [
-                "draft-mih-agent-evidence-request-00"
+                "draft-mih-agent-evidence-request-01"
               ],
               "profiles": [
                 "evidence-interop/0"
@@ -6050,7 +6250,7 @@
                 "mcp"
               ],
               "drafts": [
-                "draft-mih-agent-evidence-request-00"
+                "draft-mih-agent-evidence-request-01"
               ],
               "profiles": [
                 "evidence-interop/0"
@@ -6072,7 +6272,7 @@
                 "mcp"
               ],
               "drafts": [
-                "draft-mih-agent-evidence-request-00"
+                "draft-mih-agent-evidence-request-01"
               ],
               "profiles": [
                 "evidence-interop/0"
