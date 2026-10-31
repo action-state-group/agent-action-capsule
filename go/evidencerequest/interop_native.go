@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 )
 
 const jwsMethod = "JWS compact serialization (RFC 7515), EdDSA (RFC 8037), under the key its kid names"
@@ -61,7 +63,7 @@ func CheckJWSEdDSA(object any, trust TrustPolicy, evaluationTime string) Propert
 		return result(StatusInconclusive, "the trust policy cannot resolve the key's status")
 	}
 	key, _ := hex.DecodeString(kid)
-	if len(signature) != ed25519.SignatureSize || !ed25519.Verify(key, []byte(parts[0]+"."+parts[1]), signature) {
+	if len(signature) != ed25519.SignatureSize || !ed25519strict.Verify(key, []byte(parts[0]+"."+parts[1]), signature) {
 		return result(StatusFail, "the signature does not verify")
 	}
 	return result(StatusPass, "")

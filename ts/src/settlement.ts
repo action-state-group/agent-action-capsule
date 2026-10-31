@@ -14,6 +14,7 @@
 // the legs by `terms_ref` and derives the draft's payment and delivery states.
 // Amounts are compared exactly, as decimal digit strings. WebCrypto only.
 
+import { verifyEd25519Strict } from "./ed25519-strict.js";
 import { JsonNumber, sha256Hex, type ParsedJson } from "./json.js";
 import { verifyProducerEnvelope } from "./producer-envelope-verification.js";
 import { verifyClass1 } from "./verify.js";
@@ -499,7 +500,7 @@ const ascii = (bytes: Uint8Array): string => {
 };
 
 /** Whether `octets` is a JWS compact object whose Ed25519 signature
- * verifies under `publicHex`. An SD-JWT is the issuer-signed JWS, then "~"
+ * verifies, strictly, under `publicHex`. An SD-JWT is the issuer-signed JWS, then "~"
  * and any disclosures: only the part before the first "~" is signed. */
 async function jwsVerifies(
   octets: Uint8Array,
@@ -510,19 +511,10 @@ async function jwsVerifies(
   const dots = [...text.keys()].filter((i) => text[i] === 0x2e);
   if (dots.length !== 2) return false;
   try {
-    const subtle = globalThis.crypto.subtle;
-    const key = await subtle.importKey(
-      "raw",
-      fromHex(publicHex) as BufferSource,
-      { name: "Ed25519" },
-      false,
-      ["verify"],
-    );
-    return await subtle.verify(
-      { name: "Ed25519" },
-      key,
-      b64u(ascii(text.subarray(dots[1]! + 1))) as BufferSource,
-      text.subarray(0, dots[1]) as BufferSource,
+    return await verifyEd25519Strict(
+      fromHex(publicHex),
+      b64u(ascii(text.subarray(dots[1]! + 1))),
+      text.subarray(0, dots[1]),
     );
   } catch {
     return false;

@@ -16,6 +16,21 @@ Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their o
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Security, strict Ed25519 on every trusted-key path: each Ed25519 check under a pinned,
+  registered or trusted key now uses the strict rule of #447 (A and R canonical and not of small
+  order, S < L, then the cofactorless check), so a small-order key no longer verifies a forgery
+  over any message. Go: the interop profile's envelope, refusal and acceptance signatures, the
+  CLL checkpoint (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`) and the
+  settlement `wrapped_resigned` check; the strict helper moves from `witness` to
+  `internal/ed25519strict`. Python: `interop_profile` (every signature it checks),
+  `evidence_request` (which already refused a small-order key, and now also a small-order or
+  non-canonical R and S >= L), the settlement `wrapped_resigned` check and `verify --transparent`
+  (the Signed Statement under the issuer key and each receipt under the log key); the helper
+  moves from `witness` to `agent_action_capsule._ed25519_strict`. TypeScript: the settlement
+  `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on the runtime's
+  WebCrypto for this; the helper moves from `cose-receipt.ts` to `ed25519-strict.ts`. Honest
+  signatures verify as before. The producer envelope and Go's Evidence Request -00
+  `VerifySignature` stay with #322. (#448)
 - **Breaking**, TypeScript (the next ts minor, 0.11.0): the two calibration readers read
   `calibration-summary/v1` as `schemas/judge/calibration-summary-v1.json` defines it, and the cited
   per-case ratings as `schemas/judge/human-rating-v1.json` does (AAC#446). New module

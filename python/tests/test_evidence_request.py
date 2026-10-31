@@ -592,7 +592,21 @@ def test_a_small_order_key_never_verifies():
                "key_id": key, "sig": "01" + "00" * 63}
         assert check_refusal(obj) == er.RefusalCheck(False, True, False), key
         assert not verify_refusal_offline(Refusal(**obj))
-    assert not er._small_order(bytes.fromhex(PRIMARY.key_id))
+    honest = sign_refusal("ab" * 32, REASON_NO_SUCH_SUBJECT, signer=PRIMARY, issued_at=NOW)
+    assert verify_refusal_offline(honest)
+
+
+def test_a_non_canonical_r_never_verifies():
+    """Strict Ed25519 refuses an R whose y is not reduced (y >= p), here
+    y = p + 2, under the refusal's own honest key."""
+    honest = sign_refusal("ab" * 32, REASON_NO_SUCH_SUBJECT, signer=PRIMARY, issued_at=NOW)
+    non_canonical_r = "ef" + "ff" * 30 + "7f"
+    forged = Refusal(request_digest=honest.request_digest, reason=honest.reason, issued_at=honest.issued_at,
+                     key_id=honest.key_id, sig=non_canonical_r + honest.sig[64:])
+    assert not verify_refusal_offline(forged)
+    obj = {"request_digest": forged.request_digest, "reason": forged.reason, "issued_at": forged.issued_at,
+           "key_id": forged.key_id, "sig": forged.sig}
+    assert not check_refusal(obj).signature_valid
 
 
 def test_a_refusal_member_with_no_canonical_form_is_unsigned_not_a_crash():

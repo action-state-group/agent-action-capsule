@@ -28,7 +28,7 @@
 use crate::envelope;
 use crate::verify::{self, is_hex64};
 use base64::Engine as _;
-use ed25519_dalek::{Signature, Verifier as _, VerifyingKey};
+use ed25519_dalek::{Signature, VerifyingKey};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -757,8 +757,8 @@ fn envelope_key(capsule: &Map<String, Value>, cid: &str) -> Option<String> {
     result.ok.then(|| hex::encode(result.public_key))
 }
 
-/// Whether `octets` are a JWS in compact form whose EdDSA signature verifies
-/// under the raw Ed25519 key `public_hex`. An SD-JWT is the issuer-signed JWS,
+/// Whether `octets` are a JWS in compact form whose EdDSA signature verifies,
+/// under dalek's `verify_strict`, under the raw Ed25519 key `public_hex`. An SD-JWT is the issuer-signed JWS,
 /// then `~` and any disclosures: only the part before the first `~` is signed.
 fn jws_verifies(octets: &[u8], public_hex: &str) -> bool {
     let issuer = octets.split(|b| *b == b'~').next().unwrap_or_default();
@@ -780,7 +780,8 @@ fn jws_verifies(octets: &[u8], public_hex: &str) -> bool {
         None => return false,
     };
     let signing_input = [parts[0], b".", parts[1]].concat();
-    VerifyingKey::from_bytes(&key).is_ok_and(|k| k.verify(&signing_input, &signature).is_ok())
+    VerifyingKey::from_bytes(&key)
+        .is_ok_and(|k| k.verify_strict(&signing_input, &signature).is_ok())
 }
 
 fn wrapped_entries(s: &Map<String, Value>) -> impl Iterator<Item = &Map<String, Value>> {
@@ -1927,5 +1928,40 @@ mod tests {
         assert!(!jws_verifies(input.as_bytes(), &public));
         let other = hex::encode(SigningKey::from_bytes(&[8; 32]).verifying_key().to_bytes());
         assert!(!jws_verifies(jws.as_bytes(), &other));
+    }
+
+    /// `wrapped_resigned` asks whether a wrapped JWS verifies under the leg
+    /// key, strictly: the identity key's forgery (R the identity, S = 0),
+    /// which dalek's `verify` accepts over any message, and a non-canonical R
+    /// do not count as a signature by that key.
+    #[test]
+    fn jws_signatures_verify_strictly() {
+        use ed25519_dalek::{Signer, SigningKey, Verifier as _};
+        let input = "eyJhbGciOiJFZERTQSJ9.eyJhIjoxfQ";
+        let mut identity = [0u8; 32];
+        identity[0] = 1;
+        let mut forged = [0u8; 64];
+        forged[0] = 1;
+        assert!(VerifyingKey::from_bytes(&identity)
+            .unwrap()
+            .verify(input.as_bytes(), &Signature::from_bytes(&forged))
+            .is_ok());
+        let jws = format!("{input}.{}", B64URL.encode(forged));
+        assert!(!jws_verifies(jws.as_bytes(), &hex::encode(identity)));
+
+        let key = SigningKey::from_bytes(&[9; 32]);
+        let mut signature = key.sign(input.as_bytes()).to_bytes();
+        let public = hex::encode(key.verifying_key().to_bytes());
+        assert!(jws_verifies(
+            format!("{input}.{}", B64URL.encode(signature)).as_bytes(),
+            &public
+        ));
+        signature[0] = 0xef;
+        signature[1..31].fill(0xff);
+        signature[31] = 0x7f;
+        assert!(!jws_verifies(
+            format!("{input}.{}", B64URL.encode(signature)).as_bytes(),
+            &public
+        ));
     }
 }

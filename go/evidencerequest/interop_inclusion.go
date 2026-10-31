@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 )
 
 // anchor_inclusion for Checkpointed Local Log material (profile §6.2.1,
@@ -300,7 +302,7 @@ func checkAnchorInclusion(env map[string]any, material [][]byte, prerequisites m
 		return inclusionReport(StatusInconclusive, "step 9: the trust policy cannot resolve the log key's status")
 	}
 	// Step 10.
-	if len(cp.signature) != ed25519.SignatureSize || !ed25519.Verify(kid, sigStructure(cp.protected, cp.payload), cp.signature) {
+	if len(cp.signature) != ed25519.SignatureSize || !ed25519strict.Verify(kid, sigStructure(cp.protected, cp.payload), cp.signature) {
 		return inclusionReport(StatusFail, "step 10: the checkpoint's COSE_Sign1 signature does not verify")
 	}
 	// Step 11.

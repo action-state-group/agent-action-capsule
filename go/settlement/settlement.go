@@ -33,6 +33,7 @@ import (
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/envelope"
+	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 	"github.com/action-state-group/agent-action-capsule/go/verify"
 )
 
@@ -636,7 +637,7 @@ func b64urlDecode(value interface{}) ([]byte, error) {
 var errNotBase64URL = errors.New("not unpadded base64url")
 
 // jwsVerifies reports whether octets are a compact JWS whose Ed25519
-// signature verifies under the hex key. An SD-JWT is the issuer-signed JWS,
+// signature verifies, strictly, under the hex key. An SD-JWT is the issuer-signed JWS,
 // then "~" and any disclosures: only the part before the first "~" is signed.
 func jwsVerifies(octets []byte, publicHex string) bool {
 	issuer, _, _ := bytes.Cut(octets, []byte("~"))
@@ -653,7 +654,7 @@ func jwsVerifies(octets []byte, publicHex string) bool {
 		return false
 	}
 	signed := append(append(append([]byte(nil), parts[0]...), '.'), parts[1]...)
-	return ed25519.Verify(ed25519.PublicKey(key), signed, signature)
+	return ed25519strict.Verify(ed25519.PublicKey(key), signed, signature)
 }
 
 // x402Scheme is the x402 scheme, from the first wrapped offer or payment

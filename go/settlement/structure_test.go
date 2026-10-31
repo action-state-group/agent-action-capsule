@@ -275,6 +275,29 @@ func TestUTCTimesNameARealInstant(t *testing.T) {
 	}
 }
 
+// The wrapped_resigned check verifies a wrapped JWS under the leg key with
+// strict Ed25519: the identity key's forgery (R the identity, S = 0), which
+// ed25519.Verify accepts over any message, and a non-canonical R do not count
+// as a signature by that key.
+func TestJWSVerifiesIsStrict(t *testing.T) {
+	b64 := base64.RawURLEncoding.EncodeToString
+	signingInput := b64([]byte(`{"alg":"EdDSA"}`)) + "." + b64([]byte(`{}`))
+	compact := func(signature []byte) []byte { return []byte(signingInput + "." + b64(signature)) }
+
+	identity := append([]byte{1}, make([]byte, 31)...)
+	forged := append(append([]byte(nil), identity...), make([]byte, 32)...)
+	require.True(t, ed25519.Verify(identity, []byte(signingInput), forged))
+	require.False(t, jwsVerifies(compact(forged), hex.EncodeToString(identity)))
+
+	_, private, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	keyHex := hex.EncodeToString(private.Public().(ed25519.PublicKey))
+	signature := ed25519.Sign(private, []byte(signingInput))
+	require.True(t, jwsVerifies(compact(signature), keyHex))
+	nonCanonicalR := append(append([]byte{0xef}, []byte(strings.Repeat("\xff", 30))...), 0x7f)
+	require.False(t, jwsVerifies(compact(append(nonCanonicalR, signature[32:]...)), keyHex))
+}
+
 func TestEnvelopeSignatureIsHexPairs(t *testing.T) {
 	for _, bad := range []interface{}{"", " d2", "d2 84", "d", "zz", json.Number("1"), nil} {
 		require.Empty(t, envelopeKey(map[string]interface{}{"signature": bad}, hex64("0")), bad)
