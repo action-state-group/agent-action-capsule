@@ -182,71 +182,92 @@ pub struct Declaration {
     pub max_age: u64,
 }
 
-/// Why [`parse_declaration`] refused a declaration. A declaration that does
-/// not parse does not count (CB §5.1).
+/// Why a declaration is not in its form (CB §5.1). A declaration that is
+/// not does not count, and the list's entries are still read.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum DeclarationError {
-    #[error("a declaration is not readable JSON")]
+    #[error("the declaration is not one JSON value")]
     NotJson,
-    #[error("a declaration is a JSON object with exactly profile, asserted_by, binding, list_digest, as_of and max_age")]
+    #[error("the declaration is not a JSON object")]
+    NotObject,
+    #[error("the declaration does not have exactly profile, asserted_by, binding, list_digest, as_of and max_age")]
     Members,
     #[error("profile or asserted_by is not a text string")]
     Text,
     #[error("binding or list_digest is not 64 lowercase hex characters")]
     Digest,
-    #[error("as_of is not a time in the profile's form")]
+    #[error("as_of is not a time")]
     Time,
     #[error("max_age is not an integer from 0 to 2^53 - 1")]
     MaxAge,
 }
 
-/// Read a declaration (CB §5.1) from its JSON object: exactly the six
-/// members, each in its form.
+/// Read a declaration (CB §5.1) from its JSON object as received: exactly
+/// the six members, each in its form.
 pub fn parse_declaration(octets: &[u8]) -> Result<Declaration, DeclarationError> {
-    let value = decode_json_numbers(octets).ok_or(DeclarationError::NotJson)?;
-    let m = value.as_object().ok_or(DeclarationError::Members)?;
-    if !has_members(m, &DECLARATION_MEMBERS) {
-        return Err(DeclarationError::Members);
-    }
-    let text = |name: &str| m[name].as_str().map(str::to_owned);
-    let (Some(profile), Some(asserted_by)) = (text("profile"), text("asserted_by")) else {
-        return Err(DeclarationError::Text);
-    };
-    let declaration = Declaration {
-        profile,
-        asserted_by,
-        binding: text("binding").ok_or(DeclarationError::Digest)?,
-        list_digest: text("list_digest").ok_or(DeclarationError::Digest)?,
-        as_of: text("as_of").ok_or(DeclarationError::Time)?,
-        max_age: m["max_age"].as_u64().ok_or(DeclarationError::MaxAge)?,
-    };
-    declaration.check()?;
-    Ok(declaration)
+    let (declaration, form) = read_declaration(octets);
+    form.map(|()| declaration)
 }
 
-impl Declaration {
-    fn check(&self) -> Result<(), DeclarationError> {
-        if !is_digest(&self.binding) || !is_digest(&self.list_digest) {
-            return Err(DeclarationError::Digest);
-        }
-        if !is_profile_time(&self.as_of) {
-            return Err(DeclarationError::Time);
-        }
-        if self.max_age > MAX_INTEGER {
-            return Err(DeclarationError::MaxAge);
-        }
-        Ok(())
+/// The declaration, and whether it is in its form. When it is not, the
+/// declaration still holds `profile`, `asserted_by` and `as_of` where each
+/// is a text string, so it can be reported as delivered.
+fn read_declaration(octets: &[u8]) -> (Declaration, Result<(), DeclarationError>) {
+    let mut d = Declaration {
+        profile: String::new(),
+        asserted_by: String::new(),
+        binding: String::new(),
+        list_digest: String::new(),
+        as_of: String::new(),
+        max_age: 0,
+    };
+    let Some(value) = decode_json_numbers(octets) else {
+        return (d, Err(DeclarationError::NotJson));
+    };
+    let Some(m) = value.as_object() else {
+        return (d, Err(DeclarationError::NotObject));
+    };
+    let text = |name: &str| m.get(name).and_then(Value::as_str).map(str::to_owned);
+    d.profile = text("profile").unwrap_or_default();
+    d.asserted_by = text("asserted_by").unwrap_or_default();
+    d.as_of = text("as_of").unwrap_or_default();
+    if !has_members(m, &DECLARATION_MEMBERS) {
+        return (d, Err(DeclarationError::Members));
     }
+    if text("profile").is_none() || text("asserted_by").is_none() {
+        return (d, Err(DeclarationError::Text));
+    }
+    d.binding = text("binding").unwrap_or_default();
+    d.list_digest = text("list_digest").unwrap_or_default();
+    if !is_digest(&d.binding) || !is_digest(&d.list_digest) {
+        return (d, Err(DeclarationError::Digest));
+    }
+    // A §5.2 time naming a real calendar instant: 2026-02-30 is not one.
+    if instant(Some(&d.as_of)).is_none() {
+        return (d, Err(DeclarationError::Time));
+    }
+    // An integer token: a fraction, an exponent, a sign or text is not one.
+    match m["max_age"].as_u64().filter(|n| *n <= MAX_INTEGER) {
+        Some(max_age) => d.max_age = max_age,
+        None => return (d, Err(DeclarationError::MaxAge)),
+    }
+    (d, Ok(()))
 }
 
 /// A revocation list (a JSON array of revocation statements) with the
-/// declaration a using profile gave beside it (CB §5.1).
+/// declaration a using profile gave beside it (CB §5.1). The caller takes
+/// the declaration only through the using profile's own channel, never
+/// from the party presenting the evidence: it is unsigned, and
+/// `asserted_by` is reported as delivered, not as authenticated.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RevocationList {
-    pub declaration: Declaration,
+    /// The declaration's JSON object as received. One that is not in its
+    /// form does not count, and the list's entries are still read.
+    pub declaration: Vec<u8>,
     /// The list's octets as transmitted.
     pub list: Vec<u8>,
-    /// The evaluation time E the freshness bound is checked at.
+    /// The evaluation time E the freshness bound is checked at: the
+    /// verifier's current time, unless the using profile pins it.
     pub evaluated_at: UtcTime,
 }
 
@@ -254,8 +275,11 @@ pub struct RevocationList {
 /// revocation `PASS`, which it presents as `asserted_by`'s statement under
 /// `profile` that the list with `list_digest` was complete as of `as_of`.
 /// `list_digest` is the digest of the octets received, not the declared
-/// one. `counts` says whether the declaration counts for this binding at the
-/// times asked about.
+/// one; `profile`, `asserted_by` and `as_of` are as delivered, empty when
+/// not a text string. `counts` says whether the declaration counts for this
+/// binding at the times asked about, and `reason`, when it does not, why.
+/// `reason` is a diagnostic, as Go's `ListReport.Reason` is, and not part of
+/// the vectors.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ListReport {
     pub profile: String,
@@ -263,6 +287,7 @@ pub struct ListReport {
     pub list_digest: String,
     pub as_of: String,
     pub counts: bool,
+    pub reason: Option<String>,
 }
 
 /// What the caller received beside the binding record, and how it checks a
@@ -458,18 +483,11 @@ pub fn verify(record: &[u8], times: &[UtcTime], opts: &Options) -> Report {
     }
     let mut revocation = revocation_status(&digest, &keys, &types, times, &statements);
     if let Some(list) = &opts.revocation_list {
-        let d = &list.declaration;
-        let counts = counts(list, &digest, times);
-        report.revocation_list = Some(ListReport {
-            profile: d.profile.clone(),
-            asserted_by: d.asserted_by.clone(),
-            list_digest: sha256_hex(&list.list),
-            as_of: d.as_of.clone(),
-            counts,
-        });
-        if counts && revocation != Status::Fail {
+        let list_report = list_report(list, &digest, times);
+        if list_report.counts && revocation != Status::Fail {
             revocation = Status::Pass;
         }
+        report.revocation_list = Some(list_report);
     }
     report.properties.insert(PROPERTY_REVOCATION, revocation);
 
@@ -796,31 +814,65 @@ fn list_entries(list: &[u8]) -> Option<Vec<Value>> {
     }
 }
 
-/// Whether a declaration counts for the binding with this digest at the
-/// times `times` and the list's evaluation time (CB §5.1).
-fn counts(l: &RevocationList, digest: &str, times: &[UtcTime]) -> bool {
-    let d = &l.declaration;
-    if d.check().is_err() || d.binding != digest || times.is_empty() {
-        return false;
+/// The declaration's report, and whether it counts for the binding with
+/// this digest at the times `times` and the list's evaluation time (CB
+/// §5.1).
+fn list_report(l: &RevocationList, digest: &str, times: &[UtcTime]) -> ListReport {
+    let (d, form) = read_declaration(&l.declaration);
+    let received = sha256_hex(&l.list);
+    let reason = why_not(&d, form, &received, l, digest, times);
+    ListReport {
+        profile: d.profile,
+        asserted_by: d.asserted_by,
+        list_digest: received,
+        as_of: d.as_of,
+        counts: reason.is_none(),
+        reason,
     }
-    if sha256_hex(&l.list) != d.list_digest || list_entries(&l.list).is_none() {
-        return false;
+}
+
+/// Why a declaration does not count (CB §5.1), or `None` when it counts.
+fn why_not(
+    d: &Declaration,
+    form: Result<(), DeclarationError>,
+    received: &str,
+    l: &RevocationList,
+    digest: &str,
+    times: &[UtcTime],
+) -> Option<String> {
+    let why = |s: &str| Some(s.to_owned());
+    if let Err(e) = form {
+        return Some(e.to_string());
+    }
+    if d.binding != digest {
+        return why("the declaration names another binding");
+    }
+    if d.list_digest != received {
+        return why("list_digest is not the digest of the list received");
+    }
+    if list_entries(&l.list).is_none() {
+        return why("the list is not a JSON array");
+    }
+    if times.is_empty() {
+        return why("no time T was asked about");
     }
     let Some(as_of) = instant(Some(&d.as_of)) else {
-        return false;
+        return why("as_of is not a time");
     };
     // The list covers a statement dated at or before T only when as_of is
     // not earlier than T.
     if times.iter().any(|t| as_of < *t) {
-        return false;
+        return why("as_of is earlier than a time asked about");
     }
-    // E - as_of <= max_age, as E <= as_of + max_age: max_age is at most
-    // 2^53 - 1 and as_of a year 0000 to 9999, so the sum fits an i64.
-    let fresh_until = UtcTime {
-        seconds: as_of.seconds + d.max_age as i64,
-        nanos: 0,
-    };
-    as_of <= l.evaluated_at && l.evaluated_at <= fresh_until
+    if as_of > l.evaluated_at {
+        return why("as_of is later than the evaluation time");
+    }
+    // In whole seconds (CB §5.1). E is not before as_of here and max_age is
+    // at most 2^53 - 1, so neither side overflows an i64.
+    if l.evaluated_at.seconds - as_of.seconds > d.max_age as i64 {
+        return why("the evaluation time is more than max_age after as_of");
+    }
+    None
 }
 
 fn credential_of(r: &Map<String, Value>) -> Credential {
@@ -891,29 +943,68 @@ mod tests {
                 DeclarationError::NotJson,
             ),
             (",\"max_age\":86400", "", DeclarationError::Members),
+            ("2026-10-19", "2026-02-30", DeclarationError::Time),
         ] {
             let bad = good.replacen(from, to, 1);
             assert_eq!(parse_declaration(bad.as_bytes()), Err(want), "{bad}");
         }
+        assert_eq!(parse_declaration(b"[]"), Err(DeclarationError::NotObject));
+        // A malformed declaration is still reported as delivered.
+        let (d, form) = read_declaration(good.replacen("86400", "-1", 1).as_bytes());
+        assert_eq!(form, Err(DeclarationError::MaxAge));
+        assert_eq!((d.profile.as_str(), d.asserted_by.as_str()), ("p", "a"));
+        assert_eq!(d.as_of, "2026-10-19T00:00:00Z");
+    }
+
+    fn declared(max_age: u64, evaluated_at: &str) -> RevocationList {
+        RevocationList {
+            declaration: format!(
+                r#"{{"profile":"p","asserted_by":"a","binding":"{}","list_digest":"{}","as_of":"2026-10-19T00:00:00Z","max_age":{max_age}}}"#,
+                "0".repeat(64),
+                sha256_hex(b"[]")
+            )
+            .into_bytes(),
+            list: b"[]".to_vec(),
+            evaluated_at: parse_utc(evaluated_at).unwrap(),
+        }
     }
 
     #[test]
-    fn with_no_time_the_window_is_not_checked_and_no_declaration_counts() {
-        let list = RevocationList {
-            declaration: Declaration {
-                profile: "p".into(),
-                asserted_by: "a".into(),
-                binding: "0".repeat(64),
-                list_digest: sha256_hex(b"[]"),
-                as_of: "2026-10-19T00:00:00Z".into(),
-                max_age: 86400,
-            },
-            list: b"[]".to_vec(),
-            evaluated_at: parse_utc("2026-10-19T01:00:00Z").unwrap(),
-        };
-        assert!(!counts(&list, &"0".repeat(64), &[]));
+    fn with_no_time_no_declaration_counts() {
+        let list = declared(86400, "2026-10-19T01:00:00Z");
+        let digest = "0".repeat(64);
+        let report = list_report(&list, &digest, &[]);
+        assert!(!report.counts);
+        assert_eq!(report.reason.as_deref(), Some("no time T was asked about"));
         let t = parse_utc("2026-10-18T00:00:00Z").unwrap();
-        assert!(counts(&list, &"0".repeat(64), &[t]));
-        assert!(!counts(&list, &"1".repeat(64), &[t]));
+        let report = list_report(&list, &digest, &[t]);
+        assert!(report.counts && report.reason.is_none());
+        assert!(!list_report(&list, &"1".repeat(64), &[t]).counts);
+    }
+
+    #[test]
+    fn max_age_is_compared_in_whole_seconds_without_overflow() {
+        let digest = "0".repeat(64);
+        let t = parse_utc("2026-10-18T00:00:00Z").unwrap();
+        // Exactly max_age after as_of counts; a fraction of a second later
+        // is still the same whole second; one second later does not.
+        assert!(list_report(&declared(3600, "2026-10-19T01:00:00Z"), &digest, &[t]).counts);
+        assert!(list_report(&declared(3600, "2026-10-19T01:00:00.9Z"), &digest, &[t]).counts);
+        assert!(!list_report(&declared(3600, "2026-10-19T01:00:01Z"), &digest, &[t]).counts);
+        // A max_age far beyond any Duration of nanoseconds.
+        for (max_age, e) in [
+            (10_000_000_000, "2026-10-22T00:00:00Z"),
+            (MAX_INTEGER, "9999-12-31T23:59:59Z"),
+        ] {
+            assert!(list_report(&declared(max_age, e), &digest, &[t]).counts);
+        }
+        assert!(
+            !list_report(
+                &declared(10_000_000_000, "9999-12-31T23:59:59Z"),
+                &digest,
+                &[t]
+            )
+            .counts
+        );
     }
 }

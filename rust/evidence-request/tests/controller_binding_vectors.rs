@@ -1,5 +1,5 @@
 //! The Controller Binding v0 conformance vectors
-//! (`vectors/controller-binding-v0/vectors.json`, all 35 cases), read in
+//! (`vectors/controller-binding-v0/vectors.json`, all 42 cases), read in
 //! place and checked against the directory's `SHA256SUMS` first.
 //!
 //! Every case runs from its inputs alone, and every member of its
@@ -23,7 +23,7 @@ use evidence_request::time::{parse_utc, UtcTime};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-const CASES: usize = 35;
+const CASES: usize = 42;
 
 fn dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../vectors/controller-binding-v0")
@@ -160,10 +160,9 @@ fn run(case: &Value, credential_method: &str) -> Run {
         opts.credential = Some(octets(&inputs["credential"]));
     }
     if let Some(l) = inputs.get("revocation_list") {
-        let declaration = serde_json::to_vec(&l["declaration"]).expect("declaration");
+        // The declaration as received, malformed or not (CB §5.1).
         opts.revocation_list = Some(RevocationList {
-            declaration: parse_declaration(&declaration)
-                .expect("every vector declaration is well formed"),
+            declaration: serde_json::to_vec(&l["declaration"]).expect("declaration"),
             list: octets(l),
             evaluated_at: parse_utc(text(pins, "evaluation_time")).expect("evaluation_time"),
         });
@@ -208,6 +207,9 @@ fn binding_block(r: &Report, keys: &[String; 2]) -> Value {
         "proves": r.proves,
     });
     if let Some(l) = &r.revocation_list {
+        // `reason` is a diagnostic, not in the vectors: it is there exactly
+        // when the declaration does not count.
+        assert_eq!(l.reason.is_none(), l.counts, "{:?}", l.reason);
         block["revocation_list"] = serde_json::json!({
             "profile": l.profile,
             "asserted_by": l.asserted_by,
@@ -380,7 +382,8 @@ fn a_list_that_cannot_be_read_or_has_no_time_never_fails() {
         .expect("complete-list");
     let mut opts = Options::default();
     let l = &case["inputs"]["revocation_list"];
-    let declaration = parse_declaration(&serde_json::to_vec(&l["declaration"]).unwrap()).unwrap();
+    let declaration = serde_json::to_vec(&l["declaration"]).unwrap();
+    assert!(parse_declaration(&declaration).is_ok());
     let evaluated_at = parse_utc(text(&case["pins"], "evaluation_time")).unwrap();
     let binding = octets(&case["inputs"]["binding"]);
     let t = parse_utc("2026-10-15T00:00:20Z").unwrap();
