@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their own Unreleased
+Not in any tag yet: the changes after `python/v0.13.0`. The Rust crates keep their own Unreleased
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
@@ -33,46 +33,178 @@ has not yet.
   `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on whether the
   runtime's WebCrypto, which varies by version, refuses these; the helper moves from
   `cose-receipt.ts` to `ed25519-strict.ts`. Honest signatures verify as before. (#448)
-- Security, strict Ed25519 on every trusted-key path: each Ed25519 check under a pinned,
-  registered or trusted key now uses the strict rule of #447 (A and R canonical and not of small
-  order, S < L, then the cofactorless check), so a small-order key no longer verifies a forgery
-  over any message. Go: the interop profile's envelope, refusal and acceptance signatures, the
-  CLL checkpoint (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`) and the
-  settlement `wrapped_resigned` check; the strict helper moves from `witness` to
-  `internal/ed25519strict`. Python: `interop_profile` (every signature it checks),
-  `evidence_request` (which already refused a small-order key, and now also a small-order or
-  non-canonical R and S >= L), the settlement `wrapped_resigned` check and `verify --transparent`
-  (the Signed Statement under the issuer key and each receipt under the log key); the helper
-  moves from `witness` to `agent_action_capsule._ed25519_strict`. TypeScript: the settlement
-  `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on the runtime's
-  WebCrypto for this; the helper moves from `cose-receipt.ts` to `ed25519-strict.ts`. Honest
-  signatures verify as before. The producer envelope and Go's Evidence Request -00
-  `VerifySignature` stay with #322. (#448)
-- **Breaking**, TypeScript (the next ts minor, 0.11.0): the two calibration readers read
-  `calibration-summary/v1` as `schemas/judge/calibration-summary-v1.json` defines it, and the cited
-  per-case ratings as `schemas/judge/human-rating-v1.json` does (AAC#446). New module
-  `calibration-summary` (`readCalibrationSummary`, `readHumanRating`) returns a record only when it
-  matches its schema exactly and every count has `k <= n`; a record with a stored rate or any other
-  member the schema lacks reads as not matching. The outcome-report model's `calibration` is now
-  `CalibrationReading[]`: one per `calibration` claim, with the summary it cites, its clauses' stated
-  agreement and drift, and the `human-rating/v1` records it cites (each digest read once). Each
-  clause's agreement is recomputed from those ratings and compared with the stated count
-  (`agreementCheck`: `matches`, `mismatch` only when the ratings contradict the stated count, or
-  `not_recomputable`); the stated count is never replaced, and `ratingsOutsideClauses` counts
-  ratings no clause counts. The recompute rests on reader conventions that neither the schemas nor
-  the judge record family spec state, pending evidencebook-skills#73 and #74: a rating is bound
-  to the requirement claim that cites its rated case, a `clause_ref` is read as that claim's
-  `requirement_ref`, a rating counts in k and n only when both its `label` and the judge's verdict
-  are `met` or `not_met` (agreeing when they are equal; `not_evaluable`, `out_of_scope` and any
-  other value on either side leave it out, as settled with Sherlock2), and the cited ratings are a
-  sample of a clause's cases, not all of them. `heldCount` (judge `met`, rater `not_met`) and
-  `addedCount` (judge `not_met`, rater `met`) are read from the bound ratings, each rating digest
-  counted once across claims.
-  `CalibrationWeek` and `CalibrationSample` are removed. The evidence graph's `calibration` node is
-  `{capsuleId, matchesSchema, summary}`, matched on `record_version`; `CalibrationCount`,
-  `calibrationCount`, `confusion`, `correctedRate` and `periodWindow` are removed. No reader computes
-  or stores a rate or percentage. capsule-viewer#121 adopts the new shapes. New devDependency
-  `ajv` 8.20.0, used only by the test that checks the fixtures against the schemas.
+- Controller Binding v0: a using profile may declare a revocation list complete (AAC#482,
+  `spec/controller-binding-v0.md` §5.1, §6.1, §9.4, §12; CB-1 narrowed). Additive: with no
+  declaration every result is as before.
+  - The list is a JSON array of revocation statements. The declaration beside it names the
+    `profile`, the party that asserts completeness (`asserted_by`), the `binding`, the list's
+    SHA-256 (`list_digest`), `as_of` and the profile's freshness bound `max_age` in seconds.
+  - `controller_binding_revocation` is `PASS` when the declaration counts: it names this binding
+    and these octets, `as_of` is at or after every T and at or before the evaluation time E, and
+    E is at most `max_age` after `as_of`. The `PASS` is reported as the asserting party's statement
+    about that list, never as proof that no statement exists. Otherwise it is `NOT_CHECKED`, never
+    `FAIL`; a statement in the list that applies is `FAIL` whether or not the declaration counts.
+  - A malformed declaration does not count, and the list's entries are still received statements.
+    With no T, no declaration counts. E is the evaluation time, which a using profile may pin.
+    `max_age` is compared in whole seconds. The declaration is unsigned, so a verifier takes it only
+    through the using profile's own channel and reports `asserted_by` as delivered.
+  - `vectors/controller-binding-v0/`: sixteen new cases (`complete-list`,
+    `complete-list-statement-by-other-key`, `complete-list-revoked`, `complete-list-stale`,
+    `complete-list-past-max-age`, `complete-list-as-of-future`, `complete-list-other-binding`,
+    `complete-list-digest-mismatch`, `complete-list-not-an-array`, `complete-list-large-max-age`,
+    `complete-list-extra-member`, `complete-list-max-age-negative`,
+    `complete-list-max-age-fractional`, `complete-list-max-age-too-large`,
+    `complete-list-as-of-malformed`, `complete-list-malformed-revoked`), 42 in all; the first 26
+    are unchanged.
+  - Go: `controllerbinding` gains `Declaration`, `ParseDeclaration`, `RevocationList`
+    (`Options.RevocationList`, carrying the declaration's JSON object as received) and `ListReport`
+    (`Report.RevocationList`, with a diagnostic `reason` when the declaration does not count).
+    `cross_language binding` reads an optional `revocation_list` member (`declaration`, `list`,
+    `evaluated_at`); its exit codes are unchanged, and only a declaration that is not a JSON object
+    is exit 2.
+- Inference-Service History is written against `evidence-interop/1` (AAC#484): a node serves a
+  History under /0 or /1, whichever the request names, and under /1 sheds load with
+  `capacity_exceeded` (`UNKNOWN`) instead of `policy_declined` (`WITHHELD`). Its definitions,
+  Histories and digests do not change. `vectors/inference-service-history-v0/` stays the frozen /0
+  set; new `vectors/inference-service-history-v0-interop-v1/` (28 cases: the 27 under /1 and
+  `refused-capacity-exceeded`), from the same generator with `--profile 1`.
+- Interop profile `evidence-interop/1` (`spec/interop-profile-v1.md`, AAC#479): `evidence-interop/0`
+  with Evidence Request re-pinned from -01 to -02 as posted (2026-10-31, archive SHA-256
+  `ee5e2b90…`). §9.1 lists ten refusal reasons, and §8.1 maps `capacity_exceeded` and
+  `request_unauthenticated` to `UNKNOWN`, never `WITHHELD`. Load shedding is `capacity_exceeded`,
+  so `policy_declined` and `not_authorized` are statements about policy. A refusal's reason is
+  checked against the tokens of the identifier its request asks for. -02 §4.7 (unavailable-window
+  statements) is deferred (P-66); adopting it later most likely takes `evidence-interop/2`.
+  `spec/interop-profile-v0.md` and its corpora are unchanged and frozen at 1456285. New corpora
+  `vectors/interop-profile-v1/` (58 cases) and `vectors/interop-profile-v1-requirement-facts/`
+  (2), from the same generator with `--profile 1`. The six host profiles that cite
+  `evidence-interop/0` each state that they stay on it. Python `interop_profile` and Go
+  `evidencerequest` verify both identifiers (`PROFILE_IDS`, `Profiles`); Python
+  `evidence_request.sign_envelope` and `Envelope.verify_for` take `profile` (default /0; the
+  envelope must name the identifier requested), and Go `ParseRequest` accepts a /1 request and
+  `Refusal.ConformingUnder` and `VerifyForProfile` check a refusal under a given identifier
+  (`Conforming` and `VerifyFor` stay /0's).
+- Evidence Request -02 refusal reasons `capacity_exceeded` (a limit of the responder's own: load, a
+  size limit, a full replay cache, a transient fault) and `request_unauthenticated` (a requester
+  authentication a deployment profile defines does not verify) (AAC#478, Mesh-LLM/capsules-plugin#114).
+  Load shedding refuses `capacity_exceeded`, not `policy_declined`, so `policy_declined` and
+  `not_authorized` are statements about policy; `capacity_exceeded` is never a retention breach and
+  `request_unauthenticated` is a property of the request. New corpus
+  `vectors/evidence-request/refusal-02.json` (11 cases). Go `evidencerequest` and Python
+  `agent_action_capsule.evidence_request` register both tokens (`RefusalReasons`,
+  `REFUSAL_REASONS`) and classify them under a retention commitment; both read the new corpus. The
+  interop profile's `evidence-interop/0` keeps the eight -01 tokens, so Go `Refusal.Conforming`
+  and `VerifyFor` refuse a refusal with either new token, while `CheckRefusal` (the ER-level
+  check) accepts it; `evidence-interop/1` registers both (below).
+- Evidence Request -02 (`spec/draft-mih-agent-evidence-request-02.md`, dated 2026-10-30, not
+  posted), cut from the posted -01; `spec/Makefile` `EVREQ` builds -02. New §4.7 "Unavailable-Window
+  Statements" (AAC#473): a responder MAY seal a signed, registered statement that it was unavailable
+  from `start` to `end`, with one `reason_class` from a closed list (`flood`, `maintenance`,
+  `outage`, `other_declared`), not a registry. A reader that holds an absence and a statement
+  covering it shows "no answer; holder states unavailability" with the class and the stated period,
+  never a refusal and never as if no statement existed; shows the statement as the responder's own
+  word, never as proof of attack; and shows its registration time (its earliest receipt from a
+  transparency service the reader accepts as independent of the responder) relative to the close of
+  the waiting window, labelled "stated afterwards" when later. The absence record and any retention
+  commitment it cites are unchanged. §3 adds the terms, §4.4, §4.5 and §4.6 say the absence is
+  unchanged, Security, Privacy and IANA Considerations cover the statement, and Appendix A has a
+  worked example. Every -01 section number is unchanged. Vectors: new
+  `vectors/evidence-request/unavailable-window.json` (35 cases) naming -02, generated by
+  `python/scripts/generate_evidence_request_vectors.py` and checked by
+  `python/tests/test_evidence_request_vectors.py`. Changed released files:
+  `vectors/evidence-request/manifest.json`, `vectors/evidence-request/SHA256SUMS`,
+  `vectors/evidence-request/README.md`, `vectors/SHA256SUMS` and `vectors/README.md`. No existing
+  case file changed.
+
+- Evidence Request -01 (`spec/draft-mih-agent-evidence-request-01.md`, dated and posted
+  2026-10-29). The source edited in place below is now the -01 file. `spec/draft-mih-agent-evidence-request-00.{md,xml,txt}`
+  are restored to the posted -00 (commit `bab723f`; xml and txt byte-equal to the IETF archive),
+  and `spec/Makefile` `EVREQ` builds -01. New in -01 besides §3.1.1 below: the artifact response
+  envelope carries the request digest, an issuance time and a signature over both, the artifact
+  digest and the resolved anchor (§4.1); the OPTIONAL `categories` request field, a category set
+  identifier and category names, OPTIONAL to implement, an input of the artifact when honored
+  and honored alike for every requester, with `coverage` unchanged (§3.9, §5); carriage rules
+  and A2A and MCP bindings (§10.1-§10.3); RFC 4648 normative. Vectors: new
+  `vectors/evidence-request/categories.json` (14 cases) and `carriage.json` (21 cases), both
+  naming -01; `carries.json` now names -01, its cases unchanged. The -00 corpora are unchanged.
+  `python/tests/test_evidence_request_vectors.py` checks each corpus's cited sections against the
+  revision it names.
+- Evidence Request (source then named `-00.md`, now `spec/draft-mih-agent-evidence-request-01.md`): new §3.1.1 "What
+  a Record Carries" defines which record members carry a `correlation` identifier and what makes
+  a record cite an `exchange` half. The record's format fixes it. For Evidence Layer records that
+  is the header's `subject_ref` and any field a profile adds as an equivalent correlation field
+  (such as a `correlation` map), and a `links` entry of type `cites`. For Capsules it is the
+  correlation fields the Capsule draft names (§3.4 there), and a `references` entry with `citation_purpose` `counterparty_half`
+  (`responds_to` does not cite a half). A requester that does not implement a record's format
+  treats the record as unchecked, never as not carrying. Vectors: new
+  `vectors/evidence-request/carries.json` (5 cases: a positive and a negative per subject form,
+  plus a `counterparty_half` entry naming another half). Changed released files: `vectors/evidence-request/manifest.json`,
+  `vectors/evidence-request/SHA256SUMS` and `vectors/evidence-request/README.md`, plus
+  `vectors/SHA256SUMS` and `vectors/README.md`. No existing case file changed.
+
+- Controller Binding v0: a `bip340` key type, so a key can be bound to a Nostr identity
+  (`spec/controller-binding-v0.md` §3.3, §4.1, §9.3; new open points CB-8 and CB-9). Additive: a
+  record without the new optional `key_types` member binds two `ed25519` keys, as before, and no
+  existing vector changes.
+  - **`key_types`** names each bound key's type, because an Ed25519 key and a BIP-340 x-only key are
+    both 64 hex characters. A token a verifier does not know gives `controller_binding_signatures`
+    `NOT_CHECKED`.
+  - **How a `bip340` key signs** a binding record or a revocation statement: a Nostr event (NIP-01)
+    of kind 3374, with no tags and the content `<version>:<digest>`, so a key holder signs with the
+    tools that already hold a Nostr key. `sig` carries the event's `created_at` and its BIP-340
+    signature.
+  - `spec/REGISTRY.md`: new provisional rows for the two key types and the event kind.
+  - **The nonce** of a record with a `bip340` key is at least 32 hex characters, drawn from 128
+    random bits (§3.1, §9.3): the binding digest does not cover `sigs`, so the nonce alone keeps a
+    publicly listed digest from being matched to a guessed pair of keys.
+  - `vectors/controller-binding-v0/`: eleven new cases (`valid-nostr-key`, `nostr-key-read-as-ed25519`,
+    `nostr-wrong-digest`, `nostr-other-kind`, `nostr-revoked`, `nostr-nonce-short`,
+    `nostr-sig-malformed`, `nostr-created-at-negative`, `nostr-created-at-text`,
+    `key-types-malformed`, `key-types-unknown`), 25 in all. The Python test
+    checks them with a BIP-340 check written from the BIP and run against five of its own test
+    vectors.
+
+- Spec, schemas and vectors: Result v0's `type: close` claim is normative
+  (`spec/evidence-result-v0.md` §4.1, the 2026-10-26 ruling), using the `close/v1` body. A close
+  claim's `close_ref` MUST cite a `close/v1` record and its `period` MUST equal that Close's; a
+  verifier in this revision still reads only the cited Close's header. `close/v1`'s `head` and
+  `counts_by_kind` describe the range of its store's records the Close covers: `head` is that
+  range's last record (for an empty range, the record just before it), not necessarily the store's
+  last record when the Close is appended, and `counts_by_kind` counts the records in it, which can
+  begin before `period.start`; the Close's `closes` links can name a subset of that range
+  (`spec/judge-record-family-v1.md` §3; descriptions only in `schemas/judge/close-v1.json`, so
+  validation is unchanged). The close fixtures' Close records now carry `close/v1` bodies, which
+  changes every close fixture's digests, and the checker validates them. The `ClaimType` description
+  in `schemas/evidence-result-v0.json` and the Go copy say `close` is normative.
+- Vectors: `vectors/controller-binding-v0/` gains `no-half-key-bound`, its 26th case: a valid
+  binding of the third producer key to the `bip340` key, naming neither half's key, so it does not
+  bind the pair (`spec/controller-binding-v0.md` §6.2, §10). It catches a port that decides
+  `binds_pair` by whether the record names both halves' keys alike, which `other-keys` does not,
+  and it is the case where the `cross_language binding` vector test's node key is not named
+  (exit 1). Go: `Binds` documents that it reports membership only; a caller that needs the key's
+  role reads `Claim` and `Delegator` (#468). No behavior change.
+
+## go 0.17.0 — 2026-10-31
+
+Tag `go/v0.17.0`.
+
+- Security, strict Ed25519 on trusted-key paths: each Ed25519 check under a pinned, registered or
+  trusted key now uses the strict rule of #447 (A and R canonical and not of small order, S < L,
+  then the cofactorless check), so a small-order key no longer verifies a forgery over any message,
+  except the record-key paths left for #322 (Go `evidencerequest.VerifySignature` in `reply.go`, and
+  the Go, Rust, TypeScript and Python producer envelopes). Go: the
+  interop profile's envelope, refusal and acceptance signatures, the CLL checkpoint
+  (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`), controller-binding and
+  revocation signatures by an `ed25519` key, and the settlement `wrapped_resigned` check; the
+  helper moves from `witness` to `internal/ed25519strict`. Python: `interop_profile` (every
+  signature it checks), `evidence_request` (which already refused a small-order key, and whose
+  `cryptography` verify already refused a non-canonical R and S >= L; a small-order R is now
+  refused too), the settlement `wrapped_resigned` check and `verify --transparent` (the Signed
+  Statement under the issuer key and each receipt under the log key); the helper moves from
+  `witness` to `agent_action_capsule._ed25519_strict`. TypeScript: the settlement
+  `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on whether the
+  runtime's WebCrypto, which varies by version, refuses these; the helper moves from
+  `cose-receipt.ts` to `ed25519-strict.ts`. Honest signatures verify as before. (#448)
 - Go `evidencerequest.ParseRequestTime` refuses a time with more than nine fraction digits instead
   of truncating it to nanoseconds, as the Python and Rust readers already do (AAC#492).
 - Controller Binding v0: a using profile may declare a revocation list complete (AAC#482,
@@ -184,6 +316,224 @@ has not yet.
   `vectors/evidence-request/SHA256SUMS` and `vectors/evidence-request/README.md`, plus
   `vectors/SHA256SUMS` and `vectors/README.md`. No existing case file changed.
 
+- Spec, schemas and vectors: Result v0's `type: close` claim is normative
+  (`spec/evidence-result-v0.md` §4.1, the 2026-10-26 ruling), using the `close/v1` body. A close
+  claim's `close_ref` MUST cite a `close/v1` record and its `period` MUST equal that Close's; a
+  verifier in this revision still reads only the cited Close's header. `close/v1`'s `head` and
+  `counts_by_kind` describe the range of its store's records the Close covers: `head` is that
+  range's last record (for an empty range, the record just before it), not necessarily the store's
+  last record when the Close is appended, and `counts_by_kind` counts the records in it, which can
+  begin before `period.start`; the Close's `closes` links can name a subset of that range
+  (`spec/judge-record-family-v1.md` §3; descriptions only in `schemas/judge/close-v1.json`, so
+  validation is unchanged). The close fixtures' Close records now carry `close/v1` bodies, which
+  changes every close fixture's digests, and the checker validates them. The `ClaimType` description
+  in `schemas/evidence-result-v0.json` and the Go copy say `close` is normative.
+- Vectors: `vectors/controller-binding-v0/` gains `no-half-key-bound`, its 26th case: a valid
+  binding of the third producer key to the `bip340` key, naming neither half's key, so it does not
+  bind the pair (`spec/controller-binding-v0.md` §6.2, §10). It catches a port that decides
+  `binds_pair` by whether the record names both halves' keys alike, which `other-keys` does not,
+  and it is the case where the `cross_language binding` vector test's node key is not named
+  (exit 1). Go: `Binds` documents that it reports membership only; a caller that needs the key's
+  role reads `Claim` and `Delegator` (#468). No behavior change.
+
+## ts 0.11.0 — 2026-10-31
+
+Tag `ts/v0.11.0`.
+
+- **Breaking**, TypeScript: the two calibration readers read
+  `calibration-summary/v1` as `schemas/judge/calibration-summary-v1.json` defines it, and the cited
+  per-case ratings as `schemas/judge/human-rating-v1.json` does (AAC#446). New module
+  `calibration-summary` (`readCalibrationSummary`, `readHumanRating`) returns a record only when it
+  matches its schema exactly and every count has `k <= n`; a record with a stored rate or any other
+  member the schema lacks reads as not matching. The outcome-report model's `calibration` is now
+  `CalibrationReading[]`: one per `calibration` claim, with the summary it cites, its clauses' stated
+  agreement and drift, and the `human-rating/v1` records it cites (each digest read once). Each
+  clause's agreement is recomputed from those ratings and compared with the stated count
+  (`agreementCheck`: `matches`, `mismatch` only when the ratings contradict the stated count, or
+  `not_recomputable`); the stated count is never replaced, and `ratingsOutsideClauses` counts
+  ratings no clause counts. The recompute rests on reader conventions that neither the schemas nor
+  the judge record family spec state, pending evidencebook-skills#73 and #74: a rating is bound
+  to the requirement claim that cites its rated case, a `clause_ref` is read as that claim's
+  `requirement_ref`, a rating counts in k and n only when both its `label` and the judge's verdict
+  are `met` or `not_met` (agreeing when they are equal; `not_evaluable`, `out_of_scope` and any
+  other value on either side leave it out, as settled with Sherlock2), and the cited ratings are a
+  sample of a clause's cases, not all of them. `heldCount` (judge `met`, rater `not_met`) and
+  `addedCount` (judge `not_met`, rater `met`) are read from the bound ratings, each rating digest
+  counted once across claims.
+  `CalibrationWeek` and `CalibrationSample` are removed. The evidence graph's `calibration` node is
+  `{capsuleId, matchesSchema, summary}`, matched on `record_version`; `CalibrationCount`,
+  `calibrationCount`, `confusion`, `correctedRate` and `periodWindow` are removed. No reader computes
+  or stores a rate or percentage. capsule-viewer#121 adopts the new shapes. New devDependency
+  `ajv` 8.20.0, used only by the test that checks the fixtures against the schemas.
+
+- Security, strict Ed25519 on trusted-key paths: each Ed25519 check under a pinned, registered or
+  trusted key now uses the strict rule of #447 (A and R canonical and not of small order, S < L,
+  then the cofactorless check), so a small-order key no longer verifies a forgery over any message,
+  except the record-key paths left for #322 (Go `evidencerequest.VerifySignature` in `reply.go`, and
+  the Go, Rust, TypeScript and Python producer envelopes). Go: the
+  interop profile's envelope, refusal and acceptance signatures, the CLL checkpoint
+  (`anchor_inclusion` step 10), the native JWS check (`CheckJWSEdDSA`), controller-binding and
+  revocation signatures by an `ed25519` key, and the settlement `wrapped_resigned` check; the
+  helper moves from `witness` to `internal/ed25519strict`. Python: `interop_profile` (every
+  signature it checks), `evidence_request` (which already refused a small-order key, and whose
+  `cryptography` verify already refused a non-canonical R and S >= L; a small-order R is now
+  refused too), the settlement `wrapped_resigned` check and `verify --transparent` (the Signed
+  Statement under the issuer key and each receipt under the log key); the helper moves from
+  `witness` to `agent_action_capsule._ed25519_strict`. TypeScript: the settlement
+  `wrapped_resigned` check and countersign/v1 signatures, which no longer depend on whether the
+  runtime's WebCrypto, which varies by version, refuses these; the helper moves from
+  `cose-receipt.ts` to `ed25519-strict.ts`. Honest signatures verify as before. (#448)
+- Controller Binding v0: a using profile may declare a revocation list complete (AAC#482,
+  `spec/controller-binding-v0.md` §5.1, §6.1, §9.4, §12; CB-1 narrowed). Additive: with no
+  declaration every result is as before.
+  - The list is a JSON array of revocation statements. The declaration beside it names the
+    `profile`, the party that asserts completeness (`asserted_by`), the `binding`, the list's
+    SHA-256 (`list_digest`), `as_of` and the profile's freshness bound `max_age` in seconds.
+  - `controller_binding_revocation` is `PASS` when the declaration counts: it names this binding
+    and these octets, `as_of` is at or after every T and at or before the evaluation time E, and
+    E is at most `max_age` after `as_of`. The `PASS` is reported as the asserting party's statement
+    about that list, never as proof that no statement exists. Otherwise it is `NOT_CHECKED`, never
+    `FAIL`; a statement in the list that applies is `FAIL` whether or not the declaration counts.
+  - A malformed declaration does not count, and the list's entries are still received statements.
+    With no T, no declaration counts. E is the evaluation time, which a using profile may pin.
+    `max_age` is compared in whole seconds. The declaration is unsigned, so a verifier takes it only
+    through the using profile's own channel and reports `asserted_by` as delivered.
+  - `vectors/controller-binding-v0/`: sixteen new cases (`complete-list`,
+    `complete-list-statement-by-other-key`, `complete-list-revoked`, `complete-list-stale`,
+    `complete-list-past-max-age`, `complete-list-as-of-future`, `complete-list-other-binding`,
+    `complete-list-digest-mismatch`, `complete-list-not-an-array`, `complete-list-large-max-age`,
+    `complete-list-extra-member`, `complete-list-max-age-negative`,
+    `complete-list-max-age-fractional`, `complete-list-max-age-too-large`,
+    `complete-list-as-of-malformed`, `complete-list-malformed-revoked`), 42 in all; the first 26
+    are unchanged.
+  - Go: `controllerbinding` gains `Declaration`, `ParseDeclaration`, `RevocationList`
+    (`Options.RevocationList`, carrying the declaration's JSON object as received) and `ListReport`
+    (`Report.RevocationList`, with a diagnostic `reason` when the declaration does not count).
+    `cross_language binding` reads an optional `revocation_list` member (`declaration`, `list`,
+    `evaluated_at`); its exit codes are unchanged, and only a declaration that is not a JSON object
+    is exit 2.
+- Inference-Service History is written against `evidence-interop/1` (AAC#484): a node serves a
+  History under /0 or /1, whichever the request names, and under /1 sheds load with
+  `capacity_exceeded` (`UNKNOWN`) instead of `policy_declined` (`WITHHELD`). Its definitions,
+  Histories and digests do not change. `vectors/inference-service-history-v0/` stays the frozen /0
+  set; new `vectors/inference-service-history-v0-interop-v1/` (28 cases: the 27 under /1 and
+  `refused-capacity-exceeded`), from the same generator with `--profile 1`.
+- Interop profile `evidence-interop/1` (`spec/interop-profile-v1.md`, AAC#479): `evidence-interop/0`
+  with Evidence Request re-pinned from -01 to -02 as posted (2026-10-31, archive SHA-256
+  `ee5e2b90…`). §9.1 lists ten refusal reasons, and §8.1 maps `capacity_exceeded` and
+  `request_unauthenticated` to `UNKNOWN`, never `WITHHELD`. Load shedding is `capacity_exceeded`,
+  so `policy_declined` and `not_authorized` are statements about policy. A refusal's reason is
+  checked against the tokens of the identifier its request asks for. -02 §4.7 (unavailable-window
+  statements) is deferred (P-66); adopting it later most likely takes `evidence-interop/2`.
+  `spec/interop-profile-v0.md` and its corpora are unchanged and frozen at 1456285. New corpora
+  `vectors/interop-profile-v1/` (58 cases) and `vectors/interop-profile-v1-requirement-facts/`
+  (2), from the same generator with `--profile 1`. The six host profiles that cite
+  `evidence-interop/0` each state that they stay on it. Python `interop_profile` and Go
+  `evidencerequest` verify both identifiers (`PROFILE_IDS`, `Profiles`); Python
+  `evidence_request.sign_envelope` and `Envelope.verify_for` take `profile` (default /0; the
+  envelope must name the identifier requested), and Go `ParseRequest` accepts a /1 request and
+  `Refusal.ConformingUnder` and `VerifyForProfile` check a refusal under a given identifier
+  (`Conforming` and `VerifyFor` stay /0's).
+- Evidence Request -02 refusal reasons `capacity_exceeded` (a limit of the responder's own: load, a
+  size limit, a full replay cache, a transient fault) and `request_unauthenticated` (a requester
+  authentication a deployment profile defines does not verify) (AAC#478, Mesh-LLM/capsules-plugin#114).
+  Load shedding refuses `capacity_exceeded`, not `policy_declined`, so `policy_declined` and
+  `not_authorized` are statements about policy; `capacity_exceeded` is never a retention breach and
+  `request_unauthenticated` is a property of the request. New corpus
+  `vectors/evidence-request/refusal-02.json` (11 cases). Go `evidencerequest` and Python
+  `agent_action_capsule.evidence_request` register both tokens (`RefusalReasons`,
+  `REFUSAL_REASONS`) and classify them under a retention commitment; both read the new corpus. The
+  interop profile's `evidence-interop/0` keeps the eight -01 tokens, so Go `Refusal.Conforming`
+  and `VerifyFor` refuse a refusal with either new token, while `CheckRefusal` (the ER-level
+  check) accepts it; `evidence-interop/1` registers both (below).
+- Evidence Request -02 (`spec/draft-mih-agent-evidence-request-02.md`, dated 2026-10-30, not
+  posted), cut from the posted -01; `spec/Makefile` `EVREQ` builds -02. New §4.7 "Unavailable-Window
+  Statements" (AAC#473): a responder MAY seal a signed, registered statement that it was unavailable
+  from `start` to `end`, with one `reason_class` from a closed list (`flood`, `maintenance`,
+  `outage`, `other_declared`), not a registry. A reader that holds an absence and a statement
+  covering it shows "no answer; holder states unavailability" with the class and the stated period,
+  never a refusal and never as if no statement existed; shows the statement as the responder's own
+  word, never as proof of attack; and shows its registration time (its earliest receipt from a
+  transparency service the reader accepts as independent of the responder) relative to the close of
+  the waiting window, labelled "stated afterwards" when later. The absence record and any retention
+  commitment it cites are unchanged. §3 adds the terms, §4.4, §4.5 and §4.6 say the absence is
+  unchanged, Security, Privacy and IANA Considerations cover the statement, and Appendix A has a
+  worked example. Every -01 section number is unchanged. Vectors: new
+  `vectors/evidence-request/unavailable-window.json` (35 cases) naming -02, generated by
+  `python/scripts/generate_evidence_request_vectors.py` and checked by
+  `python/tests/test_evidence_request_vectors.py`. Changed released files:
+  `vectors/evidence-request/manifest.json`, `vectors/evidence-request/SHA256SUMS`,
+  `vectors/evidence-request/README.md`, `vectors/SHA256SUMS` and `vectors/README.md`. No existing
+  case file changed.
+
+- Evidence Request -01 (`spec/draft-mih-agent-evidence-request-01.md`, dated and posted
+  2026-10-29). The source edited in place below is now the -01 file. `spec/draft-mih-agent-evidence-request-00.{md,xml,txt}`
+  are restored to the posted -00 (commit `bab723f`; xml and txt byte-equal to the IETF archive),
+  and `spec/Makefile` `EVREQ` builds -01. New in -01 besides §3.1.1 below: the artifact response
+  envelope carries the request digest, an issuance time and a signature over both, the artifact
+  digest and the resolved anchor (§4.1); the OPTIONAL `categories` request field, a category set
+  identifier and category names, OPTIONAL to implement, an input of the artifact when honored
+  and honored alike for every requester, with `coverage` unchanged (§3.9, §5); carriage rules
+  and A2A and MCP bindings (§10.1-§10.3); RFC 4648 normative. Vectors: new
+  `vectors/evidence-request/categories.json` (14 cases) and `carriage.json` (21 cases), both
+  naming -01; `carries.json` now names -01, its cases unchanged. The -00 corpora are unchanged.
+  `python/tests/test_evidence_request_vectors.py` checks each corpus's cited sections against the
+  revision it names.
+- Evidence Request (source then named `-00.md`, now `spec/draft-mih-agent-evidence-request-01.md`): new §3.1.1 "What
+  a Record Carries" defines which record members carry a `correlation` identifier and what makes
+  a record cite an `exchange` half. The record's format fixes it. For Evidence Layer records that
+  is the header's `subject_ref` and any field a profile adds as an equivalent correlation field
+  (such as a `correlation` map), and a `links` entry of type `cites`. For Capsules it is the
+  correlation fields the Capsule draft names (§3.4 there), and a `references` entry with `citation_purpose` `counterparty_half`
+  (`responds_to` does not cite a half). A requester that does not implement a record's format
+  treats the record as unchecked, never as not carrying. Vectors: new
+  `vectors/evidence-request/carries.json` (5 cases: a positive and a negative per subject form,
+  plus a `counterparty_half` entry naming another half). Changed released files: `vectors/evidence-request/manifest.json`,
+  `vectors/evidence-request/SHA256SUMS` and `vectors/evidence-request/README.md`, plus
+  `vectors/SHA256SUMS` and `vectors/README.md`. No existing case file changed.
+
+- Controller Binding v0: a `bip340` key type, so a key can be bound to a Nostr identity
+  (`spec/controller-binding-v0.md` §3.3, §4.1, §9.3; new open points CB-8 and CB-9). Additive: a
+  record without the new optional `key_types` member binds two `ed25519` keys, as before, and no
+  existing vector changes.
+  - **`key_types`** names each bound key's type, because an Ed25519 key and a BIP-340 x-only key are
+    both 64 hex characters. A token a verifier does not know gives `controller_binding_signatures`
+    `NOT_CHECKED`.
+  - **How a `bip340` key signs** a binding record or a revocation statement: a Nostr event (NIP-01)
+    of kind 3374, with no tags and the content `<version>:<digest>`, so a key holder signs with the
+    tools that already hold a Nostr key. `sig` carries the event's `created_at` and its BIP-340
+    signature.
+  - `spec/REGISTRY.md`: new provisional rows for the two key types and the event kind.
+  - **The nonce** of a record with a `bip340` key is at least 32 hex characters, drawn from 128
+    random bits (§3.1, §9.3): the binding digest does not cover `sigs`, so the nonce alone keeps a
+    publicly listed digest from being matched to a guessed pair of keys.
+  - `vectors/controller-binding-v0/`: eleven new cases (`valid-nostr-key`, `nostr-key-read-as-ed25519`,
+    `nostr-wrong-digest`, `nostr-other-kind`, `nostr-revoked`, `nostr-nonce-short`,
+    `nostr-sig-malformed`, `nostr-created-at-negative`, `nostr-created-at-text`,
+    `key-types-malformed`, `key-types-unknown`), 25 in all. The Python test
+    checks them with a BIP-340 check written from the BIP and run against five of its own test
+    vectors.
+
+- Spec, schemas and vectors: Result v0's `type: close` claim is normative
+  (`spec/evidence-result-v0.md` §4.1, the 2026-10-26 ruling), using the `close/v1` body. A close
+  claim's `close_ref` MUST cite a `close/v1` record and its `period` MUST equal that Close's; a
+  verifier in this revision still reads only the cited Close's header. `close/v1`'s `head` and
+  `counts_by_kind` describe the range of its store's records the Close covers: `head` is that
+  range's last record (for an empty range, the record just before it), not necessarily the store's
+  last record when the Close is appended, and `counts_by_kind` counts the records in it, which can
+  begin before `period.start`; the Close's `closes` links can name a subset of that range
+  (`spec/judge-record-family-v1.md` §3; descriptions only in `schemas/judge/close-v1.json`, so
+  validation is unchanged). The close fixtures' Close records now carry `close/v1` bodies, which
+  changes every close fixture's digests, and the checker validates them. The `ClaimType` description
+  in `schemas/evidence-result-v0.json` and the Go copy say `close` is normative.
+- Vectors: `vectors/controller-binding-v0/` gains `no-half-key-bound`, its 26th case: a valid
+  binding of the third producer key to the `bip340` key, naming neither half's key, so it does not
+  bind the pair (`spec/controller-binding-v0.md` §6.2, §10). It catches a port that decides
+  `binds_pair` by whether the record names both halves' keys alike, which `other-keys` does not,
+  and it is the case where the `cross_language binding` vector test's node key is not named
+  (exit 1). Go: `Binds` documents that it reports membership only; a caller that needs the key's
+  role reads `Claim` and `Delegator` (#468). No behavior change.
+
 - Inference-Service History Profile v0 (`spec/inference-service-history-profile-v0.md`, new open
   points SH-1 to SH-14), a host profile beside the personal-agent one. A History's subject is a node
   key; it counts exchanges served and requested apart, checkpoints, witness receipts and referee
@@ -236,34 +586,6 @@ has not yet.
   (four occurrences, in the `carriage-*` cases); no other byte of the vectors and no case count
   changes. The ER conformance vectors (`vectors/evidence-request/`) and the ER
   implementations stay on -00. (#453)
-
-- Interop profile verifier (Python): times take ASCII digits only, as RFC 3339's DIGIT is, so a
-  time written in another script's digits is no longer read (`_common.parse_time`,
-  `is_profile_time`); and a §11.5 fixture execution record that JCS cannot represent, for example
-  one holding an unpaired surrogate, is unreadable, as an acceptance record or receipt already was
-  (`acceptance.read_fixture_execution_record`); and `evaluate_acceptance` refuses a contract whose
-  `id` or `version` is not text, or whose `requirements` is not an array (`ValueError`), rather
-  than evaluating it. Found while porting §11.1 to Rust
-  (`rust/evidence-request`, feature `acceptance`).
-- Spec, schemas and vectors: Result v0's `type: close` claim is normative
-  (`spec/evidence-result-v0.md` §4.1, the 2026-10-26 ruling), using the `close/v1` body. A close
-  claim's `close_ref` MUST cite a `close/v1` record and its `period` MUST equal that Close's; a
-  verifier in this revision still reads only the cited Close's header. `close/v1`'s `head` and
-  `counts_by_kind` describe the range of its store's records the Close covers: `head` is that
-  range's last record (for an empty range, the record just before it), not necessarily the store's
-  last record when the Close is appended, and `counts_by_kind` counts the records in it, which can
-  begin before `period.start`; the Close's `closes` links can name a subset of that range
-  (`spec/judge-record-family-v1.md` §3; descriptions only in `schemas/judge/close-v1.json`, so
-  validation is unchanged). The close fixtures' Close records now carry `close/v1` bodies, which
-  changes every close fixture's digests, and the checker validates them. The `ClaimType` description
-  in `schemas/evidence-result-v0.json` and the Go copy say `close` is normative.
-- Vectors: `vectors/controller-binding-v0/` gains `no-half-key-bound`, its 26th case: a valid
-  binding of the third producer key to the `bip340` key, naming neither half's key, so it does not
-  bind the pair (`spec/controller-binding-v0.md` §6.2, §10). It catches a port that decides
-  `binds_pair` by whether the record names both halves' keys alike, which `other-keys` does not,
-  and it is the case where the `cross_language binding` vector test's node key is not named
-  (exit 1). Go: `Binds` documents that it reports membership only; a caller that needs the key's
-  role reads `Claim` and `Delegator` (#468). No behavior change.
 
 ## go 0.16.0 — 2026-10-30
 
@@ -344,27 +666,6 @@ Tag `python/v0.13.0`.
   `vectors/interop-profile-v0/` adds `acceptance-equal-time-H` and
   `acceptance-after-action-by-a-second-I`, one on each side of the boundary.
 
-- Controller Binding v0: a `bip340` key type, so a key can be bound to a Nostr identity
-  (`spec/controller-binding-v0.md` §3.3, §4.1, §9.3; new open points CB-8 and CB-9). Additive: a
-  record without the new optional `key_types` member binds two `ed25519` keys, as before, and no
-  existing vector changes.
-  - **`key_types`** names each bound key's type, because an Ed25519 key and a BIP-340 x-only key are
-    both 64 hex characters. A token a verifier does not know gives `controller_binding_signatures`
-    `NOT_CHECKED`.
-  - **How a `bip340` key signs** a binding record or a revocation statement: a Nostr event (NIP-01)
-    of kind 3374, with no tags and the content `<version>:<digest>`, so a key holder signs with the
-    tools that already hold a Nostr key. `sig` carries the event's `created_at` and its BIP-340
-    signature.
-  - `spec/REGISTRY.md`: new provisional rows for the two key types and the event kind.
-  - **The nonce** of a record with a `bip340` key is at least 32 hex characters, drawn from 128
-    random bits (§3.1, §9.3): the binding digest does not cover `sigs`, so the nonce alone keeps a
-    publicly listed digest from being matched to a guessed pair of keys.
-  - `vectors/controller-binding-v0/`: eleven new cases (`valid-nostr-key`, `nostr-key-read-as-ed25519`,
-    `nostr-wrong-digest`, `nostr-other-kind`, `nostr-revoked`, `nostr-nonce-short`,
-    `nostr-sig-malformed`, `nostr-created-at-negative`, `nostr-created-at-text`,
-    `key-types-malformed`, `key-types-unknown`), 25 in all. The Python test
-    checks them with a BIP-340 check written from the BIP and run against five of its own test
-    vectors.
 - Spec and vectors, Interop Profile re-pinned to Evidence Request -01: `spec/interop-profile-v0.md`
   now pins `draft-mih-agent-evidence-request-01` as posted (SHA-256 of the `.txt`) instead of -00,
   still under `evidence-interop/0` (P-64). A responder under the profile ignores ER -01's
