@@ -12,34 +12,18 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: nothing after `go/v0.18.0`, `python/v0.14.0` and `ts/v0.12.0`. The Rust crates keep their own
+Not in any tag yet: nothing after `go/v0.19.0`, `python/v0.15.0` and `ts/v0.13.0`. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
-- The capsule draft states the JSON nesting limit (AAC#498): the in-tree working revision
-  `spec/draft-mih-scitt-agent-action-capsule-06.md` (cut from the posted -05, `spec/Makefile` now
-  gates it) says in Conventions that a JSON text or value nests at most 128 levels, a verifier
-  rejects deeper input as malformed before Class 1 check 1 and never rejects input 128 levels deep or
-  less for its depth alone, with `vectors/json-nesting/` as its conformance set.
-  `spec/interop-profile-v1.md` §5.2, `VECTORS.md` and the vector README and manifest cite it.
-  Nothing is posted until the -06 cut; the wire value stays `draft-mih-scitt-agent-action-capsule-05`.
-- The capsule draft states the Producer Envelope CBOR encoding rule (AAC#258): -06's Producer Envelope
-  wire profile says every CBOR data item, protected-header contents included, has a definite length and
-  preferred serialization (RFC 8949 §4.1), every NaN is in half precision, map keys are unique, the
-  outermost tag 18 is the only tag, the unprotected header is a map and the payload and signature are
-  byte strings, and a verifier rejects any violation. Python, Go, TypeScript and Rust already enforced
-  it (AAC#256); `vectors/producer-envelope/` pins it, and its README now cites -06.
-- The settlement draft cites the JSON nesting limit (AAC#518): the in-tree working revision
-  `spec/draft-mih-agent-settlement-records-01.md` (cut from the posted -00, built by `make settlement`)
-  says a leg record is subject to the capsule profile's 128-level limit, which a verifier applies to
-  each leg record before any settlement check, and cites capsule draft -06. The `settlement` member's
-  `version` stays `"0"`; `vectors/settlement/` and the implementations still cite -00. Nothing is
-  posted until capsule -06 is.
-- Go `witness.VerifyCOSEReceipt` refuses a COSE Receipt whose payload is CBOR undefined (`0xf7`)
-  (AAC#519). fxamacker decodes undefined and null alike, so such a receipt was read as detached and
-  accepted, while scitt-cose, Python and TypeScript refuse it; only null (`0xf6`) is detached. The
-  Rust crate had the same gap and is fixed too. New strict vector `neg-witness-cll-undefined-payload`
-  (`vectors/bundle/strict/`, now 74 cases).
+## go 0.19.0 — 2026-10-31
+
+Tag `go/v0.19.0`.
+
+- Rollout gate: no producer may emit `non_record_leaves` until all four verifiers (Go, Python,
+  TypeScript, Rust), `capsulectl`, the hosted verify page and Evidencebook have released the check.
+  A verifier from this release reads them; a producer's flag for emitting them stays off until each
+  of those has released it.
 - One stated decoding rule for COSE Receipts (AAC#520). `vectors/bundle/strict/README.md` "COSE
   Receipts" said only that decoding "follows the scitt-cose verifiers", and the four languages
   decided 37 of 62 single-encoding test receipts differently. The strict Bundle check now decodes
@@ -61,6 +45,215 @@ has not yet.
   reading and understood labels differ by version. 25 new strict vectors (`vectors/bundle/strict/`,
   now 99 cases).
 
+- The embedded copy of `REGISTRY.md` cites the base draft's -05 section numbers (AAC#501, closes
+  #497).
+- The capsule draft states the JSON nesting limit (AAC#498): the in-tree working revision
+  `spec/draft-mih-scitt-agent-action-capsule-06.md` (cut from the posted -05, `spec/Makefile` now
+  gates it) says in Conventions that a JSON text or value nests at most 128 levels, a verifier
+  rejects deeper input as malformed before Class 1 check 1 and never rejects input 128 levels deep or
+  less for its depth alone, with `vectors/json-nesting/` as its conformance set.
+  `spec/interop-profile-v1.md` §5.2, `VECTORS.md` and the vector README and manifest cite it.
+  Nothing is posted until the -06 cut; the wire value stays `draft-mih-scitt-agent-action-capsule-05`.
+- The capsule draft states the Producer Envelope CBOR encoding rule (AAC#258): -06's Producer Envelope
+  wire profile says every CBOR data item, protected-header contents included, has a definite length and
+  preferred serialization (RFC 8949 §4.1), every NaN is in half precision, map keys are unique, the
+  outermost tag 18 is the only tag, the unprotected header is a map and the payload and signature are
+  byte strings, and a verifier rejects any violation. Python, Go, TypeScript and Rust already enforced
+  it (AAC#256); `vectors/producer-envelope/` pins it, and its README now cites -06.
+  A Producer Envelope is one CBOR item with no trailing octets after the outer item or the protected
+  header (AAC#527); `vectors/producer-envelope/` adds `outer-trailing-octet` and
+  `protected-trailing-octet`, which the implementations' vector tests run.
+- The settlement draft cites the JSON nesting limit (AAC#518): the in-tree working revision
+  `spec/draft-mih-agent-settlement-records-01.md` (cut from the posted -00, built by `make settlement`)
+  says a leg record is subject to the capsule profile's 128-level limit, which a verifier applies to
+  each leg record before any settlement check, and cites capsule draft -06. The `settlement` member's
+  `version` stays `"0"`; `vectors/settlement/` and the implementations still cite -00. Nothing is
+  posted until capsule -06 is.
+- Go `witness.VerifyCOSEReceipt` refuses a COSE Receipt whose payload is CBOR undefined (`0xf7`)
+  (AAC#519). fxamacker decodes undefined and null alike, so such a receipt was read as detached and
+  accepted, while scitt-cose, Python and TypeScript refuse it; only null (`0xf6`) is detached. The
+  Rust crate had the same gap and is fixed too. New strict vector `neg-witness-cll-undefined-payload`
+  (`vectors/bundle/strict/`, now 74 cases).
+- Evidence Bundle -02 in Go, TypeScript and Rust, as the Python reference reads it: every case of
+  the three -02 vector directories passes in all four languages. Go: `CertificateModeUnsupported`,
+  `CheckCategoryCoverage`, `VerificationResult.CategoryCoverage`, the `Options` inputs
+  `CategorySets`, `CategoryRequest` and `RecordCategories`, and the producer's optional
+  `LeafContentSource` with `BuildOptions.CarryNonRecordLeaves`. TypeScript: `CERTIFICATE_MODE_UNSUPPORTED`,
+  `checkCategoryCoverage` (`category-coverage.ts`), `categoryCoverage` on every result, the
+  `verifyBundle` options `categorySets`, `categoryRequest` and `recordCategories`, and the optional
+  `ProofSource.leafContent` with `carryNonRecordLeaves`. Rust: see its changelog. The `category_coverage` signature
+  verifies under strict Ed25519 in all four (a small-order or non-canonical key or R, or S >= L, is
+  refused; vector `neg-signature-s-not-reduced`). The interlock
+  (`scripts/cross-language-interlock.sh`) adds `padded-whole-log` and `padded-tampered`, built by
+  every language from `vectors/cross-language/bundle-producer-padded-log.json` and read by every
+  strict verifier.
+- Evidence Bundle -02 `category_coverage_request`: an Evidence Request holding an unpaired surrogate
+  escape such as `\ud800` is not read (`NOT_CHECKED`) in Python, Go, TypeScript and Rust (I-JSON,
+  RFC 7493 Section 2.1); Python no longer keeps the surrogate and Go no longer reads it as U+FFFD.
+  Vector `request-lone-surrogate`. How large an integer and how deep a nesting a request may hold
+  is implementation-defined and not pinned.
+- Evidence Bundle -02, `controller_binding` join basis: the draft defines the controller binding
+  record (members, claim types, signing input and binding digest, `dual_signature/0` and
+  `dual_signature_credential/0`, revocation statements, when a binding applies) and the join's
+  derivation in its `composed/v1` section; a `controller_binding` agreement is always redundant,
+  never corroborating. Go: `bundle.Options` gains `ControllerBindings` and `BindingRevocations`,
+  the binding records and revocation statements delivered beside the Bundle; `VerifyComposed`
+  derives the join from them (`not_derivable` when no record with the join's digest was
+  delivered, or none under a method it implements) and reports a derived `agree` as `redundant`
+  with reason `controller_binding`. A block carrying the basis is no longer malformed in Go;
+  TypeScript and Rust still read it as malformed, as -01 does. Binding signatures verify under
+  strict Ed25519. A record whose `key_types` names
+  a key type other than `ed25519` is skipped like one under an unimplemented method. Vectors:
+  `vectors/bundle/composed-controller-binding/` (14 cases,
+  `python/scripts/generate_bundle_composed_cb_vectors.py`), rederived by
+  `python/tests/test_bundle_composed_cb_vectors.py` and run by Go. Spec:
+  `spec/controller-binding-v0.md` §8 and `spec/REGISTRY.md` "composed/v1 join basis values" now
+  record the basis as registered by -02; a producer emits it once -02 is posted.
+- Evidence Bundle -02, page reading (Go `bundle.VerifyBundleForPage`, TypeScript
+  `buildVerifiedBundleContext`): since the plain checks now read a producer selection, a selection
+  the strict checks call INVALID, or that a page without Ed25519 cannot check strictly, keeps its
+  plain claims with per-record membership failed, so the page still refuses it.
+- Evidence Bundle -02, empty-history Bundles (Go and Python): a Bundle with an empty `records`
+  array and no `root` shows that a stream has no history to disclose, whether never started or
+  cleared (a new stream, new `log_id`). When well formed (`records_mode` `complete`,
+  `payloads_mode` `none`, no certificate, disclosures or disclosure record), graph closure passes,
+  interval coverage and per-record membership are withheld with `no_records`, and the result
+  carries `history` (Go `VerificationResult.History`, Python `BundleVerificationResult.history`):
+  no history, since the signed checkpoint's `timestamp` when `checkpoint.cose` verifies. Otherwise
+  the Bundle fails graph closure. Go `bundle.EmptyHistory` and Python
+  `bundle.is_empty_history` test the shape. In `composed/v1` (Go), a join with an empty-history
+  member derives `one_sided`; under `controller_binding` only when the key that signed its
+  checkpoint is bound, `unjoined` when not, and `not_derivable` without a verified checkpoint.
+  Strict mode is unchanged: a standalone empty-history Bundle is still INVALID there
+  (`no_records`). TypeScript and Rust read an empty-history Bundle as malformed (no `root`).
+
+## ts 0.13.0 — 2026-10-31
+
+Tag `ts/v0.13.0`.
+
+- Rollout gate: no producer may emit `non_record_leaves` until all four verifiers (Go, Python,
+  TypeScript, Rust), `capsulectl`, the hosted verify page and Evidencebook have released the check.
+  A verifier from this release reads them; a producer's flag for emitting them stays off until each
+  of those has released it.
+- One stated decoding rule for COSE Receipts (AAC#520). `vectors/bundle/strict/README.md` "COSE
+  Receipts" said only that decoding "follows the scitt-cose verifiers", and the four languages
+  decided 37 of 62 single-encoding test receipts differently. The strict Bundle check now decodes
+  the COSE_Sign1, its protected header and each inclusion proof under the receipt encoding rule of
+  `spec/interop-profile-v1.md` §6.2.2, which the anchor check already used: definite lengths,
+  shortest arguments, no repeated key, integer or text keys, valid UTF-8, no float, no simple value
+  but false, true and null, no tag but the outer 18, at most 16 levels. The README also states the
+  10,485,760-octet and 16-proof limits, that a header label the check does not read is ignored
+  whatever its value, provided the receipt meets the encoding rule (only the labels listed there
+  are read for decisions), and the `crit` rule; §6.2.2 adds the UTF-8 words and that no array or map is
+  limited in length below the octet limit. Changed outcomes: a receipt with a float, a tag, a bignum
+  or a non-shortest inclusion proof now fails, so `pos-witness-registration-time-invalid` (a float
+  `iat`) and `pos-witness-registration-time-float-claim-key` are now
+  `neg-witness-registration-time-float-iat` and `neg-witness-registration-time-float-claim-key`,
+  INVALID: RFC 8392 allows a float NumericDate; this profile does not. Go: `VerifyCOSEReceipt` decodes with the shared `strictReceiptItem` (the lenient proof
+  decoding is gone), and Go's decoding no longer stops at 131,072 array items or map pairs, in both
+  checks. TypeScript: `verifyCoseReceipt` decodes with the new `decodeReceiptItem` (the lenient path
+  is gone). Python: the receipt check runs the rule and the `crit` check before scitt-cose, whose
+  reading and understood labels differ by version. 25 new strict vectors (`vectors/bundle/strict/`,
+  now 99 cases).
+
+- The capsule draft states the JSON nesting limit (AAC#498): the in-tree working revision
+  `spec/draft-mih-scitt-agent-action-capsule-06.md` (cut from the posted -05, `spec/Makefile` now
+  gates it) says in Conventions that a JSON text or value nests at most 128 levels, a verifier
+  rejects deeper input as malformed before Class 1 check 1 and never rejects input 128 levels deep or
+  less for its depth alone, with `vectors/json-nesting/` as its conformance set.
+  `spec/interop-profile-v1.md` §5.2, `VECTORS.md` and the vector README and manifest cite it.
+  Nothing is posted until the -06 cut; the wire value stays `draft-mih-scitt-agent-action-capsule-05`.
+- The capsule draft states the Producer Envelope CBOR encoding rule (AAC#258): -06's Producer Envelope
+  wire profile says every CBOR data item, protected-header contents included, has a definite length and
+  preferred serialization (RFC 8949 §4.1), every NaN is in half precision, map keys are unique, the
+  outermost tag 18 is the only tag, the unprotected header is a map and the payload and signature are
+  byte strings, and a verifier rejects any violation. Python, Go, TypeScript and Rust already enforced
+  it (AAC#256); `vectors/producer-envelope/` pins it, and its README now cites -06.
+  A Producer Envelope is one CBOR item with no trailing octets after the outer item or the protected
+  header (AAC#527); `vectors/producer-envelope/` adds `outer-trailing-octet` and
+  `protected-trailing-octet`, which the implementations' vector tests run.
+- The settlement draft cites the JSON nesting limit (AAC#518): the in-tree working revision
+  `spec/draft-mih-agent-settlement-records-01.md` (cut from the posted -00, built by `make settlement`)
+  says a leg record is subject to the capsule profile's 128-level limit, which a verifier applies to
+  each leg record before any settlement check, and cites capsule draft -06. The `settlement` member's
+  `version` stays `"0"`; `vectors/settlement/` and the implementations still cite -00. Nothing is
+  posted until capsule -06 is.
+- Evidence Bundle -02 in Go, TypeScript and Rust, as the Python reference reads it: every case of
+  the three -02 vector directories passes in all four languages. Go: `CertificateModeUnsupported`,
+  `CheckCategoryCoverage`, `VerificationResult.CategoryCoverage`, the `Options` inputs
+  `CategorySets`, `CategoryRequest` and `RecordCategories`, and the producer's optional
+  `LeafContentSource` with `BuildOptions.CarryNonRecordLeaves`. TypeScript: `CERTIFICATE_MODE_UNSUPPORTED`,
+  `checkCategoryCoverage` (`category-coverage.ts`), `categoryCoverage` on every result, the
+  `verifyBundle` options `categorySets`, `categoryRequest` and `recordCategories`, and the optional
+  `ProofSource.leafContent` with `carryNonRecordLeaves`. Rust: see its changelog. The `category_coverage` signature
+  verifies under strict Ed25519 in all four (a small-order or non-canonical key or R, or S >= L, is
+  refused; vector `neg-signature-s-not-reduced`). The interlock
+  (`scripts/cross-language-interlock.sh`) adds `padded-whole-log` and `padded-tampered`, built by
+  every language from `vectors/cross-language/bundle-producer-padded-log.json` and read by every
+  strict verifier.
+- Evidence Bundle -02 `category_coverage_request`: an Evidence Request holding an unpaired surrogate
+  escape such as `\ud800` is not read (`NOT_CHECKED`) in Python, Go, TypeScript and Rust (I-JSON,
+  RFC 7493 Section 2.1); Python no longer keeps the surrogate and Go no longer reads it as U+FFFD.
+  Vector `request-lone-surrogate`. How large an integer and how deep a nesting a request may hold
+  is implementation-defined and not pinned.
+- Evidence Bundle -02, page reading (Go `bundle.VerifyBundleForPage`, TypeScript
+  `buildVerifiedBundleContext`): since the plain checks now read a producer selection, a selection
+  the strict checks call INVALID, or that a page without Ed25519 cannot check strictly, keeps its
+  plain claims with per-record membership failed, so the page still refuses it.
+
+## python 0.15.0 — 2026-10-31
+
+Tag `python/v0.15.0`.
+
+- Rollout gate: no producer may emit `non_record_leaves` until all four verifiers (Go, Python,
+  TypeScript, Rust), `capsulectl`, the hosted verify page and Evidencebook have released the check.
+  A verifier from this release reads them; a producer's flag for emitting them stays off until each
+  of those has released it.
+- One stated decoding rule for COSE Receipts (AAC#520). `vectors/bundle/strict/README.md` "COSE
+  Receipts" said only that decoding "follows the scitt-cose verifiers", and the four languages
+  decided 37 of 62 single-encoding test receipts differently. The strict Bundle check now decodes
+  the COSE_Sign1, its protected header and each inclusion proof under the receipt encoding rule of
+  `spec/interop-profile-v1.md` §6.2.2, which the anchor check already used: definite lengths,
+  shortest arguments, no repeated key, integer or text keys, valid UTF-8, no float, no simple value
+  but false, true and null, no tag but the outer 18, at most 16 levels. The README also states the
+  10,485,760-octet and 16-proof limits, that a header label the check does not read is ignored
+  whatever its value, provided the receipt meets the encoding rule (only the labels listed there
+  are read for decisions), and the `crit` rule; §6.2.2 adds the UTF-8 words and that no array or map is
+  limited in length below the octet limit. Changed outcomes: a receipt with a float, a tag, a bignum
+  or a non-shortest inclusion proof now fails, so `pos-witness-registration-time-invalid` (a float
+  `iat`) and `pos-witness-registration-time-float-claim-key` are now
+  `neg-witness-registration-time-float-iat` and `neg-witness-registration-time-float-claim-key`,
+  INVALID: RFC 8392 allows a float NumericDate; this profile does not. Go: `VerifyCOSEReceipt` decodes with the shared `strictReceiptItem` (the lenient proof
+  decoding is gone), and Go's decoding no longer stops at 131,072 array items or map pairs, in both
+  checks. TypeScript: `verifyCoseReceipt` decodes with the new `decodeReceiptItem` (the lenient path
+  is gone). Python: the receipt check runs the rule and the `crit` check before scitt-cose, whose
+  reading and understood labels differ by version. 25 new strict vectors (`vectors/bundle/strict/`,
+  now 99 cases).
+
+- The embedded copy of `REGISTRY.md` cites the base draft's -05 section numbers (AAC#501, closes
+  #497).
+- The capsule draft states the JSON nesting limit (AAC#498): the in-tree working revision
+  `spec/draft-mih-scitt-agent-action-capsule-06.md` (cut from the posted -05, `spec/Makefile` now
+  gates it) says in Conventions that a JSON text or value nests at most 128 levels, a verifier
+  rejects deeper input as malformed before Class 1 check 1 and never rejects input 128 levels deep or
+  less for its depth alone, with `vectors/json-nesting/` as its conformance set.
+  `spec/interop-profile-v1.md` §5.2, `VECTORS.md` and the vector README and manifest cite it.
+  Nothing is posted until the -06 cut; the wire value stays `draft-mih-scitt-agent-action-capsule-05`.
+- The capsule draft states the Producer Envelope CBOR encoding rule (AAC#258): -06's Producer Envelope
+  wire profile says every CBOR data item, protected-header contents included, has a definite length and
+  preferred serialization (RFC 8949 §4.1), every NaN is in half precision, map keys are unique, the
+  outermost tag 18 is the only tag, the unprotected header is a map and the payload and signature are
+  byte strings, and a verifier rejects any violation. Python, Go, TypeScript and Rust already enforced
+  it (AAC#256); `vectors/producer-envelope/` pins it, and its README now cites -06.
+  A Producer Envelope is one CBOR item with no trailing octets after the outer item or the protected
+  header (AAC#527); `vectors/producer-envelope/` adds `outer-trailing-octet` and
+  `protected-trailing-octet`, which the implementations' vector tests run.
+- The settlement draft cites the JSON nesting limit (AAC#518): the in-tree working revision
+  `spec/draft-mih-agent-settlement-records-01.md` (cut from the posted -00, built by `make settlement`)
+  says a leg record is subject to the capsule profile's 128-level limit, which a verifier applies to
+  each leg record before any settlement check, and cites capsule draft -06. The `settlement` member's
+  `version` stays `"0"`; `vectors/settlement/` and the implementations still cite -00. Nothing is
+  posted until capsule -06 is.
 - Evidence Bundle -02 (`spec/draft-mih-zhang-agent-disclosure-bundle-02.md`, Python reference).
   Certificate modes: `verify_bundle` reads
   `completeness.selection` as the certificate's mode; a producer-selected Bundle is no longer a
@@ -95,35 +288,12 @@ has not yet.
   RFC 7493 Section 2.1); Python no longer keeps the surrogate and Go no longer reads it as U+FFFD.
   Vector `request-lone-surrogate`. How large an integer and how deep a nesting a request may hold
   is implementation-defined and not pinned.
-
-- Evidence Bundle -02, `controller_binding` join basis: the draft defines the controller binding
-  record (members, claim types, signing input and binding digest, `dual_signature/0` and
-  `dual_signature_credential/0`, revocation statements, when a binding applies) and the join's
-  derivation in its `composed/v1` section; a `controller_binding` agreement is always redundant,
-  never corroborating. Go: `bundle.Options` gains `ControllerBindings` and `BindingRevocations`,
-  the binding records and revocation statements delivered beside the Bundle; `VerifyComposed`
-  derives the join from them (`not_derivable` when no record with the join's digest was
-  delivered, or none under a method it implements) and reports a derived `agree` as `redundant`
-  with reason `controller_binding`. A block carrying the basis is no longer malformed in Go;
-  TypeScript and Rust still read it as malformed, as -01 does. Binding signatures verify under
-  strict Ed25519. A record whose `key_types` names
-  a key type other than `ed25519` is skipped like one under an unimplemented method. Vectors:
-  `vectors/bundle/composed-controller-binding/` (14 cases,
-  `python/scripts/generate_bundle_composed_cb_vectors.py`), rederived by
-  `python/tests/test_bundle_composed_cb_vectors.py` and run by Go. Spec:
-  `spec/controller-binding-v0.md` §8 and `spec/REGISTRY.md` "composed/v1 join basis values" now
-  record the basis as registered by -02; a producer emits it once -02 is posted.
-- Evidence Bundle -02, page reading (Go `bundle.VerifyBundleForPage`, TypeScript
-  `buildVerifiedBundleContext`): since the plain checks now read a producer selection, a selection
-  the strict checks call INVALID, or that a page without Ed25519 cannot check strictly, keeps its
-  plain claims with per-record membership failed, so the page still refuses it.
 - Python, strict: a producer-selected Bundle whose signed checkpoint is contradicted by a stated
   copy (#380) keeps per-record membership withheld (`checkpoint_unverified`), as Go, Rust and
   TypeScript report, unless its certificate carries `non_record_leaves`, which fails it
   (`completeness_certificate_invalid`, vector `neg-producer-selected-certificate-log-id-non-record-leaves`);
   the -02 reading against the stated checkpoint applies only when no signed
   checkpoint is carried.
-
 - Evidence Bundle -02, empty-history Bundles (Go and Python): a Bundle with an empty `records`
   array and no `root` shows that a stream has no history to disclose, whether never started or
   cleared (a new stream, new `log_id`). When well formed (`records_mode` `complete`,
