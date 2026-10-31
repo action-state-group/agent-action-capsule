@@ -16,6 +16,12 @@ Not in any tag yet: the changes after `ts/v0.10.0`. The Rust crates keep their o
 sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Inference-Service History is written against `evidence-interop/1` (AAC#484): a node serves a
+  History under /0 or /1, whichever the request names, and under /1 sheds load with
+  `capacity_exceeded` (`UNKNOWN`) instead of `policy_declined` (`WITHHELD`). Its definitions,
+  Histories and digests do not change. `vectors/inference-service-history-v0/` stays the frozen /0
+  set; new `vectors/inference-service-history-v0-interop-v1/` (28 cases: the 27 under /1 and
+  `refused-capacity-exceeded`), from the same generator with `--profile 1`.
 - Interop profile `evidence-interop/1` (`spec/interop-profile-v1.md`, AAC#479): `evidence-interop/0`
   with Evidence Request re-pinned from -01 to -02 as posted (2026-10-31, archive SHA-256
   `ee5e2b90…`). §9.1 lists ten refusal reasons, and §8.1 maps `capacity_exceeded` and

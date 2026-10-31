@@ -2,7 +2,7 @@
 
 **Status.** Informational host profile, pre-Internet-Draft, kept in this repository. It changes no
 Internet-Draft and no part of the Minimum Evidence Interoperability Profile
-(`spec/interop-profile-v0.md`, cited here as IP). It is written against IP's request, envelope,
+(`spec/interop-profile-v1.md`, cited here as IP). It is written against IP's request, envelope,
 recipient-specific disclosure, coverage declaration, per-property status and result-mapping rules,
 and uses them unchanged. Where it needs a rule IP does not state, it states the rule as its own and
 lists it under [Open points](#13-open-points) (SH-1, SH-2, …).
@@ -43,21 +43,28 @@ History properties (§8.3) and what a verifier shows (§8.5).
 
 | Tag | Document | What this profile takes from it |
 |---|---|---|
-| IP | `spec/interop-profile-v0.md` (`evidence-interop/0`) | the request (§6.1), the envelope and its signing input (§6.2), signed refusals (§6.3), recipient-specific disclosures as definition-digest derivations (§6.5), the coverage declaration, its properties and issuer independence (§6.7), the per-property statuses (§7), the result mapping (§8), the acceptance record and its session scope (§11.1), lifecycle statements (§11.2), carriage and discovery (§11.4) |
-| ER | `draft-mih-agent-evidence-request` -01 | the `full_history` and `range` subject forms [ER §3.1], what a record carries [ER §3.1.1], derivation by definition digest [ER §3.3], the signed refusal [ER §4.2], caller invariance [ER §5], derivation-scoped disclosure [ER §8], the history card `history_card/1` [ER §8.1] |
+| IP | `spec/interop-profile-v1.md` (`evidence-interop/1`) | the request (§6.1), the envelope and its signing input (§6.2), signed refusals (§6.3), recipient-specific disclosures as definition-digest derivations (§6.5), the coverage declaration, its properties and issuer independence (§6.7), the per-property statuses (§7), the result mapping (§8), the acceptance record and its session scope (§11.1), lifecycle statements (§11.2), carriage and discovery (§11.4) |
+| ER | `draft-mih-agent-evidence-request` -02 | the `full_history` and `range` subject forms [ER §3.1], what a record carries [ER §3.1.1], derivation by definition digest [ER §3.3], the signed refusal [ER §4.2], caller invariance [ER §5], derivation-scoped disclosure [ER §8], the history card `history_card/1` [ER §8.1] |
 | RES | `spec/evidence-result-v0.md` | claim, sufficiency and verdict |
 
-Section numbers for ER are those of the rendered `.txt` of the -01 revision, which IP also pins.
+Section numbers for ER are those of the rendered `.txt` of the -02 revision, which IP also pins.
 A requirement
 written `[IP §6.5]` is taken from IP; `[SH-n]` marks one this profile adds.
 
-**Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
-`spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
-frozen, not `spec/interop-profile-v1.md` (`evidence-interop/1`). `evidence-interop/1` changes two
-things this profile uses, the refusal reasons (IP v1 §9.1) and their mapping (IP v1 §8.1), and the
-requests and envelopes of its vectors name `evidence-interop/0`. Under `evidence-interop/0` a node
-that sheds load refuses `policy_declined`, as ER -01 allows, which a /0 verifier reads as
-`WITHHELD`. Re-pinning to `evidence-interop/1` is a revision of this profile.
+**Interop profile revision.** This profile is written against `evidence-interop/1`
+(`spec/interop-profile-v1.md`, ER -02), and a node serves a History under it or under
+`evidence-interop/0` (`spec/interop-profile-v0.md` as of commit
+`1456285979bd759b7828fd3ccc4a24296074e552`, frozen), whichever the request names, negotiated per
+request [IP §3.3]. A request with no `profile` asks for `evidence-interop/0`. The two differ for
+this profile only in the refusal reasons (IP §9.1) and their mapping (IP §8.1): under
+`evidence-interop/1` a node that sheds load, or declines for any other limit of its own, refuses
+`capacity_exceeded`, which maps to `UNKNOWN`; under `evidence-interop/0` it refuses
+`policy_declined`, which a /0 verifier reads as `WITHHELD`. The refusals this profile itself
+requires (§6.1, §8.4) are statements about policy and are `policy_declined` under either. The
+definitions, the History and its members do not depend on the identifier, and neither do theirs:
+`inference-service-history/0`, `history_card/1` and every definition digest are the same under both.
+Only the `profile` of a request and of an envelope differs. The vectors hold one set per identifier
+(§9.4).
 
 **Does not define:** any record format, any identity scheme, any trust policy, who may receive a
 History, or what a recipient should conclude. It defines no figure that combines units, labels or
@@ -542,9 +549,11 @@ It shows no figure that combines units, labels or periods, and no ordering of no
 
 ## 9. Acceptance vectors (informative)
 
-The vectors are in `vectors/inference-service-history-v0/`.
-`python/scripts/generate_inference_service_history_v0_vectors.py` generates them, and
-`python/tests/test_inference_service_history_v0_vectors.py` checks them: every request and reply
+The vectors are in `vectors/inference-service-history-v0/` (`evidence-interop/0`, frozen) and
+`vectors/inference-service-history-v0-interop-v1/` (`evidence-interop/1`: the same cases, and
+`refused-capacity-exceeded`). `python/scripts/generate_inference_service_history_v0_vectors.py`
+generates them (`--profile 1` for the second set), and
+`python/tests/test_inference_service_history_v0_vectors.py` and its `_interop_v1` twin check them: every request and reply
 through IP's reference verifier, and the History properties with an evaluator of its own. They pin
 trust, verification policy, contract and evaluation time as IP §11.5 does.
 
@@ -609,6 +618,7 @@ different client nonces, and one whose half cites no counterparty half. Each is 
 | `refused-range-interval-other-requester` | the same token, for a second requester |
 | `refused-open-period-anchor` | signed refusal `policy_declined`: asked at the checkpoint of noon on 4 October |
 | `refused-detailed-other-requester` | signed refusal `policy_declined` |
+| `refused-capacity-exceeded` | `evidence-interop/1` only: signed refusal `capacity_exceeded`, the node declines for its own load; `UNKNOWN` (IP §8.1) |
 | `detailed-peer-confirmed` | accepted; one exchange `peer_confirmed` with `issuer_independence` `NOT_CHECKED`, four `self_reported` (one-sided, redundant, two not joinable) |
 | `mutant-labelled-corroborated` | `labels` `FAIL`: two keys, no evidence about their controllers |
 | `mutant-same-key-halves-labelled-peer-confirmed` | `labels` `FAIL`; the pair is redundant |

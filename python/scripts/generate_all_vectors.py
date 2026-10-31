@@ -84,6 +84,7 @@ GENERATORS = (
     "generate_deal_reconcile_v0_vectors.py",
     "generate_standard_history_v0_vectors.py",
     "generate_inference_service_history_v0_vectors.py",
+    ("generate_inference_service_history_v0_vectors.py", "--profile", "1"),
     "generate_registry_conformance_vectors.py",
     "generate_adapter_x402_vectors.py",
     "generate_ucp_adapter_vectors.py",

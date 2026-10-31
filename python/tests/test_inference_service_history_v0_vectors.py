@@ -1,10 +1,14 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """The Inference-Service History Profile vectors (``vectors/inference-service-history-v0/``).
 
+``test_inference_service_history_v0_interop_v1_vectors.py`` runs this module again with
+``_PROFILE_VERSION`` 1, against ``vectors/inference-service-history-v0-interop-v1/``, the same
+cases under ``evidence-interop/1`` plus a ``capacity_exceeded`` refusal.
+
 Every case is run from its inputs alone:
 
-- Each request and reply goes through the reference verifier for ``evidence-interop/0``
-  (``agent_action_capsule.interop_profile``).
+- Each request and reply goes through the reference verifier, under the set's interop profile
+  identifier (``evidence-interop/0`` or ``/1``; ``agent_action_capsule.interop_profile``).
 - The History properties of the profile's §8.3, its coverage report (§4.2), what a verifier
   shows of witness receipts (§5.2) and of exchanges (§7.2), and ``period_fixed`` (§6.3) come from
   an evaluator written here.
@@ -47,7 +51,9 @@ from agent_action_capsule.interop_profile import (  # noqa: E402
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-VECTORS = ROOT / "vectors" / "inference-service-history-v0"
+VERSION = globals().get("_PROFILE_VERSION", 0)
+SET_NAME = "inference-service-history-v0" + (f"-interop-v{VERSION}" if VERSION else "")
+VECTORS = ROOT / "vectors" / SET_NAME
 GENERATOR = ROOT / "python" / "scripts" / "generate_inference_service_history_v0_vectors.py"
 HAND_WRITTEN = ("README.md",)
 DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
@@ -443,8 +449,10 @@ def failing(result: dict) -> set:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 27
-    assert (len(HISTORY_CASES), len(PAIR_CASES), len(REFUSAL_CASES)) == (20, 3, 4)
+    # The /1 set adds one refusal, capacity_exceeded (unregistered under /0).
+    assert DATA["count"] == len(CASES) == 27 + VERSION
+    assert (len(HISTORY_CASES), len(PAIR_CASES), len(REFUSAL_CASES)) == (20, 3, 4 + VERSION)
+    assert DATA["profile"] == f"evidence-interop/{VERSION}"
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     assert digest(DATA["period_policy"]["document"]) == DATA["period_policy"]["digest"]
     assert set(DATA["units"]) == UNITS and DATA["labels"] == list(RANK)
@@ -502,6 +510,17 @@ def test_interval_refusal_is_the_same_for_every_requester():
     assert reasons == {"policy_declined"}
 
 
+@pytest.mark.skipif(VERSION == 0, reason="capacity_exceeded is unregistered under evidence-interop/0")
+def test_load_shedding_is_capacity_exceeded_and_unknown():
+    """The profile's "Interop profile revision": under evidence-interop/1 a node that sheds load
+    refuses capacity_exceeded, which maps to UNKNOWN, never WITHHELD (IP v1 §8.1)."""
+    (case,) = [c for c in REFUSAL_CASES if c["id"] == "refused-capacity-exceeded"]
+    assert json.loads(case["inputs"]["request"]["octets_text"])["profile"] == "evidence-interop/1"
+    got, _ = run_reply(case, case["inputs"])
+    (block,) = got["requirements"].values()
+    assert (block["status"], block["sufficiency"]) == ("UNKNOWN", "UNKNOWN")
+
+
 def test_a_valid_signature_never_makes_a_label():
     """§7.3: in every labelling negative the envelope is accepted, and the History still is not."""
     for case in HISTORY_CASES:
@@ -525,7 +544,8 @@ def test_served_only_counts_no_requested_exchange():
 def test_spec_lists_every_case():
     section = SPEC_TEXT.split("### 9.4", 1)[1].split("\n## ", 1)[0]
     listed = set(re.findall(r"^\| `([a-z0-9-]+)` \|", section, re.M))
-    assert listed == {c["id"] for c in CASES}
+    v1_only = {"refused-capacity-exceeded"}  # §9.4 marks it evidence-interop/1 only
+    assert (listed if VERSION else listed - v1_only) == {c["id"] for c in CASES}
 
 
 # ---------------------------------------------------------------------------
@@ -683,7 +703,7 @@ def test_period_fixed_at_one_anchor():
 def _generate(out: Path) -> None:
     for name in HAND_WRITTEN:
         shutil.copyfile(VECTORS / name, out / name)
-    subprocess.run([sys.executable, str(GENERATOR), "--out", str(out)], check=True)
+    subprocess.run([sys.executable, str(GENERATOR), "--profile", str(VERSION), "--out", str(out)], check=True)
 
 
 def _files(d: Path) -> list[str]:
@@ -709,9 +729,9 @@ def test_sha256sums_and_registration():
         assert sha((VECTORS / name).read_bytes()) == d, name
     top = dict(reversed(line.split("  ", 1)) for line in (ROOT / "vectors" / "SHA256SUMS").read_text().splitlines())
     for name in set(_files(VECTORS)) - {"SHA256SUMS"}:
-        assert top[f"inference-service-history-v0/{name}"] == sha((VECTORS / name).read_bytes()), name
+        assert top[f"{SET_NAME}/{name}"] == sha((VECTORS / name).read_bytes()), name
     corpora = json.loads((ROOT / "vectors" / "manifest.json").read_text())["corpora"]
-    assert corpora["inference_service_history_v0"] == "inference-service-history-v0/manifest.json"
+    assert corpora[SET_NAME.replace("-", "_")] == f"{SET_NAME}/manifest.json"
     assert "generate_inference_service_history_v0_vectors.py" in (
         ROOT / "python" / "scripts" / "generate_all_vectors.py").read_text()
 

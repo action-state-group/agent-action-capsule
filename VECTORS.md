@@ -118,6 +118,7 @@ its 9 `record_signatures`.
 | `vectors/personal-history-outcome-v0/` | `spec/personal-agent-history-outcome-v0.md` (Outcome) | respond, evaluate | 25 |
 | `vectors/standard-history-v0/` | `spec/standard-history-v0.md` (`standard_history/1`) | evaluate, report | 28 |
 | `vectors/inference-service-history-v0/` | `spec/inference-service-history-profile-v0.md` | respond, verify | 27 |
+| `vectors/inference-service-history-v0-interop-v1/` | `spec/inference-service-history-profile-v0.md` over `evidence-interop/1` | respond, verify | 28 |
 
 ## Evaluate, judge and report
 
