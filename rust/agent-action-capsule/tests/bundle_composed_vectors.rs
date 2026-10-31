@@ -156,7 +156,7 @@ fn member_bundle<'a>(block: &'a Value, id: &str) -> &'a Value {
 
 #[test]
 fn composed_vectors() {
-    let cases = cases("composed", 6);
+    let cases = cases("composed", 9);
     let by_id = |id: &str| cases.iter().find(|c| c["id"] == json!(id)).unwrap();
     for case in &cases {
         let id = case["id"].as_str().unwrap();
@@ -313,7 +313,7 @@ fn controller_binding_needs_the_delivered_record() {
 /// A malformed block reports no composition.
 #[test]
 fn a_malformed_block_reports_no_composition() {
-    let case = cases("composed", 6).remove(0);
+    let case = cases("composed", 9).remove(0);
     let mut container = case["container"].clone();
     container["extensions"][COMPOSED_KIND]["observers"] = json!([]);
     let result = verify_bundle_with_options(&container, &BundleOptions::default());

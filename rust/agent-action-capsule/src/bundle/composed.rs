@@ -225,14 +225,17 @@ fn join_state(s: &str) -> bool {
     matches!(s, "agree" | "mismatch" | "unjoined" | "one_sided")
 }
 
+/// Joins order by `members[0]`, `members[1]`, `basis`, then `pointer`, a
+/// join without `pointer` before every join with one (so before `pointer`
+/// `""`). Label and basis tokens exclude NUL, so a NUL separator keeps the
+/// tuple order, and the key without `pointer` is a prefix of every key with
+/// one. Distinct joins have distinct keys.
 fn join_key(j: &Join) -> String {
-    format!(
-        "{}\0{}\0{}\0{}",
-        j.members[0],
-        j.members[1],
-        j.basis,
-        j.pointer.as_deref().unwrap_or("")
-    )
+    let key = format!("{}\0{}\0{}", j.members[0], j.members[1], j.basis);
+    match &j.pointer {
+        Some(pointer) => format!("{key}\0{pointer}"),
+        None => key,
+    }
 }
 
 /// An optional array member; `None` when it is present but not an array.
@@ -307,11 +310,7 @@ fn parse_composed(raw: &Value) -> Result<Block, String> {
     let mut joins = Vec::new();
     for (i, raw_join) in join_list.iter().enumerate() {
         let j = parse_join(raw_join, &member_ids).map_err(|r| format!("join:{i}:{r}"))?;
-        let mut key = join_key(&j);
-        if j.pointer.is_none() {
-            key.push_str("\0absent");
-        }
-        if !seen.insert(key) {
+        if !seen.insert(join_key(&j)) {
             return Err(format!("join_duplicate:{i}"));
         }
         joins.push(j);
@@ -874,6 +873,14 @@ fn derived_state(
 ) -> (Option<String>, Vec<JoinDifference>) {
     let a = by_id[j.members[0].as_str()];
     let b = by_id[j.members[1].as_str()];
+    // A join with a declared-missing artifact member (listed in `missing` and
+    // carrying no body) is not derivable, whatever its other member is.
+    if [a, b]
+        .iter()
+        .any(|m| m.outcome == "artifact" && missing.contains(&m.id) && m.body.is_none())
+    {
+        return (None, Vec::new());
+    }
     // An artifact member counts as having records unless its carried Bundle
     // is an empty-history Bundle, which shows no history.
     let (mut with_records, mut empty) = (Vec::new(), Vec::new());
@@ -882,7 +889,7 @@ fn derived_state(
             continue;
         }
         match &m.body {
-            Some(body) if !missing.contains(&m.id) && is_empty_history(body) => empty.push(m),
+            Some(body) if is_empty_history(body) => empty.push(m),
             _ => with_records.push(m),
         }
     }
@@ -900,9 +907,6 @@ fn derived_state(
             let Some(pointer) = &j.pointer else {
                 return (None, Vec::new());
             };
-            if missing.contains(&full.id) {
-                return (None, Vec::new());
-            }
             let (Some(record), Some(side)) = (
                 root_record(full),
                 empty[0].body.as_ref().and_then(checkpoint_side),
@@ -916,9 +920,6 @@ fn derived_state(
             };
         }
         _ => {}
-    }
-    if missing.contains(&a.id) || missing.contains(&b.id) {
-        return (None, Vec::new());
     }
     let (Some(ra), Some(rb)) = (root_record(a), root_record(b)) else {
         return (None, Vec::new());

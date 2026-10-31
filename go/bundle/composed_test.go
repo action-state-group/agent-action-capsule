@@ -3,10 +3,12 @@ package bundle
 
 import (
 	"encoding/json"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -34,12 +36,12 @@ func composedCases(t *testing.T) map[string]composedCase {
 		Cases []composedCase `json:"cases"`
 	}
 	require.NoError(t, decoder.Decode(&file))
-	require.Equal(t, json.Number("6"), file.Count)
+	require.Equal(t, json.Number("9"), file.Count)
 	cases := map[string]composedCase{}
 	for _, c := range file.Cases {
 		cases[c.ID] = c
 	}
-	require.Len(t, cases, 6)
+	require.Len(t, cases, 9)
 	return cases
 }
 
@@ -561,4 +563,30 @@ func memberByIDResult(r *ComposedResult, id string) ComposedMemberResult {
 		}
 	}
 	return ComposedMemberResult{}
+}
+
+// The digest input's join order is total: with enough joins that sort.Slice
+// no longer runs an insertion sort, any carried order, including the pair of
+// joins that differ only in pointer absent versus pointer "", gives one
+// preimage.
+func TestComposedDigestIgnoresCarriedJoinOrder(t *testing.T) {
+	_, block := cloneCase(t, composedCases(t)["join-order-pointer-absent-first"])
+	joins := block["joins"].([]interface{})
+	pair := joins[1].(map[string]interface{})["members"]
+	for i := 0; i < 14; i++ {
+		joins = append(joins, map[string]interface{}{
+			"members": pair, "basis": "issued_receipt", "pointer": "/p" + strconv.Itoa(i), "state": "unjoined",
+		})
+	}
+	block["joins"] = joins
+	want, err := ComposedDigestPreimage(block)
+	require.NoError(t, err)
+	for _, seed := range []int64{1, 2, 3, 4, 5} {
+		shuffled := append([]interface{}(nil), joins...)
+		rand.New(rand.NewSource(seed)).Shuffle(len(shuffled), func(i, k int) { shuffled[i], shuffled[k] = shuffled[k], shuffled[i] })
+		block["joins"] = shuffled
+		got, err := ComposedDigestPreimage(block)
+		require.NoError(t, err)
+		require.Equal(t, string(want), string(got), seed)
+	}
 }

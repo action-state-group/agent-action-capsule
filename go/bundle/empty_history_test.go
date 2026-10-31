@@ -140,11 +140,20 @@ func TestEmptyMemberJoinNeedsTheOtherRootRecord(t *testing.T) {
 	delete(block["joins"].([]interface{})[0].(map[string]interface{}), "pointer")
 	require.Equal(t, "not_derivable", verifyBlock(t, container, bindingOptions(c)).Joins[0].Result)
 
-	// Declared missing, the member with records does not derive, even when a
-	// body is carried anyway (a composition-closure failure of its own).
+	// Declared missing (listed, no body), the member with records does not
+	// derive.
 	container, block, c = emptyCase(t, "controller-binding-empty-member-linked")
 	block["missing"] = []interface{}{"responder-a"}
+	delete(memberByID(block, "responder-a"), "bundle")
 	require.Equal(t, "not_derivable", verifyBlock(t, container, bindingOptions(c)).Joins[0].Result)
+
+	// Listed but still carrying its body, it is not declared missing (a
+	// composition-closure failure of its own), so the join derives.
+	container, block, c = emptyCase(t, "controller-binding-empty-member-linked")
+	block["missing"] = []interface{}{"responder-a"}
+	result := verifyBlock(t, container, bindingOptions(c))
+	require.Equal(t, "fail", result.CompositionClosure.Status)
+	require.Equal(t, "one_sided", result.Joins[0].Derived)
 
 	container, block, c = emptyCase(t, "controller-binding-empty-member-linked")
 	bundle := memberByID(block, "responder-a")["bundle"].(map[string]interface{})

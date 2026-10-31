@@ -372,6 +372,10 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions):
     from .bundle import is_empty_history
 
     a, b = by_id[j.members[0]], by_id[j.members[1]]
+    # A join with a declared-missing artifact member (listed in missing and
+    # carrying no body) is not derivable, whatever its other member is.
+    if any(m.outcome == "artifact" and missing.get(m.id) and m.body is None for m in (a, b)):
+        return "", []
     # An artifact member counts as having records unless its carried Bundle is
     # an empty-history Bundle, which shows no history.
     with_records: list = []
@@ -379,7 +383,7 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions):
     for m in (a, b):
         if m.outcome != "artifact":
             continue
-        if not missing.get(m.id) and m.body is not None and is_empty_history(m.body):
+        if m.body is not None and is_empty_history(m.body):
             empty.append(m)
         else:
             with_records.append(m)
@@ -391,7 +395,7 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions):
         # controller_binding still derives against an empty-history member,
         # from the key that signed its checkpoint at that checkpoint's time.
         full = with_records[0]
-        if missing.get(full.id) or j.pointer is None:
+        if j.pointer is None:
             return "", []
         record = _root_record(full)
         side = _checkpoint_side(empty[0].body)
@@ -401,8 +405,6 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions):
         if not derivable:
             return "", []
         return ("one_sided" if linked else "unjoined"), []
-    if missing.get(a.id) or missing.get(b.id):
-        return "", []
     ra, rb = _root_record(a), _root_record(b)
     if ra is None or rb is None:
         return "", []
@@ -712,10 +714,13 @@ def composed_digest_preimage(raw: Any) -> bytes:
 
 
 def _join_key(j: _Join) -> str:
-    """Joins order by members[0], members[1], basis, then pointer (the empty
-    string when absent). Label and basis tokens exclude NUL, so a NUL
-    separator keeps the tuple order."""
-    return "\x00".join((j.members[0], j.members[1], j.basis, j.pointer or ""))
+    """Joins order by members[0], members[1], basis, then pointer, a join
+    without pointer before every join with one (so before pointer ""). Label
+    and basis tokens exclude NUL, so a NUL separator keeps the tuple order, and
+    the key without pointer is a prefix of every key with one. Distinct joins
+    have distinct keys."""
+    key = "\x00".join((j.members[0], j.members[1], j.basis))
+    return key if j.pointer is None else key + "\x00" + j.pointer
 
 
 # --- parsing -----------------------------------------------------------------
@@ -769,8 +774,6 @@ def _parse_composed(raw: Any) -> tuple[_Block, str]:
         if reason:
             return block, f"join:{i}:{reason}"
         key = _join_key(join)
-        if join.pointer is None:
-            key += "\x00absent"
         if key in seen:
             return block, f"join_duplicate:{i}"
         seen.add(key)

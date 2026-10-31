@@ -1239,13 +1239,16 @@ the member bodies are carried.
      `state`, plus whichever of `pointer`, `identifier_digest` and `compare`
      the join carries (absent members stay absent, never `null`). Sort in
      ascending order of `members[0]`, then `members[1]`, then `basis`, then
-     `pointer` (the empty string when absent). `compare` keeps its carried
-     order. Use `[]` when the block has no `joins`.
+     `pointer`, where a join without `pointer` sorts before every join with
+     one, including a `pointer` that is the empty string. `compare` keeps
+     its carried order. Use `[]` when the block has no `joins`.
    - `not_requested`: the block's `not_requested` sorted ascending, or `[]`
      when it has none.
 
-   Identifiers are ASCII (`label-id`), so ascending order is octet order. The
-   order in which arrays are carried does not affect the digest.
+   Identifiers are ASCII (`label-id`), so ascending order is octet order.
+   `pointer` values, which may hold any character, compare by the octets of
+   their UTF-8 encoding. The order in which arrays are carried does not affect
+   the digest.
 2. `composed_digest` is the lowercase hexadecimal SHA-256 of the UTF-8 octets
    of the JCS {{RFC8785}} serialization of `D`. This is the canonicalization
    algorithm `jcs` of {{I-D.mih-sokolov-scitt-payload-binding}}: RFC 8785 with
@@ -1676,6 +1679,10 @@ Since -01:
   signed its checkpoint, and is `not_derivable` without one. Security
   Considerations: no history. Privacy Considerations: a cleared history's
   checkpoint is signed by the cleared stream's key.
+- `composed/v1` composed digest: a join without `pointer` sorts before every
+  join with one, including a `pointer` that is the empty string. -01 sorted
+  the two alike, so their carried order changed the digest. `pointer` values
+  compare by their UTF-8 octets.
 - Cites Evidence Request -01 and, informatively, Evidence Layer -00 and the
   Canonicalization Declaration -06.
 

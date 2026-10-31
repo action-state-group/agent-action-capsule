@@ -70,7 +70,7 @@ def _composed_input(block: dict) -> dict:
         "observers": sorted(({k: o[k] for k in ("id", "role", "custody_domain")} for o in block.get("observers", [])),
                             key=lambda o: o["id"]),
         "joins": sorted(({k: j[k] for k in join_fields if k in j} for j in block.get("joins", [])),
-                        key=lambda j: (j["members"][0], j["members"][1], j["basis"], j.get("pointer", ""))),
+                        key=lambda j: (j["members"][0], j["members"][1], j["basis"], "pointer" in j, j.get("pointer", ""))),
         "not_requested": sorted(block.get("not_requested", [])),
     }
 
@@ -97,20 +97,20 @@ def _derive(join: dict, by_id: dict[str, dict]) -> str | None:
     """Joins: derive the state, or None when a needed member body is not carried."""
     a, b = (by_id[i] for i in join["members"])
     granted = [m["outcome"] == "artifact" for m in (a, b)]
+    if any(g and _root(m) is None for g, m in zip(granted, (a, b))):
+        return None  # an artifact member declared missing (no body): not derivable
     if not any(granted):
         return "unjoined"
     if not all(granted):
         return "one_sided"
     ra, rb = _root(a), _root(b)
-    if ra is None or rb is None:
+    if join["basis"] not in ("pre_agreed_identifier", "shared_artifact_digest"):
         return None
     va, vb = _pointer(ra, join["pointer"]), _pointer(rb, join["pointer"])
     if join["basis"] == "pre_agreed_identifier":
         linked = all(isinstance(v, str) and _sha(v.encode("utf-8")) == join["identifier_digest"] for v in (va, vb))
     elif join["basis"] == "shared_artifact_digest":
         linked = isinstance(va, str) and va == vb
-    else:
-        return None
     if not linked:
         return "unjoined"
     same = all(_jcs(_pointer(ra, p)) == _jcs(_pointer(rb, p)) and _pointer(ra, p) is not None
@@ -148,11 +148,22 @@ def test_sha256sums_pin_every_file():
         assert top.get(f"bundle/composed/{name}") == _sha((VECTORS / name).read_bytes()), name
 
 
-def test_six_cases():
-    assert DATA["count"] == len(DATA["cases"]) == 6
+def test_nine_cases():
+    assert DATA["count"] == len(DATA["cases"]) == 9
     assert set(CASES) == {"agree", "one-member-missing", "same-custody-redundant",
                           "artifact-response-bound", "artifact-response-other-request",
-                          "agree-with-checkpoints"}
+                          "agree-with-checkpoints", "missing-member-beside-absence",
+                          "listed-member-carries-body", "join-order-pointer-absent-first"}
+
+
+def test_carried_join_order_does_not_change_the_composed_digest():
+    block = json.loads(json.dumps(_block(CASES["join-order-pointer-absent-first"])))
+    preimage = _jcs(_composed_input(block))
+    block["joins"].reverse()
+    assert _jcs(_composed_input(block)) == preimage
+    joins = json.loads(preimage)["joins"]
+    # issued_receipt < pre_agreed_identifier < same_interval; pointers by UTF-8 octets.
+    assert [j.get("pointer") for j in joins[:2] + joins[3:]] == ["/\ue000", "/\U00010000", None, ""]
 
 
 # ---------------------------------------------------------------------------
@@ -203,14 +214,17 @@ def test_members_and_composition_closure(case_id):
     assert len(ids) == len(set(ids))
     assert missing <= set(ids)
     observer_ids = {o["id"] for o in block["observers"]}
+    carries_body = set()
     for member in block["members"]:
         want = case["expect"]["members"][member["id"]]
         assert member["outcome"] == want["outcome"]
         assert member["observer"] in observer_ids
         body = _member_body(member)
-        if member["id"] in missing:
-            assert body is None and want["body"] == "declared_missing" and want["digest"] == "not_shown"
+        if member["id"] in missing and body is None:
+            assert want["body"] == "declared_missing" and want["digest"] == "not_shown"
             continue
+        if member["id"] in missing:
+            carries_body.add(member["id"])  # listed yet carried: not declared missing
         assert want["body"] == "carried"
         assert _member_digest(member) == member["digest"], member["id"]
         assert want["digest"] == "reproduced"
@@ -225,7 +239,7 @@ def test_members_and_composition_closure(case_id):
                 "artifact_digest": "matches" if response["artifact_digest"] == member["digest"] else "mismatch",
                 "signature": "signature_unverified",
             }
-    status = "withheld" if missing else "pass"
+    status = "fail" if carries_body else "withheld" if missing else "pass"
     assert case["expect"]["composition_closure"]["status"] == status
     assert sorted(missing) == case["expect"]["composition_closure"]["missing"]
 

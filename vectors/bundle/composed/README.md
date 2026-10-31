@@ -29,6 +29,9 @@ Each case records the literal JCS preimage as `expect.canonical_preimage`.
 | `artifact-response-bound` | `agree`, with responder-a carrying its `response` envelope | same composed digest as `agree`; the envelope's digests match the member's; signature `signature_unverified` (no deployment profile), so the block is `withheld` |
 | `artifact-response-other-request` | the same, the envelope naming another request | block `fail` (`member_response_request_digest_mismatch`) |
 | `agree-with-checkpoints` | `agree`, with the container and each member Bundle carrying a whole-log completeness certificate and a signed COSE checkpoint of its own log | block `pass`; every member claim `pass`; strict verdict `VALID` for the container and each member, so the full verdict is `VALID` |
+| `missing-member-beside-absence` | an artifact declared missing and an absence, the join declared `one_sided` | join `not_derivable` (an artifact member is declared missing), never a derived `one_sided`; closure `withheld` |
+| `listed-member-carries-body` | the same, with the artifact listed in `missing` but its Bundle still carried | not declared missing: closure `fail` (`missing_member_carries_body`); the join derives `one_sided` |
+| `join-order-pointer-absent-first` | `agree`, plus two `same_interval` joins on the same pair, one with `pointer` `""` and one without, carried in that order, and two `issued_receipt` joins with pointers `/`U+10000 and `/`U+E000 | the digest input lists the join without `pointer` first and orders pointers by UTF-8 octets, U+E000 first, the reverse of UTF-16 order (-02), so carried order never reaches the digest; the four reserved-basis joins are `not_derivable`; block `withheld` |
 
 An artifact member may carry `response`: the responder's signed response
 envelope without the artifact bytes. Its `request_digest` must equal the

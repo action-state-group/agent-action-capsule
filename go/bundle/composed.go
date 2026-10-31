@@ -399,13 +399,20 @@ func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[stri
 
 func derivedState(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options) (string, []JoinDifference) {
 	a, b := byID[j.members[0]], byID[j.members[1]]
+	// A join with a declared-missing artifact member (listed in missing and
+	// carrying no body) is not derivable, whatever its other member is.
+	for _, m := range []composedMember{a, b} {
+		if m.outcome == "artifact" && missing[m.id] && m.body == nil {
+			return "", nil
+		}
+	}
 	// An artifact member counts as having records unless its carried Bundle
 	// is an empty-history Bundle, which shows no history.
 	var withRecords, empty []composedMember
 	for _, m := range []composedMember{a, b} {
 		switch {
 		case m.outcome != "artifact":
-		case !missing[m.id] && m.body != nil && EmptyHistory(m.body):
+		case m.body != nil && EmptyHistory(m.body):
 			empty = append(empty, m)
 		default:
 			withRecords = append(withRecords, m)
@@ -421,7 +428,7 @@ func derivedState(j composedJoin, byID map[string]composedMember, missing map[st
 		// controller_binding still derives against an empty-history member,
 		// from the key that signed its checkpoint at that checkpoint's time.
 		full := withRecords[0]
-		if missing[full.id] || j.pointer == nil {
+		if j.pointer == nil {
 			return "", nil
 		}
 		record := rootRecord(full)
@@ -437,9 +444,6 @@ func derivedState(j composedJoin, byID map[string]composedMember, missing map[st
 			return "one_sided", nil
 		}
 		return "unjoined", nil
-	}
-	if missing[a.id] || missing[b.id] {
-		return "", nil
 	}
 	ra, rb := rootRecord(a), rootRecord(b)
 	if ra == nil || rb == nil {
@@ -573,6 +577,7 @@ func ComposedDigestPreimage(raw interface{}) ([]byte, error) {
 		observerValues[i] = map[string]interface{}{"id": o.id, "role": o.role, "custody_domain": o.custody}
 	}
 	joins := append([]composedJoin(nil), block.joins...)
+	// Joins are unique by joinKey (parseComposed), so the order is total.
 	sort.Slice(joins, func(i, k int) bool { return joinKey(joins[i]) < joinKey(joins[k]) })
 	joinValues := make([]interface{}, len(joins))
 	for i, j := range joins {
@@ -609,15 +614,17 @@ func ComposedDigestPreimage(raw interface{}) ([]byte, error) {
 	})
 }
 
-// joinKey orders joins by members[0], members[1], basis, then pointer (the
-// empty string when absent). label-id and basis tokens exclude NUL, so a NUL
-// separator keeps the tuple order.
+// joinKey orders joins by members[0], members[1], basis, then pointer, a join
+// without pointer before every join with one (so before pointer ""). label-id
+// and basis tokens exclude NUL, so a NUL separator keeps the tuple order, and
+// the key without pointer is a prefix of every key with one. Distinct joins
+// have distinct keys.
 func joinKey(j composedJoin) string {
-	pointer := ""
+	key := j.members[0] + "\x00" + j.members[1] + "\x00" + j.basis
 	if j.pointer != nil {
-		pointer = *j.pointer
+		key += "\x00" + *j.pointer
 	}
-	return j.members[0] + "\x00" + j.members[1] + "\x00" + j.basis + "\x00" + pointer
+	return key
 }
 
 type malformedError struct{ reason string }
@@ -684,9 +691,6 @@ func parseComposed(raw interface{}) (composedBlock, string) {
 			return block, "join:" + strconv.Itoa(i) + ":" + reason
 		}
 		key := joinKey(j)
-		if j.pointer == nil {
-			key += "\x00absent"
-		}
 		if seen[key] {
 			return block, "join_duplicate:" + strconv.Itoa(i)
 		}
