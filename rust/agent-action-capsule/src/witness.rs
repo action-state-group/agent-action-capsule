@@ -35,7 +35,6 @@
 use base64::alphabet;
 use base64::engine::{DecodePaddingMode, GeneralPurpose, GeneralPurposeConfig};
 use base64::Engine as _;
-use coset::iana::Algorithm;
 use p256::ecdsa::signature::Verifier as _;
 use p256::pkcs8::{DecodePublicKey, EncodePublicKey, ObjectIdentifier, SubjectPublicKeyInfoRef};
 use serde_json::{Map, Value};
@@ -396,6 +395,14 @@ pub fn checkpoint_digest(signed: &SignedCheckpoint) -> String {
     .digest()
 }
 
+/// The two signature algorithms a receipt may declare: COSE `alg` -8 (EdDSA,
+/// Ed25519 here) and -7 (ES256).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Algorithm {
+    EdDSA,
+    ES256,
+}
+
 /// An inclusion proof: `tree_size`, `leaf_index` and the audit path.
 type InclusionProof = (u64, u64, Vec<Vec<u8>>);
 
@@ -619,7 +626,6 @@ fn key_fits_alg(alg: Algorithm, key_der: &[u8]) -> bool {
     match alg {
         Algorithm::EdDSA => raw_ed25519(key_der).is_some(),
         Algorithm::ES256 => p256::PublicKey::from_public_key_der(key_der).is_ok(),
-        _ => false,
     }
 }
 
@@ -1242,7 +1248,10 @@ mod tests {
             Cbor::Array(vec![]),
         ]));
         let protected = HeaderBuilder::new()
-            .algorithm(alg)
+            .algorithm(match alg {
+                Algorithm::EdDSA => coset::iana::Algorithm::EdDSA,
+                Algorithm::ES256 => coset::iana::Algorithm::ES256,
+            })
             .value(395, Cbor::Integer(1.into()))
             .build();
         let unprotected = HeaderBuilder::new()

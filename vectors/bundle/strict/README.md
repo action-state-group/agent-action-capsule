@@ -270,8 +270,8 @@ A receipt verifies over a leaf when all of these hold:
 **Receipt encoding.** A receipt is at most 10,485,760 octets. The
 COSE_Sign1, its protected header and each inclusion-proof byte string are
 each one CBOR item under the encoding rule of
-`spec/interop-profile-v1.md` §6.2.2, which every COSE Receipt check in this
-repository shares. In short: no trailing octet, definite lengths, every
+`spec/interop-profile-v1.md` §6.2.2, which this check shares with the
+anchor check of §6.2.2. In short: no trailing octet, definite lengths, every
 argument in its shortest form, no repeated map key, integer or text map
 keys, valid UTF-8, no float, no simple value but `false`, `true` and `null`,
 no tag but the outer tag 18, and no item more than 16 levels deep; map order
@@ -282,8 +282,9 @@ whatever its signature: a tag (`neg-witness-cll-encoding-tag`), a bignum
 integer nor text (`neg-witness-cll-encoding-array-key`,
 `neg-witness-cll-encoding-bytes-key`), a float
 (`neg-witness-cll-encoding-float`, `neg-witness-cll-encoding-nan-keys`), a
-repeated key (`neg-witness-cll-encoding-repeated-key`), `undefined`
-(`neg-witness-cll-encoding-undefined`), an indefinite length
+repeated key (`neg-witness-cll-encoding-repeated-key`), a simple value
+other than `false`, `true` and `null` (`neg-witness-cll-encoding-undefined`,
+`neg-witness-cll-encoding-simple-value`), an indefinite length
 (`neg-witness-cll-encoding-indefinite`), an item 17 levels deep
 (`neg-witness-cll-encoding-too-deep`, against
 `pos-witness-cll-encoding-depth-16`), in the protected header
@@ -300,7 +301,11 @@ unprotected `kid` (4) that is an integer
 `"abc"` (`pos-witness-cll-unread-content-type`) changes nothing. A protected
 `crit` (2) must be a non-empty array of labels that are present in the
 protected header and among `alg`, `crit`, CWT_Claims and `vds` (RFC 9052
-§3.1); otherwise the receipt fails.
+§3.1; `pos-witness-cll-crit-understood`); otherwise the receipt fails: a
+label it does not process (`neg-witness-cll-crit-not-understood`), one absent
+from the header (`neg-witness-cll-crit-absent`), an empty array
+(`neg-witness-cll-crit-empty`), no array (`neg-witness-cll-crit-not-an-array`)
+or a label that is neither an integer nor text (`neg-witness-cll-crit-boolean`).
 
 Every base64 field a receipt check reads (`receipt_b64`, the Rekor `body`,
 `signedEntryTimestamp` and `verifier`) is canonical standard base64 with
@@ -402,6 +407,7 @@ checkpoint is signed by another, the log key.
 | `neg-witness-cll-encoding-nan-keys` | a map with two NaN keys under label 99 | INVALID |
 | `neg-witness-cll-encoding-repeated-key` | a map with a repeated integer key under label 99 | INVALID |
 | `neg-witness-cll-encoding-undefined` | `undefined` (`0xf7`) under label 99 | INVALID |
+| `neg-witness-cll-encoding-simple-value` | the unassigned simple value 0 (`0xe0`) under label 99 | INVALID |
 | `neg-witness-cll-encoding-indefinite` | an indefinite-length array under label 99 | INVALID |
 | `neg-witness-cll-encoding-too-deep` | 14 nested arrays under label 99: an item 17 levels deep | INVALID |
 | `neg-witness-cll-encoding-protected-tag` | a tag 1 under protected label -65538 | INVALID |
@@ -411,6 +417,12 @@ checkpoint is signed by another, the log key.
 | `pos-witness-cll-encoding-depth-16` | 13 nested arrays under label 99: an item 16 levels deep | VALID |
 | `pos-witness-cll-unread-kid-integer` | an unprotected `kid` (4) that is an integer | VALID |
 | `pos-witness-cll-unread-content-type` | a protected content type (3) of `"abc"` | VALID |
+| `pos-witness-cll-crit-understood` | a protected `crit` `[15]` with an empty CWT_Claims map | VALID |
+| `neg-witness-cll-crit-not-understood` | a protected `crit` `[4]` over a `kid` | INVALID |
+| `neg-witness-cll-crit-absent` | a protected `crit` `[15]` with no CWT_Claims | INVALID |
+| `neg-witness-cll-crit-empty` | a protected `crit` that is an empty array | INVALID |
+| `neg-witness-cll-crit-not-an-array` | a protected `crit` that is an integer | INVALID |
+| `neg-witness-cll-crit-boolean` | a protected `crit` `[true]` | INVALID |
 | `neg-witness-cll-vds-ccf` | a receipt signed over the right root that declares `vds` 2 | INVALID |
 | `neg-witness-cll-alg-unsupported` | a receipt signed over the right root that declares `alg` -257 | INVALID |
 | `pos-witness-cll-es256` | a `cll` receipt signed ES256 under the row's P-256 key | VALID |

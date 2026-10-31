@@ -287,6 +287,35 @@ def _receipt_encoding_error(receipt: bytes) -> str | None:
     return None
 
 
+_UNDERSTOOD_LABELS = (1, 2, 15, 395)  # alg, crit, CWT_Claims, vds
+
+
+def _crit_error(receipt: bytes) -> str | None:
+    """RFC 9052 §3.1 for a receipt that met the encoding rule: a protected
+    ``crit`` (2) is a non-empty array of labels present in the protected
+    header and among those this check processes. Checked here rather than
+    left to scitt-cose, whose understood set differs by version."""
+    try:
+        protected_bytes = _strict(receipt, top_tag=True).value[0]
+        headers = _strict(protected_bytes) if protected_bytes else {}
+    except Exception:  # noqa: BLE001 -- the shape check reports an unreadable receipt
+        return None
+    if not isinstance(headers, dict) or 2 not in headers:
+        return None
+    labels = headers[2]
+    if not isinstance(labels, list) or not labels:
+        return "crit (label 2) must be a non-empty array"
+    for label in labels:
+        # type(), not isinstance: true would equal the alg label 1.
+        if type(label) not in (int, str):
+            return "crit lists a label that is not an integer or text"
+        if label not in headers:
+            return "crit lists a header absent from the protected header"
+        if type(label) is not int or label not in _UNDERSTOOD_LABELS:
+            return "crit marks a header this verifier does not understand"
+    return None
+
+
 def _receipt_shape_error(receipt: bytes, key_pem: bytes | str | None = None) -> str | None:
     """Refuse what ``scitt_cose.verify_receipt`` would read differently from
     this profile: a receipt must meet the receipt encoding rule, be a tag-18
@@ -295,7 +324,7 @@ def _receipt_shape_error(receipt: bytes, key_pem: bytes | str | None = None) -> 
     RFC9162_SHA256."""
     import cbor2
 
-    encoding = _receipt_encoding_error(receipt)
+    encoding = _receipt_encoding_error(receipt) or _crit_error(receipt)
     if encoding is not None:
         return encoding
     try:

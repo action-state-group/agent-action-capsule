@@ -26,7 +26,7 @@ default = []
 bundle = ["dep:cll", "dep:base64", "dep:serde"]
 # Strict Evidence Bundle verification (`bundle::verify_bundle_strict`) and
 # the witness receipt checks (`witness`).
-strict = ["bundle", "dep:coset", "dep:p256"]
+strict = ["bundle", "dep:p256"]
 # The two-party settlement verifier (`settlement`).
 settlement = ["dep:base64"]
 
@@ -42,12 +42,13 @@ cll = { package = "checkpointed-local-log", version = "0.3.1", optional = true }
 base64 = { version = "0.22", optional = true }
 # Witness receipts (`strict`): the ECDSA P-256 keys and signatures of COSE
 # Receipts and of a Rekor entry's Signed Entry Timestamp. Receipts are decoded
-# by the crate's own strict CBOR reader; coset supplies the algorithm names.
-coset = { version = "0.4", optional = true }
+# by the crate's own strict CBOR reader.
 p256 = { version = "0.13", features = ["ecdsa", "pkcs8"], optional = true }
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
+# Test receipts and statements are built with coset.
+coset = "0.4"
 
 [[test]]
 name = "bundle_vectors"

@@ -36,16 +36,18 @@ has not yet.
   shortest arguments, no repeated key, integer or text keys, valid UTF-8, no float, no simple value
   but false, true and null, no tag but the outer 18, at most 16 levels. The README also states the
   10,485,760-octet and 16-proof limits, that a header label the check does not read is ignored
-  whatever its value, and the `crit` rule; §6.2.2 adds the UTF-8 words and that no array or map is
+  whatever its value, provided the receipt meets the encoding rule (only the labels listed there
+  are read for decisions), and the `crit` rule; §6.2.2 adds the UTF-8 words and that no array or map is
   limited in length below the octet limit. Changed outcomes: a receipt with a float, a tag, a bignum
   or a non-shortest inclusion proof now fails, so `pos-witness-registration-time-invalid` (a float
   `iat`) and `pos-witness-registration-time-float-claim-key` are now
   `neg-witness-registration-time-float-iat` and `neg-witness-registration-time-float-claim-key`,
-  INVALID. Go: `VerifyCOSEReceipt` decodes with the shared `strictReceiptItem` (the lenient proof
+  INVALID: RFC 8392 allows a float NumericDate; this profile does not. Go: `VerifyCOSEReceipt` decodes with the shared `strictReceiptItem` (the lenient proof
   decoding is gone), and Go's decoding no longer stops at 131,072 array items or map pairs, in both
   checks. TypeScript: `verifyCoseReceipt` decodes with the new `decodeReceiptItem` (the lenient path
-  is gone). Python: the receipt check runs the rule before scitt-cose, so its outcome no longer
-  depends on the scitt-cose version. 18 new strict vectors (`vectors/bundle/strict/`, now 92 cases).
+  is gone). Python: the receipt check runs the rule and the `crit` check before scitt-cose, whose
+  reading and understood labels differ by version. 25 new strict vectors (`vectors/bundle/strict/`,
+  now 99 cases).
 
 ## go 0.18.0 — 2026-10-31
 
