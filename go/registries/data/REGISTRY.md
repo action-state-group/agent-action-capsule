@@ -19,6 +19,10 @@ vocabulary defined normatively in the Internet-Draft; it never generates new
 semantics. A registration records a value and its specification — it does not
 amend the format.
 
+**Except §19.** §19 is a table of predicates, not a registry. Its rows and its rule for an
+undeclared predicate are stated there and in no Internet-Draft, and the registration policy and
+the designated-expert guidance do not apply to it.
+
 This record applies only to Capsules conforming to the base profile's format-4
 requirements. A registry entry cannot make a pre-format-4 Capsule or any other
 unsupported canonicalization declaration conforming or verifiable.
@@ -571,6 +575,87 @@ registration defines the other.
 | `acknowledges` | The carrying record states its author has seen and holds the target: receipt, not agreement. |
 | `rebuts` | The carrying record disputes the target's claim. |
 | `closes` | The carrying record binds a range or set of records as reconciled. |
+
+## 19. Predicate
+
+A predicate is what a verifier reports across record families: that an action was performed, a
+payment settled, a record disputed. A record of one family and a record of another can support
+the same predicate, each as its source. This section is a table, not a registry (see the
+document header): it has no registration policy, and it becomes a specification when a second
+implementation asks for one. It defines no statement schema per `record_type`. Each row names
+its sources by the section that defines them, and a verifier reads each source by that section's
+own rules.
+
+The columns are:
+
+- **Predicate** and **Version**: a predicate is named by the pair. A change to a row's sources,
+  unit or work class, a revision named below included, is a new version of the predicate, and
+  the earlier row stays.
+- **Allowed sources**: the records the predicate may rest on.
+- **Unit**: what one instance of the predicate is about.
+- **Work class**: how its result is reached, as one of the two `tier` values of
+  `spec/evidence-plan-ir-v0.md` §4.2: `recomputed` (mechanically, from the cited records) or
+  `judged` (by a model or human judge applying judgment to them).
+
+Sources are cited at these revisions, each the file of that name in `spec/`: ID,
+`draft-mih-scitt-agent-action-capsule-05`; BA, `draft-mih-agent-bilateral-attestation-03`; EL,
+`draft-mih-agent-evidence-layer-00`; ER, `draft-mih-agent-evidence-request-02`; SR,
+`draft-mih-agent-settlement-records-00`. Other tags: IP, `spec/interop-profile-v1.md`; SH,
+`spec/standard-history-v0.md`; JF, `spec/judge-record-family-v1.md`; AD,
+`spec/adapters/README.md`. A section number without a tag is a section of this document.
+
+**An undeclared predicate is not checked.** A verifier reports a predicate that this table does
+not list at the version asked about as `NOT_CHECKED` (IP §7.1): never `PASS`, and never `FAIL`
+for that reason alone.
+
+| Predicate | Version | Allowed sources | Unit | Work class |
+|---|---|---|---|---|
+| `performed` | `1` | A Capsule whose `verdict_class` is `executed` (ID §5.5.1) and whose derived `effect_mode` is `confirmed`, reported with its `effect_attestation` grade (ID §5.3). `dispatched_unconfirmed`, the mode of a `failed` or `reverted` effect included, does not support it: the effect was dispatched, not confirmed (ID §5.3, §5.5.2). The Capsule may be the counterparty's half, held under `citation_purpose` `counterparty_half` (§11), which records custody of it, not an observation by the holder | one action: one Capsule | `recomputed` |
+| `acknowledged` | `1` | A BA acknowledgment (BA "Conventions and Definitions"; "The Bilateral Exchange", move 4). An EL record carrying an `acknowledges` link (EL "Typed Links"; §18). An IP acceptance receipt (IP §11.1.4). Each records receipt only, never agreement or acceptance (IP §11.1.6) | one record, the one acknowledged, named by its digest | `recomputed` |
+| `settled` | `1` | A payer-observed and a payee-observed SR leg citing one terms leg, in payment state `agreed` with the agreed `status` `settled` (SR "Payment State", "Status Values and ISO 20022"). A one-sided state (`payer_stated`, `payee_stated`) is a stated claim, never `agreed` (SR "Payment State"). A settlement predicate that an accepted adapter declaration lists (AD §1 item (d), §3) | one payment: one terms leg, or the object the declaration covers. Amounts are SR amount triples (SR "Amounts") | `recomputed` |
+| `refunded` | `1` | A payer-observed and a payee-observed SR leg citing one terms leg, joined as for `settled`, whose agreed `status` is `reversed`: a payment that had settled, reported as returned or reversed (SR "Status Values and ISO 20022"). SR does not call this a refund | one payment, as for `settled` | `recomputed` |
+| `disputed` | `1` | An IP `disputes` lifecycle statement whose finding is `lifecycle_effective` and whose target is the disputed record (IP §11.2.1, §11.2.2, §11.2.4). It holds whether the dispute is open or resolved, and the verifier shows the dispute's status with it (IP §11.2.6). A `rebuts` statement is not a dispute (IP §11.2.1) | one `disputes` statement, about one target record | `recomputed` |
+| `adjudicated(outcome, judge, pack)` | `1` | A JF `adjudication/v1` record (JF §6), or one case of a JF `evaluation-report/v1` record (JF §2). `outcome` is the record's or the case's `verdict`; `judge` is its judge pin (`basis` in `adjudication/v1`, `judge_pin` in `evaluation-report/v1`). No source gives `pack` (open points) | one adjudicated matter: one adjudication record or one case | `judged` |
+| `controls-domain` | `1` | A supported predicate of an accepted adapter declaration (AD §1 item (d), §3) that names a key and an origin: the checkout predicate of `spec/adapters/ucp-v0.md` §3 (d), a key in the key set served at the business origin's `/.well-known/ucp`, fetched live or as of when it was retained; or X4 of `spec/adapters/x402-v0.md` §8, a key authorized for the service at `resourceUrl` as of the receipt's `issuedAt`, by the approach the relying party's policy picks (`spec/adapters/x402-v0.md` §5.3), with the checks X4 requires `PASS`. It holds only what that predicate states, never that the origin is the party the relying party means (`spec/adapters/ucp-v0.md` §3 (d)) | one key and one origin, as of the time the predicate states: when the key set was read for the ucp-v0 predicate, `issuedAt` for X4 | `recomputed` |
+| `key-continuous-since` | `1` | The checkpoints and consistency proofs of an evidence stream from its first checkpoint (ER "The History Card", `history_card/1`; §16), each checkpoint checked for its log identity (IP §6.2.1). The `since` member of a `standard_history/1` card, only when its `as_of` property is `PASS` (SH §4, §6) | one evidence stream, named by its log identity (`iss`, `sub`; IP §6.2.1), and the time from which it is continuous | `recomputed` |
+| `answered-within-deadline` | `1` | An ER request that carries a `deadline` (ER "Deadline"; IP §6.1), with the envelope (IP §6.2) or signed refusal (IP §6.3) that answers it, compared by `issued_at`. The requester's absence record, whose `window` closes at the deadline, shows only that no answer was received in that window, never that none was sent (IP §6.4; ER "Recorded Absence") | one evidence request, named by its request digest | `recomputed` |
+
+**Open points.** Where no AAC document defines a value, the row states only what it needs:
+
+- **Work class.** No AAC document defines a work class. The column uses the Plan IR `tier`. A
+  finer class, such as the native requirement's `backward_verdict` values (IP §11.3.4), is open.
+- **Unit.** No AAC document defines one unit across record families. SH counts deals (SH §5.2),
+  and one deal joins records of several rows. How a row's unit maps to a deal is open.
+- **A source the row does not list.** Whether a predicate read from such a source is
+  `NOT_CHECKED`, as an undeclared predicate is, is open.
+- **`performed`.** A BA action attestation is not a source. Its disposition `executed` (BA "The
+  Bilateral Exchange", move 3) carries no effect state, so it cannot show a confirmed effect, and
+  BA fixes no wire encoding for it, so a verifier has no defined bytes to recompute it from.
+  Whether a later BA revision that carries both makes it a source is open.
+- **`refunded`.** SR puts refunds and partial payments out of scope (SR "Terms", "Open Issues"),
+  and defines no citation from a refund, recorded as a separate settlement with the roles
+  reversed, to the payment it returns. How a refund is identified is open. Until then the row
+  rests only on `reversed`.
+- **`adjudicated`.** No AAC document binds a JF record to a pack. `spec/judgment-extension-v1.md`
+  §4, which is provisional and unratified, joins a judgment Capsule that carries `x-judgment-v1`
+  to a pack's judge declaration. It does not apply to a JF record. The outcome vocabularies also
+  differ: `adjudication/v1` (`corroborated`, `inconclusive`, `contradicted`),
+  `evaluation-report/v1` (`met`, `not_met`, `not_evaluable`, `out_of_scope`) and the IP
+  `resolves` statement (`upheld`, `dismissed`; IP §11.2.2). Where `pack` comes from, which
+  vocabulary `outcome` takes, and whether a `resolves` statement or a judgment Capsule is a
+  source, are open.
+- **`controls-domain`.** No AAC document defines a record that a key holder controls a domain.
+  The row rests only on adapter predicates that name a key and an origin. A source format of its
+  own, such as a DNS record, is open.
+- **`key-continuous-since`.** No AAC document binds a key to a stream. A checkpoint is signed by
+  the key its `kid` names, which the relying party's policy accepts for the log identity, and that
+  key need not be the responder's (IP §6.2.1). Which key the predicate names, and how that key is
+  bound to the stream, are open. SH `since` is a year and month only.
+- **`answered-within-deadline`.** `issued_at` is the responder's own signed statement of when it
+  issued the answer (IP §6.2, §6.3). AAC defines ordering evidence for an acceptance (IP §11.1.5),
+  not for an answer. Whether a signed refusal before the deadline, such as `deadline_unmet` (ER
+  "Deadline"), counts as an answer is open.
+- **`delivered`.** `delivered` is undeclared until its row is added.
 
 ## No registry
 
