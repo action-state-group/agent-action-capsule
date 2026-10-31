@@ -25,7 +25,9 @@ has not yet.
   `vectors/evidence-request/refusal-02.json` (11 cases). Go `evidencerequest` and Python
   `agent_action_capsule.evidence_request` register both tokens (`RefusalReasons`,
   `REFUSAL_REASONS`) and classify them under a retention commitment; both read the new corpus. The
-  interop profile still lists the eight -01 tokens until it re-pins to -02 as posted (AAC#479).
+  interop profile still lists the eight -01 tokens until it re-pins to -02 as posted (AAC#479), so
+  the profile checks keep the eight: Go `Refusal.Conforming` and `VerifyFor` refuse a refusal
+  with either new token, while `CheckRefusal` (the ER-level check) accepts it.
 - Evidence Request -02 (`spec/draft-mih-agent-evidence-request-02.md`, dated 2026-10-30, not
   posted), cut from the posted -01; `spec/Makefile` `EVREQ` builds -02. New §4.7 "Unavailable-Window
   Statements" (AAC#473): a responder MAY seal a signed, registered statement that it was unavailable

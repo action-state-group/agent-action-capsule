@@ -96,7 +96,9 @@ func (r Refusal) VerifyFor(responderKey, requestDigest string) error {
 // Conforming reports whether a verified refusal is a conforming one: exactly
 // one registered reason, exact case, and well-formed members (profile §7.2
 // reason_registered, issued_at_form). issued_at is the profile's seconds
-// form (§5.2); CheckRefusal reads it as the request draft alone does.
+// form (§5.2); CheckRefusal reads it as the request draft alone does. The
+// reasons are the profile's eight (§9.1), not the ten of ER -02, until the
+// profile re-pins (AAC#479).
 func (r Refusal) Conforming() bool {
 	_, timeOK := ParseProfileTime(r.IssuedAt)
 	return slices.Contains(profileRefusalReasons, r.Reason) && timeOK && IsDigest(r.RequestDigest)
