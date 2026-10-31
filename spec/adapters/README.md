@@ -31,7 +31,8 @@ gives (e) in its §7 before (d) in its §8.
 
 Each declaration also opens with a status line and says which sources it read, at which version
 or commit. A declaration may state its scope, what it supports and what it reports otherwise, as
-x402-v0 §3 does. Where a declaration has vectors, it says where they are.
+x402-v0 §3 does. Where a declaration has vectors, it says where they are. A declaration may add
+further sections of its own, as lightning-v0 does for its value band and counts.
 
 ## 2. Naming a declaration
 
