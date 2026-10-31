@@ -677,6 +677,14 @@ def test_only_an_accepted_receipt_that_attests_a_time_registers_a_statement():
         True, None, "2026-10-29T10:06:00Z")
 
 
+def test_receipts_at_the_same_instant_give_the_first_ones_registration_time():
+    st = _statement()
+    for first, second in (("2026-10-29T10:06:00Z", "2026-10-29T10:06:00.0Z"),
+                          ("2026-10-29T10:06:00.0Z", "2026-10-29T10:06:00Z")):
+        reading = er.recognize_unavailable_window(st, _accepted(first, second), PRIMARY.key_id)
+        assert reading.registration_time == first
+
+
 def test_an_unavailable_window_under_a_small_order_key_is_not_the_responders():
     identity = "01" + "00" * 31
     st = {"start": "2026-10-29T10:00:00Z", "end": "2026-10-29T10:40:00Z", "reason_class": "flood",

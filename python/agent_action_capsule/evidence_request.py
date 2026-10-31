@@ -1496,7 +1496,8 @@ class RegistrationReceipt:
 class StatementReading:
     """Whether a reader recognizes an unavailable-window statement. When it
     does, ``why`` is ``None`` and ``registration_time`` is the earliest time an
-    accepted receipt attests, as that receipt spells it. When not, ``why`` is
+    accepted receipt attests, as that receipt spells it (the first given, when
+    several attest that instant). When not, ``why`` is
     ``"malformed"``, ``"not_signed_by_responder"`` or ``"not_registered"``, and
     the reader treats the statement as if it did not exist."""
 
@@ -1537,7 +1538,8 @@ def recognize_unavailable_window(statement: Any, receipts: Iterable[Registration
     attested = [(instant, text) for instant, text in attested if instant is not None]
     if not attested:
         return StatementReading(False, "not_registered")
-    return StatementReading(True, registration_time=min(attested)[1])
+    # On a tie the first receipt given wins, as in the Go and Rust readers.
+    return StatementReading(True, registration_time=min(attested, key=lambda a: a[0])[1])
 
 
 @dataclass(frozen=True)

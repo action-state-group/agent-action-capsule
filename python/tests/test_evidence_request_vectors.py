@@ -16,6 +16,7 @@ import re
 import shutil
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 import cbor2
@@ -436,9 +437,10 @@ def test_unavailable_window_expectations_follow_from_the_text():
     assert corpus["reason_classes"] == list(UW_CLASSES) == list(er.UNAVAILABLE_REASON_CLASSES)
     assert corpus["shown_as"] == UW_SHOWN == er.UNAVAILABLE_SHOWN_AS
     assert corpus["signature_profile"]["signed_members"] == list(er.UNAVAILABLE_SIGNED_MEMBERS)
-    kinds = set()
+    assert corpus["count"] == len(corpus["cases"]) == 35
+    kinds = Counter()
     for case in corpus["cases"]:
-        kinds.add(case["kind"])
+        kinds[case["kind"]] += 1
         expect = case["expect"]
         if case["kind"] == "statement":
             reading = er.recognize_unavailable_window(case["statement"], _uw_receipts(case["receipts"]),
@@ -485,7 +487,7 @@ def test_unavailable_window_expectations_follow_from_the_text():
         assert {"refusal", "proof_of_attack"} <= set(expect["must_not_show_as"]), case["id"]
         if expect["covered_by"]:
             assert "absence_without_statement" in expect["must_not_show_as"], case["id"]
-    assert kinds == {"statement", "display"}
+    assert kinds == {"statement": 19, "display": 16}
     ids = {c["id"] for c in corpus["cases"]}
     for cls in UW_CLASSES:
         assert f"uw-class-{cls}" in ids

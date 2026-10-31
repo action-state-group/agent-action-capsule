@@ -54,8 +54,9 @@ type RegistrationReceipt struct {
 
 // StatementReading is whether a reader recognizes an unavailable-window
 // statement. When it does, Why is empty and RegistrationTime is the earliest
-// time an accepted receipt attests, as that receipt spells it. When not, Why
-// is StatementMalformed, StatementNotSignedByResponder or
+// time an accepted receipt attests, as that receipt spells it (the first
+// given, when several attest that instant). When not, Why is
+// StatementMalformed, StatementNotSignedByResponder or
 // StatementNotRegistered.
 type StatementReading struct {
 	Recognized       bool

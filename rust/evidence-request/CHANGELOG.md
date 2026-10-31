@@ -4,9 +4,11 @@
 
 - **`unavailable_window`**: ER -02 §4.7 unavailable-window statements. `recognize` reads a
   statement for a responder key and the receipts held for it: a `ReasonClass` from the closed list,
-  `start` <= `end`, a `verify_strict` signature over the RFC 8785 form of `end`, `reason_class` and
-  `start`, and at least one accepted `RegistrationReceipt`. It gives the registration time, the
-  earliest accepted receipt's, or why the statement is `Ignored` (`malformed`,
+  `start` <= `end`, the responder key's signature checked in the vectors' signature profile
+  (`verify_strict` Ed25519 over the RFC 8785 form of the present members among `end`,
+  `reason_class` and `start`; -02 §4.7 item 3 leaves the format to the deployment), and at least
+  one accepted `RegistrationReceipt`. It gives the registration time, the earliest accepted
+  receipt's (the first given on a tie), or why the statement is `Ignored` (`malformed`,
   `not_signed_by_responder`, `not_registered`). `display` shows a recorded absence beside the
   statements held: covered by closed-interval overlap with the waiting window, shown as `SHOWN_AS`
   with a `Label` per covering statement (class, stated period, registration time,

@@ -83,6 +83,17 @@ func TestOnlyAnAcceptedReceiptThatAttestsATimeRegistersAStatement(t *testing.T) 
 		er.RecognizeUnavailableWindow(st, rs, uwResponder()))
 }
 
+func TestReceiptsAtTheSameInstantGiveTheFirstOnesRegistrationTime(t *testing.T) {
+	st := uwStatement(t, nil)
+	for _, pair := range [][2]string{
+		{"2026-10-29T10:06:00Z", "2026-10-29T10:06:00.0Z"},
+		{"2026-10-29T10:06:00.0Z", "2026-10-29T10:06:00Z"},
+	} {
+		got := er.RecognizeUnavailableWindow(st, accepted(pair[0], pair[1]), uwResponder())
+		assert.Equal(t, pair[0], got.RegistrationTime)
+	}
+}
+
 func TestUnavailableWindowUnderASmallOrderKeyIsNotTheResponders(t *testing.T) {
 	identity := "01" + strings.Repeat("00", 31)
 	st := map[string]any{"start": "2026-10-29T10:00:00Z", "end": "2026-10-29T10:40:00Z", "reason_class": "flood",

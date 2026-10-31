@@ -19,9 +19,11 @@ has not yet.
 - Evidence Request -02 §4.7 unavailable-window statements are read in Go, Python and Rust (AAC#477).
   Go `evidencerequest.RecognizeUnavailableWindow` and Python
   `evidence_request.recognize_unavailable_window` say whether a reader recognizes a statement (a
-  reason class from the closed list, `start` <= `end`, a strict Ed25519 signature by the responder
-  key over the RFC 8785 form of `end`, `reason_class` and `start`, and at least one accepted
-  receipt) and give its registration time, the earliest accepted receipt's, or why it is ignored
+  reason class from the closed list, `start` <= `end`, the responder key's signature checked in the
+  vectors' signature profile (strict Ed25519 over the RFC 8785 form of the present members among
+  `end`, `reason_class` and `start`; -02 §4.7 item 3 leaves the format to the deployment), and at
+  least one accepted receipt) and give its registration time, the earliest accepted receipt's (the
+  first given on a tie), or why it is ignored
   (`malformed`, `not_signed_by_responder`, `not_registered`). `DisplayAbsence` and
   `display_absence` show a recorded absence beside the statements held: covered by closed-interval
   overlap with the waiting window, shown as "no answer; holder states unavailability" with each

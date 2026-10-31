@@ -106,7 +106,8 @@ impl Ignored {
 }
 
 /// A statement a reader recognizes. `registration_time` is the earliest
-/// time an accepted receipt attests, as that receipt spells it.
+/// time an accepted receipt attests, as that receipt spells it (the first
+/// given, when several attest that instant).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Recognized {
     pub reason_class: ReasonClass,
@@ -367,6 +368,18 @@ mod tests {
         receipts.extend(accepted(&["2026-10-29T10:30:00Z", "2026-10-29T10:06:00Z"]));
         let got = recognize(&st, &receipts, &key().verifying_key()).unwrap();
         assert_eq!(got.registration_time, "2026-10-29T10:06:00Z");
+    }
+
+    #[test]
+    fn receipts_at_the_same_instant_give_the_first_ones_registration_time() {
+        let st = statement(json!({}));
+        for (first, second) in [
+            ("2026-10-29T10:06:00Z", "2026-10-29T10:06:00.0Z"),
+            ("2026-10-29T10:06:00.0Z", "2026-10-29T10:06:00Z"),
+        ] {
+            let got = recognize(&st, &accepted(&[first, second]), &key().verifying_key()).unwrap();
+            assert_eq!(got.registration_time, first);
+        }
     }
 
     #[test]
