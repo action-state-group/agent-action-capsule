@@ -6,7 +6,7 @@ independence (`spec/interop-profile-v0.md`, `evidence-interop/0`, cited as IP, �
 - the binding record's form and the methods of its three claim types (CB §3);
 - the rule that both keys sign the same bytes (CB §4), and how a `bip340` (Nostr) key signs them
   with a Nostr event (CB §3.3, §4.1);
-- revocation (CB §5);
+- revocation (CB §5), and a revocation list a using profile declared complete (CB §5.1);
 - the binding properties, and when a binding applies to a pair (CB §6);
 - what a binding proves, and the `issuer_independence` it gives (CB §7).
 
@@ -15,7 +15,7 @@ Every case cites the sections its expected values come from.
 ## Derivation
 
 Each case is a pair of agreeing halves, presented as corroborating, plus one binding record.
-Some cases add revocation statements or a credential. The halves are the producer record of IP
+Some cases add revocation statements, a declared revocation list or a credential. The halves are the producer record of IP
 §11.5, built as in `vectors/coverage-declaration-v0/` and under that corpus's two producer keys.
 
 `python/scripts/generate_controller_binding_v0_vectors.py` writes every file except this README. It
@@ -48,7 +48,8 @@ identity (CB §3.2).
 | Verification policy | `pins.verification_policy`: offline, the two binding methods of CB §3.2, and the vectors' credential method |
 | Contract version | `pins.contract_ref` and `pins.contract_digest`: the contract of `vectors/coverage-declaration-v0/`, whose `r-corroborated` needs corroboration (IP §6.7.4) |
 | Evaluation time | `pins.evaluation_time` |
-| Inputs | `halves`, `binding`, and where the case needs them, `revocations` and `credential`, each as JSON octets given as text |
+| Inputs | `halves`, `binding`, and where the case needs them, `revocations`, `revocation_list` and `credential`, each as JSON octets given as text. `revocation_list` also carries the `declaration` of CB §5.1 as a JSON object |
+| Declaration | `profile` and `asserted_by` are labels fixed for these vectors; `max_age` is 86400 seconds, except 604800 in `complete-list-stale` so that only its `as_of` keeps it from counting; E is `pins.evaluation_time` |
 
 **All keys are test keys.** Each private key is the Ed25519 seed SHA-256 of the label in
 `test_keys`, except `operator-nostr`, a `bip340` key whose secret key is SHA-256 of its label. Its
@@ -67,12 +68,17 @@ Never use one for anything else.
     is `FAIL`;
   - `binds_pair` and `applies` (CB §6.2). The credential never decides `applies`;
   - `proves` (CB §7 item 2): empty unless the form and signatures pass;
+  - `revocation_list`, only where the case has one (CB §5.1, §6.1): the declaration's `profile`,
+    `asserted_by` and `as_of`, the SHA-256 of the list's octets as received, and whether the
+    declaration `counts`;
 - `issuer_independence` (CB §7 item 4, IP §6.7.4): `status`, `shown_as`, `reason` (`same key`,
   the binding's claim type and digest, or `null`), and `satisfied_becomes` for `r-corroborated`;
 - `fails`: the binding property each negative is there to fail.
 
 `controller_binding_revocation` is `NOT_CHECKED` in every case where no received statement applies
-before the halves. No revocation source is registered (CB-1), so it is never `PASS`.
+before the halves and no declaration counts. No revocation source is registered (CB-1), so it is
+`PASS` only under a declaration that counts (CB §5.1): `complete-list` and
+`complete-list-statement-by-other-key`.
 
 `satisfied_becomes` states what IP §6.7.4 turns a `SATISFIED` `r-corroborated` into, for a verifier
 that can apply the requirement's condition. The requirement's `independence` text is opaque
@@ -109,6 +115,15 @@ already. No case reaches it, as in `vectors/coverage-declaration-v0/`.
 | `key-types-malformed` | `key_types` holds one token | `controller_binding_form` | `NOT_CHECKED` |
 | `key-types-unknown` | `key_types` names an unlisted token: signatures `NOT_CHECKED`; a revocation by that key, signed with Ed25519, does not apply | nothing | `NOT_CHECKED` |
 | `no-half-key-bound` | valid, but binds the third key to the `bip340` key, so it names neither half's key | nothing; it does not bind the pair | `NOT_CHECKED` |
+| `complete-list` | a list declared complete after both halves, empty: revocation `PASS`, applies | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-statement-by-other-key` | the same with a statement by the third key: ignored, revocation `PASS`, applies | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-revoked` | the same with a statement by a bound key before the halves | `controller_binding_revocation` | `NOT_CHECKED` |
+| `complete-list-stale` | `as_of` before the second half: does not count, revocation `NOT_CHECKED`, applies | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-past-max-age` | the evaluation time is more than `max_age` after `as_of`: does not count | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-as-of-future` | `as_of` after the evaluation time: does not count | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-other-binding` | the declaration names another binding: does not count | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-digest-mismatch` | `list_digest` is not the list's: does not count | nothing | `FAIL`: redundant, by the binding |
+| `complete-list-not-an-array` | the list is a JSON object: no entries, does not count, revocation `NOT_CHECKED` | nothing | `FAIL`: redundant, by the binding |
 
 No case shows `issuer_independence` `PASS`. A binding never gives it (CB §7), and this revision
 registers no evidence that does (IP P-60).
@@ -127,6 +142,8 @@ registers no evidence that does (IP P-60).
 - A verifier that does not implement a binding method (`controller_binding_signatures`
   `NOT_CHECKED`).
 - Binding records or statements the verifier could not parse.
+- A malformed declaration (a missing member, or `max_age` out of range). It does not count, as
+  `complete-list-other-binding` does not.
 - A `created_at` above 2^53 − 1. JSON with such an integer has no JCS form (IP §5.1), so the
   record cannot be carried as these vectors carry every input.
 - A `bip340` key bound to the key of the other half. Halves are signed with Ed25519, so no pair

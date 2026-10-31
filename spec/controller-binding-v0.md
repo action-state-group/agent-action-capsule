@@ -15,7 +15,7 @@ signatures show. It does not show who controls either key, and it never establis
 
 **Owns:** the binding record, its member names and signing input (§3, §4), the claim types and
 their verification methods (§3.2), the key types and how each signs (§3.3, §4.1), the revocation
-statement (§5), the binding properties (§6),
+statement (§5), the declaration of a complete revocation list (§5.1), the binding properties (§6),
 what a verifier reports (§7), and the proposed `controller_binding` join basis (§8).
 
 **Uses unchanged:**
@@ -212,7 +212,46 @@ pairs then go back to where they would be with no binding (§6.2), never above.
 
 Revocation statements are delivered beside the binding, and how is the using profile's choice. This
 revision registers no place to fetch them from (CB-1). A verifier therefore knows only of the
-statements it received.
+statements it received, unless a using profile declares a list of them complete (§5.1).
+
+### 5.1 A list declared complete
+
+A using profile MAY name, for a binding, one **revocation list**, and the party that asserts it is
+complete: that every revocation statement for the binding made by the list's `as_of` is in it. For
+the profile, that party is the one that pins the list's octets, for example the run that publishes
+them. The **revocation list** is a JSON array of revocation statements (§5), as transmitted.
+
+The **declaration** is what the using profile gives the verifier beside the list: a JSON object
+with exactly these members.
+
+| Member | Value |
+|---|---|
+| `profile` | a text string: the using profile that names the list |
+| `asserted_by` | a text string: the party the profile names as asserting that the list is complete |
+| `binding` | the binding digest (§4) of the binding the list is for |
+| `list_digest` | the SHA-256 of the list's octets as transmitted (IP §5.1) |
+| `as_of` | a time: the list is asserted complete up to it |
+| `max_age` | an integer from 0 to 2^53 − 1: the profile's freshness bound, in seconds |
+
+The declaration **counts** for a binding at the times T and an evaluation time E when all of these
+hold, and otherwise it does not:
+
+- it has exactly the members above, each in its form;
+- `binding` is the binding's digest. A list for another binding says nothing about this one;
+- `list_digest` is the SHA-256 of the list's octets as received, and they are a JSON array;
+- `as_of` is not earlier than any T, so the list covers every statement dated at or before T that
+  was made by `as_of`;
+- `as_of` is not later than E, and E is at most `max_age` seconds after `as_of`.
+
+Each entry of the list is a received statement (§5): one that applies is a revocation whether or
+not the declaration counts, and one that does not apply is ignored, as any received statement is.
+When the list's octets are not a JSON array, it has no entries, and the declaration does not count.
+
+A declaration that counts is the asserting party's statement, not the verifier's finding. It shows
+that no statement in the list applies at T, and nothing more. A statement made after `as_of`, even
+one whose `revoked_at` is earlier than T, can still withdraw the binding (§5), and the list does
+not exclude it. A declaration is not signed in this revision: the using profile is what makes it
+the asserting party's, as it makes the list's octets theirs by pinning them.
 
 ## 6. Binding properties
 
@@ -226,12 +265,16 @@ the binding is asked about: for a pair under IP §6.7.4, each member's `issued_a
 | `controller_binding_form` | the record is well formed (§3.1, §3.2) |
 | `controller_binding_signatures` | both entries of `sigs` are present, name `keys` in order, and verify over the signing input by each key's type (§4, §4.1), with no third entry; `NOT_CHECKED` when the verifier does not implement `method` or a key type in `key_types` |
 | `controller_binding_window` | the binding is in its window at every T: `not_before` ≤ T < `not_after`. The window is the signers' statement; the check is against it, not against when the keys were in fact held |
-| `controller_binding_revocation` | `FAIL` when a received revocation statement applies with `revoked_at` ≤ some T; otherwise `NOT_CHECKED`, because a statement the verifier did not receive cannot be excluded (CB-1) |
+| `controller_binding_revocation` | `FAIL` when a received revocation statement applies with `revoked_at` ≤ some T, from a declared list (§5.1) or delivered otherwise; otherwise `PASS` when a declaration counts (§5.1); otherwise `NOT_CHECKED`, because a statement the verifier did not receive cannot be excluded (CB-1) |
 | `controller_binding_credential` | `same_organization_credentialed` only: the credential is present, hashes to `credential.digest`, verifies by `credential.method` under `credential.issuer`, `credential.issuer` is accepted by the relying party's trust policy, and the credential names both bound keys. `FAIL` when any of these fails, as `responder_trust` does for an unaccepted key (IP §7.2). `NOT_PRESENT` when it was not delivered, `NOT_CHECKED` when the verifier does not implement `credential.method`, `INCONCLUSIVE` when the trust policy cannot decide |
 
 When `controller_binding_form` is `FAIL`, no other binding property is reported. A property that
-does not apply to the claim type is not reported. This revision gives no way for
-`controller_binding_revocation` to be `PASS`.
+does not apply to the claim type is not reported. `controller_binding_revocation` is `PASS` only
+under a declaration that counts (§5.1). Its method is then the declaration: a verifier reports the
+`profile`, `asserted_by`, the list's digest and `as_of`, and presents the `PASS` as `asserted_by`'s
+statement that the list was complete as of `as_of`, under that profile. With no declaration, or one
+that does not count, a verifier reports what it would report with no list, and the list's entries
+are still received statements.
 
 ### 6.2 When a binding applies to a pair
 
@@ -273,7 +316,9 @@ above it. A verifier uses every binding it received for the pair (§9.1).
    - a person, name, account, organization identity or legal relationship;
    - that the keys were under one control at any time. The window, and the claim within it, are
      what both key holders stated, and the verifier reports them as that;
-   - that two keys with no binding between them have distinct controllers.
+   - that two keys with no binding between them have distinct controllers;
+   - that no revocation statement exists, when `controller_binding_revocation` is `PASS`. The
+     `PASS` is the asserting party's statement about one list as of `as_of` (§5.1).
 
    A binding never raises a result (§6.2): it can make a pair redundant, never corroborating. The
    ceremony time is the signers' own statement (CB-2).
@@ -346,7 +391,8 @@ The producer declares the join state it derived. A verifier that received a revo
 the producer did not have derives a different state: the binding does not apply, and the join is
 `unjoined`. EB reports a declared state that does not match the derived one as
 `join_state_mismatch`, which fails the block. That is EB's rule, and this document does not change
-it (CB-7).
+it (CB-7). A producer and a verifier that read one list a using profile declared complete (§5.1)
+have the same statements from it, though either may also have others.
 
 ## 9. Security considerations
 
@@ -390,14 +436,24 @@ The signing event of §4.1 is a valid Nostr event. A key holder SHOULD NOT publi
 which would publish the link. Its kind and its `content` (a version and a digest) keep it from
 being read as any other event: it is a signature over one binding record and nothing else.
 
+### 9.4 A list declared complete
+
+A declaration (§5.1) is only as good as the party the using profile names, and the verifier cannot
+check that the list is in fact complete. A false declaration changes no result a binding gives:
+`controller_binding_revocation` `PASS` and `NOT_CHECKED` both leave the binding applying (§6.2), so
+the pair is redundant either way. What it changes is what the verifier reports: that the asserting
+party stated no statement in the list applies. A declaration that does not count, or a list that
+cannot be read, gives `NOT_CHECKED`, never `FAIL`. Only a statement that applies gives `FAIL`, so a
+party that can corrupt a list's delivery cannot use it to stop a binding from applying.
+
 ## 10. Vectors
 
 The vectors are in `vectors/controller-binding-v0/`.
 `python/scripts/generate_controller_binding_v0_vectors.py` generates them, and
 `python/tests/test_controller_binding_v0_vectors.py` checks them. Each case is a pair of agreeing
 halves (the producer record of IP §11.5) plus a binding record, and some cases add revocation
-statements or a credential. They pin trust, verification policy, contract and evaluation time as IP
-§11.5 does.
+statements, a declared revocation list (§5.1) or a credential. They pin trust, verification policy,
+contract and evaluation time as IP §11.5 does. The evaluation time is E for a declaration (§5.1).
 
 These formats are fixed for the vectors only and are not registered:
 
@@ -434,6 +490,15 @@ These formats are fixed for the vectors only and are not registered:
 | `key-types-malformed` | `key_types` names one type for two keys: form `FAIL` |
 | `key-types-unknown` | `key_types` names a token §3.3 does not list: signatures `NOT_CHECKED`, the binding does not apply; a revocation by that key signed with Ed25519 does not apply either, so revocation is `NOT_CHECKED` |
 | `no-half-key-bound` | a valid binding of a third key to the `bip340` key, naming neither half's key: form, signatures and window `PASS`, it does not bind the pair, `NOT_CHECKED` |
+| `complete-list` | a revocation list declared complete (§5.1) as of a time after both halves, with no statement in it: the declaration counts, revocation `PASS`, the binding applies: `FAIL`, redundant |
+| `complete-list-statement-by-other-key` | the same with a statement before the halves by a key the binding does not bind: it does not apply and is ignored, revocation `PASS` |
+| `complete-list-revoked` | the same with a statement by a bound key before the halves: revocation `FAIL`, the binding does not apply, `NOT_CHECKED` |
+| `complete-list-stale` | `as_of` is the first half's time, earlier than the second's: the declaration does not count, revocation `NOT_CHECKED`, the binding applies |
+| `complete-list-past-max-age` | `as_of` after the halves, but the evaluation time is more than `max_age` after it: does not count, `NOT_CHECKED` |
+| `complete-list-as-of-future` | `as_of` after the evaluation time: does not count, `NOT_CHECKED` |
+| `complete-list-other-binding` | the declaration names another binding of the same keys: does not count, `NOT_CHECKED` |
+| `complete-list-digest-mismatch` | `list_digest` is not the digest of the list delivered: does not count, `NOT_CHECKED` |
+| `complete-list-not-an-array` | the list's octets are a JSON object: it has no entries and does not count, `NOT_CHECKED`, never `FAIL` (§9.4) |
 
 No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it (IP P-60).
 
@@ -441,7 +506,7 @@ No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it 
 
 | Id | Point |
 |---|---|
-| CB-1 | Revocation distribution. No place to fetch revocation statements is registered, so `controller_binding_revocation` is `FAIL` or `NOT_CHECKED`, never `PASS`. A binding still applies under `NOT_CHECKED`, because it only lowers a result. A later revision that registers a source can give `PASS`. |
+| CB-1 | Revocation distribution. No place to fetch revocation statements is registered. A using profile may declare its own list complete (§5.1), and under a declaration that counts `controller_binding_revocation` is `PASS`, as the asserting party's statement. With no such declaration it is `FAIL` or `NOT_CHECKED`, never `PASS`, and a binding still applies under `NOT_CHECKED`, because it only lowers a result. Still open: a registered source that every verifier can query, and a declaration signed by the asserting party. |
 | CB-2 | The ceremony time is the signers' statement. Nothing anchors `issued_at`. A binding whose record is counter-signed by a time source or included in a log would show when the ceremony happened, and no such form is registered. |
 | CB-3 | Credential format. `same_organization_credentialed` names its credential by digest and native method. No credential format is registered. The vectors fix one for themselves only (§10). |
 | CB-4 | Delegation scope. `delegated_by` has no scope member. A scope would be a claim about authority, which this document does not make. |
@@ -450,3 +515,13 @@ No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it 
 | CB-7 | A revocation the producer of a `composed/v1` block did not have makes a declared `agree` a `join_state_mismatch` (§8.3). A later EB revision may report that join as `not_derivable`, or as a finding on the join alone, rather than failing the block. |
 | CB-8 | The Nostr event kind of §4.1, 3374, is chosen from the kinds no NIP lists. It is provisional in `REGISTRY.md` and not registered with the NIPs. |
 | CB-9 | Showing a `bip340` key. Whether a using profile lists a binding record, or only its digest, where anyone can read it is the using profile's choice (§9.3). A binding verifies the same either way. |
+
+## 12. Changes
+
+Changes to this revision are additive: a record, statement or verifier input that does not use
+them gives every result it gave before.
+
+| Change | What it adds |
+|---|---|
+| agent-action-capsule#458 | the `bip340` key type and how it signs (§3.3, §4.1, §9.3), the optional `key_types` member, and CB-8 and CB-9 |
+| agent-action-capsule#482 | a revocation list a using profile declares complete (§5.1, §9.4), under which `controller_binding_revocation` can be `PASS` (§6.1); CB-1 narrowed |

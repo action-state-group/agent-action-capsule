@@ -30,7 +30,8 @@ type octets struct {
 type vectorCase struct {
 	ID   string `json:"id"`
 	Pins struct {
-		TrustPolicy struct {
+		EvaluationTime string `json:"evaluation_time"`
+		TrustPolicy    struct {
 			CredentialIssuers []string `json:"credential_issuers"`
 		} `json:"trust_policy"`
 		VerificationPolicy struct {
@@ -42,15 +43,21 @@ type vectorCase struct {
 		Binding     octets   `json:"binding"`
 		Revocations []octets `json:"revocations"`
 		Credential  *octets  `json:"credential"`
+		// RevocationList is a declared revocation list (CB §5.1).
+		RevocationList *struct {
+			Declaration json.RawMessage `json:"declaration"`
+			OctetsText  string          `json:"octets_text"`
+		} `json:"revocation_list"`
 	} `json:"inputs"`
 	Expected struct {
 		Binding struct {
-			Claim         *string           `json:"claim"`
-			BindingDigest string            `json:"binding_digest"`
-			Properties    map[string]string `json:"properties"`
-			BindsPair     bool              `json:"binds_pair"`
-			Applies       bool              `json:"applies"`
-			Proves        []string          `json:"proves"`
+			Claim          *string           `json:"claim"`
+			BindingDigest  string            `json:"binding_digest"`
+			Properties     map[string]string `json:"properties"`
+			BindsPair      bool              `json:"binds_pair"`
+			Applies        bool              `json:"applies"`
+			Proves         []string          `json:"proves"`
+			RevocationList *cb.ListReport    `json:"revocation_list"`
 		} `json:"binding"`
 		IssuerIndependence cb.IssuerIndependence `json:"issuer_independence"`
 		Fails              []string              `json:"fails"`
@@ -68,7 +75,7 @@ func readCorpus(t *testing.T) corpus {
 	require.NoError(t, err)
 	var c corpus
 	require.NoError(t, json.Unmarshal(data, &c))
-	require.Len(t, c.Cases, 26)
+	require.Len(t, c.Cases, 35)
 	return c
 }
 
@@ -125,6 +132,14 @@ func runCase(t *testing.T, c vectorCase, credentialMethod string) (cb.Report, [2
 	if c.Inputs.Credential != nil {
 		opts.Credential = []byte(c.Inputs.Credential.OctetsText)
 	}
+	if l := c.Inputs.RevocationList; l != nil {
+		declaration, err := cb.ParseDeclaration(l.Declaration)
+		require.NoError(t, err, "every vector declaration is well formed")
+		evaluated, err := time.Parse(time.RFC3339, c.Pins.EvaluationTime)
+		require.NoError(t, err)
+		opts.RevocationList = &cb.RevocationList{Declaration: declaration, List: []byte(l.OctetsText),
+			EvaluatedAt: evaluated}
+	}
 	for _, m := range c.Pins.VerificationPolicy.CredentialMethods {
 		require.Equal(t, credentialMethod, m, "the vectors define one credential method")
 		opts.CredentialVerifiers[m] = vectorCredential(c.Pins.TrustPolicy.CredentialIssuers)
@@ -145,6 +160,7 @@ func TestVectors(t *testing.T) {
 			assert.Equal(t, want.BindsPair, report.BindsPair(keys[0], keys[1]))
 			assert.Equal(t, want.Applies, report.AppliesTo(keys[0], keys[1]))
 			assert.Equal(t, want.Proves, report.Proves)
+			assert.Equal(t, want.RevocationList, report.RevocationList)
 			assert.Equal(t, c.Expected.IssuerIndependence, cb.PairIndependence(keys[0], keys[1], report))
 
 			var failed []string

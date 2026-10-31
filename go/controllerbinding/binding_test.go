@@ -3,6 +3,7 @@
 package controllerbinding_test
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
@@ -343,4 +344,112 @@ func TestPairIndependence(t *testing.T) {
 	got = cb.PairIndependence(keyA.id, keyA.id)
 	require.NotNil(t, got.Reason)
 	assert.Equal(t, "same key", *got.Reason)
+}
+
+// declaredList is a revocation list over the given statements and a
+// declaration that counts for a binding with this digest at during, with E
+// exactly max_age after as_of.
+func declaredList(digest string, statements ...[]byte) *cb.RevocationList {
+	list := []byte("[" + string(bytes.Join(statements, []byte(","))) + "]")
+	sum := sha256.Sum256(list)
+	return &cb.RevocationList{
+		Declaration: cb.Declaration{Profile: "test profile", AssertedBy: "test run", Binding: digest,
+			ListDigest: hex.EncodeToString(sum[:]), AsOf: "2026-10-15T00:00:00Z", MaxAge: 3600},
+		List:        list,
+		EvaluatedAt: time.Date(2026, 10, 15, 1, 0, 0, 0, time.UTC),
+	}
+}
+
+func TestRevocationList(t *testing.T) {
+	r := signed(t, unsigned())
+	record, digest := jcs(t, r), digestOf(t, r)
+	verify := func(l *cb.RevocationList, revocations ...[]byte) cb.Report {
+		return cb.Verify(record, during, cb.Options{RevocationList: l, Revocations: revocations})
+	}
+
+	report := verify(declaredList(digest))
+	assert.Equal(t, er.StatusPass, report.Properties[cb.PropertyRevocation], "as_of at T and E at max_age")
+	require.NotNil(t, report.RevocationList)
+	assert.Equal(t, cb.ListReport{Profile: "test profile", AssertedBy: "test run",
+		ListDigest: er.Digest([]byte("[]")), AsOf: "2026-10-15T00:00:00Z", Counts: true}, *report.RevocationList)
+	assert.True(t, report.Applies())
+	assert.Nil(t, cb.Verify(record, during, cb.Options{}).RevocationList, "no list, no report")
+
+	late := declaredList(digest)
+	late.EvaluatedAt = late.EvaluatedAt.Add(time.Second)
+	assert.Equal(t, er.StatusNotChecked, verify(late).Properties[cb.PropertyRevocation], "a second past max_age")
+	assert.False(t, verify(late).RevocationList.Counts)
+
+	early := declaredList(digest)
+	early.Declaration.AsOf = "2026-10-14T23:59:59Z"
+	early.Declaration.MaxAge = 86400
+	assert.Equal(t, er.StatusNotChecked, verify(early).Properties[cb.PropertyRevocation], "as_of before T")
+
+	future := declaredList(digest)
+	future.EvaluatedAt = time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, er.StatusNotChecked, verify(future).Properties[cb.PropertyRevocation], "as_of after E")
+
+	other := declaredList(strings.Repeat("0", 64))
+	assert.Equal(t, er.StatusNotChecked, verify(other).Properties[cb.PropertyRevocation], "another binding")
+
+	tampered := declaredList(digest)
+	tampered.List = []byte("[ ]")
+	assert.Equal(t, er.StatusNotChecked, verify(tampered).Properties[cb.PropertyRevocation], "another list")
+
+	object := declaredList(digest)
+	object.List = []byte(`{"statements":[]}`)
+	sum := sha256.Sum256(object.List)
+	object.Declaration.ListDigest = hex.EncodeToString(sum[:])
+	assert.Equal(t, er.StatusNotChecked, verify(object).Properties[cb.PropertyRevocation], "not an array")
+
+	malformed := declaredList(digest)
+	malformed.Declaration.MaxAge = -1
+	assert.Equal(t, er.StatusNotChecked, verify(malformed).Properties[cb.PropertyRevocation], "max_age below 0")
+
+	// An entry that applies is a revocation whether or not the declaration
+	// counts, and one delivered beside a list that counts still is.
+	revoking := revocationBy(t, keyA, digest, "2026-10-14T00:00:00Z")
+	assert.Equal(t, er.StatusFail, verify(declaredList(digest, revoking)).Properties[cb.PropertyRevocation])
+	stale := declaredList(digest, revoking)
+	stale.Declaration.AsOf = "2026-10-01T00:00:00Z"
+	assert.Equal(t, er.StatusFail, verify(stale).Properties[cb.PropertyRevocation], "a list that does not count")
+	assert.Equal(t, er.StatusFail, verify(declaredList(digest), revoking).Properties[cb.PropertyRevocation])
+	assert.False(t, verify(declaredList(digest), revoking).Applies())
+
+	// An entry that does not apply is ignored.
+	ignored := declaredList(digest, revocationBy(t, keyC, digest, "2026-10-14T00:00:00Z"),
+		revocationBy(t, keyA, digest, "2026-10-16T00:00:00Z"), []byte(`"text"`))
+	assert.Equal(t, er.StatusPass, verify(ignored).Properties[cb.PropertyRevocation])
+
+	// With no time asked about, no list counts.
+	none := cb.Verify(record, nil, cb.Options{RevocationList: declaredList(digest)})
+	assert.Equal(t, er.StatusNotChecked, none.Properties[cb.PropertyRevocation])
+}
+
+func TestParseDeclaration(t *testing.T) {
+	digest := strings.Repeat("a", 64)
+	good := `{"profile":"p","asserted_by":"a","binding":"` + digest + `","list_digest":"` + digest +
+		`","as_of":"2026-10-15T00:00:00Z","max_age":9007199254740991}`
+	d, err := cb.ParseDeclaration([]byte(good))
+	require.NoError(t, err)
+	assert.Equal(t, cb.Declaration{Profile: "p", AssertedBy: "a", Binding: digest, ListDigest: digest,
+		AsOf: "2026-10-15T00:00:00Z", MaxAge: 1<<53 - 1}, d)
+
+	for name, text := range map[string]string{
+		"missing": `{"profile":"p","asserted_by":"a","binding":"` + digest + `","list_digest":"` + digest +
+			`","as_of":"2026-10-15T00:00:00Z"}`,
+		"extra":          strings.Replace(good, `{`, `{"sig":"x",`, 1),
+		"duplicate":      strings.Replace(good, `{`, `{"profile":"q",`, 1),
+		"max_age text":   strings.Replace(good, `9007199254740991`, `"1"`, 1),
+		"max_age float":  strings.Replace(good, `9007199254740991`, `1.5`, 1),
+		"max_age big":    strings.Replace(good, `9007199254740991`, `9007199254740992`, 1),
+		"max_age below":  strings.Replace(good, `9007199254740991`, `-1`, 1),
+		"profile number": strings.Replace(good, `"p"`, `1`, 1),
+		"binding short":  strings.Replace(good, `"binding":"`+digest, `"binding":"aa`, 1),
+		"as_of":          strings.Replace(good, `2026-10-15T00:00:00Z`, `2026-10-15`, 1),
+		"not an object":  `[]`,
+	} {
+		_, err := cb.ParseDeclaration([]byte(text))
+		assert.Error(t, err, name)
+	}
 }

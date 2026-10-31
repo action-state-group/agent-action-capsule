@@ -4,7 +4,8 @@
 // (spec/controller-binding-v0.md, cited as CB): its form (§3), both
 // signatures over the one signing input, each by its key's type (§4, §4.1),
 // its window, the revocation
-// statements the caller received (§5), and, for same_organization_credentialed,
+// statements the caller received (§5), a revocation list a using profile
+// declared complete (§5.1), and, for same_organization_credentialed,
 // a credential through a verifier the caller passes. It reports the binding
 // properties of §6.1 in the profile's §7.1 vocabulary, what the binding proves
 // (§7 item 2), whether it applies to a pair of keys (§6.2) and the
@@ -23,6 +24,7 @@ package controllerbinding
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"regexp"
 	"slices"
 	"strconv"
@@ -116,12 +118,104 @@ type Credential struct {
 // policy cannot decide. The package has already checked the digest.
 type CredentialVerifier func(octets []byte, credential Credential, keys [2]string) string
 
+// Declaration is what a using profile gives the verifier beside a revocation
+// list it declares complete (CB §5.1). It is the asserting party's statement,
+// not a finding: under one that counts, controller_binding_revocation is PASS,
+// meaning only that no statement in the list applies.
+type Declaration struct {
+	// Profile is the using profile that names the list.
+	Profile string `json:"profile"`
+	// AssertedBy is the party the profile names as asserting completeness.
+	AssertedBy string `json:"asserted_by"`
+	// Binding is the binding digest of the binding the list is for.
+	Binding string `json:"binding"`
+	// ListDigest is the SHA-256 of the list's octets as transmitted.
+	ListDigest string `json:"list_digest"`
+	// AsOf is the time up to which the list is asserted complete.
+	AsOf string `json:"as_of"`
+	// MaxAge is the profile's freshness bound, in seconds.
+	MaxAge int64 `json:"max_age"`
+}
+
+var declarationMembers = []string{"profile", "asserted_by", "binding", "list_digest", "as_of", "max_age"}
+
+// ParseDeclaration reads a declaration (CB §5.1) from its JSON object: exactly
+// the six members, each in its form. An error means the declaration does not
+// count.
+func ParseDeclaration(octets []byte) (Declaration, error) {
+	value, err := evidencerequest.DecodeJSON(octets)
+	if err != nil {
+		return Declaration{}, err
+	}
+	m, ok := value.(map[string]any)
+	if !ok || !hasMembers(m, declarationMembers) {
+		return Declaration{}, errors.New("a declaration is a JSON object with exactly " +
+			"profile, asserted_by, binding, list_digest, as_of and max_age")
+	}
+	var d Declaration
+	d.Profile, ok = m["profile"].(string)
+	if !ok {
+		return Declaration{}, errors.New("profile is not a text string")
+	}
+	if d.AssertedBy, ok = m["asserted_by"].(string); !ok {
+		return Declaration{}, errors.New("asserted_by is not a text string")
+	}
+	d.Binding, _ = m["binding"].(string)
+	d.ListDigest, _ = m["list_digest"].(string)
+	d.AsOf, _ = m["as_of"].(string)
+	number, ok := m["max_age"].(evidencerequest.JSONNumber)
+	if !ok {
+		return Declaration{}, errors.New("max_age is not an integer")
+	}
+	if d.MaxAge, err = strconv.ParseInt(string(number), 10, 64); err != nil {
+		return Declaration{}, errors.New("max_age is not an integer")
+	}
+	if !d.wellFormed() {
+		return Declaration{}, errors.New("binding or list_digest is not 64 lowercase hex characters, " +
+			"as_of is not a time, or max_age is outside 0 to 2^53 - 1")
+	}
+	return d, nil
+}
+
+func (d Declaration) wellFormed() bool {
+	_, timeOK := instant(d.AsOf)
+	return evidencerequest.IsDigest(d.Binding) && evidencerequest.IsDigest(d.ListDigest) && timeOK &&
+		d.MaxAge >= 0 && d.MaxAge <= maxCreatedAt
+}
+
+// RevocationList is a revocation list (a JSON array of revocation statements)
+// with the declaration a using profile gave beside it (CB §5.1).
+type RevocationList struct {
+	Declaration Declaration
+	// List is the list's octets as transmitted.
+	List []byte
+	// EvaluatedAt is the evaluation time E the freshness bound is checked at.
+	EvaluatedAt time.Time
+}
+
+// ListReport is how a verifier reports a declaration (CB §6.1): the method of
+// a revocation PASS, which it presents as AssertedBy's statement under
+// Profile that the list with ListDigest was complete as of AsOf. ListDigest is
+// the digest of the octets received. Counts says whether the declaration
+// counts for this binding at the times asked about.
+type ListReport struct {
+	Profile    string `json:"profile"`
+	AssertedBy string `json:"asserted_by"`
+	ListDigest string `json:"list_digest"`
+	AsOf       string `json:"as_of"`
+	Counts     bool   `json:"counts"`
+}
+
 // Options are what the caller received beside the binding record, and how it
 // checks a credential.
 type Options struct {
 	// Revocations are revocation statements as received (CB §5). One that
 	// does not apply to this binding is ignored.
 	Revocations [][]byte
+	// RevocationList is a revocation list a using profile declared
+	// complete, or nil (CB §5.1). Its entries are received statements
+	// whether or not the declaration counts.
+	RevocationList *RevocationList
 	// Credential is the credential as transmitted, or nil when none was
 	// delivered.
 	Credential []byte
@@ -140,6 +234,8 @@ type Report struct {
 	BindingDigest string            `json:"binding_digest,omitempty"`
 	Properties    map[string]string `json:"properties"`
 	Proves        []string          `json:"proves"`
+	// RevocationList is reported when a revocation list was given.
+	RevocationList *ListReport `json:"revocation_list,omitempty"`
 }
 
 // Verify checks one binding record, given as the octets received, at the
@@ -190,7 +286,21 @@ func Verify(record []byte, ts []time.Time, opts Options) Report {
 			report.Properties[PropertyWindow] = evidencerequest.StatusFail
 		}
 	}
-	report.Properties[PropertyRevocation] = revocation(report.BindingDigest, keys, types, ts, opts.Revocations)
+	statements := opts.Revocations
+	if opts.RevocationList != nil {
+		entries, _ := listEntries(opts.RevocationList.List)
+		statements = append(slices.Clone(statements), entries...)
+	}
+	report.Properties[PropertyRevocation] = revocation(report.BindingDigest, keys, types, ts, statements)
+	if l := opts.RevocationList; l != nil {
+		sum := sha256.Sum256(l.List)
+		report.RevocationList = &ListReport{Profile: l.Declaration.Profile, AssertedBy: l.Declaration.AssertedBy,
+			ListDigest: hex.EncodeToString(sum[:]), AsOf: l.Declaration.AsOf,
+			Counts: counts(*l, report.BindingDigest, ts)}
+		if report.RevocationList.Counts && report.Properties[PropertyRevocation] != evidencerequest.StatusFail {
+			report.Properties[PropertyRevocation] = evidencerequest.StatusPass
+		}
+	}
 	if report.Claim == ClaimSameOrganization {
 		report.Properties[PropertyCredential] = credential(credentialOf(r), keys, opts)
 	}
@@ -483,9 +593,11 @@ func verifyBIP340(key string, message []byte, sig string) bool {
 	return parsed.Verify(message, pub)
 }
 
-// revocation is controller_binding_revocation (CB §5, §6.1): FAIL when a
-// received statement applies with revoked_at at or before some T, otherwise
-// NOT_CHECKED, since a statement not received cannot be excluded (CB-1).
+// revocation is controller_binding_revocation (CB §5, §6.1) before any
+// declaration: FAIL when a received statement applies with revoked_at at or
+// before some T, otherwise NOT_CHECKED, since a statement not received cannot
+// be excluded (CB-1). Verify raises NOT_CHECKED to PASS under a declaration
+// that counts (§5.1).
 func revocation(digest string, keys, types [2]string, ts []time.Time, statements [][]byte) string {
 	for _, octets := range statements {
 		value, err := evidencerequest.DecodeJSON(octets)
@@ -514,6 +626,46 @@ func revocation(digest string, keys, types [2]string, ts []time.Time, statements
 		}
 	}
 	return evidencerequest.StatusNotChecked
+}
+
+// listEntries is a revocation list's entries, each re-encoded as its own
+// octets so revocation reads it as any received statement; ok is false when
+// the list is not a JSON array (CB §5.1).
+func listEntries(list []byte) (entries [][]byte, ok bool) {
+	value, err := evidencerequest.DecodeJSON(list)
+	items, isArray := value.([]any)
+	if err != nil || !isArray {
+		return nil, false
+	}
+	for _, item := range items {
+		if encoded, err := evidencerequest.EncodeJCS(item); err == nil {
+			entries = append(entries, encoded)
+		}
+	}
+	return entries, true
+}
+
+// counts reports whether a declaration counts for the binding with this
+// digest at the times ts (CB §5.1).
+func counts(l RevocationList, digest string, ts []time.Time) bool {
+	d := l.Declaration
+	if !d.wellFormed() || d.Binding != digest || len(ts) == 0 {
+		return false
+	}
+	sum := sha256.Sum256(l.List)
+	if hex.EncodeToString(sum[:]) != d.ListDigest {
+		return false
+	}
+	if _, ok := listEntries(l.List); !ok {
+		return false
+	}
+	asOf, _ := instant(d.AsOf)
+	for _, t := range ts {
+		if asOf.Before(t) {
+			return false // the list does not cover a statement dated at or before T
+		}
+	}
+	return !asOf.After(l.EvaluatedAt) && l.EvaluatedAt.Sub(asOf) <= time.Duration(d.MaxAge)*time.Second
 }
 
 func credentialOf(r map[string]any) Credential {
