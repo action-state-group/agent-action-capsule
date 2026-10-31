@@ -417,11 +417,11 @@ def test_mutant_is_check_read_as_supports(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def _block_after(marker: str, fence: str = "```") -> str:
-    start = PROFILE_TEXT.index(marker)
-    open_at = PROFILE_TEXT.index(fence, start)
-    body_at = PROFILE_TEXT.index("\n", open_at) + 1
-    return PROFILE_TEXT[body_at:PROFILE_TEXT.index("```", body_at)].strip()
+def _block_after(marker: str, fence: str = "```", text: str = PROFILE_TEXT) -> str:
+    start = text.index(marker)
+    open_at = text.index(fence, start)
+    body_at = text.index("\n", open_at) + 1
+    return text[body_at:text.index("```", body_at)].strip()
 
 
 RESPONDER = "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
@@ -545,6 +545,54 @@ def test_section_11_4_examples_one_request_digest():
     assert sent_a2a is not None and sent_mcp is not None
     assert len(sent_a2a[0]) == 228 and sent_a2a == sent_mcp
     assert sha(sent_a2a[0]) == "ba7fee76b7afe9f3ec5ce46975865e06040492f0da733b28cbc86bd2be609d5e"
+
+
+V1_TEXT = (ROOT / "spec" / "interop-profile-v1.md").read_text(encoding="utf-8")
+
+
+def _v1_value_after(marker: str, label: str) -> str:
+    """The first backquoted value after ``label`` that follows ``marker`` in the v1 text."""
+    at = V1_TEXT.index(label, V1_TEXT.index(marker)) + len(label)
+    return re.match(r"\s*`([0-9a-f]+)`", V1_TEXT[at:]).group(1)
+
+
+def test_v1_worked_examples_verify_under_evidence_interop_1():
+    """The §10 and §11.4 bytes of spec/interop-profile-v1.md, which re-signs the v0 examples under
+    evidence-interop/1: every printed digest and signature checks, under the v1 identifier."""
+    block = lambda marker: _block_after(marker, text=V1_TEXT)  # noqa: E731
+    request_a = block("**Request A, JSON binding**").encode("utf-8")
+    request_b = bytes.fromhex(block("**Request B, CBOR stream binding.**"))
+    assert b"evidence-interop/1" in request_a and b"evidence-interop/1" in request_b
+    digest_a = _v1_value_after("**Request A, JSON binding**", "request digest")
+    digest_b = _v1_value_after("**Request B, CBOR stream binding.**", "request digest")
+    assert (sha(request_a), sha(request_b)) == (digest_a, digest_b)
+    env_a = json.loads(block("The complete response object for request A"))
+    env_b = dict(env_a, issued_at="2026-10-12T00:00:06Z", request_digest=digest_b,
+                 sig=_v1_value_after("**Envelope for request B.**", "`sig` ="))
+    assert env_a["profile"] == "evidence-interop/1"
+    verifier = InteropVerifier(SECTION_10_TRUST, VerificationPolicy(), "2026-10-12T01:00:00Z", contract=CONTRACT)
+    result = verifier.verify(
+        [Exchange(Message(request_a, "application/json"), [Message(jcs(env_a), "application/json")]),
+         Exchange(Message(request_b, "application/cbor"), [Message(jcs(env_b), "application/json")])],
+        requirements=["r-record"])
+    for ex in result.exchanges:
+        reply = ex.replies[0]
+        assert [reply.status(p) for p in ("profile_version", "envelope_signature", "request_binding")] == ["PASS"] * 3
+    refusal = dict(json.loads(block("**Refusal.** Had the responder")), key_id=RESPONDER,
+                   sig=_v1_value_after("**Refusal.** Had the responder", "`sig` ="))
+    absence = block("**Absence record.**").encode("utf-8")
+    result = verifier.verify(
+        [Exchange(Message(request_a, "application/json"), [Message(jcs(refusal), "application/json")]),
+         Exchange(Message(request_b, "application/cbor"), [], Message(absence, "application/json"))],
+        requirements=["r-record"])
+    assert result.exchanges[0].replies[0].requirements["r-record"].status == "NOT_FOUND"
+    assert result.exchanges[1].absence.evidence[0]["digest"] == _v1_value_after(
+        "**Absence record.**", "absence record digest")
+    a2a = json.loads(re.sub(r"^.*?\n\n", "", block("**Example (informative).** Request B of §10"), flags=re.S))
+    mcp = json.loads(block("**Example (informative).** The same request B, as a `tools/call`"))
+    assert carriage_mod.a2a_request_octets(a2a["params"]["message"])[0] == request_b
+    assert carriage_mod.mcp_request_octets(mcp["params"])[0] == request_b
+    assert V1_TEXT.count(digest_b) >= 4  # §10, §11.4.4 and §11.4.5 name request B's v1 digest
 
 
 # ---------------------------------------------------------------------------

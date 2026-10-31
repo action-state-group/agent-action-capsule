@@ -1117,9 +1117,9 @@ The only refusal reasons are the ten tokens of the "Evidence Request Refusal Rea
 `capacity_exceeded` · `request_unauthenticated`
 
 The last two are new in ER -02, and are not refusal reasons under `evidence-interop/0`, which
-pins ER -01 (§6.3) [P-65]. This profile defines no additional refusal reason in v1 [P-3]. A new token requires registration
-under ER's Specification Required policy [ER §13]. A responder MUST NOT emit an unregistered
-token [ER §4.2 item 2].
+pins ER -01 (§6.3) [P-65]. This profile defines no additional refusal reason in v1 [P-3]. A new
+token requires registration under ER's Specification Required policy [ER §13]. A responder MUST
+NOT emit an unregistered token [ER §4.2 item 2].
 
 ### 9.2 Transport errors are not refusals
 
@@ -1243,8 +1243,8 @@ Every value is reproducible. The log key is derived from the seed
 `SHA-256("evidence-interop/0 worked example: CLL log key")`. Entry E<sub>k</sub>, for k from 0 to 6,
 is `SHA-256("evidence-interop/0 worked example: log entry k")`, except that E<sub>2</sub> is the
 artifact digest. The labels keep their `evidence-interop/0` text in this revision, so both
-revisions share the key, the log and the checkpoint below. Each leaf value is SHA-256(0x00 || E<sub>k</sub>), and interior nodes follow MMR
-§8.2.1.
+revisions share the key, the log and the checkpoint below. Each leaf value is
+SHA-256(0x00 || E<sub>k</sub>), and interior nodes follow MMR §8.2.1.
 
 ```
 log key seed     996d8b3da69fec3bb7d43956f2ea30228ce427628e17f90f75b8c31dc2670f6f
@@ -2487,9 +2487,10 @@ Rules:
   not know [P-41]. A verifier reports one through `manifest_form` (§11.4.7), because an unexpected
   member may be a disclosure.
 - `refusal_policy` `uniform` declares that the responder answers `policy_declined` wherever a more
-  specific token would disclose what its policy protects [ER §4.2, §12]. Load shedding is
-  `capacity_exceeded` under either value (§6.3). `specific` declares that it does not. The declaration is informative to the requester. A verifier still maps the
-  token it receives (§8.1), never the declaration [P-41].
+  specific token would disclose what its policy protects [ER §4.2, §12]. `specific` declares
+  that it does not. Under either value, load shedding is `capacity_exceeded` (§6.3). The
+  declaration is informative to the requester. A verifier still maps the token it receives
+  (§8.1), never the declaration [P-41].
 - `derivations` MUST NOT list a recipient-specific derivation (§6.5) [P-42]. Its identifier is
   the digest of a definition that names the recipient, so listing it would publish a counterparty.
 - No stream identifier is listed. ER defines no request member naming a stream, so a listed
@@ -2636,7 +2637,7 @@ A2A-Extensions: https://datatracker.ietf.org/doc/draft-mih-agent-evidence-reques
   "messageId": "m-1", "role": "ROLE_USER",
   "extensions": ["https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"],
   "parts": [{"mediaType": "application/cbor",
-    "raw": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjA1Wi9iZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmFiMzUwODk1Zjg2N2Q1NGE1Y2ZkYzFkZDFhYTIxNGNiYzcyM2M2NTk2NjM0NjBlNzUxMWRmZjE2YTVjY2M4NWhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEA2NDQxMzcwOTU1ZDJiNDA4ODg0NzkzOTYyYTY2NGRhZWM2YmIyNWUwNmQ3NmEyZjUzZDhhODBmNjZhNjc1MjAy"}]}}}
+    "raw": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjA1Wi9iZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8xZ3N1YmplY3ShZnJlY29yZHhAMmFiMzUwODk1Zjg2N2Q1NGE1Y2ZkYzFkZDFhYTIxNGNiYzcyM2M2NTk2NjM0NjBlNzUxMWRmZjE2YTVjY2M4NWhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEA2NDQxMzcwOTU1ZDJiNDA4ODg0NzkzOTYyYTY2NGRhZWM2YmIyNWUwNmQ3NmEyZjUzZDhhODBmNjZhNjc1MjAy"}]}}}
 ```
 
 The responder hashes the 228 decoded octets and gets request B's digest,
@@ -2729,7 +2730,7 @@ The requester classifies what comes back:
   "io.modelcontextprotocol/clientCapabilities": {}},
  "name": "evidence_request",
  "arguments": {"media_type": "application/cbor",
-  "request": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjA1Wi9iZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8wZ3N1YmplY3ShZnJlY29yZHhAMmFiMzUwODk1Zjg2N2Q1NGE1Y2ZkYzFkZDFhYTIxNGNiYzcyM2M2NTk2NjM0NjBlNzUxMWRmZjE2YTVjY2M4NWhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEA2NDQxMzcwOTU1ZDJiNDA4ODg0NzkzOTYyYTY2NGRhZWM2YmIyNWUwNmQ3NmEyZjUzZDhhODBmNjZhNjc1MjAy"}}}
+  "request": "pGVub25jZXYyMDI2LTEwLTEyVDAwOjAwOjA1Wi9iZ3Byb2ZpbGVyZXZpZGVuY2UtaW50ZXJvcC8xZ3N1YmplY3ShZnJlY29yZHhAMmFiMzUwODk1Zjg2N2Q1NGE1Y2ZkYzFkZDFhYTIxNGNiYzcyM2M2NTk2NjM0NjBlNzUxMWRmZjE2YTVjY2M4NWhjb3ZlcmFnZaFsZXhwZWN0ZWRfcGlueEA2NDQxMzcwOTU1ZDJiNDA4ODg0NzkzOTYyYTY2NGRhZWM2YmIyNWUwNmQ3NmEyZjUzZDhhODBmNjZhNjc1MjAy"}}}
 ```
 
 The decoded octets are the same 228 bytes, and the request digest is again
