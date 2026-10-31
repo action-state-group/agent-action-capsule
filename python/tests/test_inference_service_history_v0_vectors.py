@@ -7,8 +7,8 @@ cases under ``evidence-interop/1`` plus a ``capacity_exceeded`` refusal.
 
 Every case is run from its inputs alone:
 
-- Each request and reply goes through the reference verifier for ``evidence-interop/0``
-  (``agent_action_capsule.interop_profile``).
+- Each request and reply goes through the reference verifier, under the set's interop profile
+  identifier (``evidence-interop/0`` or ``/1``; ``agent_action_capsule.interop_profile``).
 - The History properties of the profile's §8.3, its coverage report (§4.2), what a verifier
   shows of witness receipts (§5.2) and of exchanges (§7.2), and ``period_fixed`` (§6.3) come from
   an evaluator written here.
