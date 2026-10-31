@@ -340,11 +340,13 @@ type CalibrationRecords = { summary: Obj; ratings: Obj[] };
  * ratings cite three no_invented_policy reports by digest: task-13 (judge
  * met, rater met), task-11 (judge not_met, rater met) and task-17 (judge met,
  * rater not_met), so agreement is 1 of 3, one held and one added.
- * `extraSummary` makes the claim cite a second summary record too.
+ * `extraSummary` makes the claim cite a second summary record too;
+ * `citeTwice` makes it cite every record twice.
  */
 async function calibrationModel(
   edit?: (records: CalibrationRecords) => void,
   extraSummary?: Obj,
+  citeTwice = false,
 ): Promise<ReturnType<typeof buildOutcomeReportModel>> {
   const source = fixture("outcome-report-bundle.json");
   const records = fixture("calibration-records.json") as CalibrationRecords;
@@ -366,7 +368,7 @@ async function calibrationModel(
     (source.records as Obj[]).push({ capsule_id: alias });
     (source.disclosures as Obj)[alias] = { agent_input: payload };
   }
-  const evidence = cited.map(([alias]) => ({
+  const evidence = [...cited, ...(citeTwice ? cited : [])].map(([alias]) => ({
     digest_alg: "SHA-256",
     digest: alias,
   }));
@@ -420,6 +422,7 @@ it("reads the cited calibration-summary/v1 record and its human ratings, and the
     },
   ]);
   expect(reading.ratingsNotMatching).toBe(0);
+  expect(reading.ratingsOutsideClauses).toBe(0);
   expect(
     reading.ratings.map((entry) => [
       entry.rating.label,
@@ -456,7 +459,7 @@ it("reads a claim that cites two calibration summaries as ambiguous, and counts 
   expect(model.addedCount).toBe(0);
 });
 
-it("flags a stated agreement the cited ratings do not recompute to, and keeps the stated count", async () => {
+it("flags a stated agreement the cited ratings contradict, and keeps the stated count; a clause with no bound rating is not recomputable", async () => {
   const model = await calibrationModel((records) => {
     const clauses = records.summary.clauses as Obj[];
     // Claim perfect agreement no matter what the ratings show, and state a
@@ -482,10 +485,81 @@ it("flags a stated agreement the cited ratings do not recompute to, and keeps th
       clauseRef: "task_resolution.done_in_full",
       agreement: { k: 2, n: 2 },
       drift: { k: 0, n: 2 },
-      recomputedAgreement: { k: 0, n: 0 },
-      agreementCheck: "mismatch",
+      agreementCheck: "not_recomputable",
     },
   ]);
+});
+
+it.each([
+  ["3 ratings against a stated 40 of 50", { k: 40, n: 50 }, "not_recomputable"],
+  [
+    "3 ratings against a stated 1 of 2 (recomputed n above stated n)",
+    { k: 1, n: 2 },
+    "mismatch",
+  ],
+  [
+    "3 ratings against a stated 0 of 50 (more agreeing than stated k)",
+    { k: 0, n: 50 },
+    "mismatch",
+  ],
+] as const)(
+  "reads the cited ratings as a sample: %s is %s",
+  async (_name, agreement, check) => {
+    const reading = (
+      await calibrationModel((records) => {
+        (records.summary.clauses as Obj[])[0]!.agreement = { ...agreement };
+      })
+    ).calibration[0]!;
+    expect(reading.clauses[0]!.recomputedAgreement).toEqual({ k: 1, n: 3 });
+    expect(reading.clauses[0]!.agreementCheck).toBe(check);
+  },
+);
+
+it("reads a claim that cites only the summary as not recomputable, never a match or a mismatch", async () => {
+  const reading = (
+    await calibrationModel((records) => {
+      records.ratings = [];
+    })
+  ).calibration[0]!;
+  expect(reading.state).toBe("read");
+  expect(reading.ratings).toEqual([]);
+  expect(reading.clauses).toEqual([
+    {
+      clauseRef: CLAUSE,
+      agreement: { k: 1, n: 3 },
+      drift: { k: 0, n: 3 },
+      agreementCheck: "not_recomputable",
+    },
+  ]);
+});
+
+it("reads a summary and ratings each cited twice once: not ambiguous, and each rating counted once", async () => {
+  const model = await calibrationModel(undefined, undefined, true);
+  const reading = model.calibration[0]!;
+  expect(reading.state).toBe("read");
+  expect(reading.ratings).toHaveLength(3);
+  expect(reading.clauses[0]!.recomputedAgreement).toEqual({ k: 1, n: 3 });
+  expect(reading.clauses[0]!.agreementCheck).toBe("matches");
+  expect(model.heldCount).toBe(1);
+  expect(model.addedCount).toBe(1);
+});
+
+it("counts a cited rating bound to no clause of the summary, never dropping it silently", async () => {
+  const reading = (
+    await calibrationModel((records) => {
+      // task-0's policy_compliance.confirmed_before_acting report: a judged
+      // claim, but not one the summary has a clause for.
+      (records.ratings[2]!.case as Obj).digest =
+        "7af7c240b071319cc429a62b25e30ece1990c89704f2783a22f59917f8c62b19";
+    })
+  ).calibration[0]!;
+  expect(reading.ratings).toHaveLength(3);
+  expect(reading.ratings[2]!.judged?.requirementRef).toBe(
+    "policy_compliance.confirmed_before_acting",
+  );
+  expect(reading.ratingsOutsideClauses).toBe(1);
+  expect(reading.clauses[0]!.recomputedAgreement).toEqual({ k: 1, n: 2 });
+  expect(reading.clauses[0]!.agreementCheck).toBe("not_recomputable");
 });
 
 it.each([

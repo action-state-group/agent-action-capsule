@@ -78,6 +78,86 @@ describe("the readers accept exactly what the schemas accept", () => {
     expect(readHumanRating(record) !== undefined).toBe(ratingSchema(record));
   });
 
+  type Mutation = readonly [string, (record: Obj) => void];
+  const clause0 = (record: Obj): Obj => (record.clauses as Obj[])[0]!;
+  const summaryMutations: Mutation[] = [
+    ["a missing record_id", (r) => delete r.record_id],
+    ["a missing clauses", (r) => delete r.clauses],
+    ["an extra top-level member", (r) => (r.rate = { k: 1, n: 3 })],
+    ["an extra member in judge_pin", (r) => ((r.judge_pin as Obj).note = "x")],
+    ["an extra member in a KOfN", (r) => ((clause0(r).agreement as Obj).r = 0)],
+    ["an extra member in a clause", (r) => (clause0(r).rate = "0.33")],
+    [
+      "digest_alg other than SHA-256",
+      (r) => ((r.judge_pin as Obj).digest_alg = "SHA-384"),
+    ],
+    [
+      "an uppercase-hex digest",
+      (r) =>
+        ((r.judge_pin as Obj).digest = (
+          (r.judge_pin as Obj).digest as string
+        ).toUpperCase()),
+    ],
+    [
+      "the wrong citation_purpose",
+      (r) => ((r.judge_pin as Obj).citation_purpose = "rated_case"),
+    ],
+    ["clauses: []", (r) => (r.clauses = [])],
+    ["a negative k", (r) => (clause0(r).agreement = { k: -1, n: 3 })],
+    ["a fractional k", (r) => (clause0(r).agreement = { k: 1.5, n: 3 })],
+    ["an empty record_id", (r) => (r.record_id = "")],
+    ["an empty clause_ref", (r) => (clause0(r).clause_ref = "")],
+    ["the wrong epistemic_type", (r) => (r.epistemic_type = "human_report")],
+  ];
+  const ratingMutations: Mutation[] = [
+    ["a missing label", (r) => delete r.label],
+    ["a missing case", (r) => delete r.case],
+    ["an extra top-level member", (r) => (r.note = "x")],
+    ["an extra member in case", (r) => ((r.case as Obj).note = "x")],
+    [
+      "digest_alg other than SHA-256",
+      (r) => ((r.case as Obj).digest_alg = "SHA-512"),
+    ],
+    [
+      "an uppercase-hex digest",
+      (r) =>
+        ((r.case as Obj).digest = (
+          (r.case as Obj).digest as string
+        ).toUpperCase()),
+    ],
+    [
+      "the wrong citation_purpose",
+      (r) => ((r.case as Obj).citation_purpose = "calibrates"),
+    ],
+    ["an empty record_id", (r) => (r.record_id = "")],
+    ["an empty rater_ref", (r) => (r.rater_ref = "")],
+    ["an empty label", (r) => (r.label = "")],
+    ["the wrong epistemic_type", (r) => (r.epistemic_type = "derived_metric")],
+    ["blind false", (r) => (r.blind = false)],
+  ];
+
+  it.each(summaryMutations)(
+    "calibration-summary with %s: the reader agrees with the schema",
+    (_name, mutate) => {
+      const record = structuredClone(records.summary);
+      mutate(record);
+      const valid = summarySchema(record);
+      expect(valid).toBe(false);
+      expect(readCalibrationSummary(record) !== undefined).toBe(valid);
+    },
+  );
+
+  it.each(ratingMutations)(
+    "human-rating with %s: the reader agrees with the schema",
+    (_name, mutate) => {
+      const record = structuredClone(records.ratings[0]!);
+      mutate(record);
+      const valid = ratingSchema(record);
+      expect(valid).toBe(false);
+      expect(readHumanRating(record) !== undefined).toBe(valid);
+    },
+  );
+
   it("refuses k > n, the cross-field rule the schema cannot express (section 8)", () => {
     for (const member of ["agreement", "drift"]) {
       const record = structuredClone(records.summary);

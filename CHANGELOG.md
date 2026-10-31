@@ -23,10 +23,16 @@ has not yet.
   matches its schema exactly and every count has `k <= n`; a record with a stored rate or any other
   member the schema lacks reads as not matching. The outcome-report model's `calibration` is now
   `CalibrationReading[]`: one per `calibration` claim, with the summary it cites, its clauses' stated
-  agreement and drift, and the `human-rating/v1` records it cites, each bound to the requirement
-  claim that cites the same rated case. Each clause's agreement is recomputed from those ratings and
-  compared with the stated count (`agreementCheck`: `matches`, `mismatch` or `not_recomputable`); the
-  stated count is never replaced. `heldCount` and `addedCount` are read from the bound ratings.
+  agreement and drift, and the `human-rating/v1` records it cites (each digest read once). Each
+  clause's agreement is recomputed from those ratings and compared with the stated count
+  (`agreementCheck`: `matches`, `mismatch` only when the ratings contradict the stated count, or
+  `not_recomputable`); the stated count is never replaced, and `ratingsOutsideClauses` counts
+  ratings no clause counts. The recompute rests on reader conventions that neither the schemas nor
+  the judge record family spec state, pending evidencebook-skills#73 and #74: a rating is bound
+  to the requirement claim that cites its rated case, a `clause_ref` is read as that claim's
+  `requirement_ref`, every bound rating counts in n and agrees only when its `label` equals the
+  judge's verdict, and the cited ratings are a sample of a clause's cases, not all of them.
+  `heldCount` and `addedCount` are read from the bound ratings.
   `CalibrationWeek` and `CalibrationSample` are removed. The evidence graph's `calibration` node is
   `{capsuleId, matchesSchema, summary}`, matched on `record_version`; `CalibrationCount`,
   `calibrationCount`, `confusion`, `correctedRate` and `periodWindow` are removed. No reader computes
