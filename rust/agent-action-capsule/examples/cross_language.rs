@@ -10,11 +10,16 @@
 //! `bundle-producer-padded-log.json`) and write the JCS bytes of the Bundle
 //! `kind` names in its `builds`.
 //! `bundle-verify`: read a Bundle's JSON text and print its strict verdict.
+//! `composed-verify`: read `{container, controller_bindings,
+//! binding_revocations}` and print the container's `composed/v1` block as one
+//! JCS line: its status and, per join, the declared and derived state, result
+//! and corroboration. The Python, Go and TypeScript adapters print the same
+//! line.
 
 use agent_action_capsule::bundle::{
     build_evidence_bundle, decode_fragment, proof_source_from_cll, verify_bundle_strict,
-    BuildError, BuildOptions, InclusionProof, Interval, ProofSource, RangeProof, RecordSource,
-    StoredRecord, StrictOptions,
+    verify_bundle_with_options, BuildError, BuildOptions, BundleOptions, ComposedOptions,
+    InclusionProof, Interval, ProofSource, RangeProof, RecordSource, StoredRecord, StrictOptions,
 };
 use agent_action_capsule::{canonical, verify};
 use base64::Engine as _;
@@ -25,13 +30,16 @@ use std::convert::Infallible;
 use std::io::{Read, Write};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: cross_language seal|verify|bundle-produce <kind>|bundle-verify";
+const USAGE: &str =
+    "usage: cross_language seal|verify|bundle-produce <kind>|bundle-verify|composed-verify";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut input = Vec::new();
     let command = match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
-        ["bundle-produce", _] | ["bundle-verify"] | ["seal"] | ["verify"] => args[0].as_str(),
+        ["bundle-produce", _] | ["bundle-verify"] | ["composed-verify"] | ["seal"] | ["verify"] => {
+            args[0].as_str()
+        }
         _ => {
             eprintln!("{USAGE}");
             return ExitCode::from(2);
@@ -44,6 +52,7 @@ fn main() -> ExitCode {
     match command {
         "bundle-produce" => return bundle_produce(&args[1], &input),
         "bundle-verify" => return bundle_verify(&input),
+        "composed-verify" => return composed_verify(&input),
         _ => {}
     }
     let mut capsule = match verify::decode_capsule_json(&input) {
@@ -276,6 +285,64 @@ fn bundle_verify(input: &[u8]) -> ExitCode {
         Err(e) => {
             eprintln!("{e}");
             ExitCode::FAILURE
+        }
+    }
+}
+
+fn composed_verify(input: &[u8]) -> ExitCode {
+    let value = match verify::decode_capsule_json(input) {
+        Ok(Value::Object(map)) => map,
+        _ => {
+            eprintln!("input must be a JSON object");
+            return ExitCode::from(2);
+        }
+    };
+    let list = |name: &str| -> Vec<Value> {
+        value
+            .get(name)
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default()
+    };
+    let (bindings, revocations) = (list("controller_bindings"), list("binding_revocations"));
+    let options = BundleOptions {
+        composed: ComposedOptions {
+            controller_bindings: &bindings,
+            binding_revocations: &revocations,
+            ..ComposedOptions::default()
+        },
+        ..BundleOptions::default()
+    };
+    let container = value.get("container").cloned().unwrap_or(Value::Null);
+    let result = verify_bundle_with_options(&container, &options);
+    let Some(composed) = result.extensions.iter().find_map(|e| e.composed.as_ref()) else {
+        eprintln!("no composed/v1 block");
+        return ExitCode::FAILURE;
+    };
+    let joins: Vec<Value> = composed
+        .joins
+        .iter()
+        .zip(&composed.corroboration)
+        .map(|(join, corroboration)| {
+            serde_json::json!({
+                "members": join.members,
+                "declared": join.declared,
+                "derived": join.derived,
+                "result": join.result,
+                "corroboration": corroboration.result,
+                "reason": corroboration.reason,
+            })
+        })
+        .collect();
+    let line = serde_json::json!({"status": composed.status, "joins": joins});
+    match canonical::jcs(&line) {
+        Ok(bytes) => {
+            println!("{}", String::from_utf8_lossy(&bytes));
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            ExitCode::from(2)
         }
     }
 }

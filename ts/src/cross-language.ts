@@ -20,7 +20,7 @@ import {
 import type { CapsuleBody } from "./model.js";
 
 const usage =
-  "usage: cross-language seal|verify|bundle-produce <kind>|bundle-verify";
+  "usage: cross-language seal|verify|bundle-produce <kind>|bundle-verify|composed-verify";
 
 interface Fixture {
   readonly root: string;
@@ -123,11 +123,55 @@ async function bundleVerify(): Promise<number> {
   return 0;
 }
 
+// `composed-verify` reads {container, controller_bindings, binding_revocations}
+// and prints the container's composed/v1 block as one JCS line: its status and,
+// per join, the declared and derived state, result and corroboration. The
+// Python, Go and Rust adapters print the same line.
+async function composedVerify(): Promise<number> {
+  const input = JSON.parse(readFileSync(0, "utf8")) as {
+    container: unknown;
+    controller_bindings?: Record<string, unknown>[];
+    binding_revocations?: Record<string, unknown>[];
+  };
+  // The Bundle's own strict reader, as bundle-verify uses.
+  const container = decodeFragment(
+    Buffer.from(JSON.stringify(input.container), "utf8").toString("base64url"),
+  );
+  const result = await verifyBundle(container, {
+    controllerBindings: input.controller_bindings ?? [],
+    bindingRevocations: input.binding_revocations ?? [],
+  });
+  const composed = result.extensions.find(
+    (e) => e.composed !== undefined,
+  )?.composed;
+  if (composed === undefined || !("joins" in composed)) {
+    console.error("no composed/v1 block");
+    return 1;
+  }
+  const joins = composed.joins.map((join, i) => {
+    const corroboration = composed.corroboration[i]!;
+    return {
+      members: [...join.members],
+      declared: join.declared,
+      derived: join.derived ?? null,
+      result: join.result,
+      corroboration: corroboration.result,
+      reason: "reason" in corroboration ? corroboration.reason : null,
+    };
+  });
+  process.stdout.write(
+    `${new TextDecoder().decode(jcs({ status: composed.status, joins }))}\n`,
+  );
+  return 0;
+}
+
 const [command, ...rest] = process.argv.slice(2);
 if (command === "bundle-produce" && rest.length === 1) {
   process.exitCode = await bundleProduce(rest[0]!);
 } else if (command === "bundle-verify" && rest.length === 0) {
   process.exitCode = await bundleVerify();
+} else if (command === "composed-verify" && rest.length === 0) {
+  process.exitCode = await composedVerify();
 } else if ((command === "seal" || command === "verify") && rest.length === 0) {
   const value = decodeCapsuleJson(readFileSync(0));
   if (command === "seal") {
