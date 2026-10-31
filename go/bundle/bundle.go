@@ -77,6 +77,17 @@ type VerificationResult struct {
 	Countersignatures   []CountersignatureResult
 	Verification        *ProducerSelfReport
 	CapsuleResults      map[string]verify.VerificationResult
+	// History is set only for a well-formed empty-history Bundle (draft -02,
+	// "Empty-History Bundles"): the member shows no history.
+	History *HistoryResult
+}
+
+// HistoryResult reports an empty-history Bundle. State is "none". Since is
+// the timestamp of the Bundle's signed checkpoint when checkpoint.cose
+// verifies, and nil otherwise (a stream never started has no checkpoint).
+type HistoryResult struct {
+	State string
+	Since *string
 }
 
 // EncodeFragment returns unpadded RFC 4648 base64url over UTF-8 JCS bytes.
@@ -194,8 +205,21 @@ func VerifyBundleWithOptions(value interface{}, opts Options) VerificationResult
 		result.BundleDigest = &digest
 	}
 	records, recordFindings := records(bundle["records"], result.CapsuleResults)
-	result.GraphClosure = graph(bundle, records, recordFindings)
-	result.IntervalCoverage, result.PerRecordMembership = completeness(bundle, records)
+	if EmptyHistory(bundle) {
+		result.GraphClosure = emptyHistoryForm(bundle)
+		noRecords := ClaimResult{Status: "withheld", Findings: []string{"no_records"}}
+		result.IntervalCoverage, result.PerRecordMembership = noRecords, noRecords
+		if result.GraphClosure.Status == "pass" {
+			result.History = &HistoryResult{State: "none"}
+			if claim, signed, _ := VerifyCheckpoint(bundle); claim.Status == "pass" {
+				since := signed.Timestamp
+				result.History.Since = &since
+			}
+		}
+	} else {
+		result.GraphClosure = graph(bundle, records, recordFindings)
+		result.IntervalCoverage, result.PerRecordMembership = completeness(bundle, records)
+	}
 	if raw, present := bundle["disclosures"]; present {
 		result.Disclosures = disclosures(raw, records)
 	} else {
@@ -212,6 +236,42 @@ func VerifyBundleWithOptions(value interface{}, opts Options) VerificationResult
 		result.Verification = &ProducerSelfReport{Value: report, Status: "producer_self_report"}
 	}
 	return result
+}
+
+// EmptyHistory reports whether bundle has the shape of an empty-history
+// Bundle: an empty records array and no root member. Whether it is well
+// formed is emptyHistoryForm's question.
+func EmptyHistory(bundle map[string]interface{}) bool {
+	list, ok := bundle["records"].([]interface{})
+	_, rooted := bundle["root"]
+	return ok && len(list) == 0 && !rooted
+}
+
+// emptyHistoryForm is graph closure for an empty-history Bundle: nothing to
+// close, so it passes when the Bundle is well formed. records_mode is
+// complete, payloads_mode none, and no certificate, disclosures or
+// disclosure record is carried.
+func emptyHistoryForm(bundle map[string]interface{}) ClaimResult {
+	var findings []string
+	if bundle["bundle_version"] != "2" || bundle["bundle_kind"] != "evidence-bundle/v2" {
+		findings = append(findings, "bundle_version_or_kind_invalid")
+	}
+	complete, ok := bundle["completeness"].(map[string]interface{})
+	missing, listed := complete["missing"].([]interface{})
+	_, missingPresent := complete["missing"]
+	if !ok || complete["records_mode"] != "complete" || complete["payloads_mode"] != "none" ||
+		(missingPresent && (!listed || len(missing) != 0)) {
+		findings = append(findings, "empty_history_completeness_invalid")
+	}
+	for _, name := range []string{"completeness_certificate", "disclosures", "disclosure_record"} {
+		if _, present := bundle[name]; present {
+			findings = append(findings, "empty_history_carries:"+name)
+		}
+	}
+	if len(findings) != 0 {
+		return ClaimResult{Status: "fail", Findings: findings}
+	}
+	return ClaimResult{Status: "pass"}
 }
 
 func records(raw interface{}, results map[string]verify.VerificationResult) (map[string]map[string]interface{}, []string) {

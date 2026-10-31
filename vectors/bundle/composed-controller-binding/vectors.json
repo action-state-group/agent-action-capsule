@@ -18,7 +18,7 @@
       "public_key_hex": "3fbc1f5944f52d8e7dcd13d0de26d29039aabd8fefde0a2711151fca93421516"
     }
   },
-  "count": 8,
+  "count": 14,
   "cases": [
     {
       "id": "controller-binding-linked",
@@ -1958,6 +1958,1424 @@
               "responder-b"
             ],
             "declared": "agree",
+            "derived": null,
+            "result": "not_derivable"
+          }
+        ],
+        "corroboration": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "result": "not_applicable"
+          }
+        ]
+      }
+    },
+    {
+      "id": "controller-binding-key-types-ed25519",
+      "section": [
+        "composed/v1: Controller Binding Records",
+        "composed/v1: Joins",
+        "composed/v1: Observers and Redundancy"
+      ],
+      "description": "The linked record, with key_types naming ed25519 for both keys, which is what a record without key_types states. The binding applies: agree, reported redundant.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "artifact",
+                "digest": "690c028cc5dc1a859a592f41e78291cfebcbfa4e999c181afde11e96542e4c08",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-b",
+                      "action_type": "fyi",
+                      "operator": "responder-b.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:11:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "4d0c2ac3b851f692b652985e349e55268be73d0b8ecf815df8654d8a97df4cc7",
+                          "agent_output_digest": "f4b4e5e121309c1f13475ce0a60fd8acd33e418fbeb370bb740de596c490edfc",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                      "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4a058207692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff8917558403cd2597f164bf560620bf4db5813f6ee88b58ac67b3a285a88f4f21e50aa43f07acc84d96bb7721f63530e7fb06e92dfad8f9a870cc0307c0ab28d840badb400"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "controller_binding",
+                "pointer": "/key_id",
+                "identifier_digest": "93e5ba0870003fd9483ef13722402954d3445ca62d6c6ed84ac41a26359595b4",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "agree"
+              }
+            ],
+            "composed_digest": "2d752ac1118471efbf0eef1b9088cb1bf1b6759ce27ef05cfcb86e8921fa3bb2"
+          }
+        }
+      },
+      "controller_bindings": [
+        {
+          "binding_version": "controller-binding/0",
+          "claim": "same_controller_asserted",
+          "method": "dual_signature/0",
+          "keys": [
+            "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+            "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
+          ],
+          "issued_at": "2026-10-01T00:00:00Z",
+          "not_before": "2026-10-01T00:00:00Z",
+          "not_after": "2027-10-01T00:00:00Z",
+          "revocation": "revocation_statement/0",
+          "nonce": "ceremony-1",
+          "key_types": [
+            "ed25519",
+            "ed25519"
+          ],
+          "sigs": [
+            {
+              "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+              "sig": "fd0c910e7df471f4b8b137d951c0a28f2ee6230ee5a969c2777afb2556260ea0653b77f760c89682d26b6e4f2c7300fd151410331b9e980d8c4622b7b12c7303"
+            },
+            {
+              "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+              "sig": "45cd952ba9b9f2ced5b1db716e51db97cb583d7abc4804915f17cefccad8e87499cd983e0bb10df729d061e692ed5a8024bf9822c2a3421ced277adbfd9ee408"
+            }
+          ]
+        }
+      ],
+      "binding_revocations": [],
+      "expect": {
+        "composed_digest": "2d752ac1118471efbf0eef1b9088cb1bf1b6759ce27ef05cfcb86e8921fa3bb2",
+        "canonical_preimage": "{\"joins\":[{\"basis\":\"controller_binding\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"93e5ba0870003fd9483ef13722402954d3445ca62d6c6ed84ac41a26359595b4\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/key_id\",\"state\":\"agree\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"690c028cc5dc1a859a592f41e78291cfebcbfa4e999c181afde11e96542e4c08\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
+        "status": "pass",
+        "members": {
+          "responder-a": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            }
+          },
+          "responder-b": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            }
+          }
+        },
+        "composition_closure": {
+          "status": "pass",
+          "missing": []
+        },
+        "joins": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "declared": "agree",
+            "derived": "agree",
+            "result": "derived_matches"
+          }
+        ],
+        "corroboration": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "result": "redundant",
+            "reason": "controller_binding",
+            "report": "redundant, not corroborating"
+          }
+        ]
+      }
+    },
+    {
+      "id": "controller-binding-key-type-not-implemented",
+      "section": [
+        "composed/v1: Controller Binding Records",
+        "composed/v1: Joins",
+        "composed/v1: Observers and Redundancy"
+      ],
+      "description": "The linked record, with key_types naming a key type this revision does not define for one key. A verifier cannot check that key's signature, so the record is skipped like one under a method it does not implement: not_derivable.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "artifact",
+                "digest": "690c028cc5dc1a859a592f41e78291cfebcbfa4e999c181afde11e96542e4c08",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-b",
+                      "action_type": "fyi",
+                      "operator": "responder-b.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:11:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "4d0c2ac3b851f692b652985e349e55268be73d0b8ecf815df8654d8a97df4cc7",
+                          "agent_output_digest": "f4b4e5e121309c1f13475ce0a60fd8acd33e418fbeb370bb740de596c490edfc",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                      "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4a058207692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff8917558403cd2597f164bf560620bf4db5813f6ee88b58ac67b3a285a88f4f21e50aa43f07acc84d96bb7721f63530e7fb06e92dfad8f9a870cc0307c0ab28d840badb400"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "controller_binding",
+                "pointer": "/key_id",
+                "identifier_digest": "a85af9cf0250dc2b7656b24b29ab2f463b71d34d60139147818d280f3c462128",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "agree"
+              }
+            ],
+            "composed_digest": "414a106a49bae826005485246ed3e41b678aaccae01480943e29a8f2a3b23c91"
+          }
+        }
+      },
+      "controller_bindings": [
+        {
+          "binding_version": "controller-binding/0",
+          "claim": "same_controller_asserted",
+          "method": "dual_signature/0",
+          "keys": [
+            "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+            "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
+          ],
+          "issued_at": "2026-10-01T00:00:00Z",
+          "not_before": "2026-10-01T00:00:00Z",
+          "not_after": "2027-10-01T00:00:00Z",
+          "revocation": "revocation_statement/0",
+          "nonce": "ceremony-1",
+          "key_types": [
+            "ed25519",
+            "x-example-type"
+          ],
+          "sigs": [
+            {
+              "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+              "sig": "ec7845a88d79f51ddc14cb336e447c2fa54552165de8e9bb64a2b296fab61029fc80fa86edcbd58de340dd10c08bc249a29bb187e1c46333f373449c85039401"
+            },
+            {
+              "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+              "sig": "0107d6c1240e1828a763dbfd8c3af4394069ddd433155d65a3788b09dcae1cea51da03b7ff614aa648ca2eea89298b6ae79b5779a5ec618c5d4a62cf9504260c"
+            }
+          ]
+        }
+      ],
+      "binding_revocations": [],
+      "expect": {
+        "composed_digest": "414a106a49bae826005485246ed3e41b678aaccae01480943e29a8f2a3b23c91",
+        "canonical_preimage": "{\"joins\":[{\"basis\":\"controller_binding\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"a85af9cf0250dc2b7656b24b29ab2f463b71d34d60139147818d280f3c462128\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/key_id\",\"state\":\"agree\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"690c028cc5dc1a859a592f41e78291cfebcbfa4e999c181afde11e96542e4c08\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
+        "status": "withheld",
+        "members": {
+          "responder-a": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            }
+          },
+          "responder-b": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            }
+          }
+        },
+        "composition_closure": {
+          "status": "pass",
+          "missing": []
+        },
+        "joins": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "declared": "agree",
+            "derived": null,
+            "result": "not_derivable"
+          }
+        ],
+        "corroboration": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "result": "not_applicable"
+          }
+        ]
+      }
+    },
+    {
+      "id": "controller-binding-empty-member-linked",
+      "section": [
+        "composed/v1: Controller Binding Records",
+        "composed/v1: Joins",
+        "composed/v1: Observers and Redundancy",
+        "Empty-History Bundles"
+      ],
+      "description": "responder-b's member is an empty-history Bundle: no records, its stream's first checkpoint signed by responder-b's key. It shows no history since that checkpoint. The binding applies to responder-a's root record key at its timestamp and to the key that signed the checkpoint at the checkpoint's timestamp, so the join still derives, and only one member has records: one_sided, as declared.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "artifact",
+                "digest": "2508b3bd8500d0366dbb1735cc555d9b0d0fc3e401262eeb3d926e1454a6d89d",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "records": [],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "none"
+                  },
+                  "checkpoint": {
+                    "log_id": "log:composed-vectors/responder-b/2",
+                    "mmr_size": 1,
+                    "root": "22b3fd008d82072ef28fd3b828ddb036e1e1531c9fbbc3b3f06000ea709a434a",
+                    "prev_size": 0,
+                    "prev_root": "",
+                    "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                    "timestamp": "2026-10-02T12:12:00Z",
+                    "cose": "0oRYlqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBeCJsb2c6Y29tcG9zZWQtdmVjdG9ycy9yZXNwb25kZXItYi8yAngkbG9nOmNvbXBvc2VkLXZlY3RvcnMvcmVzcG9uZGVyLWIvMiMxBFggv4bDFfdsWNf2QZ6F8OYZSbfvlr-5S2t2ac35bmoUn8QBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQFpaXNzdWVkX2F0dDIwMjYtMTAtMDJUMTI6MTI6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggIrP9AI2CBy7yj9O4KN2wNuHhUxyfu8Oz8GAA6nCaQ0pvcHJldl9jb21taXRtZW50QFhA-59EHMLcu5k9qUhkjwa3cL5LQbHy0BLkk0iI4VBobzbPc4K2OZCovdp30ZcL0IEodwjL0-G8ihKFAIvlQcqrDQ"
+                  }
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "controller_binding",
+                "pointer": "/key_id",
+                "identifier_digest": "ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "one_sided"
+              }
+            ],
+            "composed_digest": "32c3d82396796d86142a54b324447802280c9681c2bb8167a4c62df6cd7a768d"
+          }
+        }
+      },
+      "controller_bindings": [
+        {
+          "binding_version": "controller-binding/0",
+          "claim": "same_controller_asserted",
+          "method": "dual_signature/0",
+          "keys": [
+            "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+            "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
+          ],
+          "issued_at": "2026-10-01T00:00:00Z",
+          "not_before": "2026-10-01T00:00:00Z",
+          "not_after": "2027-10-01T00:00:00Z",
+          "revocation": "revocation_statement/0",
+          "nonce": "ceremony-1",
+          "sigs": [
+            {
+              "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+              "sig": "641b1587c465d276c52a8775db19089474995e4bf5765d70494f943a9614d3a9a68c87dab47df44f9772d0af8d0b01cbabcc59ae47720d2eeef851d98e37d10e"
+            },
+            {
+              "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+              "sig": "f2c2266ab80f7515eedd4b4118ccd93a95772fdbd5be25f5b315cc220ee6b68122c5aeb1b2b1ece73e648b98cda4c3cd2d18cc8f4154668ff6c03389bddf0302"
+            }
+          ]
+        }
+      ],
+      "binding_revocations": [],
+      "expect": {
+        "composed_digest": "32c3d82396796d86142a54b324447802280c9681c2bb8167a4c62df6cd7a768d",
+        "canonical_preimage": "{\"joins\":[{\"basis\":\"controller_binding\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/key_id\",\"state\":\"one_sided\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"2508b3bd8500d0366dbb1735cc555d9b0d0fc3e401262eeb3d926e1454a6d89d\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
+        "status": "pass",
+        "members": {
+          "responder-a": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            }
+          },
+          "responder-b": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            },
+            "history": {
+              "state": "none",
+              "since": "2026-10-02T12:12:00Z"
+            }
+          }
+        },
+        "composition_closure": {
+          "status": "pass",
+          "missing": []
+        },
+        "joins": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "declared": "one_sided",
+            "derived": "one_sided",
+            "result": "derived_matches"
+          }
+        ],
+        "corroboration": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "result": "not_applicable"
+          }
+        ]
+      }
+    },
+    {
+      "id": "controller-binding-empty-member-revoked",
+      "section": [
+        "composed/v1: Controller Binding Records",
+        "composed/v1: Joins",
+        "composed/v1: Observers and Redundancy",
+        "Empty-History Bundles"
+      ],
+      "description": "The empty-member case with responder-b's key holder's revocation statement dated before both times. The binding does not apply: unjoined, as declared. The empty member still shows no history.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "artifact",
+                "digest": "2508b3bd8500d0366dbb1735cc555d9b0d0fc3e401262eeb3d926e1454a6d89d",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "records": [],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "none"
+                  },
+                  "checkpoint": {
+                    "log_id": "log:composed-vectors/responder-b/2",
+                    "mmr_size": 1,
+                    "root": "22b3fd008d82072ef28fd3b828ddb036e1e1531c9fbbc3b3f06000ea709a434a",
+                    "prev_size": 0,
+                    "prev_root": "",
+                    "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                    "timestamp": "2026-10-02T12:12:00Z",
+                    "cose": "0oRYlqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBeCJsb2c6Y29tcG9zZWQtdmVjdG9ycy9yZXNwb25kZXItYi8yAngkbG9nOmNvbXBvc2VkLXZlY3RvcnMvcmVzcG9uZGVyLWIvMiMxBFggv4bDFfdsWNf2QZ6F8OYZSbfvlr-5S2t2ac35bmoUn8QBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQFpaXNzdWVkX2F0dDIwMjYtMTAtMDJUMTI6MTI6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggIrP9AI2CBy7yj9O4KN2wNuHhUxyfu8Oz8GAA6nCaQ0pvcHJldl9jb21taXRtZW50QFhA-59EHMLcu5k9qUhkjwa3cL5LQbHy0BLkk0iI4VBobzbPc4K2OZCovdp30ZcL0IEodwjL0-G8ihKFAIvlQcqrDQ"
+                  }
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "controller_binding",
+                "pointer": "/key_id",
+                "identifier_digest": "ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "unjoined"
+              }
+            ],
+            "composed_digest": "adc7360b1db68f89a80c4c732f345ea8ac26174ae18214658bbe066eac1bdeda"
+          }
+        }
+      },
+      "controller_bindings": [
+        {
+          "binding_version": "controller-binding/0",
+          "claim": "same_controller_asserted",
+          "method": "dual_signature/0",
+          "keys": [
+            "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+            "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
+          ],
+          "issued_at": "2026-10-01T00:00:00Z",
+          "not_before": "2026-10-01T00:00:00Z",
+          "not_after": "2027-10-01T00:00:00Z",
+          "revocation": "revocation_statement/0",
+          "nonce": "ceremony-1",
+          "sigs": [
+            {
+              "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+              "sig": "641b1587c465d276c52a8775db19089474995e4bf5765d70494f943a9614d3a9a68c87dab47df44f9772d0af8d0b01cbabcc59ae47720d2eeef851d98e37d10e"
+            },
+            {
+              "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+              "sig": "f2c2266ab80f7515eedd4b4118ccd93a95772fdbd5be25f5b315cc220ee6b68122c5aeb1b2b1ece73e648b98cda4c3cd2d18cc8f4154668ff6c03389bddf0302"
+            }
+          ]
+        }
+      ],
+      "binding_revocations": [
+        {
+          "revocation_version": "controller-binding-revocation/0",
+          "binding": "ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039",
+          "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+          "revoked_at": "2026-10-02T00:00:00Z",
+          "sig": "c141251618c8cdfbc40b57f3748e310f57a534fb773a420593cd9800c9e89a8769585c54ed2ea28e9c8c3d6f89e0e94191e367cfb0aeb5303883b660299f1002"
+        }
+      ],
+      "expect": {
+        "composed_digest": "adc7360b1db68f89a80c4c732f345ea8ac26174ae18214658bbe066eac1bdeda",
+        "canonical_preimage": "{\"joins\":[{\"basis\":\"controller_binding\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/key_id\",\"state\":\"unjoined\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"2508b3bd8500d0366dbb1735cc555d9b0d0fc3e401262eeb3d926e1454a6d89d\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
+        "status": "pass",
+        "members": {
+          "responder-a": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            }
+          },
+          "responder-b": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            },
+            "history": {
+              "state": "none",
+              "since": "2026-10-02T12:12:00Z"
+            }
+          }
+        },
+        "composition_closure": {
+          "status": "pass",
+          "missing": []
+        },
+        "joins": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "declared": "unjoined",
+            "derived": "unjoined",
+            "result": "derived_matches"
+          }
+        ],
+        "corroboration": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "result": "not_applicable"
+          }
+        ]
+      }
+    },
+    {
+      "id": "controller-binding-empty-member-declared-agree",
+      "section": [
+        "composed/v1: Controller Binding Records",
+        "composed/v1: Joins",
+        "composed/v1: Observers and Redundancy",
+        "Empty-History Bundles"
+      ],
+      "description": "The linked empty-member case declared agree. Nothing was compared, because one member has no records: the join derives one_sided, and the declaration does not match. A failed check.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "artifact",
+                "digest": "2508b3bd8500d0366dbb1735cc555d9b0d0fc3e401262eeb3d926e1454a6d89d",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "records": [],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "none"
+                  },
+                  "checkpoint": {
+                    "log_id": "log:composed-vectors/responder-b/2",
+                    "mmr_size": 1,
+                    "root": "22b3fd008d82072ef28fd3b828ddb036e1e1531c9fbbc3b3f06000ea709a434a",
+                    "prev_size": 0,
+                    "prev_root": "",
+                    "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                    "timestamp": "2026-10-02T12:12:00Z",
+                    "cose": "0oRYlqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBeCJsb2c6Y29tcG9zZWQtdmVjdG9ycy9yZXNwb25kZXItYi8yAngkbG9nOmNvbXBvc2VkLXZlY3RvcnMvcmVzcG9uZGVyLWIvMiMxBFggv4bDFfdsWNf2QZ6F8OYZSbfvlr-5S2t2ac35bmoUn8QBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQFpaXNzdWVkX2F0dDIwMjYtMTAtMDJUMTI6MTI6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggIrP9AI2CBy7yj9O4KN2wNuHhUxyfu8Oz8GAA6nCaQ0pvcHJldl9jb21taXRtZW50QFhA-59EHMLcu5k9qUhkjwa3cL5LQbHy0BLkk0iI4VBobzbPc4K2OZCovdp30ZcL0IEodwjL0-G8ihKFAIvlQcqrDQ"
+                  }
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "controller_binding",
+                "pointer": "/key_id",
+                "identifier_digest": "ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "agree"
+              }
+            ],
+            "composed_digest": "882659ca566a12568c40e26719db14578681ca70a1b991e9076169332bbff776"
+          }
+        }
+      },
+      "controller_bindings": [
+        {
+          "binding_version": "controller-binding/0",
+          "claim": "same_controller_asserted",
+          "method": "dual_signature/0",
+          "keys": [
+            "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+            "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
+          ],
+          "issued_at": "2026-10-01T00:00:00Z",
+          "not_before": "2026-10-01T00:00:00Z",
+          "not_after": "2027-10-01T00:00:00Z",
+          "revocation": "revocation_statement/0",
+          "nonce": "ceremony-1",
+          "sigs": [
+            {
+              "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+              "sig": "641b1587c465d276c52a8775db19089474995e4bf5765d70494f943a9614d3a9a68c87dab47df44f9772d0af8d0b01cbabcc59ae47720d2eeef851d98e37d10e"
+            },
+            {
+              "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+              "sig": "f2c2266ab80f7515eedd4b4118ccd93a95772fdbd5be25f5b315cc220ee6b68122c5aeb1b2b1ece73e648b98cda4c3cd2d18cc8f4154668ff6c03389bddf0302"
+            }
+          ]
+        }
+      ],
+      "binding_revocations": [],
+      "expect": {
+        "composed_digest": "882659ca566a12568c40e26719db14578681ca70a1b991e9076169332bbff776",
+        "canonical_preimage": "{\"joins\":[{\"basis\":\"controller_binding\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/key_id\",\"state\":\"agree\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"2508b3bd8500d0366dbb1735cc555d9b0d0fc3e401262eeb3d926e1454a6d89d\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
+        "status": "fail",
+        "members": {
+          "responder-a": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            }
+          },
+          "responder-b": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            },
+            "history": {
+              "state": "none",
+              "since": "2026-10-02T12:12:00Z"
+            }
+          }
+        },
+        "composition_closure": {
+          "status": "pass",
+          "missing": []
+        },
+        "joins": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "declared": "agree",
+            "derived": "one_sided",
+            "result": "join_state_mismatch"
+          }
+        ],
+        "corroboration": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "result": "not_applicable"
+          }
+        ]
+      }
+    },
+    {
+      "id": "controller-binding-empty-member-no-checkpoint",
+      "section": [
+        "composed/v1: Controller Binding Records",
+        "composed/v1: Joins",
+        "composed/v1: Observers and Redundancy",
+        "Empty-History Bundles"
+      ],
+      "description": "responder-b's empty-history Bundle carries no checkpoint: a stream never started. It shows no history, and is neither failed nor an absence, but it has no key to bind: not_derivable.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "artifact",
+                "digest": "390a6165b1ccd5a6f4ed533fb2774b08c255d02275cf714e540b199644489e3e",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "records": [],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "none"
+                  }
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "controller_binding",
+                "pointer": "/key_id",
+                "identifier_digest": "ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "one_sided"
+              }
+            ],
+            "composed_digest": "1c8d418a191c62a5485334986e16d7448e5b8e8960836c1a7258480f26656ddc"
+          }
+        }
+      },
+      "controller_bindings": [
+        {
+          "binding_version": "controller-binding/0",
+          "claim": "same_controller_asserted",
+          "method": "dual_signature/0",
+          "keys": [
+            "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+            "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
+          ],
+          "issued_at": "2026-10-01T00:00:00Z",
+          "not_before": "2026-10-01T00:00:00Z",
+          "not_after": "2027-10-01T00:00:00Z",
+          "revocation": "revocation_statement/0",
+          "nonce": "ceremony-1",
+          "sigs": [
+            {
+              "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+              "sig": "641b1587c465d276c52a8775db19089474995e4bf5765d70494f943a9614d3a9a68c87dab47df44f9772d0af8d0b01cbabcc59ae47720d2eeef851d98e37d10e"
+            },
+            {
+              "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+              "sig": "f2c2266ab80f7515eedd4b4118ccd93a95772fdbd5be25f5b315cc220ee6b68122c5aeb1b2b1ece73e648b98cda4c3cd2d18cc8f4154668ff6c03389bddf0302"
+            }
+          ]
+        }
+      ],
+      "binding_revocations": [],
+      "expect": {
+        "composed_digest": "1c8d418a191c62a5485334986e16d7448e5b8e8960836c1a7258480f26656ddc",
+        "canonical_preimage": "{\"joins\":[{\"basis\":\"controller_binding\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/key_id\",\"state\":\"one_sided\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"390a6165b1ccd5a6f4ed533fb2774b08c255d02275cf714e540b199644489e3e\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
+        "status": "withheld",
+        "members": {
+          "responder-a": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            }
+          },
+          "responder-b": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "withheld",
+              "per_record_membership": "withheld"
+            },
+            "history": {
+              "state": "none",
+              "since": null
+            }
+          }
+        },
+        "composition_closure": {
+          "status": "pass",
+          "missing": []
+        },
+        "joins": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "declared": "one_sided",
             "derived": null,
             "result": "not_derivable"
           }

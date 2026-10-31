@@ -2,12 +2,15 @@
 """The Evidence Bundle -02 ``controller_binding`` join vectors, rederived.
 
 An independent reading of the draft text ("Controller Binding Records",
-"Joins", "Observers and Redundancy"): the standard library, ``cryptography``
-for Ed25519 and the bytes in ``vectors/bundle/composed-controller-binding/``.
-Nothing is imported from the generator or from a verifier.
+"Joins", "Observers and Redundancy", "Empty-History Bundles"): the standard
+library, ``cryptography`` for Ed25519, CLL's offline checkpoint verifier for
+an empty-history member's signed checkpoint, and the bytes in
+``vectors/bundle/composed-controller-binding/``. Nothing is imported from the
+generator or from this repository's verifiers.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -19,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from cll.checkpoint import verify_checkpoint_cose_offline
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -84,10 +88,18 @@ def _without(value: dict, name: str) -> dict:
     return {k: v for k, v in value.items() if k != name}
 
 
+def _ed25519_keys(record: dict) -> bool:
+    """No key_types, or ed25519 for both keys: the only key type -02 defines."""
+    return record.get("key_types", ["ed25519", "ed25519"]) == ["ed25519", "ed25519"]
+
+
 def _well_formed(record: dict) -> bool:
     """Controller Binding Records: members and values."""
     claim = record.get("claim")
-    if claim not in METHODS or set(record) != BASE | METHODS[claim][1]:
+    if claim not in METHODS or set(record) - {"key_types"} != BASE | METHODS[claim][1]:
+        return False
+    if "key_types" in record and not (isinstance(record["key_types"], list) and len(record["key_types"]) == 2
+                                      and all(isinstance(k, str) for k in record["key_types"])):
         return False
     method = record["method"]
     if not isinstance(method, str) or any(m == method != METHODS[claim][0] for m, _ in METHODS.values()):
@@ -101,7 +113,8 @@ def _well_formed(record: dict) -> bool:
         return False
     sigs_ok = isinstance(record["sigs"], list) and all(
         isinstance(s, dict) and set(s) == {"key_id", "sig"} and isinstance(s["key_id"], str)
-        and HEX64.fullmatch(s["key_id"]) is not None and isinstance(s["sig"], str) and HEX128.fullmatch(s["sig"]) is not None
+        and HEX64.fullmatch(s["key_id"]) is not None
+        and (not _ed25519_keys(record) or isinstance(s["sig"], str) and HEX128.fullmatch(s["sig"]) is not None)
         for s in record["sigs"])
     if claim == "delegated_by" and record["delegator"] not in keys:
         return False
@@ -133,12 +146,14 @@ def _revokes(statement: dict, digest: str, keys: list[str], times: tuple[str, st
             and any(revoked_at <= t for t in times))
 
 
-def _link(join: dict, ra: dict, rb: dict, bindings: list[dict], revocations: list[dict]) -> bool | None:
-    """Joins, controller_binding: linked, unjoined (False) or not derivable (None)."""
-    if "pointer" not in join or "identifier_digest" not in join:
+def _link(join: dict, side_a: tuple[Any, Any], side_b: tuple[Any, Any], bindings: list[dict],
+          revocations: list[dict]) -> bool | None:
+    """Joins, controller_binding: linked, unjoined (False) or not derivable
+    (None). Each side is (key identifier, time T)."""
+    if "identifier_digest" not in join:
         return None
-    va, vb = _pointer(ra, join["pointer"]), _pointer(rb, join["pointer"])
-    times = (_time(ra.get("timestamp"), RECORD_TIME), _time(rb.get("timestamp"), RECORD_TIME))
+    (va, ta), (vb, tb) = side_a, side_b
+    times = (ta, tb)
     derivable = False
     for record in bindings:
         if _sha(_jcs(_without(record, "sigs"))) != join["identifier_digest"]:
@@ -146,7 +161,7 @@ def _link(join: dict, ra: dict, rb: dict, bindings: list[dict], revocations: lis
         if not _well_formed(record):
             derivable = True
             continue
-        if record["method"] not in ("dual_signature/0", "dual_signature_credential/0"):
+        if record["method"] not in ("dual_signature/0", "dual_signature_credential/0") or not _ed25519_keys(record):
             continue
         derivable = True
         keys = record["keys"]
@@ -166,10 +181,43 @@ def _root(member: dict) -> dict:
     return next(r for r in bundle["records"] if r["capsule_id"] == bundle["root"])
 
 
+def _empty(member: dict) -> bool:
+    """Empty-History Bundles: no records and no root."""
+    bundle = member["bundle"]
+    return bundle["records"] == [] and "root" not in bundle
+
+
+def _checkpoint_side(member: dict) -> tuple[Any, Any] | None:
+    """An empty-history member's key and T: the key that signed its
+    checkpoint.cose, at that checkpoint's timestamp. None without one."""
+    encoded = member["bundle"].get("checkpoint", {}).get("cose")
+    if not isinstance(encoded, str):
+        return None
+    verified = verify_checkpoint_cose_offline(base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)))
+    if not verified.ok:
+        return None
+    return verified.decoded.key_id, _time(verified.decoded.timestamp, RECORD_TIME)
+
+
+def _record_side(record: dict, pointer: str) -> tuple[Any, Any]:
+    return _pointer(record, pointer), _time(record.get("timestamp"), RECORD_TIME)
+
+
 def _derive(case: dict, join: dict, by_id: dict) -> str | None:
     a, b = (by_id[i] for i in join["members"])
+    bindings, revocations = case["controller_bindings"], case["binding_revocations"]
+    if "pointer" not in join:
+        return None
+    if _empty(a) or _empty(b):
+        # One member has records: one_sided when linked, never agree.
+        full, empty = (b, a) if _empty(a) else (a, b)
+        side = _checkpoint_side(empty)
+        if side is None:
+            return None
+        linked = _link(join, _record_side(_root(full), join["pointer"]), side, bindings, revocations)
+        return None if linked is None else "one_sided" if linked else "unjoined"
     ra, rb = _root(a), _root(b)
-    linked = _link(join, ra, rb, case["controller_bindings"], case["binding_revocations"])
+    linked = _link(join, _record_side(ra, join["pointer"]), _record_side(rb, join["pointer"]), bindings, revocations)
     if linked is None:
         return None
     if not linked:
@@ -194,8 +242,37 @@ def test_generator_reproduces_every_file_byte_for_byte(tmp_path):
 
 def test_the_three_required_join_states_are_present():
     derived = {c["expect"]["joins"][0]["derived"] for c in CASES.values()}
-    assert {"agree", "unjoined", None} <= derived
-    assert DATA["count"] == len(CASES) == 8
+    assert {"agree", "unjoined", None, "one_sided"} <= derived
+    assert DATA["count"] == len(CASES) == 14
+
+
+def test_an_empty_member_whose_checkpoint_does_not_verify_has_no_key():
+    member = next(m for m in _block(CASES["controller-binding-empty-member-linked"])["members"] if m["id"] == "responder-b")
+    member = json.loads(json.dumps(member))
+    cose = member["bundle"]["checkpoint"]["cose"]
+    member["bundle"]["checkpoint"]["cose"] = cose[:-4] + ("AAAA" if cose[-4:] != "AAAA" else "BBBB")
+    assert _checkpoint_side(member) is None
+
+
+@pytest.mark.parametrize("case_id", sorted(c for c in CASES if "empty-member" in c))
+def test_an_empty_member_shows_no_history(case_id):
+    """Empty-History Bundles: well formed, no history since its checkpoint's
+    timestamp (none without one), never failed and never an absence."""
+    case = CASES[case_id]
+    member = next(m for m in _block(case)["members"] if m["id"] == "responder-b")
+    bundle = member["bundle"]
+    assert member["outcome"] == "artifact" and _empty(member)
+    assert bundle["completeness"]["records_mode"] == "complete" and bundle["completeness"]["payloads_mode"] == "none"
+    assert not {"completeness_certificate", "disclosures", "disclosure_record"} & set(bundle)
+    assert member["digest"] == _sha(_jcs({k: v for k, v in bundle.items() if k != "countersignatures"}))
+    side = _checkpoint_side(member)
+    want = case["expect"]["members"]["responder-b"]
+    assert want["history"] == {"state": "none", "since": side and bundle["checkpoint"]["timestamp"]}
+    assert want["claims"] == {"graph_closure": "pass", "interval_coverage": "withheld",
+                              "per_record_membership": "withheld"}
+    if side is not None:
+        # The key that signed the checkpoint is responder-b's, the key its records were under.
+        assert side[0] == DATA["keys"]["responder-b"]["public_key_hex"]
 
 
 @pytest.mark.parametrize("case_id", sorted(CASES))

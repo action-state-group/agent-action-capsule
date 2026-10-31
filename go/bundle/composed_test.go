@@ -70,6 +70,13 @@ func expectShape(result *ComposedResult) map[string]interface{} {
 			}
 		}
 		member := map[string]interface{}{"outcome": m.Outcome, "body": m.Body, "digest": m.Digest, "claims": claims}
+		if m.Bundle != nil && m.Bundle.History != nil {
+			var since interface{}
+			if m.Bundle.History.Since != nil {
+				since = *m.Bundle.History.Since
+			}
+			member["history"] = map[string]interface{}{"state": m.Bundle.History.State, "since": since}
+		}
 		if m.ResponseSignature != "" {
 			binding := func(finding string) string {
 				if slices.Contains(m.Findings, finding) {
