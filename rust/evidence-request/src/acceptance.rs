@@ -44,8 +44,19 @@ use crate::registry::is_digest;
 use crate::status::Status;
 use crate::time::{parse_rfc3339, UtcTime};
 
-/// The profile identifier the records and receipts carry.
+/// The profile identifier the records and receipts carry under
+/// `evidence-interop/0`.
 pub const PROFILE_ID: &str = "evidence-interop/0";
+
+/// Every identifier whose records and receipts this module checks, each the
+/// same §11.1 (`spec/interop-profile-v1.md` changes nothing there).
+pub const PROFILE_IDS: [&str; 2] = [PROFILE_ID, crate::envelope::PROFILE_V1];
+
+/// Whether a record or receipt naming `profile` is checked: an identifier
+/// this module implements that the caller's policy lists (§3.3 step 5).
+fn implements(profile: Option<&str>, implemented: &[&str]) -> bool {
+    profile.is_some_and(|p| PROFILE_IDS.contains(&p) && implemented.contains(&p))
+}
 
 /// The §11.1.7 properties of a candidate, in report order.
 pub const CANDIDATE_PROPERTIES: [&str; 8] = [
@@ -392,7 +403,7 @@ pub fn evaluate(
     if ids.iter().collect::<BTreeSet<_>>().len() != ids.len() {
         return Err(AcceptanceError::DuplicateRequirement);
     }
-    let implemented = inputs.profiles_implemented.contains(&PROFILE_ID);
+    let implemented = inputs.profiles_implemented;
     let trust = inputs.trust;
     let session = inputs.session;
 
@@ -507,7 +518,7 @@ pub fn evaluate(
             finding: Finding::NotAccepted,
             relied_receipts: Vec::new(),
         };
-        if text(r, "profile") != Some(PROFILE_ID) || !implemented {
+        if !implements(text(r, "profile"), implemented) {
             let detail = format!("profile {} is not implemented", repr(r.get("profile")));
             cand.properties = CANDIDATE_PROPERTIES
                 .iter()
@@ -799,9 +810,9 @@ fn receipt_properties(
     record: &Map<String, Value>,
     trust: &TrustPolicy,
     eval: &str,
-    implemented: bool,
+    implemented: &[&str],
 ) -> Vec<PropertyReport> {
-    if text(rc, "profile") != Some(PROFILE_ID) || !implemented {
+    if !implements(text(rc, "profile"), implemented) {
         let detail = format!("profile {} is not implemented", repr(rc.get("profile")));
         return ["receipt_signature", "receipt_signer"]
             .into_iter()
@@ -957,8 +968,8 @@ fn form_problems(r: &Map<String, Value>) -> Vec<&'static str> {
     let mut out = Vec::new();
     let state = text(r, "state");
     let digest_at = |k: &str| text(r, k).is_some_and(is_digest);
-    if text(r, "profile") != Some(PROFILE_ID) {
-        out.push("profile is not evidence-interop/0");
+    if !text(r, "profile").is_some_and(|p| PROFILE_IDS.contains(&p)) {
+        out.push("profile is not evidence-interop/0 or evidence-interop/1");
     }
     if !state.is_some_and(|s| STATES.contains(&s)) {
         out.push("state is not one of the four tokens, exact case");

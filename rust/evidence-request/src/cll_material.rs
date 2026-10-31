@@ -102,8 +102,11 @@ struct Checkpoint {
 /// [`Envelope::verify_for`]'s question, not this one's.
 pub fn check_anchor_inclusion(envelope: &Envelope, policy: &dyn LogKeyPolicy) -> Report {
     // An envelope of another profile is not checked under this one (§7.3).
-    if envelope.profile != crate::envelope::PROFILE {
-        return report(Status::NotChecked, "the envelope is not evidence-interop/0");
+    if !crate::envelope::PROFILES.contains(&envelope.profile.as_str()) {
+        return report(
+            Status::NotChecked,
+            "the envelope is not evidence-interop/0 or evidence-interop/1",
+        );
     }
     // Step 1.
     let record = match &envelope.subject {

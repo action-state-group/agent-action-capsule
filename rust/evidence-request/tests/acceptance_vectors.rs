@@ -97,10 +97,22 @@ fn run(case: &Value, contract: &Value, session: bool) -> Value {
 
 #[test]
 fn every_corpus_acceptance_case_gives_the_expected_report() {
-    let corpus = load(concat!(
+    every_acceptance_case(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../vectors/interop-profile-v0/vectors.json"
     ));
+}
+
+#[test]
+fn every_v1_corpus_acceptance_case_gives_the_expected_report() {
+    every_acceptance_case(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../vectors/interop-profile-v1/vectors.json"
+    ));
+}
+
+fn every_acceptance_case(path: &str) {
+    let corpus = load(path);
     let contract = &corpus["contract"]["document"];
     let mut ran = 0;
     for case in corpus["cases"].as_array().unwrap() {

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **`evidence-interop/1`** (`spec/interop-profile-v1.md`, ER -02): `envelope::PROFILE_V1` and
+  `envelope::PROFILES`. `Envelope::verify_for` and `cll_material::check_anchor_inclusion` read an
+  envelope under either identifier; `envelope::sign_with_profile` signs under one (`sign` keeps
+  `evidence-interop/0`). `envelope::refusal_reasons` gives each identifier's §9.1 tokens: /0's
+  eight, /1's ten, so `capacity_exceeded` is registered under /1 only. `acceptance` checks records
+  and receipts under either identifier the caller's `profiles_implemented` lists
+  (`acceptance::PROFILE_IDS`). The v1 corpora run beside the v0 ones. **Breaking** for an
+  exhaustive `match` on `SignError` (new `Profile`).
 - `registry::Reason` gains the two -02 refusal reasons, `CapacityExceeded` (`capacity_exceeded`)
   and `RequestUnauthenticated` (`request_unauthenticated`); `Reason::ALL` has ten.
   `retention::classify_refusal` reads both as `NoBreach` inside and after `until`
