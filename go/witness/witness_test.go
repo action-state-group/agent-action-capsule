@@ -17,7 +17,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"math/big"
 	"strings"
 	"testing"
 	"time"
@@ -449,10 +448,10 @@ func TestVerifyCOSEReceipt(t *testing.T) {
 	_, err = VerifyCOSEReceipt(buildReceipt(t, leaf, base), leaf, &ecKey.PublicKey)
 	require.ErrorContains(t, err, "EdDSA needs")
 
-	// Only null is a detached payload; undefined is refused before the
-	// signature, which would otherwise verify.
+	// Only null is a detached payload; undefined is refused by the receipt
+	// encoding rule before the signature, which would otherwise verify.
 	_, err = VerifyCOSEReceipt(undefinedPayload(t, buildReceipt(t, leaf, base)), leaf, public)
-	require.ErrorContains(t, err, "must be CBOR null")
+	require.ErrorContains(t, err, "receipt rejected")
 
 	refused := map[string]struct {
 		receipt []byte
@@ -515,9 +514,6 @@ func TestRootFromInclusionProofBounds(t *testing.T) {
 	require.True(t, ok)
 	want := sha256.Sum256([]byte{0, 'x'})
 	require.Equal(t, want[:], root)
-	size, ok := cborInteger(*new(big.Int).SetInt64(5))
-	require.True(t, ok)
-	require.Equal(t, int64(5), size)
 }
 
 func TestVerifyReceiptsWithoutAnchorOrEntries(t *testing.T) {
@@ -666,20 +662,20 @@ func singleLeafReceipt(t *testing.T, private ed25519.PrivateKey, leaf, proof []b
 	return data
 }
 
-func TestInclusionProofBlobIsDecodedLeniently(t *testing.T) {
+func TestInclusionProofBlobIsDecodedStrictly(t *testing.T) {
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	leaf := []byte("leaf")
-	// [1, 0, []] in shortest form, then with one-byte heads for 1 and 0: the
-	// scitt-cose verifiers accept both, refusing only trailing bytes.
-	for _, blob := range []string{"83010080", "831801180080"} {
-		checked, err := VerifyCOSEReceipt(singleLeafReceipt(t, private, leaf, mustHex(t, blob)), leaf, public)
-		require.NoError(t, err, blob)
-		require.Equal(t, int64(1), checked.TreeSize, blob)
+	checked, err := VerifyCOSEReceipt(singleLeafReceipt(t, private, leaf, mustHex(t, "83010080")), leaf, public)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), checked.TreeSize)
+	// [1, 0, []] with one-byte heads, with an indefinite path, with a bignum
+	// tree_size, and with a trailing byte: the receipt encoding rule refuses
+	// each, as it does in the envelope.
+	for _, blob := range []string{"831801180080", "8301009fff", "83c241010080", "8301008000"} {
+		_, err = VerifyCOSEReceipt(singleLeafReceipt(t, private, leaf, mustHex(t, blob)), leaf, public)
+		require.ErrorContains(t, err, "inclusion proof is not one CBOR item", blob)
 	}
-	_, err = VerifyCOSEReceipt(singleLeafReceipt(t, private, leaf, mustHex(t, "8301008000")), leaf, public)
-	require.Error(t, err, "trailing bytes after the proof")
-	// The envelope itself stays strict: a widened head there is refused.
 	receipt := singleLeafReceipt(t, private, leaf, mustHex(t, "83010080"))
 	require.Equal(t, byte(0x84), receipt[1])
 	_, err = VerifyCOSEReceipt(append([]byte{0xd2, 0x98, 0x04}, receipt[2:]...), leaf, public)
@@ -720,4 +716,49 @@ func TestParseDirectoryRefusesPastTheNestingLimit(t *testing.T) {
 	require.NoError(t, err)
 	_, err = ParseDirectory([]byte("[" + strings.Repeat("[", n) + strings.Repeat("]", n) + "]"))
 	require.Error(t, err)
+}
+
+// The receipt encoding rule limits arrays and maps only by the octet limit
+// (profile v1 §6.2.2), where fxamacker's defaults stop at 131072 items, and a
+// receipt over 10,485,760 octets is refused. These are too large for a shared
+// vector.
+func TestReceiptLengthLimits(t *testing.T) {
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	leaf := []byte("leaf")
+	withExtra := func(extra interface{}) []byte {
+		protected, err := deterministicEncoding.Marshal(map[interface{}]interface{}{int64(1): int64(algEdDSA), int64(395): 1})
+		require.NoError(t, err)
+		root := sha256.Sum256(append([]byte{0}, leaf...))
+		data, err := deterministicEncoding.Marshal(cbor.Tag{Number: 18, Content: []interface{}{
+			protected, map[interface{}]interface{}{
+				int64(396): map[interface{}]interface{}{int64(-1): []interface{}{mustHex(t, "83010080")}},
+				int64(99):  extra,
+			},
+			nil, ed25519.Sign(private, sigStructure(protected, root[:])),
+		}})
+		require.NoError(t, err)
+		return data
+	}
+	items := make([]interface{}, 131073)
+	for i := range items {
+		items[i] = uint64(0)
+	}
+	pairs := make(map[interface{}]interface{}, 131073)
+	for i := range 131073 {
+		pairs[uint64(i)] = uint64(0)
+	}
+	for name, extra := range map[string]interface{}{"array": items, "map": pairs} {
+		receipt := withExtra(extra)
+		_, err := VerifyCOSEReceipt(receipt, leaf, public)
+		require.NoError(t, err, name)
+		_, ok := strictReceiptItem(receipt, true)
+		require.True(t, ok, "the anchor check decodes it too: %s", name)
+	}
+	// One octet over the limit: a byte string sized to make it so.
+	base := len(withExtra([]byte{}))
+	oversize := withExtra(make([]byte, maxReceiptBytes+1-base-4))
+	require.Len(t, oversize, maxReceiptBytes+1)
+	_, err = VerifyCOSEReceipt(oversize, leaf, public)
+	require.ErrorContains(t, err, "receipt size is invalid")
 }

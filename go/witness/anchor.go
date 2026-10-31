@@ -68,20 +68,25 @@ var (
 	lowerHex          = regexp.MustCompile(`^(?:[0-9a-f]{2})*$`)
 )
 
-// anchorDecoding is strictDecoding with CBOR undefined and the bignum tags
-// refused, so that null alone decodes to nil. A negative integer below -2^63
-// decodes to a big.Int, which strictAnchorItem refuses, as §6.2.2 does.
-var anchorDecoding = func() cbor.DecMode {
+// receiptDecoding is the decode mode of every COSE Receipt check: repeated
+// keys, indefinite lengths, CBOR undefined and the bignum tags refused, so
+// that null alone decodes to nil. A negative integer below -2^63 decodes to a
+// big.Int, which strictReceiptItem refuses, as profile v1 §6.2.2 does. The
+// array and map limits cover a whole receipt of maxReceiptBytes: §6.2.2 sets
+// no item count below the octet limit, where fxamacker's default is 131072.
+var receiptDecoding = func() cbor.DecMode {
 	simple, err := cbor.NewSimpleValueRegistryFromDefaults(cbor.WithRejectedSimpleValue(23))
 	if err != nil {
 		panic(err)
 	}
 	mode, err := cbor.DecOptions{
-		DupMapKey:    cbor.DupMapKeyEnforcedAPF,
-		IndefLength:  cbor.IndefLengthForbidden,
-		IntDec:       cbor.IntDecConvertNone,
-		BignumTag:    cbor.BignumTagForbidden,
-		SimpleValues: simple,
+		DupMapKey:        cbor.DupMapKeyEnforcedAPF,
+		IndefLength:      cbor.IndefLengthForbidden,
+		IntDec:           cbor.IntDecConvertNone,
+		BignumTag:        cbor.BignumTagForbidden,
+		SimpleValues:     simple,
+		MaxArrayElements: maxReceiptBytes,
+		MaxMapPairs:      maxReceiptBytes,
 	}.DecMode()
 	if err != nil {
 		panic(err)
@@ -93,8 +98,8 @@ var anchorDecoding = func() cbor.DecMode {
 // a label below it may carry any value.
 const privateLabel = -65536
 
-// maxAnchorDepth is the deepest nesting §6.2.2 allows.
-const maxAnchorDepth = 16
+// maxReceiptDepth is the deepest nesting §6.2.2 allows.
+const maxReceiptDepth = 16
 
 type policyKey struct {
 	name string
@@ -144,22 +149,25 @@ type anchorReceipt struct {
 	time      *int64
 }
 
-// strictAnchorItem decodes one CBOR item under the §6.2.2 rules: strictItem's,
-// with no float, no simple value but false, true and null, and no tag but an
-// outer 18 when topTag.
-func strictAnchorItem(data []byte, topTag bool) (interface{}, bool) {
+// strictReceiptItem decodes one CBOR item under the encoding rule of profile
+// v1 §6.2.2, which the strict Bundle check (VerifyCOSEReceipt) shares: no
+// trailing bytes, definite lengths, shortest arguments, no repeated key,
+// integer or text keys, no float, no simple value but false, true and null,
+// no tag but an outer 18 when topTag, and at most maxReceiptDepth levels.
+// Map order is not checked.
+func strictReceiptItem(data []byte, topTag bool) (interface{}, bool) {
 	var value interface{}
-	if err := anchorDecoding.Unmarshal(data, &value); err != nil {
+	if err := receiptDecoding.Unmarshal(data, &value); err != nil {
 		return nil, false
 	}
-	// Shortest arguments, as strictItem checks them: the deterministic
-	// re-encoding is as long as the input.
+	// Shortest arguments: the deterministic re-encoding is as long as the
+	// input, whatever the map order.
 	if canonical, err := deterministicEncoding.Marshal(value); err != nil || len(canonical) != len(data) {
 		return nil, false
 	}
 	var walk func(v interface{}, depth int) bool
 	walk = func(v interface{}, depth int) bool {
-		if depth > maxAnchorDepth {
+		if depth > maxReceiptDepth {
 			return false
 		}
 		switch v := v.(type) {
@@ -223,7 +231,7 @@ func parseAnchorReceipt(receipt []byte) (anchorReceipt, bool) {
 	if len(receipt) == 0 || len(receipt) > maxReceiptBytes {
 		return out, false
 	}
-	decoded, ok := strictAnchorItem(receipt, true)
+	decoded, ok := strictReceiptItem(receipt, true)
 	tag, isTag := decoded.(cbor.Tag)
 	if !ok || !isTag || tag.Number != 18 {
 		return out, false
@@ -237,7 +245,7 @@ func parseAnchorReceipt(receipt []byte) (anchorReceipt, bool) {
 	if !isBytes || len(protected) == 0 || !sigBytes || len(signature) != 64 {
 		return out, false
 	}
-	value, ok := strictAnchorItem(protected, false)
+	value, ok := strictReceiptItem(protected, false)
 	headers, isMap := value.(map[interface{}]interface{})
 	if !ok || !isMap {
 		return out, false
@@ -269,7 +277,7 @@ func parseAnchorReceipt(receipt []byte) (anchorReceipt, bool) {
 		if !isBytes {
 			return out, false
 		}
-		value, ok := strictAnchorItem(blob, false)
+		value, ok := strictReceiptItem(blob, false)
 		proof, isArray := value.([]interface{})
 		if !ok || !isArray || len(proof) != 3 {
 			return out, false
