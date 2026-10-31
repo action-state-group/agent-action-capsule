@@ -54,7 +54,7 @@ assert a state that only the store can compute.
 
 ## 1. `verdict_class`
 
-Defined in §5.4.1 of the Internet-Draft (the `verdict_class` vocabulary).
+Defined in §5.5.1 of the Internet-Draft (-05) (the `verdict_class` vocabulary).
 Initial contents:
 
 | Value | Semantics |
@@ -70,8 +70,8 @@ Initial contents:
 | `needs_decision` | Evaluation complete, decision required, not yet routed to a decider; open item. |
 | `expired` | TTL policy on the deferral elapsed; terminal unless superseded by escalation. |
 | `escalated` | Expiry or policy routed the item to a higher authority; open item at the new authority. |
-| `resolved` | A terminal decision capsule closed the chain without executing (pairing rule, Internet-Draft §5.4.2). |
-| `epoch_boundary` | An administrative capsule (`action_type: "fyi"`) marking a configuration-epoch transition. REQUIRES `effect_mode: "not_applicable"` — no effect is dispatched by an administrative epoch record. Defined in §5.1 (Configuration epochs) of the Internet-Draft. |
+| `resolved` | A terminal decision capsule closed the chain without executing (pairing rule, Internet-Draft -05 §5.5.2). |
+| `epoch_boundary` | An administrative capsule (`action_type: "fyi"`) marking a configuration-epoch transition. REQUIRES `effect_mode: "not_applicable"` — no effect is dispatched by an administrative epoch record. Defined in §5.2 (Configuration epochs) of the Internet-Draft (-05). |
 
 **`deferred` token ownership.** The `deferred` token's semantics are OWNED by
 the `verdict_class` registry; the `disposition.decision` entry of the same
@@ -79,7 +79,7 @@ spelling (§2) is a cross-reference to it.
 
 ## 2. `disposition.decision`
 
-Defined in §5.4 of the Internet-Draft (Disposition).
+Defined in §5.5 of the Internet-Draft (-05) (Disposition).
 Initial contents: `accept`, `reject`, `needs_input`, `deferred`.
 
 **`deferred` token ownership.** The `deferred` token's semantics are OWNED by
@@ -88,18 +88,18 @@ cross-reference to it.
 
 ## 3. `effect.type`
 
-Defined in §5.2 of the Internet-Draft (Effect Record and the confirmed-effect
+Defined in §5.3 of the Internet-Draft (-05) (Effect Record and the confirmed-effect
 binding). Initial contents:
 
 | Value | Semantics |
 |---|---|
-| `write_order` | Seeded example value of the profile (Internet-Draft §5.2). |
-| `send_payment` | Seeded example value of the profile (Internet-Draft §5.2). |
+| `write_order` | Seeded example value of the profile (Internet-Draft -05 §5.3). |
+| `send_payment` | Seeded example value of the profile (Internet-Draft -05 §5.3). |
 | `inference_completion` | An inference request to a model-serving runtime whose committed effect is producing a completion. `request_digest` is the JSON digest of the request body as received at the serving boundary; `response_digest` is the JSON digest of the completion body as returned. |
 
 ## 4. `irreversibility_class`
 
-Defined in §5.2 of the Internet-Draft (Effect Record). An **ordered**
+Defined in §5.3 of the Internet-Draft (-05) (Effect Record). An **ordered**
 vocabulary by ascending consequence; a registration MUST state its position in
 the consequence order relative to the existing values. Initial contents, in
 order:
@@ -111,7 +111,7 @@ order:
 
 ## 5. `effect_attestation`
 
-Defined in §5.2 of the Internet-Draft (Effect Record; the validity matrix).
+Defined in §5.3 of the Internet-Draft (-05) (Effect Record; the validity matrix).
 
 **Grade-floor rule (registry preamble).** Consumers MUST treat an unregistered
 or unrecognized `effect_attestation` value as **no stronger than
@@ -121,7 +121,7 @@ informational, never a verification failure — but unknown NEVER grades up.
 **Planned carve (registry preamble).** `effect.status = "planned"` asserts no
 execution — `effect_attestation` MUST be absent (nothing to grade; a phantom
 grade would poison grade-based queries); it becomes REQUIRED the moment
-dispatch occurs (Internet-Draft §5.2).
+dispatch occurs (Internet-Draft -05 §5.3).
 
 Initial contents:
 
@@ -152,7 +152,7 @@ Initial contents:
 | `follows` | Non-terminal: a bare next-link — this capsule appends to the producer's stream after the parent and asserts no outcome, observation, or transition over it; the parent's open state is unaffected. The default relation for an ordinary sequential record, including a record whose substance lies in its own fields or its `references[]` citations rather than in any claim about the parent (e.g. a counterparty-half custody record citing a foreign half via `citation_purpose: counterparty_half`, §11). **Verifier consequence:** verifiers and downstream evidence evaluators MUST NOT read a `follows` link as confirming, superseding, or otherwise grading the parent — it is ordering only. |
 | `confirms` | Non-terminal: this capsule observes or records the outcome of the parent — the parent's open state remains. The most common chain link: *attempted → confirmed*. |
 | `supersedes` | Terminal transition over the parent — resolution, expiry, escalation close/replace the parent's open state. |
-| `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.1 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft. |
+| `epoch_opens` | Non-terminal: this capsule opens a new operational configuration epoch. The chain parent MUST be the last capsule produced under the prior epoch. The opening capsule carries the new `epoch_id`. Defined in §5.2.2 (Configuration epochs, Epoch-boundary Capsules) of the Internet-Draft (-05). |
 | `duplicates` | Non-terminal: this capsule is a backfilled import of the same logical event already recorded by the parent, a contemporaneous capsule in this producer's own stream. Defined in the Internet-Draft's Provenance mode section (`-05` and later revisions). A `duplicates`-linked pair is counted once by verifiers and downstream evidence evaluators; the contemporaneous parent's assurance and disposition govern. |
 
 **Designated-expert guidance (this registry).** Seeded with the bare ordering
@@ -377,7 +377,7 @@ the other. **Optional**; absent implies `mode: "contemporaneous"`.
 
 `provenance_mode.mode` is a closed two-value enum, not itself
 Specification-Required-governed (mirroring `assurance.attestation_mode`'s
-treatment, Internet-Draft §5.3): an unrecognized `mode` value is a
+treatment, Internet-Draft -05 §5.4): an unrecognized `mode` value is a
 structural failure, not an informational finding, because downstream
 evidence-sufficiency logic depends on being able to tell the two modes
 apart.
