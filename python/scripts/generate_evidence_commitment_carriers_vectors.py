@@ -263,7 +263,20 @@ def refused(data: bytes, reason: str) -> dict:
 
 
 def witnessed(stream: str, since: str) -> dict:
-    return {"stream": stream, "label": "witnessed", "witness": ED_PUB["witness-configured"], "since": since}
+    return {"stream": stream, "label": "witnessed", "log_key": ED_PUB["stream-log"],
+            "witness": ED_PUB["witness-configured"], "since": since}
+
+
+def label(stream: str, name: str) -> dict:
+    """§7: every label is reported with the stream's log key, since it describes that log."""
+    return {"stream": stream, "label": name, "log_key": ED_PUB["stream-log"]}
+
+
+def pin(stream: str, cps: list, seen_at: str) -> dict:
+    """A first-use pin (§7): the asker keeps the checkpoint's digest and log size (V6)."""
+    cp = card(stream, cps)["history"][-1]["checkpoint"]
+    return {"key_id": ED_PUB["responder"], "stream": stream, "seen_at": seen_at,
+            "checkpoint": ip.json_digest(cp), "log_size": cp["log_size"]}
 
 
 def build_cases() -> list[dict]:
@@ -388,7 +401,7 @@ def build_cases() -> list[dict]:
          ["§7"],
          [directory(URI_CUR, sha_tag(unw))],
          {"carriers": [carrier_result("directory", unw)], "commitments": [verified(unw, "current")],
-          "streams": [{"stream": "book-b", "label": "unwitnessed"}, {"stream": "book-c", "label": "unknown_witness"}]},
+          "streams": [label("book-b", "unwitnessed"), label("book-c", "unknown_witness")]},
          uris=served(**{URI_CUR: unw}))
 
     moved = octets_of(commitment(T2, [("book-a2", NO_RECEIPT)]))
@@ -398,12 +411,30 @@ def build_cases() -> list[dict]:
          ["§7"],
          [directory(URI_CUR, sha_tag(moved))],
          {"carriers": [carrier_result("directory", moved)], "commitments": [verified(moved, "current")],
-          "streams": [{"stream": "book-a2", "label": "unwitnessed"}],
+          "streams": [label("book-a2", "unwitnessed")],
           "first_use": [{"stream": "book-a", "state": "dropped", "since": SENT},
-                        {"stream": "book-a2", "state": "new", "since": SENT}]},
-         uris=served(**{URI_CUR: moved}),
-         pins=[{"key_id": ED_PUB["responder"], "stream": "book-a", "seen_at": first_seen, "checkpoint":
-                ip.json_digest(card("book-a", WITNESSED)["history"][-1]["checkpoint"])}])
+                        {"stream": "book-a2", "state": "new", "since": SENT}],
+          "behind_pin": []},
+         uris=served(**{URI_CUR: moved}), pins=[pin("book-a", WITNESSED, first_seen)])
+
+    # A newer commitment whose card stops at size 14, below the asker's pin at size 19.
+    short = octets_of(commitment("2026-10-03T12:05:30Z", [("book-a", WITNESSED)]))
+    case("short-card-behind-pin",
+         "a newer commitment whose card's last checkpoint is earlier than the asker's pin: behind_pin",
+         ["§6 V6", "§7"],
+         [directory(URI_CUR, sha_tag(short))],
+         {"carriers": [carrier_result("directory", short)], "commitments": [verified(short, "current")],
+          "streams": streams_cur, "first_use": [], "behind_pin": ["book-a"]},
+         uris=served(**{URI_CUR: short}), pins=[pin("book-a", LATER, "2026-10-03T12:01:00Z")])
+
+    future = octets_of(commitment("2099-01-01T00:00:00Z", [("book-a", LATER)]))
+    case("future-dated-issued-at",
+         "a valid commitment dated past the verifier's time and skew, beside the current one: future_dated",
+         ["§6 V4"],
+         [directory(URI_CUR, sha_tag(future)), {"carrier": "nostr", "event": ev_cur}],
+         {"carriers": [carrier_result("directory", future), carrier_result("nostr", CUR, attribution="announced")],
+          "commitments": [verified(future, "future_dated"), verified(CUR, "current")], "streams": streams_cur},
+         uris=served(**{URI_CUR: future}))
 
     case("a2a-commitment-in-discovery-object",
          "the commitment pointer in the evidence-request entry's params: discovery_object, not read",
@@ -442,9 +473,9 @@ def build() -> dict[str, bytes]:
         "binding": BINDING,
         "carriage": {"announce_kind": ANNOUNCE_KIND, "relay": RELAY, "a2a_extension_uri": COMMITMENT_EXT_URI},
         "node_id": NODE_ID,
-        "verifier": {"note": "The verifier's own configuration (binding §7): the witness keys it accepts, and "
-                             "when it reads the carriers (first_use times).",
-                     "witness_keys": [ED_PUB["witness-configured"]], "read_at": SENT},
+        "verifier": {"note": "The verifier's own configuration (binding §6 V4, §7): the witness keys it accepts, "
+                             "when it reads the carriers (its time, and the first_use times), and its clock skew.",
+                     "witness_keys": [ED_PUB["witness-configured"]], "read_at": SENT, "clock_skew": "PT5M"},
         "test_keys": {
             "note": "TEST-ONLY. Ed25519 secret keys are SHA-256(label); responder and impostor are the "
                     "interop-profile-v0 corpus's keys. Nostr secret keys are SHA-256(label) as a big-endian "

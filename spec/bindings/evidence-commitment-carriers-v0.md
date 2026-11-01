@@ -90,9 +90,16 @@ when it is present:
 
 The two members travel together: a mailbox key without relays cannot be reached, and relays
 without a key address nobody. A commitment profile that carries this route uses these names and
-this shape. They settle NMB's open points N-4 and N-5: the requester takes the mailbox key and
-the relay list from a commitment that verifies (§6), which is the trusted source NMB §3 requires.
-`ask.nostr` is not a binding token and is not listed in `ask.bindings` [NMB N-6].
+this shape. They settle NMB's open points N-4 and N-5. `ask.nostr` is not a binding token, since
+NMB defines none (its Status and N-6), so it is not listed in `ask.bindings`.
+
+**Which route to use.** A requester takes `ask.nostr` only from a commitment that passes V0 to V4
+(§6) and whose `key_id` is a responder key its trust policy accepts for the responder it means to
+ask [IP §7.2, `responder_trust`]. That commitment is the trusted source NMB §3 requires. V5 cannot
+come first, because no answer exists before the first ask. A commitment whose `key_id` the policy
+does not accept for that responder is a route to whoever holds that `key_id`: answers through it
+are bound to that key alone (V5), and a failure among them is never adverse to another
+responder [NMB §3].
 
 ## 4. Digests
 
@@ -203,22 +210,31 @@ that fails names the result.
   `commitment_form`, `key_id_spki`, `commitment_signature`. A commitment that fails here is
   refused, whichever carrier brought it.
 - **V3, staples.** `checkpoint.sha256` and every card's `sha256` are the SHA-256 of their decoded
-  `bytes`. Failure: `staple_digest`.
-- **V4, newest wins.** Among the commitments that pass V2 and V3 with the same `key_id` and
-  `node_id`, the one with the latest `issued_at` is **current**; the others are **superseded**.
-  Two with the same `issued_at` and different octets are **conflicting**, and neither is current
-  until the verifier has asked the responder (V6). Arrival order and carrier never decide.
+  `bytes`. Failure: `staple_digest`. This document reads the top-level `checkpoint` for nothing
+  else: V6 and §7 work per stream, from each card's last checkpoint.
+- **V4, newest wins.** A commitment whose `issued_at` is later than the verifier's time plus the
+  clock skew it configures is **future_dated** and takes no part in this step, so a commitment
+  signed with a wrong clock cannot supersede every later one. Among the other commitments that
+  pass V2 and V3 with the same `key_id` and `node_id`, the one with the latest `issued_at` is
+  **current**; the others are **superseded**. Two with the same `issued_at` and different octets
+  are **conflicting**: the responder's key signed both, and neither is current until the verifier
+  reads, from any carrier, one with a later `issued_at`. Arrival order and carrier never decide.
 - **V5, key binding.** `key_id` is proven only by the Ed25519 signature on the responder's
   evidence answers, an envelope [IP §6.2] or a refusal [IP §6.3], on whatever channel they arrive.
   A verifier relies on a commitment for a responder only when that responder's answers verify under
   `key_id`. A commitment under another key does not describe that responder (`key_mismatch`). The
   mailbox key, the Nostr event author and an A2A card's JWS signer are never compared with
   `key_id`: they are routes or carriage, not the responder's identity [NMB §3; ER §3.6].
-- **V6, still extended.** Before relying on the advertised checkpoint, the verifier asks the
-  responder a `checkpoints` request with `coverage.expected_pin` set to the checkpoint digest it
-  holds (the advertised checkpoint's, or its pin, §7) [ER §3.2], and verifies the consistency proof
-  in the answer offline. A responder whose answer does not prove consistency is treated as ER treats
-  an unverifiable artifact.
+- **V6, still extended.** This step is per stream. The **held checkpoint** of a stream is the
+  asker's first-use pin for (`key_id`, `stream`) (§7), or, with no pin, the card's last
+  checkpoint. Offline, a card whose last checkpoint is earlier than the held checkpoint (a smaller
+  log size), or whose checkpoint at the held checkpoint's log size is a different one, is
+  **behind_pin**: the log was cut back or forked, and the stream is not relied on. Before relying on
+  a stream, the verifier asks the responder a `checkpoints` request for it with
+  `coverage.expected_pin` set to the held checkpoint's digest [ER §3.2]. The answer relies only if
+  it carries a checkpoint at or past the card's last checkpoint and a consistency proof from the
+  held checkpoint to it, verified offline. An answer that stops at or before the held checkpoint,
+  or does not prove consistency, is treated as ER treats an unverifiable artifact.
 - **V7, no trust from discovery.** Passing V0 to V5 means the commitment is the responder's own
   signed statement, and nothing more. Admission policy reads the cards (§7).
 
@@ -237,13 +253,21 @@ checkpoint it covers.
 about it. A stream whose card carries no receipt is labelled `unwitnessed`: its log age and timing
 are the responder's own word. A stream whose receipts are all under keys the verifier does not
 configure, or do not verify, is labelled `unknown_witness`: a responder can mint receipts of its
-own. A stream without a `checkpoint_key` has no receipt counted. The label is not a failure: an
+own. A stream without a `checkpoint_key` has no receipt counted. A stream whose card carries
+receipts of which none counts is labelled `unknown_witness`. The label is not a failure: an
 unwitnessed commitment still passes V0 to V5, and admission policy decides. A policy MAY refuse
 unwitnessed responders.
 
+**A label is the log's, not the responder's.** Nothing in a card binds its log to `key_id`: the
+log key need not be the responder's key, and another commitment can staple the same public card.
+So a label, and the age it gives, describe the log signed by `checkpoint_key`. The verifier
+reports each label with that `checkpoint_key`. Whether that log key is right for the responder is
+the relying party's policy, as it is for any checkpoint [IP §6.2.1; P-31], and an admission policy
+that relies on a stream's witnesses or age accepts the log key for that responder first.
+
 **Trust on first use.** For every (`key_id`, `stream`) pair, the asker keeps the first checkpoint
 it saw: its digest, and when the asker saw it. Every later answer for that stream must prove
-consistency to that pin (V6). A stream missing from a later current commitment is shown as
+consistency from that pin (V6). A stream missing from a later current commitment is shown as
 `dropped` since the time the asker first saw it missing, and a stream not seen before as `new`
 since the time it first appeared. A responder that restarts a log under a new stream name is never
 shown as continuing the old one. Pins are per `key_id`: a commitment under a new key starts with
@@ -259,6 +283,8 @@ The vectors fix a card format for testing only, the one of
 | A carrier, or whoever controls it, can | What the verifier sees | Result |
 |---|---|---|
 | serve stale octets | an older `issued_at` | superseded by a newer commitment from any carrier (V4); V6 catches a log that stopped |
+| sign a short card, cut back below a pin | a card's last checkpoint earlier than the held one | `behind_pin` (V6) |
+| staple another responder's public cards | cards whose `checkpoint_key` is that responder's log key | the labels carry that log key; the relying party's policy decides whether it is this responder's (§7) |
 | point at another responder's commitment | a commitment under that responder's key | `key_mismatch` for the responder it is asked about (V5) |
 | alter the octets | a signature that fails | refused, `commitment_signature` (V2) |
 | keep a digest that does not match | `digest_mismatch` | the octets are verified on their own (V1) |
@@ -270,7 +296,7 @@ The vectors fix a card format for testing only, the one of
 |---|---|
 | make a commitment that verifies | it does not hold the responder key |
 | mark a stream witnessed | the label comes from receipts under keys the verifier configures (§7) |
-| make a newer commitment lose to an older one | V4 compares signed `issued_at`, not carrier or arrival |
+| make a newer commitment lose to an older one | V4 compares signed `issued_at`, not carrier or arrival; a future-dated one takes no part |
 
 ## 9. Privacy considerations
 
@@ -307,12 +333,14 @@ with the expected result of every step.
 | `same-issued-at-conflict` | two valid commitments with one `issued_at` and different octets: conflicting, none current | §6 V4 |
 | `unwitnessed-labelled` | two streams, one with no receipt and one with a receipt under an unconfigured witness: verified, labelled `unwitnessed` and `unknown_witness` | §7 |
 | `first-use-dropped-and-new` | pins from an earlier commitment, and a current one that drops a stream and starts another: `dropped` and `new` | §7 |
+| `short-card-behind-pin` | a newer commitment whose card's last checkpoint is earlier than the asker's pin: `behind_pin` | §6 V6, §7 |
+| `future-dated-issued-at` | a valid commitment dated past the verifier's time and clock skew, beside the current one: `future_dated` | §6 V4 |
 | `a2a-commitment-in-discovery-object` | the commitment pointer in the evidence-request entry's `params`: `discovery_object`, not read | §5.2, §6 V0 |
 | `nostr-event-bad-signature` | an announce event whose signature does not verify: `nostr_event`, not read | §6 V0 |
 
 The workflow `.github/workflows/evidence-commitment-carriers.yml` regenerates the vectors, fails
 when the committed files differ, and runs the test. No relay, directory or host is contacted. V6
-needs a live responder and has no vector in this revision.
+needs a live responder for its request; its offline part, `behind_pin`, has a vector.
 
 ## 11. Open points
 
