@@ -8,7 +8,7 @@ conformance vectors for that profile.
 
 - `vectors.json`: the cases (binding §10). Each carries the carrier entries, the octets each URI
   serves, the announce events a relay holds and, where a case needs them, an answer for the key
-  binding and the asker's first-use pins, with the expected result of every verify step.
+  binding, with the expected result of every verify step and the cards handed on (V6).
 - `manifest.json`: the set, its status and the SHA-256 of each generated file.
 - `SHA256SUMS`: every file here.
 
