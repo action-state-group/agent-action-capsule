@@ -268,21 +268,24 @@ type RequestCheck struct {
 
 // ParseRequest validates received request octets in the order of profile
 // §6.1 steps 1 to 5. Members it does not define are ignored (ER §3), but
-// in CBOR they must still hold only the data model (cborRequestOutsideModel).
+// in CBOR they must still hold only the data model (decodeCBORRequest).
 // Member names match exactly: a case variant is an unknown member. A
 // malformed member wins over a coverage carrying both members (ERV A4).
 func ParseRequest(m Message) RequestCheck {
 	malformed := func(why string) RequestCheck {
 		return RequestCheck{Reason: ReasonRequestMalformed, Why: why}
 	}
+	var root any
 	if m.MediaType == MediaTypeCBOR {
-		if why := cborRequestOutsideModel(m.Octets); why != "" {
+		var why string
+		if root, why = decodeCBORRequest(m.Octets); why != "" {
 			return malformed(why)
 		}
-	}
-	root, err := Decode(m)
-	if err != nil {
-		return malformed("not a well-formed map")
+	} else {
+		var err error
+		if root, err = Decode(m); err != nil {
+			return malformed("not a well-formed map")
+		}
 	}
 	fields, ok := root.(map[string]any)
 	if !ok {
@@ -385,25 +388,25 @@ func (r Request) floorTime() (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// cborRequestOutsideModel reports why CBOR request octets are not read
-// (profile §5.2), or "" when they are: a request is read only in core
-// deterministic encoding (RFC 8949 §4.2.1) with every item, at every depth
-// and inside members a responder ignores, null, a boolean, a text string, an
-// unsigned integer up to 2^53-1, an array or a map with text keys
+// decodeCBORRequest decodes CBOR request octets (profile §5.2), or reports
+// why they are not read: a request is read only in core deterministic
+// encoding (RFC 8949 §4.2.1) with every item, at every depth and inside
+// members a responder ignores, null, a boolean, a text string, an unsigned
+// integer up to 2^53-1, an array or a map with text keys
 // (vectors/cbor-request-model/, #529). Python and Rust read it the same way.
-func cborRequestOutsideModel(data []byte) string {
+func decodeCBORRequest(data []byte) (any, string) {
 	decoded, err := decodeCBORItem(data)
 	switch {
 	case err != nil:
-		return "not a well-formed map"
+		return nil, "not a well-formed map"
 	case decoded.duplicateKeys:
-		return "a duplicate map key"
+		return nil, "a duplicate map key"
 	case !decoded.deterministic:
-		return "not in core deterministic encoding"
+		return nil, "not in core deterministic encoding"
 	case decoded.irregular || decoded.nonTextKeys || !cborInRequestModel(decoded.value):
-		return "a value outside the request data model"
+		return nil, "a value outside the request data model"
 	}
-	return ""
+	return decoded.value, ""
 }
 
 // cborInRequestModel reports whether a value decodeCBORItem returned holds

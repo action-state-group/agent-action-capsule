@@ -70,7 +70,7 @@ type JSONNumber string
 // (a negative or out-of-range integer, a float, a tag, a non-text map key).
 // It is kept, not rejected, so an unknown member holding one is ignored,
 // except in a CBOR request, which ParseRequest refuses for one at any depth
-// (cborRequestOutsideModel).
+// (decodeCBORRequest).
 type OutsideModel struct{}
 
 // MaxSafeInteger is 2^53-1, the largest integer every JCS implementation
@@ -202,9 +202,11 @@ var strictCBOR = func() cbor.DecMode {
 	return mode
 }()
 
-// DecodeCBOR decodes one CBOR data item into the profile's data model. It
-// need not be deterministic: a request digest is over the octets as
-// received, never over a re-encoding (ERV digest.json).
+// DecodeCBOR decodes one CBOR data item, such as a reply, into the profile's
+// data model. It need not be deterministic, and a value outside the model is
+// kept as OutsideModel. A CBOR request is read by ParseRequest instead, which
+// refuses both (decodeCBORRequest, profile §5.2); its digest is still over
+// the octets as received (ERV digest.json).
 func DecodeCBOR(data []byte) (any, error) {
 	if cborNestsTooDeep(data) {
 		return nil, fmt.Errorf("%w: nested more than %d levels deep", errNotWellFormed, canonical.MaxNestingDepth)
