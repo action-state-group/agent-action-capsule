@@ -68,7 +68,9 @@ type JSONNumber string
 
 // OutsideModel is a received item the profile's data model has no place for
 // (a negative or out-of-range integer, a float, a tag, a non-text map key).
-// It is kept, not rejected, so an unknown member holding one is ignored.
+// It is kept, not rejected, so an unknown member holding one is ignored,
+// except in a CBOR request, which ParseRequest refuses for one at any depth
+// (cborRequestOutsideModel).
 type OutsideModel struct{}
 
 // MaxSafeInteger is 2^53-1, the largest integer every JCS implementation
