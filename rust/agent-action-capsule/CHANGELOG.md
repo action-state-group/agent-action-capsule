@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.8.0 — 2026-11-01
+## 0.8.0 — 2026-10-31
 
 Tag `crates/agent-action-capsule-v0.8.0`.
 
