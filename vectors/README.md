@@ -177,6 +177,13 @@ same-commit files in CI.
   wrong-key and replayed envelopes, two replies accepted by their content, three events that are
   not replies, and absences at a deadline and at a local timeout;
   `python/scripts/generate_nostr_mailbox_vectors.py` regenerates them.
+- `adapters/evidence-commitment-carriers/`: EXPERIMENTAL, not conformance vectors for any profile.
+  The carriers of `spec/bindings/evidence-commitment-carriers-v0.md`: one signed evidence
+  commitment through a directory attestation entry, an A2A extension entry and a Nostr announce
+  event, with a forged entry, a forged key id, a bad staple, a stale digest, a key mismatch, an
+  older commitment beside a newer one, a tie, a future-dated commitment, the cards handed to
+  the admission pack, and two carrier entries that are not read;
+  `python/scripts/generate_evidence_commitment_carriers_vectors.py` regenerates them.
 
 Reference-derived corpora and checksum manifests can be regenerated with:
 
