@@ -127,6 +127,7 @@ COUNTERS = {
     "vectors/registry-conformance/": lambda: cases("vectors/registry-conformance/vectors.json"),
     "vectors/adapters/x402/": lambda: cases("vectors/adapters/x402/cases.json"),
     "vectors/adapters/ucp/": lambda: cases("vectors/adapters/ucp/cases.json"),
+    "vectors/adapters/nostr-mailbox/": lambda: cases("vectors/adapters/nostr-mailbox/vectors.json"),
     "vectors/viewer-core-text/": viewer_count,
 }
 
