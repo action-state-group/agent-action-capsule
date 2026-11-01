@@ -13,9 +13,9 @@ this carriage, and none appears in a conformant manifest (NMB Status; IP §11.4.
 and verify its BIP-340 signature under its `pubkey` (NIP-01). That check establishes which Nostr key
 published the event, and nothing about the evidence it carries. The event is carriage. Its key is
 the responder's mailbox key, which is a route, not the responder's identity (NMB §3). So the event's
-native check decides only whether the event is in the reply position (NMB §4.2). An event that fails
-it still carries a reply when its content is the responder's signed answer to the request. The check
-never enters IP's property catalogue or §8 mapping. The evidence inside, the envelope or refusal, is
+native check decides only whether the event is attributed to the mailbox, one of the two ways into
+the reply position (NMB §4.2). An event that fails it is still in the reply position, and carries a
+reply, when its content is the responder's signed answer to the request. The check never enters IP's property catalogue or §8 mapping. The evidence inside, the envelope or refusal, is
 verified by IP unchanged, under the responder's Ed25519 key.
 
 ## 1. What was read
@@ -66,9 +66,9 @@ IP reports properties of evidence: envelopes, refusals and their bindings [IP §
 is the carriage's container, as an A2A `Artifact` or an MCP tool result is in IP §11.4. IP keeps
 both apart from the canonical Artifact, and says an A2A `Artifact`'s own fields "are never signed or
 verified" [IP §11.4]. A Nostr event is signed, unlike those two. Its signature is still a carriage
-signature: it protects the relay hop and decides who fills the reply position (NMB §4.2, checks 5 to
-7). Reporting it as an evidence property would let a mailbox key appear to vouch for a reply, which
-NMB §3 rules out.
+signature: it protects the relay hop and decides which events are attributed to the mailbox
+(NMB §4.2, checks 5 to 7). Reporting it as an evidence property would let a mailbox key appear to
+vouch for a reply, which NMB §3 rules out.
 
 ## 4. Conformance vectors
 

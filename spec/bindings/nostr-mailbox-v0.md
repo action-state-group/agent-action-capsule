@@ -67,8 +67,8 @@ transport binding and nothing more", and that "a responder reached through a rou
 by its signature on the response, never by the route" [ER §3.6]. Here the mailbox key is that kind
 of hint. A verifier never accepts a reply because the mailbox key signed its event. It accepts what
 the responder key signed, under the trust policy [IP §7.2 `responder_trust`]. The mailbox key
-decides only which events are in the reply position (§4.2), and the responder's signed answer to a
-request counts wherever it arrives from.
+decides only which events are attributed to the mailbox (§4.2, checks 5 to 7), and the responder's
+signed answer to a request counts wherever it arrives from.
 
 **Learning the mailbox key needs trust.** The mailbox key fills the reply position (§4.2): what its
 holder publishes in reply to a request is verified as the responder's reply, and a reply that fails
@@ -120,6 +120,15 @@ tags, so a responder finds its mail with a subscription filter on the `p` tag an
 `{"kinds": [4700], "#p": [<mailbox key>]}`. The request map itself names no responder. ER defines
 no such field, and a deployment that wants one adds it as an extension [ER §3.7].
 
+**Checking a request event.** Before answering, the responder MUST recompute the request event's
+`id` as NIP-01 fixes it and verify its `sig` under its `pubkey` by BIP-340. It MUST NOT answer a
+request event that fails either check, and the `e` tag of its reply names the `id` it verified.
+The responder computes the request digest from the `content` of that verified event (§5.1). A relay
+that alters a request event's content or tags then leaves an `id` or a signature that fails, and
+the request is never answered; it cannot make a new valid event under the requester's carriage key.
+So the request becomes an absence at its deadline, never a response received and failed
+(vector `mailbox-request-tampered`).
+
 **Deadline.** The `expiration` tag repeats the request's `deadline` so a relay may drop the request
 once nobody needs it. NIP-40 is optional for relays. It says relays "MAY persist them
 indefinitely", and warns against treating expiring messages as a security feature. So the tag is a
@@ -142,8 +151,9 @@ Published by the responder, signed by the mailbox key.
 | `created_at` | the responder's clock; carriage only (§7) |
 
 **Reply-to.** The `e` tag is the reply-to. The requester subscribes with
-`{"kinds": [4701], "#e": [<request event id>], "authors": [<mailbox key>]}`. Because the event `id`
-covers the tags, a reply event names exactly one request event, and nobody without the mailbox key
+`{"kinds": [4701], "#e": [<request event id>]}`. The filter names no author: a reply by
+content (below) can be published by a key other than the mailbox key, and checks 5 to 7 decide
+attribution, not the relay. Because the event `id` covers the tags, a reply event names exactly one request event, and nobody without the mailbox key
 can move it to another.
 
 **Which events are replies.** The requester applies these checks, in order, to each event
@@ -156,7 +166,7 @@ Format checks. If one fails, the event is not a reply and is named by the check:
 3. `media_type`: exactly one `m` tag, equal to the request's media type.
 4. `content`: `content` decodes as base64url without padding.
 
-Attribution checks. They decide whether the event is in the reply position:
+Attribution checks. They decide whether the event is attributed to the mailbox:
 
 5. `id`: the `id` equals the NIP-01 hash of the event.
 6. `signature`: `sig` verifies under `pubkey` by BIP-340 over `id`.
@@ -165,9 +175,9 @@ Attribution checks. They decide whether the event is in the reply position:
 An event that passes all seven is a reply. Its octets are classified and verified by IP (§5.2),
 and a failure is a response received and failed, as on any carriage.
 
-**Reply by content.** An event that passes checks 1 to 4 and fails one of checks 5 to 7 is not in
-the reply position, but its content may still be the responder's answer. ER says a responder "is
-authenticated by its signature on the response, never by the route" [ER §3.6], and that a refusal
+**Reply by content.** An event that passes checks 1 to 4 and fails one of checks 5 to 7 is not
+attributed to the mailbox, but its content may still be the responder's answer. ER says a
+responder "is authenticated by its signature on the response, never by the route" [ER §3.6], and that a refusal
 which arrived is never recorded as an absence [ER §4.5]. So the requester verifies the decoded
 content against this request on its own [IP §7]. It is a reply, named for the first attribution
 check that failed, when:
@@ -179,13 +189,17 @@ check that failed, when:
 Otherwise the event is not a reply, and is named by that check. Its content is discarded: it is
 not a response received and failed.
 
+**The reply position.** For IP §11.4.1 rule 6, this carriage's reply position holds exactly the
+events that pass checks 1 to 4 and then either pass checks 5 to 7 or are a reply by content. Every
+reply above is in it, and nothing else is.
+
 An event that is not a reply is a transport condition [IP §9.2]: the request stays pending, then
 becomes an absence [IP §11.4.1 rule 6]. It is never a refusal. Events with the same `id` are one
 event, however many times a relay delivers them. The `p` tag of a reply event is for the
 requester's own filtering, and is not checked.
 
 This keeps two things true at once. A relay or third party cannot turn a pending request into a
-response received and failed: content outside the reply position counts only when the responder
+response received and failed: content not attributed to the mailbox counts only when the responder
 signed it under a trusted key for this very request, and then it is the responder's own act. And
 the responder's signed answer is never thrown away because of the carriage it came through, for
 example a mailbox key that was rotated, or an event re-published by another key.
@@ -284,6 +298,7 @@ responder key, end to end, and the relay holds no key that matters.
 
 | A relay can | What the requester sees | Detected? |
 |---|---|---|
+| alter a request event on its way to the responder | the responder ignores it (§4.1); no reply; absence at the deadline | no: indistinguishable from silence (vector `mailbox-request-tampered`) |
 | drop or not store the request or the reply | no reply; absence at the deadline | no: indistinguishable from silence [ER §4.4] |
 | delay either past the deadline | absence; a late reply, if it arrives later, kept beside it (§5.3) | no, beyond the envelope's signed `issued_at` |
 | deliver a request event twice | the responder answers each request event `id` once, and SHOULD NOT answer a redelivery; if it does, two replies with one request digest | both verified; `caller_invariance` compares them [IP §7.2] (vector `mailbox-request-redelivered`) |
@@ -349,7 +364,7 @@ corpus: its responder key, log, artifact and envelope builders, and its contract
 carries the request octets, the request event, the events the relay delivered, and, where the
 window closed, the absence record and any events delivered after it, each with the time it reached
 the requester. The test recomputes every event `id`, verifies every BIP-340
-signature with its own code, applies the checks of §4.2, and passes each reply to the reference
+signature with its own code, applies the responder's checks of §4.1 and the requester's of §4.2, and passes each reply to the reference
 verifier of IP. It also checks its NIP-01 `id` and BIP-340 against the rumor and seal published in
 NIP-59, its BIP-340 against BIP-340 test vectors 0, 1, 5, 6, 12, 13 and 14, and its bech32 against
 the NIP-19 `nprofile` example.
@@ -366,6 +381,7 @@ the NIP-19 `nprofile` example.
 | `mailbox-event-bad-signature` | the reply event's signature does not verify, and its content is the responder's envelope for this request: a reply by content | §4.2 |
 | `mailbox-event-tampered` | the reply event's content changed after signing, to an envelope under an untrusted key: not a reply; absence | §4.2 |
 | `mailbox-reply-to-other-request` | a genuine reply event delivered for another request: not a reply; absence | §4.2 check 2 |
+| `mailbox-request-tampered` | a relay alters request event 1 on its way to the responder, keeping its id and then recomputing it: the responder answers neither; absence | §4.1, §6 |
 | `mailbox-no-reply` | no event before the deadline: an absence whose window closes at the deadline and whose route is the mailbox | §5.3 |
 | `mailbox-late-reply-after-absence` | no event before the deadline, then reply event 1, delayed by the relay, after the absence is recorded: the absence record is unchanged, and the late event is a reply that verifies as in `mailbox-exchange` and cites the request's digest and event id | §5.3, §6 |
 | `mailbox-no-deadline-no-reply` | a request with no deadline and no `expiration` tag: the window closes at the local timeout | §4.1, §5.3 |

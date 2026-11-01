@@ -273,13 +273,27 @@ def render_replies(ex) -> list[dict]:
             for r in ex.replies]
 
 
+def responder_action(ev: dict, mailbox_key: str) -> str:
+    """§4.1: the responder answers only a request event whose id and signature check."""
+    failed = check_event(ev)
+    if failed is not None:
+        return "ignored:" + failed
+    assert ev["kind"] == REQUEST_KIND and tag_values(ev, "p") == [mailbox_key]
+    return "answer"
+
+
 def render_absence(ex, absence_record: Message, box: dict, deadline: str | None) -> dict:
     record = json.loads(absence_record.octets)
+    # §5.3: the window opens when the request event is published.
+    assert unix(record["window"]["opened"]) == box["request_event"]["created_at"]
     # §5.3: the window closes at the request's deadline, and the route is the mailbox addressed.
     key, relays = nprofile(record["route"])
     assert key == box["mailbox_key"] and relays == [box["relay"]]
     closed = record["window"]["closed"]
-    closes_at = "local_timeout" if deadline is None else ("deadline" if closed == deadline else "mismatch")
+    if deadline is not None:
+        closes_at = "deadline" if closed == deadline else "mismatch"
+    else:
+        closes_at = "local_timeout" if closed == box.get("local_timeout") else "mismatch"
     return {"form": ex.absence.form, "window_closes_at": closes_at,
             "requirements": render_requirements(ex.absence.requirements),
             "presentation_kind_recommended": ex.absence.presentation_kind_recommended,
@@ -332,6 +346,9 @@ def run_case(case: dict) -> dict:
         out["set_properties"] = {"caller_invariance": result.caller_invariance.status}
     if ex.absence is not None:
         out["absence"] = render_absence(ex, absence_record, box, deadline)
+
+    if "responder_events" in box:
+        out["responder"] = [responder_action(ev, box["mailbox_key"]) for ev in box["responder_events"]]
 
     if "late_events" in box:
         # §5.3: events reaching the requester after the absence record, by its own clock.
@@ -432,8 +449,9 @@ def test_offline_opens_no_socket(monkeypatch, tmp_path):
 def test_binding_defines_no_token():
     assert f"`{REQUEST_KIND}`" in BINDING_TEXT and f"`{REPLY_KIND}`" in BINDING_TEXT
     assert "defines no binding" in BINDING_TEXT and "EXPERIMENTAL" in BINDING_TEXT
-    # No binding token for this carriage exists in the profile's name table or manifest rules.
-    assert "nostr" not in PROFILE_TEXT.lower()
+    # No binding token for this carriage exists in the profile's list of binding tokens (§11.4.2).
+    (row,) = [line for line in PROFILE_TEXT.splitlines() if line.startswith("| `bindings` |")]
+    assert re.findall(r"`([^`]+)`", row.split("|")[3]) == ["evidence-request/1", "http", "a2a", "mcp"]
 
 
 # NIP-59's worked example, nostr-protocol/nips commit 0b54c4d1c70b046fbb2e3c599c09b641e00f5dcd
@@ -564,11 +582,13 @@ def test_mutant_reply_to_not_checked(monkeypatch):
 
 
 def test_mutant_event_id_not_checked(monkeypatch):
-    assert "mailbox-event-tampered" in _disagreeing(monkeypatch, "nip01_id", lambda ev: ev["id"])
+    assert {"mailbox-event-tampered", "mailbox-request-tampered"} <= \
+        _disagreeing(monkeypatch, "nip01_id", lambda ev: ev["id"])
 
 
 def test_mutant_signature_not_checked(monkeypatch):
-    assert "mailbox-event-bad-signature" in _disagreeing(monkeypatch, "schnorr_verify", lambda *a: True)
+    assert {"mailbox-event-bad-signature", "mailbox-request-tampered"} <= \
+        _disagreeing(monkeypatch, "schnorr_verify", lambda *a: True)
 
 
 def test_mutant_duplicates_counted_twice(monkeypatch):

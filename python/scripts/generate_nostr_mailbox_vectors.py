@@ -266,7 +266,8 @@ def build_cases() -> list[dict]:
     def case(case_id: str, description: str, cites: list, req: bytes, media_type: str, req_event: dict,
              events: list[dict], classification: list[str], replies: list[dict], *,
              closed: str | None = None, set_props: dict | None = None,
-             late: list[tuple[str, dict]] | None = None, late_replies: list[dict] | None = None) -> dict:
+             late: list[tuple[str, dict]] | None = None, late_replies: list[dict] | None = None,
+             responder: list[tuple[dict, str]] | None = None) -> dict:
         inputs: dict[str, Any] = {
             "request": ip.octets(media_type, req),
             "mailbox": {"relay": RELAY, "mailbox_key": NOSTR_PUB["mailbox"], "route": ROUTE,
@@ -276,6 +277,12 @@ def build_cases() -> list[dict]:
                                     "classification": classification, "replies": replies}
         if replies:
             expected["set_properties"] = set_props or {"caller_invariance": "NOT_CHECKED"}
+        if responder:
+            # §4.1: request events as a relay delivered them to the responder, and what it does with each.
+            inputs["mailbox"]["responder_events"] = [ev for ev, _ in responder]
+            expected["responder"] = [action for _, action in responder]
+        if closed is not None and closed != DEADLINE:
+            inputs["mailbox"]["local_timeout"] = closed
         if closed is not None:
             record = absence(req, closed)
             inputs["absence_record"] = ip.octets(J, record)
@@ -299,6 +306,10 @@ def build_cases() -> list[dict]:
     e1b = ip.envelope(r1, ip.ART, ip.ANCHOR1, ip.ARTIFACT, ip.MATERIAL1, "2026-10-12T00:00:15Z", C)
     a1b = reply_event(q1, e1b, C, "2026-10-12T00:00:15Z")
     absent = ["§4.2", "§5.3", "§6"]
+    # §4.1: request event 1 as a relay altered it on the way to the responder. The first keeps its id
+    # over request 2's octets; the second also recomputes the id, which the carriage key never signed.
+    altered = dict(q1, content=ip.b64u(r2))
+    reidentified = dict(altered, id=event_id(q1["pubkey"], q1["created_at"], q1["kind"], q1["tags"], altered["content"]))
 
     return [
         case("mailbox-exchange",
@@ -368,6 +379,13 @@ def build_cases() -> list[dict]:
              "request event 1: check 2 (reply_to) fails, so it is not a reply to this request; a recorded "
              "absence at the deadline.",
              ["§4.2 check 2"] + absent[1:], r2, C, q2, [a1], ["not_a_reply:reply_to"], [], closed=DEADLINE),
+        case("mailbox-request-tampered",
+             "A relay alters request event 1 on its way to the responder: once with its id kept over "
+             "request 2's octets, once with the id recomputed. The responder checks each request event "
+             "before answering, ignores both (id, then signature), and sends no reply: the requester "
+             "records an absence at the deadline, never a response received and failed.",
+             ["§4.1", "§6"] + absent[1:], r1, C, q1, [], [], [], closed=DEADLINE,
+             responder=[(altered, "ignored:id"), (reidentified, "ignored:signature")]),
         case("mailbox-no-reply",
              "No event arrives before the deadline. The requester records an absence whose window closes "
              "at the request's deadline and whose route is the mailbox it addressed.",

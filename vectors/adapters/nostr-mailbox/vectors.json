@@ -84,7 +84,7 @@
   "contract_ref": "C@1",
   "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561"
  },
- "count": 13,
+ "count": 14,
  "cases": [
   {
    "id": "mailbox-exchange",
@@ -1688,6 +1688,172 @@
    }
   },
   {
+   "id": "mailbox-request-tampered",
+   "description": "A relay alters request event 1 on its way to the responder: once with its id kept over request 2's octets, once with the id recomputed. The responder checks each request event before answering, ignores both (id, then signature), and sends no reply: the requester records an absence at the deadline, never a response received and failed.",
+   "cites": [
+    "§4.1",
+    "§6",
+    "§5.3",
+    "§6"
+   ],
+   "pins": {
+    "trust_policy": {
+     "responder_keys": [
+      "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+     ],
+     "log_keys": [
+      {
+       "iss": "https://producer.example",
+       "sub": "evidence-stream-1",
+       "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+      },
+      {
+       "iss": "https://producer.example",
+       "sub": "evidence-stream-2",
+       "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+      }
+     ],
+     "foreign_keys": [],
+     "parties": {},
+     "successions": [],
+     "require_action_time_from_other_party": false
+    },
+    "verification_policy": {
+     "online": false,
+     "profiles_implemented": [
+      "evidence-interop/0"
+     ],
+     "kinds_implemented": [
+      "cll-checkpoint",
+      "cll-inclusion-proof",
+      "cll-consistency-proof"
+     ]
+    },
+    "contract_ref": "C@1",
+    "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+    "evaluation_time": "2026-10-12T01:00:00Z"
+   },
+   "inputs": {
+    "request": {
+     "media_type": "application/cbor",
+     "octets_hex": "a5656e6f6e636577323032362d31302d31325430303a30303a31305a2f6e316770726f66696c657265766964656e63652d696e7465726f702f30677375626a656374a1667265636f726478403266626462393562646562613632663934396263623630323630363166636436366330323135323361333965353866633264653163643434666636333132343468636f766572616765a16c65787065637465645f70696e78403136663135646435343735643565386563316662376138343437303339316531316437363633323332333635633137343963363063613734383963666665393968646561646c696e6574323032362d31302d31325430303a30313a31305a"
+    },
+    "mailbox": {
+     "relay": "wss://relay.example",
+     "mailbox_key": "aa7f247898e87299d2a61d1cda441a874115c9726ce2beeeedcf7a49f3077673",
+     "route": "nostr:nprofile1qqs25ley0zvwsu5e62np68x6gsdgwsg4e9exec47amku77jf7vrhvucpzdmhxue69uhhyetvv9ujuetcv9khqmr98nmcfs",
+     "request_event": {
+      "id": "43435e3ab87dac35105f92c7ac175a09161b86cdf1baf35217c813e81aa88a9c",
+      "pubkey": "df2f1640bbd21ab794735396fd3e5e2cc6cde3e25521b83b7fbcb0a90f913a27",
+      "created_at": 1791763210,
+      "kind": 4700,
+      "tags": [
+       [
+        "p",
+        "aa7f247898e87299d2a61d1cda441a874115c9726ce2beeeedcf7a49f3077673",
+        "wss://relay.example"
+       ],
+       [
+        "m",
+        "application/cbor"
+       ],
+       [
+        "expiration",
+        "1791763270"
+       ]
+      ],
+      "content": "pWVub25jZXcyMDI2LTEwLTEyVDAwOjAwOjEwWi9uMWdwcm9maWxlcmV2aWRlbmNlLWludGVyb3AvMGdzdWJqZWN0oWZyZWNvcmR4QDJmYmRiOTViZGViYTYyZjk0OWJjYjYwMjYwNjFmY2Q2NmMwMjE1MjNhMzllNThmYzJkZTFjZDQ0ZmY2MzEyNDRoY292ZXJhZ2WhbGV4cGVjdGVkX3BpbnhAMTZmMTVkZDU0NzVkNWU4ZWMxZmI3YTg0NDcwMzkxZTExZDc2NjMyMzIzNjVjMTc0OWM2MGNhNzQ4OWNmZmU5OWhkZWFkbGluZXQyMDI2LTEwLTEyVDAwOjAxOjEwWg",
+      "sig": "15c12ed341175512b2bf476285bee9aa1c41ac95e9b592c640cd48f87b1ec456d67578fd8d884bf2c945daa11f77ee8f0970608951785f831c1875d1e2c04112"
+     },
+     "events": [],
+     "responder_events": [
+      {
+       "id": "43435e3ab87dac35105f92c7ac175a09161b86cdf1baf35217c813e81aa88a9c",
+       "pubkey": "df2f1640bbd21ab794735396fd3e5e2cc6cde3e25521b83b7fbcb0a90f913a27",
+       "created_at": 1791763210,
+       "kind": 4700,
+       "tags": [
+        [
+         "p",
+         "aa7f247898e87299d2a61d1cda441a874115c9726ce2beeeedcf7a49f3077673",
+         "wss://relay.example"
+        ],
+        [
+         "m",
+         "application/cbor"
+        ],
+        [
+         "expiration",
+         "1791763270"
+        ]
+       ],
+       "content": "pWVub25jZXcyMDI2LTEwLTEyVDAwOjAwOjEwWi9uMmdwcm9maWxlcmV2aWRlbmNlLWludGVyb3AvMGdzdWJqZWN0oWZyZWNvcmR4QDJmYmRiOTViZGViYTYyZjk0OWJjYjYwMjYwNjFmY2Q2NmMwMjE1MjNhMzllNThmYzJkZTFjZDQ0ZmY2MzEyNDRoY292ZXJhZ2WhbGV4cGVjdGVkX3BpbnhAMTZmMTVkZDU0NzVkNWU4ZWMxZmI3YTg0NDcwMzkxZTExZDc2NjMyMzIzNjVjMTc0OWM2MGNhNzQ4OWNmZmU5OWhkZWFkbGluZXQyMDI2LTEwLTEyVDAwOjAxOjEwWg",
+       "sig": "15c12ed341175512b2bf476285bee9aa1c41ac95e9b592c640cd48f87b1ec456d67578fd8d884bf2c945daa11f77ee8f0970608951785f831c1875d1e2c04112"
+      },
+      {
+       "id": "deabebf903fbff56216b43b9255d2401224732f40068058904d79a135751c4be",
+       "pubkey": "df2f1640bbd21ab794735396fd3e5e2cc6cde3e25521b83b7fbcb0a90f913a27",
+       "created_at": 1791763210,
+       "kind": 4700,
+       "tags": [
+        [
+         "p",
+         "aa7f247898e87299d2a61d1cda441a874115c9726ce2beeeedcf7a49f3077673",
+         "wss://relay.example"
+        ],
+        [
+         "m",
+         "application/cbor"
+        ],
+        [
+         "expiration",
+         "1791763270"
+        ]
+       ],
+       "content": "pWVub25jZXcyMDI2LTEwLTEyVDAwOjAwOjEwWi9uMmdwcm9maWxlcmV2aWRlbmNlLWludGVyb3AvMGdzdWJqZWN0oWZyZWNvcmR4QDJmYmRiOTViZGViYTYyZjk0OWJjYjYwMjYwNjFmY2Q2NmMwMjE1MjNhMzllNThmYzJkZTFjZDQ0ZmY2MzEyNDRoY292ZXJhZ2WhbGV4cGVjdGVkX3BpbnhAMTZmMTVkZDU0NzVkNWU4ZWMxZmI3YTg0NDcwMzkxZTExZDc2NjMyMzIzNjVjMTc0OWM2MGNhNzQ4OWNmZmU5OWhkZWFkbGluZXQyMDI2LTEwLTEyVDAwOjAxOjEwWg",
+       "sig": "15c12ed341175512b2bf476285bee9aa1c41ac95e9b592c640cd48f87b1ec456d67578fd8d884bf2c945daa11f77ee8f0970608951785f831c1875d1e2c04112"
+      }
+     ]
+    },
+    "absence_record": {
+     "media_type": "application/json",
+     "octets_text": "{\"outcome\":\"recorded_absence\",\"recorded_at\":\"2026-10-12T00:01:10Z\",\"request_digest\":\"0afedd4ab47ba0d39263812d1cd950adde8f69ad1213532207c516c6b7fd5dc7\",\"route\":\"nostr:nprofile1qqs25ley0zvwsu5e62np68x6gsdgwsg4e9exec47amku77jf7vrhvucpzdmhxue69uhhyetvv9ujuetcv9khqmr98nmcfs\",\"window\":{\"closed\":\"2026-10-12T00:01:10Z\",\"opened\":\"2026-10-12T00:00:10Z\"}}"
+    }
+   },
+   "expected": {
+    "request_digest": "0afedd4ab47ba0d39263812d1cd950adde8f69ad1213532207c516c6b7fd5dc7",
+    "request_event_id": "43435e3ab87dac35105f92c7ac175a09161b86cdf1baf35217c813e81aa88a9c",
+    "classification": [],
+    "replies": [],
+    "responder": [
+     "ignored:id",
+     "ignored:signature"
+    ],
+    "absence": {
+     "form": "conforming",
+     "window_closes_at": "deadline",
+     "requirements": {
+      "r-record": {
+       "row": "absence",
+       "status": "UNKNOWN",
+       "sufficiency": "UNKNOWN",
+       "verdict": "not_evaluable"
+      }
+     },
+     "presentation_kind_recommended": "story",
+     "claim": {
+      "evidence": [
+       {
+        "digest_alg": "SHA-256",
+        "digest": "3e86fb50785e1593bf77d2038e4d1d29f95ae19dbab9fc7da221b2e10aab49b9"
+       }
+      ],
+      "proofs": []
+     }
+    }
+   }
+  },
+  {
    "id": "mailbox-no-reply",
    "description": "No event arrives before the deadline. The requester records an absence whose window closes at the request's deadline and whose route is the mailbox it addressed.",
    "cites": [
@@ -2069,7 +2235,8 @@
       "content": "pGVub25jZXcyMDI2LTEwLTEyVDAwOjAwOjEwWi9uNGdwcm9maWxlcmV2aWRlbmNlLWludGVyb3AvMGdzdWJqZWN0oWZyZWNvcmR4QDJmYmRiOTViZGViYTYyZjk0OWJjYjYwMjYwNjFmY2Q2NmMwMjE1MjNhMzllNThmYzJkZTFjZDQ0ZmY2MzEyNDRoY292ZXJhZ2WhbGV4cGVjdGVkX3BpbnhAMTZmMTVkZDU0NzVkNWU4ZWMxZmI3YTg0NDcwMzkxZTExZDc2NjMyMzIzNjVjMTc0OWM2MGNhNzQ4OWNmZmU5OQ",
       "sig": "f7ff8f3d06ef8379ef65a5ed60dfbdfbf8b54fd16b3cb409f7381cd20e163e265d546b4d8ab269fa8cd414d5b5466137a5b417ee8487c3b3d508504397a82988"
      },
-     "events": []
+     "events": [],
+     "local_timeout": "2026-10-12T00:05:10Z"
     },
     "absence_record": {
      "media_type": "application/json",
