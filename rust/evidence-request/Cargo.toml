@@ -28,7 +28,7 @@ coset = { version = "0.4", optional = true }
 thiserror = "1"
 # The Checkpointed Local Log's MMR hashing and commitment form, for checking
 # its verification material (`cll`). The same line evidencebook builds on.
-cll = { package = "checkpointed-local-log", version = "0.3.1", optional = true }
+cll = { package = "checkpointed-local-log", version = "0.4.0", optional = true }
 # BIP-340 Schnorr verification for a `bip340` (Nostr) key in a controller
 # binding (`controller_binding`). The 0.13 line shares elliptic-curve, sha2
 # and signature with the workspace's p256 0.13 and ed25519-dalek 2.

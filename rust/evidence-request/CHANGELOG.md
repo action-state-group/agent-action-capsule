@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `checkpointed-local-log` moves from 0.3.1 to 0.4.0 (feature `cll`), so a graph that also uses CLL 0.4.0 carries one copy. No API or behavior change: `cll_material` uses only CLL's MMR hashing (`cll::mmr::Hash` is a plain `[u8; 32]` alias) and already checks checkpoint signatures with `verify_strict`, which refuses small-order keys (evidencebook#254 §7.4, AAC#536).
+
 ## 0.4.0 — 2026-10-31
 
 Tag `crates/evidence-request-v0.4.0`.
