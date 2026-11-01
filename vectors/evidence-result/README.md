@@ -148,9 +148,10 @@ schema half of that rule is `neg-close-contested-verdict-met` above.
 
 A calibration claim keeps every base field and carries no body. Its `evidence[]` cites exactly one
 `calibration-summary/v1` record and otherwise only `human-rating/v1` records. The schema cannot see
-the cited records, so each calibration fixture ships them as `<name>.records.json` (the judge
-records themselves, keyed by `json_digest`), and the checker reads each cited record's
-`record_version`.
+the cited records, so each calibration fixture ships them as `<name>.records.json`, and the checker
+reads each cited record's `record_version`. The sidecar holds the judge records themselves, keyed by
+`json_digest`; in a bundle a cited record may instead be a Capsule or evidence-book record whose
+disclosed payload is the judge record (spec section 4.1).
 
 | File | Case | Rejected by |
 |---|---|---|

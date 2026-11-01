@@ -220,8 +220,15 @@ func Check(doc map[string]interface{}, records []map[string]interface{}) ([]Clai
 	claims, findings := readClaims(doc)
 	findings = append(findings, revisionFindings(doc, claims)...)
 	findings = append(findings, coverageFindings(doc)...)
-	findings = append(findings, closeFindings(doc, claims, records)...)
-	findings = append(findings, calibrationFindings(claims, records)...)
+	for _, claim := range claims {
+		if claim.Type == TypeClose || claim.Type == TypeCalibration {
+			index, digestFindings := indexRecords(records)
+			findings = append(findings, digestFindings...)
+			findings = append(findings, closeFindings(doc, claims, index)...)
+			findings = append(findings, calibrationFindings(claims, index)...)
+			break
+		}
+	}
 	if len(findings) > 0 {
 		return nil, &Error{Findings: findings}
 	}

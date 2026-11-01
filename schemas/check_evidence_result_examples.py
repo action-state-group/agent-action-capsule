@@ -1740,8 +1740,10 @@ def main() -> int:
     for sidecar in sorted(VECTORS_DIR.glob("*.records.json")):
         name = sidecar.name.removesuffix(".records.json")
         records = _records_for(name) or []
-        if not any(r.get("record_type") == "close" for r in records):
-            continue
+        if not any(r.get("record_type") == "close" for r in records) and not any(
+            claim.get("type") == "close" for claim in _load(name).get("claims", [])
+        ):
+            continue  # a calibration sidecar: no Close and no close claim
         found = close_v1_findings(name, _load(name), records, close_v1)
         findings.extend(found)
         closes = [r for r in records if r.get("record_type") == "close"]

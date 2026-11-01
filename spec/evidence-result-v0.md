@@ -445,15 +445,21 @@ claim (type: calibration) adds no body; its evidence[] cites:
   refuses either body. The time a calibration covers is its summary's: a producer emits one claim
   per summary, and a reader orders the claims by the cited summary's `computed_at`.
 - Its `verdict` is never `out_of_scope` (§4.2, schema-enforced).
-- **Its evidence (checker-enforced, since JSON Schema cannot see the cited records).** Every digest
-  in `evidence[]` MUST name a record whose `record_version` is `calibration-summary/v1` or
-  `human-rating/v1`, and exactly one distinct digest MUST name a `calibration-summary/v1`. A digest
-  cited twice is one citation. A verifier reads each cited record's `record_version` from the bundle
-  the Result is verified against, and fails the claim when a cited record is not in it or is of
-  another kind, or when the claim cites no summary or more than one. In this revision a verifier
-  reads only `record_version`. A relying party that needs a cited record's shape validates it
-  against `schemas/judge/calibration-summary-v1.json` or `schemas/judge/human-rating-v1.json`
-  itself.
+- **Its evidence (checker-enforced, since JSON Schema cannot see the cited records).** The judge
+  record a cited digest names is the record itself when the bundle carries the judge record
+  directly, and otherwise the payload the record discloses: a Capsule's disclosed `agent_input`, or,
+  for an evidence-book record of a published Capsule, the carried Capsule's disclosed `agent_input`.
+  Every cited judge record MUST have `record_version` `calibration-summary/v1` or
+  `human-rating/v1`, and exactly one distinct cited digest MUST name a `calibration-summary/v1`. A
+  digest cited twice is one citation. A verifier fails the claim when a cited digest names no record
+  in the bundle the Result is verified against, when a disclosed judge record is of another kind, or
+  when the disclosed judge records include no summary or more than one. A cited record whose
+  payload is withheld has no kind a verifier can read and is checked only for its presence: a
+  withheld rating leaves the claim valid, and the one summary must be disclosed. In this revision a
+  verifier reads only `record_version`. A relying party that needs a judge record's shape validates
+  it against `schemas/judge/calibration-summary-v1.json` or `schemas/judge/human-rating-v1.json`
+  itself. The reference checkers are given the judge records directly, each keyed by the digest of
+  its JCS form (§11).
 
 Which judged claim a cited rating binds to, and whether the cited ratings recompute the summary's
 stated agreement, are questions for a reader, not validity rules: a claim whose ratings rate a case
