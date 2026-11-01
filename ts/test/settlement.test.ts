@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { identityR } from "./helpers/ed25519-forgeries.js";
 import {
   createEd25519Identity,
@@ -549,7 +549,7 @@ describe("verifySettlements", () => {
   });
 });
 
-describe("wrapped_resigned under strict Ed25519", () => {
+describe("wrapped_resigned under the cofactored equation", () => {
   // neg-wrapped-object-resigned: the payee leg wraps an AP2 receipt (a JWS)
   // that verifies under the payee's own key.
   const resigned = corpus.cases.find(
@@ -573,11 +573,11 @@ describe("wrapped_resigned under strict Ed25519", () => {
       })
     ).failures.map((f) => f.code);
 
-  it("does not count a payee signature with R the identity as re-signing, on any engine", async () => {
+  it("counts a payee signature with R the identity as re-signing", async () => {
     // The same JWS, re-signed by the payee with R the identity (the
-    // "identity R" case of cll-ed25519-vectors.json, over this JWS): a
-    // cofactorless verifier accepts it. subtle.verify is stubbed to pass
-    // everything, so only the strict pre-check can refuse it.
+    // "identity R" case of cll-ed25519-vectors.json, over this JWS). Strict
+    // Ed25519 refuses it, but only the payee's key can make it, so -01 §8
+    // rule 3 counts it as the leg key's own.
     const settlement = payeeLeg.capsule.settlement as {
       wrapped: { digest: string; content: string }[];
     };
@@ -601,15 +601,9 @@ describe("wrapped_resigned under strict Ed25519", () => {
     const terms = asRecord(
       resigned.records.find((r) => r.label === "ap2-terms")!,
     );
-    vi.spyOn(globalThis.crypto.subtle, "verify").mockResolvedValue(true);
-    try {
-      expect(await codes([terms, asRecord(payeeLeg)])).toContain(
-        "wrapped_resigned",
-      );
-      expect(await codes([terms, leg])).not.toContain("wrapped_resigned");
-    } finally {
-      vi.restoreAllMocks();
-    }
-    expect(await codes([terms, leg])).not.toContain("wrapped_resigned");
+    expect(await codes([terms, asRecord(payeeLeg)])).toContain(
+      "wrapped_resigned",
+    );
+    expect(await codes([terms, leg])).toContain("wrapped_resigned");
   });
 });

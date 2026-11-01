@@ -42,6 +42,8 @@ independent reading of the draft.
 | `neg-wrapped-object-resigned` | The same receipt re-signed with the payee's own leg key. | failure `wrapped_resigned`; the leg is excluded: `terms_only` |
 | `neg-wrapped-sd-jwt-resigned-with-disclosure` | The payee's leg also wraps the Payment Mandate as an SD-JWT with one disclosure (`JWT~disclosure~`), re-signed with the payee's own leg key. Only the issuer JWS before the first `~` is signed. | failure `wrapped_resigned`: `terms_only` |
 | `neg-wrapped-sd-jwt-resigned-no-disclosure` | The same in the `JWT~` form, with no disclosures. | failure `wrapped_resigned`: `terms_only` |
+| `neg-wrapped-object-resigned-identity-r` | The same receipt re-signed with the payee's own leg key, with R the identity point. Strict Ed25519 refuses a small-order R, but -01 §8 rule 3 counts a signature by the leg key under the cofactored equation with any canonical R, since only the key's holder can make it. | failure `wrapped_resigned`: `terms_only` |
+| `neg-wrapped-object-resigned-mixed-order-r` | The same, with R = [r]B + T, T a point of order 8. The cofactorless equation fails; the cofactored one holds. | failure `wrapped_resigned`: `terms_only` |
 | `neg-wrapped-content-digest-mismatch` | Wrapped content does not hash to the stated digest. | failure `wrapped_digest_mismatch`: `payer_stated` |
 | `neg-amount-json-float` | `value` is the JSON number 1.5. The leg cannot be canonicalized, so it has no Capsule ID and no envelope. | failures `capsule_invalid`, `amount_not_exact`: `payee_stated` |
 | `neg-amount-decimal-fraction-string` | `value` is the string `"1.500000"`. | failure `amount_not_exact`: `payee_stated` |

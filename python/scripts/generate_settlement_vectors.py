@@ -35,6 +35,7 @@ from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from ed25519_forgeries import identity_r, mixed_order_r
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "settlement"
@@ -138,6 +139,21 @@ PAYER_MANDATE = Key("payer AP2 mandate signing")
 PROCESSOR = Key("AP2 payment processor")
 KEYS = [PAYER, PAYEE, PAYEE_OFFER, PAYER_MANDATE, PROCESSOR]
 KEY_POLICY = {"payer": PAYER.public_hex, "payee": PAYEE.public_hex}
+
+
+class Forger:
+    """A key holder signing with an unusual R. ``signs`` maps a message to the 64-byte signature;
+    it stands in for ``Key.private.sign``. Not listed in ``keys``: its public key is ``key``'s."""
+
+    def __init__(self, key: Key, signs: Any) -> None:
+        self.public, self.sign = key.public, signs
+        self.private = self
+
+
+#: The payee's own key, signing with R the identity point (small order).
+PAYEE_IDENTITY_R = Forger(PAYEE, lambda message: identity_r(PAYEE.private, message))
+#: The payee's own key, signing with R = [r]B + T, T of order 8 (mixed order).
+PAYEE_MIXED_R = Forger(PAYEE, lambda message: mixed_order_r(PAYEE.private, message))
 
 
 def producer_envelope(capsule_id: str, key: Key) -> bytes:
@@ -548,6 +564,28 @@ def cases() -> list[dict]:
             [aterms, spayee],
             [*ap2_objects, wobj("ap2.payment-mandate", sd, f"the mandate claims as an SD-JWT ({form}), "
                                                            "signed by the payee leg key")],
+            expect(conforming=False, payment_state="terms_only", delivery_state="none", terms="ap2-terms",
+                   failures=[{"records": ["ap2-payee-observed"], "code": "wrapped_resigned"}])))
+
+    # 8, continued. The re-signing test counts a signature by the leg key under the cofactored
+    # equation with any canonical R (-01 §8 rule 3), not strict Ed25519: only the key's holder can
+    # make an identity-R or mixed-order-R signature, so the check still finds it.
+    for suffix, forger, what in (
+            ("identity-r", PAYEE_IDENTITY_R,
+             "with R the identity point (S = k * a mod L). Strict Ed25519 refuses a small-order R"),
+            ("mixed-order-r", PAYEE_MIXED_R,
+             "with R = [r]B + T, T a point of order 8 (S = r + k * a mod L). The cofactorless equation fails")):
+        odd = ap2_payment_receipt(forger)
+        opayee = observed_leg("ap2-payee-observed", "payee", PAYEE, aterms, pay_ref, usd,
+                              [wrapped("ap2.payment-receipt", odd, include_content=True)], minute=2)
+        out.append(case(
+            f"neg-wrapped-object-resigned-{suffix}", [S_WRAP, S_FAILURES],
+            f"The payee re-signed the AP2 Payment Receipt with its own leg key {what}, but the cofactored "
+            "equation holds and only the key's holder can make this signature, so under -01 §8 rule 3 it is "
+            "still the leg key's own: the leg fails and does not contribute.",
+            [aterms, opayee],
+            [ap2_objects[0], wobj("ap2.payment-receipt", odd,
+                                  f"the same receipt claims, signed by the payee leg key, {suffix.replace('-', ' ')}")],
             expect(conforming=False, payment_state="terms_only", delivery_state="none", terms="ap2-terms",
                    failures=[{"records": ["ap2-payee-observed"], "code": "wrapped_resigned"}])))
 

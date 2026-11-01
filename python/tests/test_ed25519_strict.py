@@ -76,21 +76,6 @@ def _b64u(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
 
 
-def test_settlement_wrapped_jws_is_strict():
-    """``wrapped_resigned`` asks whether a wrapped JWS verifies under the leg
-    key; neither forgery does."""
-    from agent_action_capsule.settlement import _jws_verifies
-
-    signing_input = (_b64u(b'{"alg":"EdDSA"}') + "." + _b64u(b"{}")).encode("ascii")
-
-    def compact(signature: bytes) -> bytes:
-        return signing_input + b"." + _b64u(signature).encode("ascii")
-
-    assert not _jws_verifies(compact(_forgery(signing_input)), IDENTITY.hex())
-    assert _jws_verifies(compact(KEY.sign(signing_input)), KEY_RAW.hex())
-    assert not _jws_verifies(compact(_small_r(signing_input)), KEY_RAW.hex())
-
-
 def test_interop_profile_verify_is_strict():
     """Every interop-profile signature check (envelope, refusal, acceptance,
     lifecycle, CLL checkpoint, native JWS) goes through ``ed25519_verify``."""

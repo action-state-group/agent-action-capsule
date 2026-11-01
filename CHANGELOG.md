@@ -57,6 +57,17 @@ has not yet.
   N-5. Vectors in `vectors/adapters/evidence-commitment-carriers/` and the drift workflow
   `evidence-commitment-carriers.yml`. Not part of the profile; it defines no binding token.
 
+- Settlement `wrapped_resigned` reads a signature under the leg key with the cofactored equation
+  (AAC#494): the key canonical and not of small order, R a canonical encoding of any point, S below
+  L, and `[8][S]B = [8]R + [8][k]A`, as `spec/draft-mih-agent-settlement-records-01.md` §8 rule 3
+  now states. Before, Go, Python, TypeScript and Rust used strict Ed25519 here (#491), so a sealer
+  that re-signed a wrapped object with its own leg key and an R of small or mixed order escaped the
+  check; only the key's holder can make such a signature. Strict Ed25519 elsewhere is unchanged.
+  New settlement vectors `neg-wrapped-object-resigned-identity-r` and
+  `neg-wrapped-object-resigned-mixed-order-r` (26 cases); existing cases are byte-identical.
+  Security Considerations adds that the absence of `wrapped_resigned` does not clear the sealer.
+  Go adds `filippo.io/edwards25519` v1.2.0.
+
 - `spec/adapters/README.md`: add the `nostr-mailbox-v0` declaration to the worked-examples table with its `{id, digest}` pair, and to the list of declarations in the directory.
 
 - Go: `inferencehistory` reads the checkpoints of a real `history_card/1` (action-state-group/agent-action-capsule#563): each history entry's checkpoint as a hex `cll-checkpoint` statement with its `consistency_from_previous` proof (ER §8.1), as an evidencebook Book or Mesh node answers it. `history_card_content` checks every statement's signature under a pinned log key, that the entries are in order and each extends the one before by its proof, and that the anchor is the digest of the last statement; `period_alignment` and `period_anchor` read the statements' `issued_at` and `log_size`. The vectors' JSON checkpoint form still works. `evidencerequest` gains `DecodeCLLCheckpoint` and `CLLCheckpoint.VerifySignature`. No wire or normative change; additive.

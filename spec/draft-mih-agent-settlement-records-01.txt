@@ -100,7 +100,7 @@ Table of Contents
      7.1.  Shape and Join Rule . . . . . . . . . . . . . . . . . . .  16
      7.2.  Initial Types . . . . . . . . . . . . . . . . . . . . . .  17
    8.  Wrapping Existing Signed Objects  . . . . . . . . . . . . . .  19
-   9.  Derived Settlement States . . . . . . . . . . . . . . . . . .  20
+   9.  Derived Settlement States . . . . . . . . . . . . . . . . . .  21
      9.1.  Inputs  . . . . . . . . . . . . . . . . . . . . . . . . .  21
      9.2.  Payment State . . . . . . . . . . . . . . . . . . . . . .  21
      9.3.  Delivery State  . . . . . . . . . . . . . . . . . . . . .  23
@@ -120,7 +120,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    14. Security Considerations . . . . . . . . . . . . . . . . . . .  32
    15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  33
    16. Open Issues . . . . . . . . . . . . . . . . . . . . . . . . .  34
-   17. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  34
+   17. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  35
      17.1.  Payment Reference Types  . . . . . . . . . . . . . . . .  35
      17.2.  Wrapped Object Types . . . . . . . . . . . . . . . . . .  35
      17.3.  No Other Actions . . . . . . . . . . . . . . . . . . . .  36
@@ -128,8 +128,8 @@ Internet-Draft          Agent Settlement Records            October 2026
      18.1.  Normative References . . . . . . . . . . . . . . . . . .  36
      18.2.  Informative References . . . . . . . . . . . . . . . . .  37
    Conformance Vectors . . . . . . . . . . . . . . . . . . . . . . .  40
-   Example . . . . . . . . . . . . . . . . . . . . . . . . . . . . .  40
-   Changes from draft-mih-agent-settlement-records-00  . . . . . . .  41
+   Example . . . . . . . . . . . . . . . . . . . . . . . . . . . . .  41
+   Changes from draft-mih-agent-settlement-records-00  . . . . . . .  42
    Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  42
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  42
 
@@ -1087,7 +1087,20 @@ Internet-Draft          Agent Settlement Records            October 2026
        object; it says that the sealer holds an object with that digest,
        not that the sealer issued it.  A wrapped object whose signature
        verifies under the sealer's own leg key, where the wrapped type's
-       issuer is a different party, is wrapped_resigned.
+       issuer is a different party, is wrapped_resigned.  For this
+       check, an Ed25519 signature verifies under the leg key A when A
+       is a canonical encoding ([RFC8032], Section 5.1.3) of a point not
+       of small order (the eight points whose order divides 8), the
+       signature's R is a canonical encoding of any point, the scalar S
+       is below the group order L, and the cofactored equation [8][S]B =
+       [8]R + [8][k]A of [RFC8032], Section 5.1.7, holds.  This is
+       deliberately not the strict verification of
+       [I-D.mih-scitt-agent-action-capsule], Conventions.  The check
+       looks for the leg key's own signature, and only the holder of
+       that key can produce one whose R is of small or mixed order, so a
+       verifier that refused such an R would let a re-signing sealer
+       evade the check.  A small-order A is refused, since anyone can
+       produce a signature that verifies under it.
 
    4.  *Verification of the wrapped object is the wrapped protocol's.* A
        verifier MAY verify the wrapped object under its own protocol's
@@ -1101,19 +1114,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    of the JSON envelope object (format, payload, signature); the EIP-712
    signature covers the typed-data hash, not JSON octets, so this
    canonical form does not affect the signature.  In the terms of
-   [I-D.mih-sokolov-scitt-payload-binding], that type selects jcs
-   (Section 4.1) rather than as-transmitted, because the container
-   defines no byte sequence to select.
-
-9.  Derived Settlement States
-
-
-
-
-
-
-
-
 
 
 
@@ -1121,6 +1121,12 @@ Mih                        Expires 4 May 2027                  [Page 20]
 
 Internet-Draft          Agent Settlement Records            October 2026
 
+
+   [I-D.mih-sokolov-scitt-payload-binding], that type selects jcs
+   (Section 4.1) rather than as-transmitted, because the container
+   defines no byte sequence to select.
+
+9.  Derived Settlement States
 
 9.1.  Inputs
 
@@ -1159,12 +1165,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    (for example when pending becomes settled), the later leg SHOULD
    chain to the earlier with relation supersedes, and the verifier uses
    the head of that chain.
-
-
-
-
-
-
 
 
 
@@ -1771,21 +1771,21 @@ Internet-Draft          Agent Settlement Records            October 2026
    *Re-signing.* A sealer that re-signs an upstream object makes it look
    as though the sealer issued it, and replaces the upstream signer's
    evidence with its own.  The never-re-sign rule (Section 8) prevents
-   this; the wrapped_resigned check detects the simplest case.
+   this; the wrapped_resigned check detects the simplest case.  A re-
+   signer can always avoid the check by signing with a key other than
+   its leg key, so the absence of wrapped_resigned does not show that
+   the sealer did not re-sign.
 
    *Amounts.* Floating-point amounts produce different values on
    different platforms and make digests unstable.  Amounts are exact
    integers with a scale (Section 6); comparing assets by identical
    assetCode prevents a rate from being applied silently.
 
-
-
-
-
-
-
-
-
+   *Fees.* A naive comparison of the payer's and the payee's amounts
+   would report every payment with a receive-side fee as a mismatch, and
+   a verifier that learned to ignore such mismatches would then also
+   ignore real ones.  The amount rule (Section 9.2) is exact, so a
+   difference it does not explain is always reported.  Because the rule
 
 
 
@@ -1794,11 +1794,6 @@ Mih                        Expires 4 May 2027                  [Page 32]
 Internet-Draft          Agent Settlement Records            October 2026
 
 
-   *Fees.* A naive comparison of the payer's and the payee's amounts
-   would report every payment with a receive-side fee as a mismatch, and
-   a verifier that learned to ignore such mismatches would then also
-   ignore real ones.  The amount rule (Section 9.2) is exact, so a
-   difference it does not explain is always reported.  Because the rule
    trusts the payee's report of receive_fee, a payee can explain a
    shortfall by overstating its fee; the two sides then agree on the
    arithmetic, and whether that fee was acceptable is a question for the
@@ -1838,10 +1833,15 @@ Internet-Draft          Agent Settlement Records            October 2026
    Unsalted digests of low-entropy values such as addresses can be
    reversed by guessing.
 
-   *Correlation.* A payment reference that appears in registered legs
-   links those legs to the public record of the rail (for example an on-
-   chain transaction).  Registering legs in a Transparency Service in
-   clear text makes the payment discoverable to anyone who can read the
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1850,6 +1850,10 @@ Mih                        Expires 4 May 2027                  [Page 33]
 Internet-Draft          Agent Settlement Records            October 2026
 
 
+   *Correlation.* A payment reference that appears in registered legs
+   links those legs to the public record of the rail (for example an on-
+   chain transaction).  Registering legs in a Transparency Service in
+   clear text makes the payment discoverable to anyone who can read the
    log.  Deployments SHOULD register only the leg's Capsule ID, as the
    base profile does, and SHOULD use the selective-disclosure profile
    [I-D.mih-scitt-agent-action-capsule-sel-disc] to commit to the
@@ -1890,12 +1894,8 @@ Internet-Draft          Agent Settlement Records            October 2026
       distinct from mismatch; in this revision the status difference is
       reported as mismatch.
 
-17.  IANA Considerations
 
-   This document asks IANA to create two registries in a new "Agent
-   Settlement Records" registry group.  Until IANA establishes them, the
-   source repository of this document keeps them as the interim registry
-   of record.
+
 
 
 
@@ -1905,6 +1905,13 @@ Mih                        Expires 4 May 2027                  [Page 34]
 
 Internet-Draft          Agent Settlement Records            October 2026
 
+
+17.  IANA Considerations
+
+   This document asks IANA to create two registries in a new "Agent
+   Settlement Records" registry group.  Until IANA establishes them, the
+   source repository of this document keeps them as the interim registry
+   of record.
 
 17.1.  Payment Reference Types
 
@@ -1947,13 +1954,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    x402.receipt:  Issuer: payee.  Octets: As for x402.offer.  Reference:
       [X402-OFFER-RECEIPT].
 
-   x402.payment-payload:  Issuer: payer.  Octets: The base64-decoded
-      value of the PAYMENT-SIGNATURE header as sent.  Reference: [X402].
-
-   x402.settle-response:  Issuer: facilitator.  Octets: for the payer,
-      the base64-decoded value of the PAYMENT-RESPONSE header as
-      received; for the payee, the settlement response body as its
-      facilitator returned it.  Reference: [X402].
 
 
 
@@ -1961,6 +1961,14 @@ Mih                        Expires 4 May 2027                  [Page 35]
 
 Internet-Draft          Agent Settlement Records            October 2026
 
+
+   x402.payment-payload:  Issuer: payer.  Octets: The base64-decoded
+      value of the PAYMENT-SIGNATURE header as sent.  Reference: [X402].
+
+   x402.settle-response:  Issuer: facilitator.  Octets: for the payer,
+      the base64-decoded value of the PAYMENT-RESPONSE header as
+      received; for the payee, the settlement response body as its
+      facilitator returned it.  Reference: [X402].
 
    ap2.checkout-mandate:  Issuer: user or agent.  Octets: The SD-JWT
       serialization as presented.  Reference: [AP2].
@@ -2003,20 +2011,19 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 18.1.  Normative References
 
-   [I-D.mih-scitt-agent-action-capsule]
-              Mih, S., "An Agent Action Capsule Profile for SCITT", Work
-              in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-06, October 2026,
-              <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              agent-action-capsule-06>.
-
-
 
 
 Mih                        Expires 4 May 2027                  [Page 36]
 
 Internet-Draft          Agent Settlement Records            October 2026
 
+
+   [I-D.mih-scitt-agent-action-capsule]
+              Mih, S., "An Agent Action Capsule Profile for SCITT", Work
+              in Progress, Internet-Draft, draft-mih-scitt-agent-action-
+              capsule-06, October 2026,
+              <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
+              agent-action-capsule-06>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -2030,6 +2037,11 @@ Internet-Draft          Agent Settlement Records            October 2026
    [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
               Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
               <https://www.rfc-editor.org/rfc/rfc4648>.
+
+   [RFC8032]  Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital
+              Signature Algorithm (EdDSA)", RFC 8032,
+              DOI 10.17487/RFC8032, January 2017,
+              <https://www.rfc-editor.org/rfc/rfc8032>.
 
    [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
               Writing an IANA Considerations Section in RFCs", BCP 26,
@@ -2052,6 +2064,16 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 18.2.  Informative References
 
+
+
+
+
+
+Mih                        Expires 4 May 2027                  [Page 37]
+
+Internet-Draft          Agent Settlement Records            October 2026
+
+
    [ACP]      Agentic Commerce Protocol contributors, "Agentic Commerce
               Protocol", 2026, <https://github.com/agentic-commerce-
               protocol/agentic-commerce-protocol>.
@@ -2063,16 +2085,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    [AP2]      FIDO Alliance, "Agent Payments Protocol (AP2)
               Specification, v0.2", April 2026,
               <https://ap2-protocol.org/ap2/specification/>.
-
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 37]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
    [BOLT11]   Lightning Network specification contributors, "BOLT #11:
               Invoice Protocol for Lightning Payments", n.d.,
@@ -2109,6 +2121,15 @@ Internet-Draft          Agent Settlement Records            October 2026
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
               bilateral-attestation-02>.
 
+
+
+
+
+Mih                        Expires 4 May 2027                  [Page 38]
+
+Internet-Draft          Agent Settlement Records            October 2026
+
+
    [I-D.mih-agent-evidence-request]
               Mih, S., "An Interaction Model for Requesting Verifiable
               Evidence", Work in Progress, Internet-Draft, draft-mih-
@@ -2122,13 +2143,6 @@ Internet-Draft          Agent Settlement Records            October 2026
               scitt-agent-action-capsule-sel-disc-00, 19 June 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
               agent-action-capsule-sel-disc-00>.
-
-
-
-Mih                        Expires 4 May 2027                  [Page 38]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
    [I-D.mih-sokolov-scitt-payload-binding]
               Mih, S. and A. Sokolov, "Canonicalization Declaration for
@@ -2163,6 +2177,15 @@ Internet-Draft          Agent Settlement Records            October 2026
               Interledger Foundation, "Open Payments API", n.d.,
               <https://openpayments.dev/>.
 
+
+
+
+
+Mih                        Expires 4 May 2027                  [Page 39]
+
+Internet-Draft          Agent Settlement Records            October 2026
+
+
    [RFC9338]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
               Countersignatures", STD 96, RFC 9338,
               DOI 10.17487/RFC9338, December 2022,
@@ -2176,15 +2199,6 @@ Internet-Draft          Agent Settlement Records            October 2026
               Fournet, "CBOR Object Signing and Encryption (COSE)
               Receipts", RFC 9942, DOI 10.17487/RFC9942, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9942>.
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 39]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
@@ -2220,6 +2234,14 @@ Conformance Vectors
    and in delivered content; amounts equal at different scales; a two-
    party BOLT 12 settlement wrapping a payer proof; an AP2 Payment
    Receipt wrapped by digest; and negative cases for a re-signed wrapped
+
+
+
+Mih                        Expires 4 May 2027                  [Page 40]
+
+Internet-Draft          Agent Settlement Records            October 2026
+
+
    object, a wrapped object whose content does not match its digest, a
    floating-point amount, a decimal-fraction amount string, an unknown
    payment reference type, and a payee-observed leg sealed with the
@@ -2229,18 +2251,6 @@ Example
 
    A payer-observed leg for an x402 payment of 1.5 USDC on Base (the
    Capsule's other members abbreviated):
-
-
-
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 40]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
    {
      "action_id": "settle-0001-payer",
@@ -2277,6 +2287,17 @@ Internet-Draft          Agent Settlement Records            October 2026
      }
    }
 
+
+
+
+
+
+
+Mih                        Expires 4 May 2027                  [Page 41]
+
+Internet-Draft          Agent Settlement Records            October 2026
+
+
 Changes from draft-mih-agent-settlement-records-00
 
    This appendix is non-normative.  RFC Editor: please remove this
@@ -2288,15 +2309,15 @@ Changes from draft-mih-agent-settlement-records-00
       profile reference is updated to draft-mih-scitt-agent-action-
       capsule-06, which states the limit.
 
+   *  Re-signing: the wrapped_resigned check states how a signature is
+      verified under the leg key: the cofactored equation of [RFC8032],
+      with any canonical R, and a key not of small order (Section 8).  A
+      key holder's signature with an R of small or mixed order is still
+      found.  Security Considerations says that the absence of
+      wrapped_resigned does not clear the sealer (Section 14).
+
    *  Wire unchanged: the settlement member's version is still "0"
       (Section 4.2).
-
-
-
-Mih                        Expires 4 May 2027                  [Page 41]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
 Acknowledgments
 
@@ -2310,27 +2331,6 @@ Author's Address
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
