@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.4.1 — 2026-11-01
+## 0.4.1 — 2026-10-31
 
 Tag `crates/evidence-request-v0.4.1`.
 
