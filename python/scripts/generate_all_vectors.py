@@ -96,6 +96,8 @@ GENERATORS = (
     "generate_ucp_adapter_vectors.py",
     # Experimental; reads the interop profile generator's keys and builders.
     "generate_nostr_mailbox_vectors.py",
+    # Experimental; reads the interop profile and Nostr mailbox generators.
+    "generate_evidence_commitment_carriers_vectors.py",
     # Reads the x402 adapter corpus, so it runs after it.
     "generate_personal_history_outcome_v0_vectors.py",
     # Append to the capsule, disclosure-envelope and producer-envelope manifests.

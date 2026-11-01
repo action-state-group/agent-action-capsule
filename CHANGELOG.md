@@ -24,6 +24,15 @@ has not yet.
   is kept beside it as its own later fact, citing the request by the digest it signs (§5.3, vector
   `mailbox-late-reply-after-absence`). Event kinds 4700/4701 stay placeholders until a second,
   independent implementation exists.
+- Spec, experimental: `spec/bindings/evidence-commitment-carriers-v0.md`, one signed evidence
+  commitment over three carriers: an attestation entry in a directory record's trust manifest (ARD,
+  NANDA Index, AI Catalog), an A2A Agent Card extension entry, and an addressable Nostr announce
+  event (placeholder kind 34700). The verifier trusts only the commitment's own signature, staples
+  and `issued_at`, binds it to a responder only through that responder's signed answers, and labels
+  each stream witnessed, unwitnessed or unknown-witness itself. Names the commitment's Nostr route
+  `ask.nostr` (`mailbox_key`, `relays`), which settles the mailbox carriage's open points N-4 and
+  N-5. Vectors in `vectors/adapters/evidence-commitment-carriers/` and the drift workflow
+  `evidence-commitment-carriers.yml`. Not part of the profile; it defines no binding token.
 
 ## go 0.19.0 — 2026-10-31
 

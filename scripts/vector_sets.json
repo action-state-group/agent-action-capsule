@@ -46,5 +46,6 @@
   "vectors/viewer-core-text/": {"ts": ["verification-states.test.ts"]},
   "vectors/adapters/x402/": {"python": ["test_adapter_x402_vectors.py"]},
   "vectors/adapters/ucp/": {"python": ["test_ucp_adapter_vectors.py"]},
-  "vectors/adapters/nostr-mailbox/": {"python": ["test_nostr_mailbox_vectors.py"]}
+  "vectors/adapters/nostr-mailbox/": {"python": ["test_nostr_mailbox_vectors.py"]},
+  "vectors/adapters/evidence-commitment-carriers/": {"python": ["test_evidence_commitment_carriers_vectors.py"]}
 }

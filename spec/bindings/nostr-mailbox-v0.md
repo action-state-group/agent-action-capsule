@@ -76,7 +76,7 @@ verification is a response received and failed, which ER says requesters SHOULD 
 [ER §4.1]. That is the same position an HTTP endpoint holds over a POST. So a requester MUST take
 the mailbox key from a source it trusts to speak for the responder's route, such as the
 responder's commitment (§4.3). A mailbox key from any other source can put the failed replies of
-whoever holds it in front of the verifier. How the key is published is outside this revision
+whoever holds it in front of the verifier. The commitment carries it as `ask.nostr.mailbox_key`
 (N-5).
 
 ## 4. Events
@@ -220,10 +220,10 @@ relays it reads.
   this request (§8), with no relay list of its own, so the reply goes where the request was found.
 - The requester subscribes for replies on the relays it published the request to.
 
-**Open item.** The member of the commitment that carries the relay list is named where the
-commitment profile is specified, not here. This binding writes its rules against "the responder's
-declared relay list (carried in its commitment)" and defines no field name. Until the member is
-named, a requester has no conforming way to read the list (N-4).
+**The member.** The commitment carries the relay list as `ask.nostr.relays`, beside the mailbox
+key `ask.nostr.mailbox_key`, as
+[`evidence-commitment-carriers-v0.md`](evidence-commitment-carriers-v0.md) §3 names them. A
+requester reads both from a commitment that verifies there (its §6), and from no other source (N-4).
 
 A relay URL in an example (`wss://relay.example`) is an example of an entry in that list. It is
 not a relay this binding names.
@@ -402,15 +402,11 @@ committed files differ, and runs the test. No relay is contacted, in the vectors
   the late reply is its own later fact, citing the request.
 - **N-3. Encryption.** NIP-44 and NIP-59 (§8) are not specified in v0. Until they are, §8 limits
   where this binding may be used.
-- **N-4. The relay list member.** The responder's declared relay list is carried in its
-  commitment (§4.3). The member's name and shape are fixed where the commitment profile is
-  specified. This binding defines no field name. Two things the commitment profile has to settle:
-  ER already lets a retention commitment carry "a `route` at which the responder expects to be
-  reachable" [ER §9], which could hold the `nprofile` of §5.3; and IP says a discovery object MUST
-  NOT contain a route [IP §11.4.3], so the relay list cannot simply go in the manifest.
-- **N-5. Learning the mailbox key.** How the responder publishes its mailbox key is outside v0.
-  The requester has to trust the source (§3), and the natural one is the commitment that carries
-  the relay list (N-4).
+- **N-4. The relay list member.** Resolved: `ask.nostr.relays` in the responder's commitment
+  ([`evidence-commitment-carriers-v0.md`](evidence-commitment-carriers-v0.md) §3). The commitment
+  is not a discovery object (its §1), so the list is not in the manifest [IP §11.4.3].
+- **N-5. Learning the mailbox key.** Resolved: `ask.nostr.mailbox_key` in the same commitment,
+  which the requester trusts once it verifies (§3; carriers §6).
 - **N-6. Promotion.** A binding token for this carriage, and its place in IP §11.4, are a proposal
   to make once the vectors and drift check pass, not a decision this document makes.
 
