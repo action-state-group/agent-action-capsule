@@ -2,16 +2,16 @@
 
 **Status.** EXPERIMENTAL. Informational carriage binding, kept in this repository. It is not an
 Internet-Draft, it is not part of any Internet-Draft revision, and it changes no posted draft. It
-is not part of the Minimum Evidence Interoperability Profile `evidence-interop/0`
-([`interop-profile-v0.md`](../interop-profile-v0.md), cited here as IP) and defines no binding
-token. A responder MUST NOT list a token for this binding in a manifest's `bindings` [IP §11.4.2].
+is not part of the Minimum Evidence Interoperability Profile `evidence-interop/1`
+([`interop-profile-v1.md`](../interop-profile-v1.md), cited here as IP), whose exchange it
+carries, and defines no binding token. A responder MUST NOT list a token for this binding in a manifest's `bindings` [IP §11.4.2].
 That rule already follows from IP, which allows no token beyond those its listed profiles define.
 Its adapter declaration is [`../adapters/nostr-mailbox-v0.md`](../adapters/nostr-mailbox-v0.md).
 Its vectors are in `vectors/adapters/nostr-mailbox/` (§9).
 
 **Answer in one paragraph.** A responder with no inbound reachability (no listener that a requester
-can open a connection to) has no endpoint for the bindings ER defines, the peer-to-peer stream and
-HTTP [ER §10], or for the A2A and MCP carriages [IP §11.4]: in each, the request is delivered to an
+can open a connection to) has no endpoint for the bindings ER defines, the peer-to-peer stream,
+HTTP, A2A and MCP [ER §10, §10.2, §10.3; IP §11.4]: in each, the request is delivered to an
 endpoint the responder serves. Here both parties connect outward to a Nostr relay instead. The
 requester publishes a request event addressed to the responder's mailbox key. The responder reads
 the events addressed to that key, and publishes a reply event naming the request event. Each event's
@@ -20,14 +20,18 @@ responder's evidence key, end to end. The relay only moves bytes. A relay can dr
 read what it carries. It cannot make a reply that verifies, and it cannot make the requester discard
 one. When no reply arrives by the request's `deadline`, the requester records an absence [ER §4.4].
 
-ER is `draft-mih-agent-evidence-request-00` (`spec/draft-mih-agent-evidence-request-00.md`).
-Section numbers are those of its rendered `.txt`.
+ER is `draft-mih-agent-evidence-request-02` (`spec/draft-mih-agent-evidence-request-02.md`), the
+revision IP pins. Section numbers are those of its rendered `.txt`. This binding is a
+message-oriented binding in ER's sense, so the carriage rules of ER §10.1, which apply "to any
+other message-oriented binding", hold here unchanged. IP §11.4.1 restates them as its rules 1 to 8,
+and this text cites them by IP's numbers.
 
 ## 1. When this binding applies
 
 This binding is for a responder with no inbound reachability. For such a responder it is the only
 inbound route this repository describes. A responder that can be reached inbound SHOULD be asked
-over the native stream, HTTP, A2A or MCP [ER §10; IP §11.4], which need no third party in the path.
+over the native stream, HTTP, A2A or MCP [ER §10, §10.2, §10.3; IP §11.4], which need no third
+party in the path.
 
 A deployment MAY run its own relay. Doing so is optional infrastructure. This binding names no
 relay, assumes no particular operator, and works with any relay that implements NIP-01.
@@ -97,7 +101,8 @@ may still not store them (§6). Both kinds avoid the range `5000-7000` that NIP-
 are placeholders, not registered anywhere (N-1).
 
 In both kinds, `content` is the carried octets in base64url without padding (RFC 4648 §5), as in
-IP §11.4.5. The `m` tag names their media type, one of the two values of IP §11.4.1 rule 7.
+IP §11.4.5. The `m` tag names their media type, one of the two values of IP §11.4.1 rule 7
+[ER §10.1 rule 3].
 NIP-94 uses an `m` tag for "the data type of the file" in MIME type form. Here the tag has the same
 use, defined for these two kinds: NIP-01 says kinds specify how clients should interpret "the
 meaning of each event and the other fields of each event".
@@ -128,6 +133,15 @@ that alters a request event's content or tags then leaves an `id` or a signature
 the request is never answered; it cannot make a new valid event under the requester's carriage key.
 So the request becomes an absence at its deadline, never a response received and failed
 (vector `mailbox-request-tampered`).
+
+**Not `request_unauthenticated`.** The carriage key's signature is carriage, not requester
+authentication: authentication in the carriage decides only whether a responder answers
+[ER §10.1 rules 4 and 5; IP §11.4.1 rules 4 and 5]. A request event that fails it is not answered,
+as above, and is never refused `request_unauthenticated`. That reason states that the request
+carries a requester authentication, defined by a deployment profile, that does not verify
+[ER §3.7, §4.2 item 2]. This binding defines none. A deployment profile that adds one inside the
+request octets refuses a failure of it as ER says, in a reply event like any other refusal
+(§5.2).
 
 **Deadline.** The `expiration` tag repeats the request's `deadline` so a relay may drop the request
 once nobody needs it. NIP-40 is optional for relays. It says relays "MAY persist them
@@ -189,9 +203,16 @@ check that failed, when:
 Otherwise the event is not a reply, and is named by that check. Its content is discarded: it is
 not a response received and failed.
 
+**A limit on replies by content.** The reply filter names no author, so anyone can publish
+events naming the request event, and each one that passes checks 1 to 4 and fails one of checks 5
+to 7 costs the requester a verification of its content. A requester SHOULD set a limit on how many
+such events it verifies by content for one request. An event beyond that limit is not verified: it
+is not a reply, and is named `limit`. Events attributed to the mailbox are never counted, and an
+event delivered again is not counted again.
+
 **The reply position.** For IP §11.4.1 rule 6, this carriage's reply position holds exactly the
-events that pass checks 1 to 4 and then either pass checks 5 to 7 or are a reply by content. Every
-reply above is in it, and nothing else is.
+events that pass checks 1 to 4 and then either pass checks 5 to 7 or are a reply by content within
+the limit. Every reply above is in it, and nothing else is.
 
 An event that is not a reply is a transport condition [IP §9.2]: the request stays pending, then
 becomes an absence [IP §11.4.1 rule 6]. It is never a refusal. Events with the same `id` are one
@@ -202,7 +223,9 @@ This keeps two things true at once. A relay or third party cannot turn a pending
 response received and failed: content not attributed to the mailbox counts only when the responder
 signed it under a trusted key for this very request, and then it is the responder's own act. And
 the responder's signed answer is never thrown away because of the carriage it came through, for
-example a mailbox key that was rotated, or an event re-published by another key.
+example a mailbox key that was rotated, or an event re-published by another key, unless it arrives
+beyond the limit above, among events not attributed to the mailbox. The answer the mailbox key
+publishes is never subject to the limit.
 
 ### 4.3 Relays
 
@@ -248,8 +271,10 @@ as an envelope or a refusal [IP §1, §7], with each distinct reply verified on 
 envelope held for one request compared through `caller_invariance` [IP §11.4.1 rules 6 and 8]. A
 responder that declines MUST either put a signed refusal in a reply event or publish no reply
 [IP §11.4.1 rule 5]. A responder that determines it cannot answer by the deadline SHOULD send a
-`deadline_unmet` refusal before the deadline [ER §3.4]. A relay's `OK` with `false`, a `CLOSED`
-message or a `NOTICE` is a transport condition, never a refusal [ER §10; IP §9.2].
+`deadline_unmet` refusal before the deadline, and one that cannot answer in time only because of
+its own load or limits refuses `capacity_exceeded` [ER §3.4; IP §9.1]. A relay's `OK` with
+`false`, a `CLOSED` message or a `NOTICE` is a transport condition, never a refusal
+[ER §10.1 rule 5; IP §9.2].
 
 ### 5.3 Deadline and absence
 
@@ -269,6 +294,15 @@ The requester judges arrival by its own clock when the event reaches it, never b
 which the publisher sets. A dropped request, a dropped reply, a relay that delayed either past the
 deadline, a responder that was offline, and a responder that chose not to answer all produce the
 same absence [ER §4.4]. The record SHOULD NOT say which.
+
+**A responder that was offline.** A responder MAY seal an unavailable-window statement for a
+period it could not answer, for example while it was offline [ER §4.7]. The statement never
+changes the absence record [ER §4.4], and this binding adds nothing to it. ER says a statement
+covers an absence when its period shares an instant with the waiting window "from the time the
+requester sent the request to the window's close" [ER §4.7]; here that is the record's
+`window.opened`, when the request event was published, to `window.closed`. IP defers these
+statements: its verifier takes none and maps a covered absence as any other [IP P-66]. A reader
+that holds a statement beside an absence follows ER §4.7 directly.
 
 A reply event that reaches the requester after it has written the absence record is still a reply,
 and the requester keeps it [IP §11.4.1 rule 8]. It is checked as §4.2 says and verified on its own,
@@ -308,6 +342,7 @@ responder key, end to end, and the relay holds no key that matters.
 | attach a signature that is not the event's | a signature that does not verify | the same rule (vector `mailbox-event-bad-signature`, whose content does prove itself) |
 | publish its own reply event, carrying the responder's old envelope | an event not by the mailbox key, whose content binds another request | not a reply (vector `mailbox-other-key-replays-old-envelope`) |
 | re-publish the responder's genuine answer under its own key | an event not by the mailbox key, whose content proves itself | a reply by content (vector `mailbox-relayed-by-other-key`) |
+| publish many events naming the request event, under keys other than the mailbox key | events that pass checks 1 to 4 and fail an attribution check, each costing a content verification | the requester stops verifying them at its limit (§4.2); beyond it each is not a reply (vector `mailbox-reply-by-content-limit`) |
 | read everything | the request, both carriage keys, the timing | not prevented in v0 (§8) |
 
 | A relay cannot | Why |
@@ -328,7 +363,8 @@ answer to one binds to the other.
 ## 7. What the carriage adds
 
 The event `id`, `pubkey`, `created_at`, `kind`, `tags` and `sig`, the requester's carriage key, the
-mailbox key and the relay are carriage. None is part of the request [ER §3; IP §11.4.1 rule 4],
+mailbox key and the relay are carriage. None is part of the request [ER §3, §10.1 rule 4;
+IP §11.4.1 rule 4],
 and none may influence the artifact [ER §5]. The artifact octets are the same over this carriage as
 over any other, for the same responder, subject, resolved anchor and derivation [IP §6.2].
 
@@ -360,7 +396,7 @@ is signed: the envelope and refusal stay end to end, inside it.
 The vectors are in `vectors/adapters/nostr-mailbox/`.
 `python/scripts/generate_nostr_mailbox_vectors.py` generates them deterministically, and
 `python/tests/test_nostr_mailbox_vectors.py` checks them offline. The evidence side reuses the IP
-corpus: its responder key, log, artifact and envelope builders, and its contract pin. Each case
+corpus of `vectors/interop-profile-v1/`: its responder key, log, artifact and envelope builders, and its contract pin. Each case
 carries the request octets, the request event, the events the relay delivered, and, where the
 window closed, the absence record and any events delivered after it, each with the time it reached
 the requester. The test recomputes every event `id`, verifies every BIP-340
@@ -377,6 +413,7 @@ the NIP-19 `nprofile` example.
 | `mailbox-envelope-untrusted-key` | the mailbox key carries an envelope by a key the trust policy does not accept: `responder_trust` `FAIL`, row 2 | §3, §6 |
 | `mailbox-envelope-replayed` | the mailbox key answers request 2 with request 1's genuine envelope: `request_binding` `FAIL`, row 2 | §6 |
 | `mailbox-relayed-by-other-key` | another key carries the responder's genuine envelope for this request: a reply by content | §4.2 |
+| `mailbox-reply-by-content-limit` | three events by other keys, each carrying the responder's genuine envelope for this request, with a limit of two: the first two are replies by content, and the third is not a reply (`limit`) | §4.2, §6 |
 | `mailbox-other-key-replays-old-envelope` | another key carries the responder's envelope for another request: not a reply; absence | §4.2, §6 |
 | `mailbox-event-bad-signature` | the reply event's signature does not verify, and its content is the responder's envelope for this request: a reply by content | §4.2 |
 | `mailbox-event-tampered` | the reply event's content changed after signing, to an envelope under an untrusted key: not a reply; absence | §4.2 |
@@ -416,8 +453,8 @@ committed files differ, and runs the test. No relay is contacted, in the vectors
 
 ## References
 
-- ER: `draft-mih-agent-evidence-request-00`, `spec/draft-mih-agent-evidence-request-00.md`.
-- IP: Minimum Evidence Interoperability Profile v0, `spec/interop-profile-v0.md`.
+- ER: `draft-mih-agent-evidence-request-02`, `spec/draft-mih-agent-evidence-request-02.md`.
+- IP: Minimum Evidence Interoperability Profile v1, `evidence-interop/1`, `spec/interop-profile-v1.md`.
 - NIP-01, NIP-19, NIP-21, NIP-40, NIP-44, NIP-59, NIP-65, NIP-90, NIP-94 (informative): §2.
 - BIP-340 (informative): §2.
 - RFC 4648, The Base16, Base32, and Base64 Data Encodings: §4 (base64url).

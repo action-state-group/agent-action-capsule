@@ -12,7 +12,7 @@ on:
       - "python/agent_action_capsule/interop_profile/**"
       - "python/agent_action_capsule/canonical.py"
       - "spec/bindings/nostr-mailbox-v0.md"
-      - "spec/interop-profile-v0.md"
+      - "spec/interop-profile-v1.md"
       - "vectors/adapters/nostr-mailbox/**"
       - ".github/workflows/nostr-mailbox.yml"
   pull_request:
@@ -23,7 +23,7 @@ on:
       - "python/agent_action_capsule/interop_profile/**"
       - "python/agent_action_capsule/canonical.py"
       - "spec/bindings/nostr-mailbox-v0.md"
-      - "spec/interop-profile-v0.md"
+      - "spec/interop-profile-v1.md"
       - "vectors/adapters/nostr-mailbox/**"
       - ".github/workflows/nostr-mailbox.yml"
 
