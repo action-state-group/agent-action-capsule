@@ -17,6 +17,7 @@ import importlib.util
 import json
 import re
 import socket
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +45,8 @@ EXT_URI = DATA["carriage"]["a2a_extension_uri"]
 ER_EXT_URI = "https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"
 WITNESS_KEYS = set(DATA["verifier"]["witness_keys"])
 READ_AT = DATA["verifier"]["read_at"]
+assert DATA["verifier"]["clock_skew"] == "PT5M"
+SKEW = timedelta(minutes=5)
 PROFILES = {"evidence-commitment/0", "evidence-commitment/1"}
 
 
@@ -78,7 +81,8 @@ _SHA_TAG = re.compile(r"sha256:[0-9a-f]{64}")
 
 # Every check a mutant test may switch off.
 ALL_CHECKS = frozenset({"discovery_object", "nostr_event", "key_id_spki", "commitment_signature",
-                        "staple_digest", "newest", "conflict", "key_binding", "witness_key", "dropped"})
+                        "staple_digest", "future", "newest", "conflict", "key_binding", "witness_key",
+                        "dropped", "behind_pin"})
 
 # ---------------------------------------------------------------------------
 # V0 and V1: carrier forms, and where the octets are
@@ -200,9 +204,18 @@ def verify_commitment(data: bytes, checks: frozenset) -> tuple[str, dict | None]
     return "verified", c
 
 
+def _time(t: str) -> datetime:
+    return datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+
+
 def standings(commitments: list[tuple[bytes, dict]], checks: frozenset) -> dict[str, str]:
-    """V4: per (key_id, node_id), the latest issued_at is current; a tie between different octets conflicts."""
+    """V4: a commitment past the verifier's time and skew is future_dated; of the rest, per
+    (key_id, node_id), the latest issued_at is current, and a tie between different octets conflicts."""
     out = {}
+    if "future" in checks:
+        limit = _time(READ_AT) + SKEW
+        out = {d: "future_dated" for d, c in commitments if _time(c["issued_at"]) > limit}
+        commitments = [(d, c) for d, c in commitments if d not in out]
     for digest, c in commitments:
         peers = [(d, p) for d, p in commitments if (p["key_id"], p["node_id"]) == (c["key_id"], c["node_id"])]
         latest = max(p["issued_at"] for _, p in peers)
@@ -264,8 +277,9 @@ def stream_label(staple: dict, checks: frozenset) -> dict:
                 counted.append((cp["timestamp"], rc["witness"]))
     if counted:
         since, witness = min(counted)
-        return {"stream": staple["stream"], "label": "witnessed", "witness": witness, "since": since}
-    return {"stream": staple["stream"], "label": "unknown_witness" if seen else "unwitnessed"}
+        return {"stream": staple["stream"], "label": "witnessed", "log_key": log_key, "witness": witness,
+                "since": since}
+    return {"stream": staple["stream"], "label": "unknown_witness" if seen else "unwitnessed", "log_key": log_key}
 
 
 def first_use(c: dict, pins: list[dict], checks: frozenset) -> list[dict]:
@@ -276,6 +290,23 @@ def first_use(c: dict, pins: list[dict], checks: frozenset) -> list[dict]:
         out += [{"stream": s, "state": "dropped", "since": READ_AT} for s in sorted(mine - now)]
     out += [{"stream": s, "state": "new", "since": READ_AT} for s in sorted(now - mine)]
     return sorted(out, key=lambda x: (x["stream"], x["state"]))
+
+
+def behind_pin(c: dict, pins: list[dict], checks: frozenset) -> list[str]:
+    """V6, offline: a card whose last checkpoint is earlier than the held pin, or whose checkpoint at
+    the pin's log size is another one, is behind_pin."""
+    if "behind_pin" not in checks:
+        return []
+    out = []
+    for s in c["history_cards"]:
+        cps = [h["checkpoint"] for h in json.loads(base64.b64decode(s["bytes"]))["history"]]
+        for p in pins:
+            if (p["key_id"], p["stream"]) != (c["key_id"], s["stream"]):
+                continue
+            at = [cp for cp in cps if cp["log_size"] == p["log_size"]]
+            if cps[-1]["log_size"] < p["log_size"] or any(sha(jcs(cp)) != p["checkpoint"] for cp in at):
+                out.append(s["stream"])
+    return sorted(out)
 
 
 # ---------------------------------------------------------------------------
@@ -326,6 +357,7 @@ def run_case(case: dict, checks: frozenset = ALL_CHECKS) -> dict:
         out["streams"] = [stream_label(s, checks) for s in current[0]["history_cards"]]
         if "pins" in case:
             out["first_use"] = first_use(current[0], case["pins"], checks)
+            out["behind_pin"] = behind_pin(current[0], case["pins"], checks)
     return out
 
 
@@ -431,6 +463,8 @@ def test_commitments_carry_no_count():
     ("key_binding", "answer-key-mismatch"),
     ("witness_key", "unwitnessed-labelled"),
     ("dropped", "first-use-dropped-and-new"),
+    ("behind_pin", "short-card-behind-pin"),
+    ("future", "future-dated-issued-at"),
 ])
 def test_mutant_check_removed(check, case_id):
     (case,) = [c for c in CASES if c["id"] == case_id]

@@ -141,7 +141,7 @@ its 9 `record_signatures`.
 | `vectors/adapters/x402/` | `spec/adapters/x402-v0.md` | verify | 2 |
 | `vectors/adapters/ucp/` | `spec/adapters/ucp-v0.md` §3 | verify | 2 |
 | `vectors/adapters/nostr-mailbox/` | `spec/bindings/nostr-mailbox-v0.md` §9 (experimental) | verify | 14 |
-| `vectors/adapters/evidence-commitment-carriers/` | `spec/bindings/evidence-commitment-carriers-v0.md` §10 (experimental) | verify | 15 |
+| `vectors/adapters/evidence-commitment-carriers/` | `spec/bindings/evidence-commitment-carriers-v0.md` §10 (experimental) | verify | 17 |
 
 ## Verbs with no corpus
 

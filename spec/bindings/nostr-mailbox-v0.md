@@ -223,7 +223,9 @@ relays it reads.
 **The member.** The commitment carries the relay list as `ask.nostr.relays`, beside the mailbox
 key `ask.nostr.mailbox_key`, as
 [`evidence-commitment-carriers-v0.md`](evidence-commitment-carriers-v0.md) §3 names them. A
-requester reads both from a commitment that verifies there (its §6), and from no other source (N-4).
+requester reads both only from a commitment that passes its V0 to V4 under a responder key the
+requester's trust policy accepts for the responder it means to ask (its §3, "Which route to use"),
+and from no other source (N-4).
 
 A relay URL in an example (`wss://relay.example`) is an example of an entry in that list. It is
 not a relay this binding names.
@@ -406,7 +408,7 @@ committed files differ, and runs the test. No relay is contacted, in the vectors
   ([`evidence-commitment-carriers-v0.md`](evidence-commitment-carriers-v0.md) §3). The commitment
   is not a discovery object (its §1), so the list is not in the manifest [IP §11.4.3].
 - **N-5. Learning the mailbox key.** Resolved: `ask.nostr.mailbox_key` in the same commitment,
-  which the requester trusts once it verifies (§3; carriers §6).
+  trusted under the same rule (§3; carriers §3).
 - **N-6. Promotion.** A binding token for this carriage, and its place in IP §11.4, are a proposal
   to make once the vectors and drift check pass, not a decision this document makes.
 
