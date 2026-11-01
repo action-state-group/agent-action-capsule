@@ -359,6 +359,61 @@ func closeFindings(doc map[string]interface{}, claims []Claim, records []map[str
 	return out
 }
 
+// The record versions a calibration claim cites (section 4.1).
+const (
+	calibrationSummary = "calibration-summary/v1"
+	humanRating        = "human-rating/v1"
+)
+
+// calibrationFindings is the Python reference's calibration_findings: every
+// calibration claim's evidence[] cites exactly one calibration-summary/v1
+// record and otherwise only human-rating/v1 records, each read by its
+// record_version. A digest cited twice is one citation.
+func calibrationFindings(claims []Claim, records []map[string]interface{}) []string {
+	var out []string
+	var byDigest map[string]map[string]interface{}
+	for _, claim := range claims {
+		if claim.Type != TypeCalibration {
+			continue
+		}
+		if byDigest == nil {
+			byDigest = map[string]map[string]interface{}{}
+			for i, record := range records {
+				digest, err := canonical.JSONDigest(record)
+				if err != nil {
+					out = append(out, fmt.Sprintf("records[%d] cannot be digested: %v", i, err))
+					continue
+				}
+				byDigest[digest] = record
+			}
+		}
+		seen := map[string]bool{}
+		summaries := 0
+		for _, digest := range claim.Evidence {
+			if seen[digest] {
+				continue
+			}
+			seen[digest] = true
+			record, ok := byDigest[digest]
+			if !ok {
+				out = append(out, fmt.Sprintf("claims[%d] cites %s..., which names no record among the records supplied; its kind cannot be read", claim.Index, prefix(digest)))
+				continue
+			}
+			switch kind := record["record_version"]; kind {
+			case calibrationSummary:
+				summaries++
+			case humanRating:
+			default:
+				out = append(out, fmt.Sprintf("claims[%d] cites %s..., a record of kind %v; a calibration claim cites only %s and %s records", claim.Index, prefix(digest), kind, calibrationSummary, humanRating))
+			}
+		}
+		if summaries != 1 {
+			out = append(out, fmt.Sprintf("claims[%d] cites %d %s record(s); a calibration claim cites exactly one", claim.Index, summaries, calibrationSummary))
+		}
+	}
+	return out
+}
+
 func prefix(digest string) string {
 	if len(digest) > 12 {
 		return digest[:12]

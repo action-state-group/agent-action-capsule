@@ -144,6 +144,25 @@ The walk also applies the CONTESTED-is-never-met rule to the **recomputed** stat
 read `CONTESTED` with `verdict: met` fails), so relabelling the asserted state cannot rescue `met`; the
 schema half of that rule is `neg-close-contested-verdict-met` above.
 
+## Calibration claims — `type: calibration` (spec section 4.1)
+
+A calibration claim keeps every base field and carries no body. Its `evidence[]` cites exactly one
+`calibration-summary/v1` record and otherwise only `human-rating/v1` records. The schema cannot see
+the cited records, so each calibration fixture ships them as `<name>.records.json` (the judge
+records themselves, keyed by `json_digest`), and the checker reads each cited record's
+`record_version`.
+
+| File | Case | Rejected by |
+|---|---|---|
+| `pos-example-org-calibration-result.json` | `claim-1`, `claim-2` and `calibration-1`, which cites one summary and two ratings, each rating the case its judged claim cites | (valid) |
+| `neg-calibration-without-summary.json` | `calibration-1` cites the two ratings only | checker: exactly one summary (mutant `skip_summary_count`) |
+| `neg-calibration-two-summaries.json` | `calibration-1` cites two summaries and one rating | checker: exactly one summary (mutant `skip_summary_count`) |
+| `neg-calibration-cites-other-record.json` | `calibration-1` also cites a record with no judge `record_version` | checker: cited-record kind (mutant `any_record_kind`) |
+| `neg-calibration-with-close-body.json` | the positive's `calibration-1` with a `close` body | schema: type-to-body binding |
+| `neg-out-of-scope-on-calibration-claim.json` | the positive's `calibration-1` with verdict `out_of_scope` | schema: `out_of_scope` is for requirement claims only |
+
+Every judge record in the calibration sidecars validates against its `schemas/judge/` schema.
+
 ## Extension members — `x-` (spec §8a)
 
 The document and each claim admit members named `x-...`. Every other member stays closed. The first three

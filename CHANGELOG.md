@@ -16,6 +16,14 @@ Not in any tag yet: nothing after `go/v0.19.0`, `python/v0.15.0` and `ts/v0.13.0
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Spec: Evidence Result v0's `ClaimType` gains `calibration` (`spec/evidence-result-v0.md` §4.1,
+  AAC#548), the claim the outcome-report reader's calibration reading (#488) reads. It keeps every
+  base field and carries no body; its `evidence[]` cites exactly one `calibration-summary/v1`
+  record and otherwise only `human-rating/v1` records, a rule the Python reference checker and Go
+  `evidenceresult.Check` enforce over the cited records. Additive: every Result that validated
+  before still validates. Six vectors in `vectors/evidence-result/`.
+- Go: `evidenceresult.TypeCalibration`, and `Check` refuses a calibration claim whose cited records
+  break that rule or are not supplied.
 - Spec, experimental: `spec/bindings/nostr-mailbox-v0.md`, a carriage of the `evidence-interop/0`
   exchange through a Nostr relay for a responder with no inbound reachability, with its adapter
   declaration `spec/adapters/nostr-mailbox-v0.md`, vectors in `vectors/adapters/nostr-mailbox/` and

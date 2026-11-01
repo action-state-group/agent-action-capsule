@@ -247,6 +247,25 @@ mechanical half):
      `head` removed MUST be reported CLOSE-NOT-V1, and its claim with a
      different `period` MUST be reported CLOSE-PERIOD.
 
+  18. CALIBRATION CLAIMS (spec section 4.1): pos-example-org-calibration-result
+     (claim-1, claim-2 and calibration-1, which cites one
+     calibration-summary/v1 record and two human-rating/v1 records) MUST
+     validate and pass the calibration evidence check over its
+     `.records.json`. A calibration claim's evidence[] cites exactly one
+     calibration-summary/v1 record and otherwise only human-rating/v1
+     records, read by each cited record's `record_version`; the schema
+     cannot see the records, so three negatives pass the schema and fail
+     this check, each flipped by its mutant:
+       - neg-calibration-without-summary (ratings only) and
+         neg-calibration-two-summaries: mutant `skip_summary_count`.
+       - neg-calibration-cites-other-record (a record with no judge
+         record_version): mutant `any_record_kind`.
+     Two schema negatives MUST fail, each with a strip-the-rule mutant:
+       - neg-calibration-with-close-body: the type <-> body binding.
+       - neg-out-of-scope-on-calibration-claim: the out_of_scope rule.
+     Every judge record in a calibration sidecar MUST validate against its
+     schemas/judge/ schema (a fixture check, not a verifier rule).
+
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
     python3 check_evidence_result_examples.py                # from schemas/
@@ -293,6 +312,12 @@ SCHEMAS_DIR = (
 VECTORS_DIR = SCHEMAS_DIR.parent / "vectors" / "evidence-result"
 SCHEMA_PATH = SCHEMAS_DIR / "evidence-result-v0.json"
 CLOSE_V1_SCHEMA_PATH = SCHEMAS_DIR / "judge" / "close-v1.json"
+CALIBRATION_SUMMARY = "calibration-summary/v1"
+HUMAN_RATING = "human-rating/v1"
+JUDGE_RECORD_SCHEMA_PATHS = {
+    CALIBRATION_SUMMARY: SCHEMAS_DIR / "judge" / "calibration-summary-v1.json",
+    HUMAN_RATING: SCHEMAS_DIR / "judge" / "human-rating-v1.json",
+}
 
 # The link walk keys the sidecar's records by this repository's own
 # canonicalization (lowercase-hex SHA-256 of UTF8(JCS(record))) -- the same
@@ -347,6 +372,16 @@ WALK_MUTANTS = (
 )
 
 CLOSE_LINK_TYPES = ("acknowledges", "rebuts")
+
+# Negatives that VALIDATE against the schema and are rejected only by the
+# calibration evidence check (item 18), each with the mutant that flips it.
+CALIBRATION_NEGATIVES = [
+    ("neg-calibration-without-summary", "skip_summary_count", "the exactly-one-summary rule"),
+    ("neg-calibration-two-summaries", "skip_summary_count", "the exactly-one-summary rule"),
+    ("neg-calibration-cites-other-record", "any_record_kind", "the cited-record-kind rule"),
+]
+
+CALIBRATION_MUTANTS = ("skip_summary_count", "any_record_kind")
 
 # The record-header field that identifies the store a record was committed
 # in -- the evidence-book HeaderMember's `book_id`, the shape every sidecar
@@ -491,6 +526,48 @@ def close_state_findings(
                 )
     return findings
 
+def calibration_findings(
+    name: str, doc: EvidenceResultDoc, records: list[RecordDoc], mutant: str | None = None
+) -> list[str]:
+    """Spec section 4.1: every calibration claim's evidence[] cites exactly
+    one calibration-summary/v1 record and otherwise only human-rating/v1
+    records, each read by its `record_version` from `records` (keyed by
+    json_digest). A digest cited twice is one citation. Mutants:
+    `skip_summary_count` accepts any number of summaries; `any_record_kind`
+    accepts a cited record of any kind."""
+    if mutant is not None and mutant not in CALIBRATION_MUTANTS:
+        raise ValueError(f"unknown calibration mutant {mutant!r}")
+    findings = []
+    by_digest = {json_digest(record): record for record in records}
+    for index, claim in enumerate(doc.get("claims", [])):
+        if claim.get("type") != "calibration":
+            continue
+        cited = list(dict.fromkeys(ref.get("digest") for ref in claim.get("evidence") or []))
+        summaries = 0
+        for digest in cited:
+            record = by_digest.get(digest)
+            if record is None:
+                findings.append(
+                    f"{name}: claims[{index}] cites {str(digest)[:12]}..., which names no record in "
+                    f"{name}.records.json -- its kind cannot be read"
+                )
+                continue
+            kind = record.get("record_version")
+            if kind == CALIBRATION_SUMMARY:
+                summaries += 1
+            elif kind != HUMAN_RATING and mutant != "any_record_kind":
+                findings.append(
+                    f"{name}: claims[{index}] cites {digest[:12]}..., a record of kind {kind!r}; a "
+                    f"calibration claim cites only {CALIBRATION_SUMMARY} and {HUMAN_RATING} records"
+                )
+        if summaries != 1 and mutant != "skip_summary_count":
+            findings.append(
+                f"{name}: claims[{index}] cites {summaries} {CALIBRATION_SUMMARY} record(s); a "
+                "calibration claim cites exactly one"
+            )
+    return findings
+
+
 POSITIVE_RESULT = "pos-example-org-claims-result"
 
 # Claim types (2026-09-25 ruling; reconcile and close both normative):
@@ -520,6 +597,7 @@ POSITIVES = [
     "pos-example-org-reconcile-later-result",
     "pos-example-org-requirements-covered-result",
     "pos-example-org-dataset-result",
+    "pos-example-org-calibration-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -559,6 +637,8 @@ NEGATIVES = [
     "neg-contract-ref-ecma-whitespace",
     "neg-dataset-ref-without-plan-ref",
     "neg-plan-ref-inline-plan",
+    "neg-calibration-with-close-body",
+    "neg-out-of-scope-on-calibration-claim",
 ]
 
 # Section 15: the schema negatives Python's `re` would accept.
@@ -1309,6 +1389,10 @@ def main() -> int:
          "Claim's out_of_scope if/then rule"),
         ("neg-out-of-scope-on-reconcile-claim", _without_claim_rule(out_of_scope_rule),
          "Claim's out_of_scope if/then rule"),
+        ("neg-out-of-scope-on-calibration-claim", _without_claim_rule(out_of_scope_rule),
+         "Claim's out_of_scope if/then rule"),
+        ("neg-calibration-with-close-body", _without_claim_rule("Type <-> body binding"),
+         "Claim's type <-> body binding"),
         ("neg-out-of-scope-with-gap", _without_claim_rule(pairing_rule),
          "Claim's sufficiency/verdict if/then rule"),
         ("neg-satisfied-not-evaluable", _without_claim_rule(pairing_rule),
@@ -1562,6 +1646,73 @@ def main() -> int:
         else:
             print(f"OK  MUTANT        {name} -- restored walk re-rejects the same fixture")
 
+    # --- 18. Calibration claims: the cited records' kinds -------------------
+    for name in POSITIVES:
+        instance = _load(name)
+        if not any(claim.get("type") == "calibration" for claim in instance.get("claims", [])):
+            continue
+        records = _records_for(name)
+        if records is None:
+            findings.append(
+                f"CALIBRATION-RECORDS-MISSING {name}: carries a calibration claim but no "
+                f"{name}.records.json to read its cited records from"
+            )
+            continue
+        found = calibration_findings(name, instance, records)
+        if found:
+            findings.extend(f"CALIBRATION-EVIDENCE {line}" for line in found)
+        else:
+            print(f"OK  CALIBRATION   {name}.json -- each calibration claim cites one summary "
+                  f"and only ratings besides, read from {len(records)} record(s)")
+
+    for name, cal_mutant, mutation_label in CALIBRATION_NEGATIVES:
+        instance = _load(name)
+        schema_errors = list(validator.iter_errors(instance))
+        if schema_errors:
+            findings.append(
+                f"CALIBRATION-NEGATIVE-SCHEMA-REJECTED {name}: this fixture exists to show the "
+                f"schema ALONE accepts it; it was rejected by the schema instead "
+                f"({schema_errors[0].message!r})"
+            )
+            continue
+        records = _records_for(name)
+        if records is None:
+            findings.append(f"CALIBRATION-RECORDS-MISSING {name}: no {name}.records.json")
+            continue
+        found = calibration_findings(name, instance, records)
+        if not found:
+            findings.append(f"CALIBRATION-NEGATIVE-DID-NOT-FAIL {name}: the calibration check accepted it")
+            continue
+        print(f"OK  CALIBRATION   {name}.json validates against the schema and is correctly "
+              f"REJECTED ({found[0]!r})")
+        mutated = calibration_findings(name, instance, records, mutant=cal_mutant)
+        if mutated:
+            findings.append(
+                f"MUTANT-DID-NOT-FLIP {name}: with {mutation_label} removed, the fixture still "
+                f"failed ({mutated[0]!r})"
+            )
+        else:
+            print(f"OK  MUTANT        {name} -- with {mutation_label} removed, the fixture "
+                  "PASSES (confirms the rule is load-bearing)")
+
+    judge_validators = {
+        kind: _validator_for(json.loads(path.read_text(encoding="utf-8")))
+        for kind, path in JUDGE_RECORD_SCHEMA_PATHS.items()
+    }
+    for name in [n for n in POSITIVES if n.startswith("pos-example-org-calibration")] + [
+        n for n, _, _ in CALIBRATION_NEGATIVES
+    ]:
+        for record in _records_for(name) or []:
+            judge = judge_validators.get(record.get("record_version"))
+            if judge is None:
+                continue
+            errors = list(judge.iter_errors(record))
+            if errors:
+                findings.append(
+                    f"JUDGE-RECORD-INVALID {name}: {record.get('record_id')} fails its "
+                    f"schemas/judge/ schema ({errors[0].message!r})"
+                )
+
     # --- 15. Patterns read as ECMA-262 ---------------------------------------
     python_patterns = _validator_for(schema, python_patterns=True)
     for name in PATTERN_NEGATIVES:
@@ -1589,6 +1740,8 @@ def main() -> int:
     for sidecar in sorted(VECTORS_DIR.glob("*.records.json")):
         name = sidecar.name.removesuffix(".records.json")
         records = _records_for(name) or []
+        if not any(r.get("record_type") == "close" for r in records):
+            continue
         found = close_v1_findings(name, _load(name), records, close_v1)
         findings.extend(found)
         closes = [r for r in records if r.get("record_type") == "close"]
@@ -1623,7 +1776,8 @@ def main() -> int:
         return 1
 
     print(f"\nOK — {len(POSITIVES)} positive result(s), {len(NEGATIVES)} negative fixture(s), "
-          f"{len(LINK_NEGATIVES)} link-walk negative(s), {len(COVERAGE_NEGATIVES)} coverage "
+          f"{len(LINK_NEGATIVES)} link-walk negative(s), {len(CALIBRATION_NEGATIVES)} calibration "
+          f"negative(s), {len(COVERAGE_NEGATIVES)} coverage "
           f"negative(s), {len(REVISION_NEGATIVES)} revision negative(s), and all mutant checks passed.")
     return 0
 
