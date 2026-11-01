@@ -12,7 +12,7 @@
 //! | [`envelope`] | Producer Envelope | `go/envelope` |
 //! | `bundle` (feature `bundle`) | Evidence Bundle v2; strict verification with feature `strict` | `go/bundle` |
 //! | `witness` (feature `strict`) | witness receipts in `checkpoint.witnesses` | (Python `witness`) |
-//! | `settlement` (feature `settlement`) | two-party settlement records (`draft-mih-agent-settlement-records-00`) | (Python `settlement`) |
+//! | `settlement` (feature `settlement`) | two-party settlement records (`draft-mih-agent-settlement-records-01`) | (Python `settlement`) |
 //!
 //! Decode capsules with [`verify::decode_capsule_json`], not `serde_json`'s
 //! own decoder: it keeps each number's source text (`arbitrary_precision`)

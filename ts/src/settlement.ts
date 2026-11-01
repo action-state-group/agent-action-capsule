@@ -1,6 +1,6 @@
 // Derive settlement states from two parties' leg records (verification only):
 // "Two-Party Settlement Records for Agent Payments",
-// draft-mih-agent-settlement-records-00, ported from the Python reference
+// draft-mih-agent-settlement-records-01, ported from the Python reference
 // (python/agent_action_capsule/settlement.py).
 //
 // The payer and the payee are two independent sealers; each seals only what
@@ -22,7 +22,7 @@ import { verifyClass1 } from "./verify.js";
 import { fromHex } from "./witness.js";
 
 export const SETTLEMENT_MEMBER = "settlement";
-/** The `settlement` member's `version` for -00. */
+/** The `settlement` member's `version` for -00 and -01. */
 export const SETTLEMENT_VERSION = "0";
 export const SETTLEMENT_LEGS = [
   "terms",

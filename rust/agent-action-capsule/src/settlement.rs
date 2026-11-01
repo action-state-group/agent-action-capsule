@@ -3,7 +3,7 @@
 //! `agent_action_capsule.settlement`, checked against `vectors/settlement/`.
 //!
 //! Verifier for "Two-Party Settlement Records for Agent Payments",
-//! `draft-mih-agent-settlement-records-00`. The payer and the payee are two
+//! `draft-mih-agent-settlement-records-01`. The payer and the payee are two
 //! independent sealers; each seals only what its own system observed, as a
 //! Capsule with a top-level `settlement` member:
 //!
@@ -35,7 +35,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 /// The Capsule member that carries a leg.
 pub const SETTLEMENT_MEMBER: &str = "settlement";
 /// The settlement member's `version` for
-/// `draft-mih-agent-settlement-records-00`.
+/// `draft-mih-agent-settlement-records-00` and -01.
 pub const SETTLEMENT_VERSION: &str = "0";
 
 pub const LEGS: [&str; 4] = ["terms", "payer_observed", "payee_observed", "delivered"];

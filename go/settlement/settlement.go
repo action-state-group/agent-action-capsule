@@ -2,7 +2,7 @@
 // Package settlement derives settlement states from two parties' leg records
 // (verification only). It is the Go port of the Python reference
 // agent_action_capsule.settlement, the verifier of "Two-Party Settlement
-// Records for Agent Payments" (draft-mih-agent-settlement-records-00).
+// Records for Agent Payments" (draft-mih-agent-settlement-records-01).
 //
 // The payer and the payee are two independent sealers; each seals only what
 // its own system observed, as a Capsule with a top-level settlement member.
@@ -39,13 +39,13 @@ import (
 )
 
 // Member is the Capsule member that carries a leg; Version is its version
-// for draft-mih-agent-settlement-records-00.
+// for draft-mih-agent-settlement-records-00 and -01.
 const (
 	Member  = "settlement"
 	Version = "0"
 )
 
-// Legs, sealer roles and observed statuses of -00.
+// Legs, sealer roles and observed statuses of -00 and -01.
 var (
 	Legs     = []string{"terms", "payer_observed", "payee_observed", "delivered"}
 	Roles    = []string{"payer", "payee"}

@@ -86,7 +86,7 @@ it runs wherever strict `verifyBundle` does, the browser included.
 
 `@action-state-group/agent-action-capsule/settlement` exports
 `verifySettlements`, which derives the states of
-`draft-mih-agent-settlement-records-00` from both parties' leg records. It
+`draft-mih-agent-settlement-records-01` from both parties' leg records. It
 needs no CLL.
 
 `@action-state-group/agent-action-capsule/witness` exports the witness receipt

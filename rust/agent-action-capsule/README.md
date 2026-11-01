@@ -14,7 +14,7 @@ Go-, TypeScript- and Rust-sealed capsules in every implementation.
 | `envelope` | Producer Envelope (COSE_Sign1 over the Capsule ID), a record's producer signature | `go/envelope` |
 | `bundle` (feature `bundle`) | Evidence Bundle v2 codec and verifier; `verify_bundle_strict` and the producer `build_evidence_bundle` with feature `strict` | `go/bundle` |
 | `witness` (feature `strict`) | witness receipts (`cll`, `rekor`, `scrapi`) in `checkpoint.witnesses` | Python `witness` |
-| `settlement` (feature `settlement`) | two-party settlement records (`draft-mih-agent-settlement-records-00`) | Python `settlement` |
+| `settlement` (feature `settlement`) | two-party settlement records (`draft-mih-agent-settlement-records-01`) | Python `settlement` |
 
 ```rust
 use agent_action_capsule::verify::{decode_capsule_json, verify};
