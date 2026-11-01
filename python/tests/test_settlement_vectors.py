@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The draft-mih-agent-settlement-records-00 vectors are reproducible and agree with the draft.
+"""The draft-mih-agent-settlement-records-01 vectors are reproducible and agree with the draft.
 
 The generator writes the expectations by hand. This test re-runs it and requires
 byte-identical output, recomputes every Capsule ID and checks every leg against the
@@ -21,8 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from _ed25519_forgeries import cofactored
 
 from agent_action_capsule import compute_capsule_id
 from agent_action_capsule.verify import verify
@@ -30,7 +29,7 @@ from agent_action_capsule.verify import verify
 ROOT = Path(__file__).resolve().parents[2]
 VECTORS = ROOT / "vectors" / "settlement"
 GENERATOR = ROOT / "python" / "scripts" / "generate_settlement_vectors.py"
-DRAFT_TXT = ROOT / "spec" / "draft-mih-agent-settlement-records-00.txt"
+DRAFT_TXT = ROOT / "spec" / "draft-mih-agent-settlement-records-01.txt"
 HAND_WRITTEN = ("README.md",)
 
 
@@ -251,15 +250,14 @@ def _structure_failures(s: Any) -> list[str]:  # §4.2, §3 item 4, §5.4, §6
     return sorted(set(out), key=out.index)
 
 
-def _jws_verifies(octets: bytes, public_hex: str) -> bool:
+def _jws_verifies(octets: bytes, public_hex: str) -> bool:  # -01 §8 rule 3: the cofactored equation
     parts = octets.split(b"~", 1)[0].split(b".")
     if len(parts) != 3:
         return False
     try:
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_hex)).verify(
-            _b64u_decode(parts[2].decode("ascii")), parts[0] + b"." + parts[1])
-        return True
-    except (InvalidSignature, ValueError):
+        signature = _b64u_decode(parts[2].decode("ascii"))
+        return cofactored(bytes.fromhex(public_hex), signature, parts[0] + b"." + parts[1])
+    except ValueError:
         return False
 
 

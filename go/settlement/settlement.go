@@ -2,7 +2,7 @@
 // Package settlement derives settlement states from two parties' leg records
 // (verification only). It is the Go port of the Python reference
 // agent_action_capsule.settlement, the verifier of "Two-Party Settlement
-// Records for Agent Payments" (draft-mih-agent-settlement-records-00).
+// Records for Agent Payments" (draft-mih-agent-settlement-records-01).
 //
 // The payer and the payee are two independent sealers; each seals only what
 // its own system observed, as a Capsule with a top-level settlement member.
@@ -16,8 +16,8 @@ package settlement
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -33,18 +33,19 @@ import (
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/envelope"
-	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 	"github.com/action-state-group/agent-action-capsule/go/verify"
+
+	"filippo.io/edwards25519"
 )
 
 // Member is the Capsule member that carries a leg; Version is its version
-// for draft-mih-agent-settlement-records-00.
+// for draft-mih-agent-settlement-records-00 and -01.
 const (
 	Member  = "settlement"
 	Version = "0"
 )
 
-// Legs, sealer roles and observed statuses of -00.
+// Legs, sealer roles and observed statuses of -00 and -01.
 var (
 	Legs     = []string{"terms", "payer_observed", "payee_observed", "delivered"}
 	Roles    = []string{"payer", "payee"}
@@ -637,8 +638,10 @@ func b64urlDecode(value interface{}) ([]byte, error) {
 var errNotBase64URL = errors.New("not unpadded base64url")
 
 // jwsVerifies reports whether octets are a compact JWS whose Ed25519
-// signature verifies, strictly, under the hex key. An SD-JWT is the issuer-signed JWS,
-// then "~" and any disclosures: only the part before the first "~" is signed.
+// signature counts as the hex key's own under the wrapped_resigned test of
+// draft-mih-agent-settlement-records-01, Section "Wrapping Existing Signed
+// Objects", rule 3. An SD-JWT is the issuer-signed JWS, then "~" and any
+// disclosures: only the part before the first "~" is signed.
 func jwsVerifies(octets []byte, publicHex string) bool {
 	issuer, _, _ := bytes.Cut(octets, []byte("~"))
 	parts := bytes.Split(issuer, []byte("."))
@@ -646,7 +649,7 @@ func jwsVerifies(octets []byte, publicHex string) bool {
 		return false
 	}
 	key, err := hex.DecodeString(publicHex)
-	if err != nil || len(key) != ed25519.PublicKeySize {
+	if err != nil {
 		return false
 	}
 	signature, err := b64urlDecode(string(parts[2]))
@@ -654,7 +657,51 @@ func jwsVerifies(octets []byte, publicHex string) bool {
 		return false
 	}
 	signed := append(append(append([]byte(nil), parts[0]...), '.'), parts[1]...)
-	return ed25519strict.Verify(ed25519.PublicKey(key), signed, signature)
+	return resignedBy(key, signed, signature)
+}
+
+// resignedBy is the -01 re-signing test: A a canonical encoding (RFC 8032
+// section 5.1.3) of a point not of small order, R a canonical encoding of any
+// point, S below L, and the cofactored equation [8][S]B = [8]R + [8][k]A.
+// It is deliberately not strict Ed25519: the check looks for the leg key's own
+// signature, and only that key's holder can make one with a small-order or
+// mixed-order R, so refusing those would let a re-signer evade it.
+func resignedBy(public, message, signature []byte) bool {
+	if len(public) != 32 || len(signature) != 64 {
+		return false
+	}
+	a, ok := canonicalPoint(public)
+	if !ok || new(edwards25519.Point).MultByCofactor(a).Equal(edwards25519.NewIdentityPoint()) == 1 {
+		return false
+	}
+	r, ok := canonicalPoint(signature[:32])
+	if !ok {
+		return false
+	}
+	s, err := edwards25519.NewScalar().SetCanonicalBytes(signature[32:])
+	if err != nil {
+		return false
+	}
+	h := sha512.New()
+	h.Write(signature[:32])
+	h.Write(public)
+	h.Write(message)
+	k, _ := edwards25519.NewScalar().SetUniformBytes(h.Sum(nil))
+	// [S]B - [k]A - R, times the cofactor, is the identity.
+	check := new(edwards25519.Point).VarTimeDoubleScalarBaseMult(k, new(edwards25519.Point).Negate(a), s)
+	check.Subtract(check, r)
+	return check.MultByCofactor(check).Equal(edwards25519.NewIdentityPoint()) == 1
+}
+
+// canonicalPoint decodes a point under RFC 8032 section 5.1.3: an encoding
+// with y at or above p, or an x of zero with the sign bit set, does not
+// decode. edwards25519 accepts both, so the encoding must round-trip.
+func canonicalPoint(encoded []byte) (*edwards25519.Point, bool) {
+	p, err := new(edwards25519.Point).SetBytes(encoded)
+	if err != nil || !bytes.Equal(p.Bytes(), encoded) {
+		return nil, false
+	}
+	return p, true
 }
 
 // x402Scheme is the x402 scheme, from the first wrapped offer or payment

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `settlement`: `wrapped_resigned` reads a signature under the leg key with the cofactored equation, any canonical R, a key not of small order and S below L, as settlement -01 §8 rule 3 states (AAC#494). Before, it used `verify_strict`, so a sealer that re-signed with its own key and an R of small or mixed order escaped the check. The `settlement` feature now depends on `curve25519-dalek` 4, the version `ed25519-dalek` 2 already builds on. Two new settlement vectors (26 cases).
+
 ## 0.8.0 — 2026-10-31
 
 Tag `crates/agent-action-capsule-v0.8.0`.
