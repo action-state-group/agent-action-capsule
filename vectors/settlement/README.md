@@ -1,12 +1,18 @@
-# Settlement records conformance vectors (draft-mih-agent-settlement-records-00)
+# Settlement records conformance vectors (draft-mih-agent-settlement-records-01)
 
 Conformance vectors for the two-party settlement records defined in
-`spec/draft-mih-agent-settlement-records-00.md`: leg records sealed by two
+`spec/draft-mih-agent-settlement-records-01.md`: leg records sealed by two
 independent sealers, the typed payment reference join, wrapped objects carried
 by digest, exact amounts, the delivered-content digest, and the states a
 verifier derives from the legs present.
 
-**Derived from the -00 text, not from any implementation.** Every expected
+The set follows -01. Every case reads the same under -00 except
+`neg-wrapped-object-resigned-identity-r` and
+`neg-wrapped-object-resigned-mixed-order-r`, which test the re-signing rule
+-01 states (§8 rule 3); -00 does not say how the signature is verified. Keys
+and example values are still derived from the -00 name, so they did not change.
+
+**Derived from the -01 text, not from any implementation.** Every expected
 result is written by hand in the generator from the section it cites. The
 generator builds the leg records, computes each Capsule ID (SHA-256 over
 RFC 8785), signs each leg with a Producer Envelope from a fixed Ed25519 seed,
@@ -24,7 +30,7 @@ independent reading of the draft.
 | File | What it pins |
 |---|---|
 | `cases.json` | The cases. Each has the leg records (`capsule`, `capsule_id`, `envelope_hex`, `envelope_kid`), the wrapped objects' octets (`wrapped_objects`), the verifier's key policy (`key_policy`), and `expect`. Also carries the five fixed keys (seed and public key) and the envelope profile. |
-| `registry.json` | The closed sets and registries of -00: legs, sealer roles, statuses, delivery directions, payment and delivery states, failure codes, the payment reference types with their qualifiers and whether a receive fee may apply, the wrapped object types with their issuer role, the members each leg carries, and the ISO 20022 status map. |
+| `registry.json` | The closed sets and registries of -01 (unchanged from -00): legs, sealer roles, statuses, delivery directions, payment and delivery states, failure codes, the payment reference types with their qualifiers and whether a receive fee may apply, the wrapped object types with their issuer role, the members each leg carries, and the ISO 20022 status map. |
 | `manifest.json` | SHA-256 and case count of every generated file. |
 | `SHA256SUMS` | SHA-256 of every file in this directory except itself. |
 

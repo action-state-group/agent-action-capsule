@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The draft-mih-agent-settlement-records-00 vectors are reproducible and agree with the draft.
+"""The draft-mih-agent-settlement-records-01 vectors are reproducible and agree with the draft.
 
 The generator writes the expectations by hand. This test re-runs it and requires
 byte-identical output, recomputes every Capsule ID and checks every leg against the
 base profile's Class 1 verifier, authenticates every Producer Envelope, and then
 derives the failures and the settlement states with an independent reading of the
-draft (sections 3 to 9, and -01 section 8 rule 3 for the re-signing test) and
-compares them with the stated expectations.
+draft (sections 3 to 9) and compares them with the stated expectations.
 """
 from __future__ import annotations
 
@@ -30,7 +29,7 @@ from agent_action_capsule.verify import verify
 ROOT = Path(__file__).resolve().parents[2]
 VECTORS = ROOT / "vectors" / "settlement"
 GENERATOR = ROOT / "python" / "scripts" / "generate_settlement_vectors.py"
-DRAFT_TXT = ROOT / "spec" / "draft-mih-agent-settlement-records-00.txt"
+DRAFT_TXT = ROOT / "spec" / "draft-mih-agent-settlement-records-01.txt"
 HAND_WRITTEN = ("README.md",)
 
 

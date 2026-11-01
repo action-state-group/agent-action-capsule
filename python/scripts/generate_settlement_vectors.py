@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the draft-mih-agent-settlement-records-00 conformance vectors.
+"""Generate the draft-mih-agent-settlement-records-01 conformance vectors.
 
 Every expected result below is written by hand from the text of
-``spec/draft-mih-agent-settlement-records-00.md`` and cites the section it
+``spec/draft-mih-agent-settlement-records-01.md`` and cites the section it
 comes from. Nothing here imports or runs an implementation of these records: the
 script builds leg records (format-4 Agent Action Capsules with a
 ``settlement`` member), computes each Capsule ID as SHA-256 over RFC 8785,
@@ -39,6 +39,11 @@ from ed25519_forgeries import identity_r, mixed_order_r
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "settlement"
+# The draft the set conforms to. -01 changes the re-signing test (section 8,
+# rule 3); every other case reads the same under -00.
+SPEC = "draft-mih-agent-settlement-records-01"
+# Fixed at -00: the seeds and example values derive from it, so they do not
+# move when the set follows a new revision.
 DRAFT = "draft-mih-agent-settlement-records-00"
 AAC_SPEC_VERSION = "draft-mih-scitt-agent-action-capsule-05"
 CAPSULE_ID_MEDIA_TYPE = "application/agent-action-capsule-id"
@@ -858,9 +863,9 @@ def _dump(value: Any) -> bytes:
 def build() -> dict[str, bytes]:
     case_list = cases()
     files: dict[str, bytes] = {
-        "registry.json": _dump({"draft": DRAFT, "provenance": "spec-derived", **registry()}),
+        "registry.json": _dump({"draft": SPEC, "provenance": "spec-derived", **registry()}),
         "cases.json": _dump({
-            "draft": DRAFT,
+            "draft": SPEC,
             "provenance": "spec-derived",
             "description": "Settlement leg sets: the records, the wrapped objects they cite, the key policy, "
                            "and the expected failures and derived states.",
@@ -873,7 +878,7 @@ def build() -> dict[str, bytes]:
         }),
     }
     files["manifest.json"] = _dump({
-        "draft": DRAFT,
+        "draft": SPEC,
         "provenance": "spec-derived",
         "generator": "python/scripts/generate_settlement_vectors.py",
         "files": [{"path": name, "sha256": sha256_hex(data), "count": json.loads(data).get("count")}
