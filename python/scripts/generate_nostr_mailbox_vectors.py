@@ -309,9 +309,11 @@ def build_cases() -> list[dict]:
     # A second reply to request event 1, as a responder that read the request event twice might send.
     e1b = ip.envelope(r1, ip.ART, ip.ANCHOR1, ip.ARTIFACT, ip.MATERIAL1, "2026-10-12T00:00:15Z", C)
     a1b = reply_event(q1, e1b, C, "2026-10-12T00:00:15Z")
-    # Three genuine envelopes for request 1, each re-published by a key the request did not address.
+    # Three genuine envelopes for request 1, each re-published by a key the request did not address;
+    # around them a redelivery, the mailbox key's own reply, and the third under the first one's id.
     flood = [reply_event(q1, ip.envelope(r1, ip.ART, ip.ANCHOR1, ip.ARTIFACT, ip.MATERIAL1, t, C), C, t, signer="other")
-             for t in ("2026-10-12T00:00:12Z", "2026-10-12T00:00:15Z", "2026-10-12T00:00:18Z")]
+             for t in ("2026-10-12T00:00:13Z", "2026-10-12T00:00:16Z", "2026-10-12T00:00:18Z")]
+    flood_events = [flood[0], flood[1], flood[0], a1, flood[2], dict(flood[2], id=flood[0]["id"])]
     absent = ["§4.2", "§5.3", "§6"]
     # §4.1: request event 1 as a relay altered it on the way to the responder. The first keeps its id
     # over request 2's octets; the second also recomputes the id, which the carriage key never signed.
@@ -362,12 +364,16 @@ def build_cases() -> list[dict]:
              [reply_event(q1, e1, C, "2026-10-12T00:00:12Z", signer="other")], ["reply_by_content:author"],
              [ok_reply]),
         case("mailbox-reply-by-content-limit",
-             "Three reply events naming request event 1, each signed by a key the request did not address "
-             "and each carrying a distinct genuine envelope for request 1, with a limit of two replies by "
-             "content. The first two are replies by content; the third is beyond the limit and is not "
-             "verified: not a reply. caller_invariance PASS over the two.",
-             ["§4.2 check 7", "§4.2 reply by content", "§4.2 limit", "§6"], r1, C, q1, flood,
-             ["reply_by_content:author", "reply_by_content:author", "not_a_reply:limit"], [ok_reply, ok_reply],
+             "A limit of two replies by content, and three reply events naming request event 1, each signed "
+             "by a key the request did not address and each carrying a distinct genuine envelope for request "
+             "1. The first two are replies by content. The first, delivered again, is one event and uses no "
+             "more of the limit. The mailbox key's own reply after the limit is used is still a reply. The "
+             "third is beyond the limit and is not verified: not a reply, also when it claims the first "
+             "one's id, since events are counted by their recomputed hash. caller_invariance PASS over the "
+             "three replies.",
+             ["§4.2 check 7", "§4.2 reply by content", "§4.2 limit", "§6"], r1, C, q1, flood_events,
+             ["reply_by_content:author", "reply_by_content:author", "duplicate", "reply", "not_a_reply:limit",
+              "not_a_reply:limit"], [ok_reply, ok_reply, ok_reply],
              set_props={"caller_invariance": "PASS"}, limit=2),
         case("mailbox-other-key-replays-old-envelope",
              "A reply event naming request event 2, signed by a key the request did not address, carrying "

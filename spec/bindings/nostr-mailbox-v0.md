@@ -207,8 +207,10 @@ not a response received and failed.
 events naming the request event, and each one that passes checks 1 to 4 and fails one of checks 5
 to 7 costs the requester a verification of its content. A requester SHOULD set a limit on how many
 such events it verifies by content for one request. An event beyond that limit is not verified: it
-is not a reply, and is named `limit`. Events attributed to the mailbox are never counted, and an
-event delivered again is not counted again.
+is not a reply, and is named `limit`. Events attributed to the mailbox are never counted. An event
+is counted by the NIP-01 hash the requester recomputes, never by its claimed `id`, so an event
+delivered again is counted once, and events that share a claimed `id` but differ are counted
+apart.
 
 **The reply position.** For IP §11.4.1 rule 6, this carriage's reply position holds exactly the
 events that pass checks 1 to 4 and then either pass checks 5 to 7 or are a reply by content within
@@ -413,7 +415,7 @@ the NIP-19 `nprofile` example.
 | `mailbox-envelope-untrusted-key` | the mailbox key carries an envelope by a key the trust policy does not accept: `responder_trust` `FAIL`, row 2 | §3, §6 |
 | `mailbox-envelope-replayed` | the mailbox key answers request 2 with request 1's genuine envelope: `request_binding` `FAIL`, row 2 | §6 |
 | `mailbox-relayed-by-other-key` | another key carries the responder's genuine envelope for this request: a reply by content | §4.2 |
-| `mailbox-reply-by-content-limit` | three events by other keys, each carrying the responder's genuine envelope for this request, with a limit of two: the first two are replies by content, and the third is not a reply (`limit`) | §4.2, §6 |
+| `mailbox-reply-by-content-limit` | with a limit of two, three events by another key, each carrying a genuine envelope for this request: the first two are replies by content, one redelivered is a duplicate, a mailbox-key reply after the limit is used is still a reply, and the third is not a reply (`limit`), also when it claims the first one's `id` | §4.2, §6 |
 | `mailbox-other-key-replays-old-envelope` | another key carries the responder's envelope for another request: not a reply; absence | §4.2, §6 |
 | `mailbox-event-bad-signature` | the reply event's signature does not verify, and its content is the responder's envelope for this request: a reply by content | §4.2 |
 | `mailbox-event-tampered` | the reply event's content changed after signing, to an envelope under an untrusted key: not a reply; absence | §4.2 |
