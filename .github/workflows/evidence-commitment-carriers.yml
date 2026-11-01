@@ -1,0 +1,64 @@
+name: Evidence commitment carrier vectors (experimental)
+
+# The experimental evidence commitment carriers (spec/bindings/evidence-commitment-carriers-v0.md) keep their
+# own drift check: a regeneration must reproduce the committed vectors, and the vectors must verify
+# offline. No relay, directory or host is contacted.
+on:
+  push:
+    paths:
+      - "python/scripts/generate_evidence_commitment_carriers_vectors.py"
+      - "python/scripts/generate_interop_profile_v0_vectors.py"
+      - "python/scripts/generate_nostr_mailbox_vectors.py"
+      - "python/tests/test_nostr_mailbox_vectors.py"
+      - "python/tests/test_evidence_commitment_carriers_vectors.py"
+      - "python/agent_action_capsule/interop_profile/**"
+      - "python/agent_action_capsule/canonical.py"
+      - "spec/bindings/evidence-commitment-carriers-v0.md"
+      - "vectors/adapters/nostr-mailbox/**"
+      - "spec/interop-profile-v0.md"
+      - "vectors/adapters/evidence-commitment-carriers/**"
+      - ".github/workflows/evidence-commitment-carriers.yml"
+  pull_request:
+    paths:
+      - "python/scripts/generate_evidence_commitment_carriers_vectors.py"
+      - "python/scripts/generate_interop_profile_v0_vectors.py"
+      - "python/scripts/generate_nostr_mailbox_vectors.py"
+      - "python/tests/test_nostr_mailbox_vectors.py"
+      - "python/tests/test_evidence_commitment_carriers_vectors.py"
+      - "python/agent_action_capsule/interop_profile/**"
+      - "python/agent_action_capsule/canonical.py"
+      - "spec/bindings/evidence-commitment-carriers-v0.md"
+      - "vectors/adapters/nostr-mailbox/**"
+      - "spec/interop-profile-v0.md"
+      - "vectors/adapters/evidence-commitment-carriers/**"
+      - ".github/workflows/evidence-commitment-carriers.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with: { python-version: "3.12" }
+      - name: install
+        run: pip install -e "python[dev]"
+      - name: regenerate
+        run: python python/scripts/generate_evidence_commitment_carriers_vectors.py
+      - name: require an unchanged corpus
+        run: |
+          status=$(git status --porcelain -- vectors/adapters/evidence-commitment-carriers)
+          if [ -n "$status" ]; then
+            echo "$status"
+            git diff --stat -- vectors/adapters/evidence-commitment-carriers
+            echo "::error::generate_evidence_commitment_carriers_vectors.py does not reproduce the committed vectors"
+            exit 1
+          fi
+      - name: checksums
+        working-directory: vectors/adapters/evidence-commitment-carriers
+        run: sha256sum --check SHA256SUMS
+      - name: verify offline
+        working-directory: python
+        run: pytest -q tests/test_evidence_commitment_carriers_vectors.py
