@@ -194,6 +194,7 @@ func TestDigestVectors(t *testing.T) {
 		RequestJSON          string `json:"request_json"`
 		RequestCBORHex       string `json:"request_cbor_hex"`
 		RefusalRequestDigest string `json:"refusal_request_digest"`
+		Deterministic        *bool  `json:"deterministic_encoding"`
 		Expect               struct {
 			RequestDigest     string `json:"request_digest"`
 			IdentifiesRequest *bool  `json:"identifies_request"`
@@ -207,7 +208,12 @@ func TestDigestVectors(t *testing.T) {
 				require.NoError(t, err)
 				m = er.Message{Octets: octets, MediaType: er.MediaTypeCBOR}
 			}
-			assert.Empty(t, er.ParseRequest(m).Reason, "every digest case is a well-formed request")
+			if c.Encoding == "cbor" && c.Deterministic != nil && !*c.Deterministic {
+				// Refused, but the refusal still names the octets as received.
+				assert.Equal(t, er.ReasonRequestMalformed, er.ParseRequest(m).Reason, "a CBOR request is read only in deterministic encoding")
+			} else {
+				assert.Empty(t, er.ParseRequest(m).Reason, "every other digest case is a well-formed request")
+			}
 			if c.Expect.IdentifiesRequest != nil {
 				assert.Equal(t, *c.Expect.IdentifiesRequest, c.RefusalRequestDigest == er.Digest(m.Octets))
 				return

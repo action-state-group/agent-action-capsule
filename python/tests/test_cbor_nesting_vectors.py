@@ -38,10 +38,14 @@ def test_generic_decoder(case: dict) -> None:
             _cbor.decode(data)
 
 
-@pytest.mark.parametrize("case", [c for c in CASES if not c["tag"]], ids=lambda c: c["id"])
+@pytest.mark.parametrize("case", CASES, ids=lambda c: c["id"])
 def test_request_reader(case: dict) -> None:
     data = bytes.fromhex(case["cbor_hex"])
-    if case["accept"]:
+    if case["tag"]:
+        # A request holds no tag at any depth (vectors/cbor-request-model/).
+        with pytest.raises(er.RequestError):
+            er.parse_request(data, binding="cbor")
+    elif case["accept"]:
         assert er.parse_request(data, binding="cbor").nonce == "n-1"
     else:
         with pytest.raises(er.RequestError, match="not well-formed CBOR"):

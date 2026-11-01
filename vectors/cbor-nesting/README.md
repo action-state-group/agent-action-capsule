@@ -27,8 +27,9 @@ minimal valid Evidence Request whose open-world member `x` holds a chain of
 containers, with its `depth` (the whole item) and whether it is read
 (`accept`). Past-limit cases wrap the at-limit case by one level; the last case
 nests 10,000 arrays and must be refused without exhausting the stack. `tag`
-marks the cases built of tags: only the generic decoders are held to them,
-because request readers differ on a tag in a member they ignore.
+marks the cases built of tags: a generic decoder reads the one at the limit,
+and every request reader refuses both, because a request holds no tag at any
+depth (`vectors/cbor-request-model/`, #529).
 `python/scripts/generate_cbor_nesting_vectors.py` regenerates `cases.json` and
 `SHA256SUMS`; this file is hand-written.
 
@@ -40,7 +41,7 @@ because request readers differ on a tag in a member they ignore.
 | `neg-map-past-limit` | 129 | no |
 | `pos-mixed-at-limit` | 128 | yes |
 | `neg-mixed-past-limit` | 129 | no |
-| `pos-tag-at-limit` | 128 | yes (generic decoders) |
+| `pos-tag-at-limit` | 128 | by generic decoders only |
 | `neg-tag-past-limit` | 129 | no |
 | `neg-arrays-far-past-limit` | 10,001 | no |
 

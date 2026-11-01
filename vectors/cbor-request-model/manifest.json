@@ -1,0 +1,12 @@
+{
+  "spec": "spec/interop-profile-v1.md",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_cbor_request_model_vectors.py",
+  "files": [
+    {
+      "path": "cases.json",
+      "sha256": "6228a2aa7bcbeb7105c740d6d77730ea40d0843d7482258853a517a40254ff2b",
+      "count": 18
+    }
+  ]
+}

@@ -49,16 +49,16 @@ func TestCBORNestingVectors(t *testing.T) {
 				assert.ErrorIs(t, interopErr, errCBOR)
 			}
 
+			check := ParseRequest(Message{Octets: octets, MediaType: MediaTypeCBOR})
 			if c.Tag {
-				// Readers of a request differ on a tag in a member they ignore
-				// (a follow-up); past the limit every reader refuses it.
+				// A request holds no tag at any depth (vectors/cbor-request-model/).
+				assert.Equal(t, ReasonRequestMalformed, check.Reason)
 				if !c.Accept {
 					_, err := DecodeCBOR(octets)
 					assert.ErrorIs(t, err, errNotWellFormed)
 				}
 				return
 			}
-			check := ParseRequest(Message{Octets: octets, MediaType: MediaTypeCBOR})
 			if c.Accept {
 				assert.Empty(t, check.Reason, check.Why)
 				assert.Equal(t, "n-1", check.Request.Nonce)

@@ -99,6 +99,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/evidence-layer/padding/` | `draft-mih-agent-evidence-layer-00` (What a Checkpoint Reveals) | record, verify | 17 |
 | `vectors/registry-conformance/` | `spec/REGISTRY.md` | verify | 26 |
 | `vectors/cbor-nesting/` | `spec/interop-profile-v1.md` §5.2 (CBOR nesting limit) | record, verify | 9 |
+| `vectors/cbor-request-model/` | `spec/interop-profile-v1.md` §5.2 (CBOR request data model) | record, verify | 18 |
 | `vectors/json-nesting/` | `draft-mih-scitt-agent-action-capsule-06` (Conventions, JSON nesting limit); `spec/interop-profile-v1.md` §5.2 | record, verify | 9 |
 
 Counts that are not a set's own case list: `vectors/cross-language/` is the 54

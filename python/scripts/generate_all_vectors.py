@@ -105,6 +105,7 @@ GENERATORS = (
     "generate_negative_zero_vectors.py",
     "generate_json_nesting_vectors.py",
     "generate_cbor_nesting_vectors.py",
+    "generate_cbor_request_model_vectors.py",
 )
 
 

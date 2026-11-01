@@ -123,18 +123,19 @@ func TestEncodeRequest(t *testing.T) {
 	assert.ErrorIs(t, err, er.ErrInvalid, "a media type is compared exactly")
 }
 
-// A request in deterministic CBOR is digested as received: a
-// non-deterministic encoding of the same map is the same request with a
-// different digest, never re-canonicalized. Octets that are not one
-// well-formed map are request_malformed.
+// A request in CBOR is digested as received and read only in deterministic
+// encoding: a non-deterministic encoding of the same map has a different
+// digest, is never re-canonicalized, and is request_malformed, as are octets
+// that are not one well-formed map.
 func TestCBORRequestDigestedAsReceived(t *testing.T) {
 	req := er.Request{Subject: er.Subject{Kind: er.SubjectRecord, Digest: digestOf("r")}, Coverage: er.Coverage{ExpectedPin: digestOf("a")}, Nonce: "n", Profile: er.ProfileID}
 	deterministic := encodeRequest(t, req, er.MediaTypeCBOR)
 	// The same map with a non-minimal length head for its first key.
 	loose := append([]byte{deterministic.Octets[0], 0x78, deterministic.Octets[1] - 0x60}, deterministic.Octets[2:]...)
-	got := er.ParseRequest(er.Message{Octets: loose, MediaType: er.MediaTypeCBOR})
+	got := er.ParseRequest(er.Message{Octets: deterministic.Octets, MediaType: er.MediaTypeCBOR})
 	require.Empty(t, got.Reason, got.Why)
 	assert.Equal(t, req, got.Request)
+	assert.Equal(t, er.ReasonRequestMalformed, er.ParseRequest(er.Message{Octets: loose, MediaType: er.MediaTypeCBOR}).Reason)
 	assert.NotEqual(t, er.Digest(deterministic.Octets), er.Digest(loose))
 
 	for name, octets := range map[string][]byte{
