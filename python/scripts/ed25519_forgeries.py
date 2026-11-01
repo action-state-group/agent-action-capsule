@@ -19,9 +19,10 @@ from __future__ import annotations
 
 import hashlib
 
-from agent_action_capsule._ed25519_cofactored import BASE, add, decode, encode, mul
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
+
+from agent_action_capsule._ed25519_cofactored import BASE, add, decode, encode, mul
 
 _L = (1 << 252) + 27742317777372353535851937790883648493
 

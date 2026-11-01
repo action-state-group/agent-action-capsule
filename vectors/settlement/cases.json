@@ -1,5 +1,5 @@
 {
-  "draft": "draft-mih-agent-settlement-records-00",
+  "draft": "draft-mih-agent-settlement-records-01",
   "provenance": "spec-derived",
   "description": "Settlement leg sets: the records, the wrapped objects they cite, the key policy, and the expected failures and derived states.",
   "envelope_profile": "AAC Producer Envelope: tagged COSE_Sign1, protected {1: -8, 3: 'application/agent-action-capsule-id', 4: raw Ed25519 public key}, empty unprotected map, attached payload = raw 32-byte capsule_id.",
