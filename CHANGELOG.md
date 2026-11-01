@@ -16,6 +16,15 @@ Not in any tag yet: nothing after `go/v0.19.0`, `python/v0.15.0` and `ts/v0.13.0
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Spec, experimental: `spec/bindings/nostr-mailbox-v0.md`, a carriage of the `evidence-interop/0`
+  exchange through a Nostr relay for a responder with no inbound reachability, with its adapter
+  declaration `spec/adapters/nostr-mailbox-v0.md`, vectors in `vectors/adapters/nostr-mailbox/` and
+  the drift workflow `nostr-mailbox.yml`. Not part of the profile; it defines no binding token.
+  A reply that arrives after the requester has recorded an absence never rewrites that record: it
+  is kept beside it as its own later fact, citing the request by the digest it signs (§5.3, vector
+  `mailbox-late-reply-after-absence`). Event kinds 4700/4701 stay placeholders until a second,
+  independent implementation exists.
+
 ## go 0.19.0 — 2026-10-31
 
 Tag `go/v0.19.0`.
@@ -1195,15 +1204,6 @@ Tag `python/v0.13.0`.
   and that a requester MAY read a History or a history card as input to its own admission policy,
   which admits or refuses each candidate and never ranks them. The definition frame is unchanged, so
   no definition digest changes. (#451, #459)
-
-- Spec, experimental: `spec/bindings/nostr-mailbox-v0.md`, a carriage of the `evidence-interop/0`
-  exchange through a Nostr relay for a responder with no inbound reachability, with its adapter
-  declaration `spec/adapters/nostr-mailbox-v0.md`, vectors in `vectors/adapters/nostr-mailbox/` and
-  the drift workflow `nostr-mailbox.yml`. Not part of the profile; it defines no binding token.
-  A reply that arrives after the requester has recorded an absence never rewrites that record: it
-  is kept beside it as its own later fact, citing the request by the digest it signs (§5.3, vector
-  `mailbox-late-reply-after-absence`). Event kinds 4700/4701 stay placeholders until a second,
-  independent implementation exists.
 
 - Spec: `spec/interop-profile-v0.md` §11.1.5 rule 2 (`acceptance_ordering` `FAIL`) now applies only
   when the accepted record's `issued_at` is later than a time held for the action. An `issued_at`
