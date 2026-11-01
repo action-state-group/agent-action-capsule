@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Breaking for consumers of the `cll` feature (`cll_material`): `checkpointed-local-log` moves from 0.3.1 to 0.4.0, so the CLL types they take (`cll::mmr::Hash` and the rest) are 0.4.0's, and a graph that mixes CLL 0.3.1 and 0.4.0 no longer type-checks. CLL 0.4.0 also refuses Ed25519 signatures by small-order keys, which 0.3.1 accepted (checkpointed-local-log#108); a checkpoint forged that way no longer verifies here. No wire or normative change (evidencebook#254 §7.4, AAC#536).
+- `checkpointed-local-log` moves from 0.3.1 to 0.4.0 (feature `cll`), so a graph that also uses CLL 0.4.0 carries one copy. No API or behavior change: `cll_material` uses only CLL's MMR hashing (`cll::mmr::Hash` is a plain `[u8; 32]` alias) and already checks checkpoint signatures with `verify_strict`, which refuses small-order keys (evidencebook#254 §7.4, AAC#536).
 
 ## 0.4.0 — 2026-10-31
 

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Breaking for consumers of the `bundle` and `strict` features: `checkpointed-local-log` moves from 0.3.1 to 0.4.0, so the CLL types they take (`cll::mmr::Hash` and the rest) are 0.4.0's, and a graph that mixes CLL 0.3.1 and 0.4.0 no longer type-checks. CLL 0.4.0 also refuses Ed25519 signatures by small-order keys, which 0.3.1 accepted (checkpointed-local-log#108); a checkpoint forged that way no longer verifies here. No wire or normative change (evidencebook#254 §7.4, AAC#536).
+- Breaking for consumers of the `bundle` and `strict` features: `checkpointed-local-log` moves from 0.3.1 to 0.4.0, so the CLL types in the public API are 0.4.0's (the `cll::log::EntrySource` and `CheckpointStateStore` backend that `bundle::producer::proof_source_from_cll` takes, and `cll::checkpoint::DecodedCheckpointCose`), and a CLL 0.3.1 backend no longer compiles against it. CLL 0.4.0 also refuses Ed25519 signatures by small-order keys, which 0.3.1 accepted (checkpointed-local-log#108); `verify_bundle`, the strict path and the producer verify checkpoints through it, so a checkpoint forged that way no longer verifies. No wire or normative change (evidencebook#254 §7.4, AAC#536).
 
 ## 0.7.0 — 2026-10-31
 
