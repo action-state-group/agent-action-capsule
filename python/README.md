@@ -163,7 +163,7 @@ Capsules that belong to no log. `build_evidence_bundle` needs the `bundle` and
 
 `agent_action_capsule.settlement.verify_settlements(capsules, key_policy=...,
 wrapped_objects=...)` derives the payment and delivery states of
-`draft-mih-agent-settlement-records-00` from both parties' leg records. It
+`draft-mih-agent-settlement-records-01` from both parties' leg records. It
 passes every case in [`vectors/settlement/`](../vectors/settlement/). It needs
 the `envelope` extra.
 

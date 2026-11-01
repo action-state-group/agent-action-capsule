@@ -2,7 +2,7 @@
 """Derive settlement states from two parties' leg records (verification only).
 
 Verifier for "Two-Party Settlement Records for Agent Payments",
-draft-mih-agent-settlement-records-00 (``spec/draft-mih-agent-settlement-records-00.md``).
+draft-mih-agent-settlement-records-01 (``spec/draft-mih-agent-settlement-records-01.md``).
 The payer and the payee are two independent sealers; each seals only what its
 own system observed, as a Capsule with a top-level ``settlement`` member::
 
@@ -55,7 +55,7 @@ __all__ = [
 ]
 
 SETTLEMENT_MEMBER = "settlement"
-#: The settlement member's ``version`` for draft-mih-agent-settlement-records-00.
+#: The settlement member's ``version`` for draft-mih-agent-settlement-records-00 and -01.
 SETTLEMENT_VERSION = "0"
 
 LEGS = ("terms", "payer_observed", "payee_observed", "delivered")
