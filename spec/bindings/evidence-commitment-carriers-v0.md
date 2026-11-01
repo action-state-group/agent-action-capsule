@@ -226,8 +226,8 @@ that fails names the result.
   mailbox key, the Nostr event author and an A2A card's JWS signer are never compared with
   `key_id`: they are routes or carriage, not the responder's identity [NMB §3; ER §3.6].
 - **V6, hand-off.** Once V5 has bound the current commitment to the responder, each of its stapled
-  cards goes to the asker's admission pack as history; a commitment not bound hands on nothing: its `bytes`, `stream` and `checkpoint_key`, with the commitment's
-  `key_id`. Whatever a card is judged by (its witness receipts and the keys the asker accepts for
+  cards goes to the asker's admission pack as history: its `bytes`, `stream` and `checkpoint_key`,
+  with the commitment's `key_id`. A commitment not bound hands on nothing. Whatever a card is judged by (its witness receipts and the keys the asker accepts for
   them, its age, the asker's first-use pins, dropped or new streams, and consistency to a
   checkpoint the asker holds) is that pack's terms, not this document's (§7).
 - **V7, no trust from discovery.** Passing V0 to V5 means the commitment is the responder's own
