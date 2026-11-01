@@ -225,8 +225,8 @@ that fails names the result.
   `key_id`. A commitment under another key does not describe that responder (`key_mismatch`). The
   mailbox key, the Nostr event author and an A2A card's JWS signer are never compared with
   `key_id`: they are routes or carriage, not the responder's identity [NMB §3; ER §3.6].
-- **V6, hand-off.** Each stapled card of a current commitment that passed V5 goes to the asker's
-  admission pack as history: its `bytes`, `stream` and `checkpoint_key`, with the commitment's
+- **V6, hand-off.** Once V5 has bound the current commitment to the responder, each of its stapled
+  cards goes to the asker's admission pack as history; a commitment not bound hands on nothing: its `bytes`, `stream` and `checkpoint_key`, with the commitment's
   `key_id`. Whatever a card is judged by (its witness receipts and the keys the asker accepts for
   them, its age, the asker's first-use pins, dropped or new streams, and consistency to a
   checkpoint the asker holds) is that pack's terms, not this document's (§7).
@@ -287,7 +287,7 @@ offline with its own code: Ed25519 for commitments, NIP-01 `id` and
 BIP-340 for events (NMB's checks), and bech32 for `naddr`. Answers for V5 are envelopes of the IP
 corpus, verified by IP's reference verifier. Each case carries the carrier entries, the octets each
 URI serves, the verifier's time and, where it applies, the answer, with the expected result of
-every step.
+every step and, once V5 binds the commitment, the cards V6 hands on.
 
 | Case | What it shows | Sections |
 |---|---|---|

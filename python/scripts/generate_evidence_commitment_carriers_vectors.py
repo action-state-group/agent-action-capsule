@@ -261,9 +261,9 @@ def refused(data: bytes, reason: str) -> dict:
 
 
 def handed(c: dict) -> list[dict]:
-    """V6: the cards handed to the admission pack, each with its stream, log key and digest."""
-    return [{"stream": s["stream"], "checkpoint_key": s.get("checkpoint_key"), "sha256": s["sha256"]}
-            for s in c["history_cards"]]
+    """V6: the cards a commitment bound by V5 hands to the admission pack, with its key_id."""
+    return [{"key_id": c["key_id"], "stream": s["stream"], "checkpoint_key": s.get("checkpoint_key"),
+             "sha256": s["sha256"]} for s in c["history_cards"]]
 
 
 def build_cases() -> list[dict]:
@@ -296,8 +296,7 @@ def build_cases() -> list[dict]:
          "a directory entry whose uri is the announce event's naddr: resolved to the event, same octets",
          ["§5.1", "§5.3"],
          [directory(naddr, sha_tag(CUR))],
-         {"carriers": [carrier_result("directory", CUR)], "commitments": [verified(CUR, "current")],
-          "cards": cards_cur},
+         {"carriers": [carrier_result("directory", CUR)], "commitments": [verified(CUR, "current")]},
          relay_events=[ev_cur])
 
     r_uri = f"{HOST}/commitment-over-cap.json"
@@ -306,7 +305,7 @@ def build_cases() -> list[dict]:
          ["§5.3"],
          [{"carrier": "nostr", "event": nostr_event("mailbox", CUR, SENT, inline=False, r=r_uri)}],
          {"carriers": [carrier_result("nostr", CUR, attribution="announced")],
-          "commitments": [verified(CUR, "current")], "cards": cards_cur},
+          "commitments": [verified(CUR, "current")]},
          uris=served(**{r_uri: CUR}))
 
     case("nostr-relayed-by-other-key",
@@ -314,7 +313,7 @@ def build_cases() -> list[dict]:
          ["§5.3"],
          [{"carrier": "nostr", "event": nostr_event("other", CUR, SENT)}],
          {"carriers": [carrier_result("nostr", CUR, attribution="relayed")],
-          "commitments": [verified(CUR, "current")], "cards": cards_cur})
+          "commitments": [verified(CUR, "current")]})
 
     # A member changed after signing: the event's own x and signature are made to match the forgery.
     forged = copy.deepcopy(C_CURRENT)
@@ -341,7 +340,7 @@ def build_cases() -> list[dict]:
          ["§4", "§6 V1"],
          [directory(URI_CUR, sha_tag(OLD))],
          {"carriers": [carrier_result("directory", CUR, digest_mismatch=True)],
-          "commitments": [verified(CUR, "current")], "cards": cards_cur},
+          "commitments": [verified(CUR, "current")]},
          uris=served(**{URI_CUR: CUR}))
 
     bad_staple = octets_of(commitment(T2, [("book-a", LATER)], bad_staple=True))
@@ -359,7 +358,7 @@ def build_cases() -> list[dict]:
          ["§6 V5"],
          [directory(URI_CUR, sha_tag(other_key))],
          {"carriers": [carrier_result("directory", other_key)], "commitments": [verified(other_key, "current")],
-          "key_binding": "key_mismatch", "cards": handed(json.loads(other_key))},
+          "key_binding": "key_mismatch"},
          uris=served(**{URI_CUR: other_key}), answer_=answer())
 
     case("older-beside-newer",
@@ -367,7 +366,7 @@ def build_cases() -> list[dict]:
          ["§6 V4"],
          [directory(URI_OLD, sha_tag(OLD)), {"carrier": "nostr", "event": ev_cur}],
          {"carriers": [carrier_result("directory", OLD), carrier_result("nostr", CUR, attribution="announced")],
-          "commitments": [verified(OLD, "superseded"), verified(CUR, "current")], "cards": cards_cur},
+          "commitments": [verified(OLD, "superseded"), verified(CUR, "current")]},
          uris=served(**{URI_OLD: OLD}))
 
     twin = octets_of(commitment(T2, [("book-a", LATER)], nostr=False))
@@ -385,7 +384,7 @@ def build_cases() -> list[dict]:
          ["§6 V4"],
          [directory(URI_CUR, sha_tag(future)), {"carrier": "nostr", "event": ev_cur}],
          {"carriers": [carrier_result("directory", future), carrier_result("nostr", CUR, attribution="announced")],
-          "commitments": [verified(future, "future_dated"), verified(CUR, "current")], "cards": cards_cur},
+          "commitments": [verified(future, "future_dated"), verified(CUR, "current")]},
          uris=served(**{URI_CUR: future}))
 
     case("a2a-commitment-in-discovery-object",
