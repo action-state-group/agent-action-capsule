@@ -45,5 +45,6 @@
   "vectors/profiles/": {"python": ["test_profile_vectors.py"], "ts": ["profile-vectors.test.ts"], "go": ["./canonical"]},
   "vectors/viewer-core-text/": {"ts": ["verification-states.test.ts"]},
   "vectors/adapters/x402/": {"python": ["test_adapter_x402_vectors.py"]},
-  "vectors/adapters/ucp/": {"python": ["test_ucp_adapter_vectors.py"]}
+  "vectors/adapters/ucp/": {"python": ["test_ucp_adapter_vectors.py"]},
+  "vectors/adapters/nostr-mailbox/": {"python": ["test_nostr_mailbox_vectors.py"]}
 }
