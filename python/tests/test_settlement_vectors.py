@@ -5,7 +5,8 @@ The generator writes the expectations by hand. This test re-runs it and requires
 byte-identical output, recomputes every Capsule ID and checks every leg against the
 base profile's Class 1 verifier, authenticates every Producer Envelope, and then
 derives the failures and the settlement states with an independent reading of the
-draft (sections 3 to 9) and compares them with the stated expectations.
+draft (sections 3 to 9, and -01 section 8 rule 3 for the re-signing test) and
+compares them with the stated expectations.
 """
 from __future__ import annotations
 
@@ -21,8 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from _ed25519_forgeries import cofactored
 
 from agent_action_capsule import compute_capsule_id
 from agent_action_capsule.verify import verify
@@ -251,15 +251,14 @@ def _structure_failures(s: Any) -> list[str]:  # §4.2, §3 item 4, §5.4, §6
     return sorted(set(out), key=out.index)
 
 
-def _jws_verifies(octets: bytes, public_hex: str) -> bool:
+def _jws_verifies(octets: bytes, public_hex: str) -> bool:  # -01 §8 rule 3: the cofactored equation
     parts = octets.split(b"~", 1)[0].split(b".")
     if len(parts) != 3:
         return False
     try:
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_hex)).verify(
-            _b64u_decode(parts[2].decode("ascii")), parts[0] + b"." + parts[1])
-        return True
-    except (InvalidSignature, ValueError):
+        signature = _b64u_decode(parts[2].decode("ascii"))
+        return cofactored(bytes.fromhex(public_hex), signature, parts[0] + b"." + parts[1])
+    except ValueError:
         return False
 
 

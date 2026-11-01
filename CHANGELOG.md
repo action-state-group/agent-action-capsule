@@ -24,6 +24,16 @@ has not yet.
   is kept beside it as its own later fact, citing the request by the digest it signs (§5.3, vector
   `mailbox-late-reply-after-absence`). Event kinds 4700/4701 stay placeholders until a second,
   independent implementation exists.
+- Settlement `wrapped_resigned` reads a signature under the leg key with the cofactored equation
+  (AAC#494): the key canonical and not of small order, R a canonical encoding of any point, S below
+  L, and `[8][S]B = [8]R + [8][k]A`, as `spec/draft-mih-agent-settlement-records-01.md` §8 rule 3
+  now states. Before, Go, Python, TypeScript and Rust used strict Ed25519 here (#491), so a sealer
+  that re-signed a wrapped object with its own leg key and an R of small or mixed order escaped the
+  check; only the key's holder can make such a signature. Strict Ed25519 elsewhere is unchanged.
+  New settlement vectors `neg-wrapped-object-resigned-identity-r` and
+  `neg-wrapped-object-resigned-mixed-order-r` (26 cases); existing cases are byte-identical.
+  Security Considerations adds that the absence of `wrapped_resigned` does not clear the sealer.
+  Go adds `filippo.io/edwards25519` v1.2.0.
 
 ## go 0.19.0 — 2026-10-31
 

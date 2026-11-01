@@ -28,7 +28,6 @@
 use crate::envelope;
 use crate::verify::{self, is_hex64};
 use base64::Engine as _;
-use ed25519_dalek::{Signature, VerifyingKey};
 use serde_json::{json, Map, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -757,9 +756,11 @@ fn envelope_key(capsule: &Map<String, Value>, cid: &str) -> Option<String> {
     result.ok.then(|| hex::encode(result.public_key))
 }
 
-/// Whether `octets` are a JWS in compact form whose EdDSA signature verifies,
-/// under dalek's `verify_strict`, under the raw Ed25519 key `public_hex`. An SD-JWT is the issuer-signed JWS,
-/// then `~` and any disclosures: only the part before the first `~` is signed.
+/// Whether `octets` are a JWS in compact form whose EdDSA signature counts as
+/// the raw Ed25519 key `public_hex`'s own under the -01 re-signing test
+/// (Section "Wrapping Existing Signed Objects", rule 3): [`resigned_by`]. An
+/// SD-JWT is the issuer-signed JWS, then `~` and any disclosures: only the
+/// part before the first `~` is signed.
 fn jws_verifies(octets: &[u8], public_hex: &str) -> bool {
     let issuer = octets.split(|b| *b == b'~').next().unwrap_or_default();
     let parts: Vec<&[u8]> = issuer.split(|b| *b == b'.').collect();
@@ -770,18 +771,60 @@ fn jws_verifies(octets: &[u8], public_hex: &str) -> bool {
         Some(k) => k,
         None => return false,
     };
-    let signature = match std::str::from_utf8(parts[2])
+    let signature: [u8; 64] = match std::str::from_utf8(parts[2])
         .ok()
         .filter(|s| s.is_ascii())
         .and_then(b64u_decode)
-        .and_then(|s| Signature::from_slice(&s).ok())
+        .and_then(|s| s.try_into().ok())
     {
         Some(s) => s,
         None => return false,
     };
-    let signing_input = [parts[0], b".", parts[1]].concat();
-    VerifyingKey::from_bytes(&key)
-        .is_ok_and(|k| k.verify_strict(&signing_input, &signature).is_ok())
+    resigned_by(&key, &[parts[0], b".", parts[1]].concat(), &signature)
+}
+
+/// The -01 re-signing test: A a canonical encoding (RFC 8032 section 5.1.3)
+/// of a point not of small order, R a canonical encoding of any point, S
+/// below L, and the cofactored equation `[8][S]B = [8]R + [8][k]A`. It is
+/// deliberately not strict Ed25519: the check looks for the leg key's own
+/// signature, and only that key's holder can make one with a small-order or
+/// mixed-order R, so refusing those would let a re-signer evade it.
+fn resigned_by(public: &[u8; 32], message: &[u8], signature: &[u8; 64]) -> bool {
+    use curve25519_dalek::edwards::{CompressedEdwardsY, EdwardsPoint};
+    use curve25519_dalek::scalar::Scalar;
+    use curve25519_dalek::traits::IsIdentity;
+    use sha2::Sha512;
+
+    // RFC 8032 decoding: dalek also decodes y at or above p and an x of zero
+    // with the sign bit set, so the encoding must round-trip.
+    let point = |bytes: &[u8]| {
+        CompressedEdwardsY::from_slice(bytes)
+            .ok()
+            .and_then(|c| c.decompress())
+            .filter(|p| p.compress().as_bytes() == bytes)
+    };
+    let (Some(a), Some(r)) = (point(public), point(&signature[..32])) else {
+        return false;
+    };
+    if a.is_small_order() {
+        return false;
+    }
+    let s_bytes: [u8; 32] = signature[32..].try_into().expect("64-octet signature");
+    let Some(s) = Option::<Scalar>::from(Scalar::from_canonical_bytes(s_bytes)) else {
+        return false;
+    };
+    let k = Scalar::from_bytes_mod_order_wide(
+        &Sha512::new()
+            .chain_update(&signature[..32])
+            .chain_update(public)
+            .chain_update(message)
+            .finalize()
+            .into(),
+    );
+    // [S]B - [k]A - R, times the cofactor, is the identity.
+    (EdwardsPoint::vartime_double_scalar_mul_basepoint(&k, &-a, &s) - r)
+        .mul_by_cofactor()
+        .is_identity()
 }
 
 fn wrapped_entries(s: &Map<String, Value>) -> impl Iterator<Item = &Map<String, Value>> {
@@ -1930,29 +1973,18 @@ mod tests {
         assert!(!jws_verifies(jws.as_bytes(), &other));
     }
 
-    /// `wrapped_resigned` asks whether a wrapped JWS verifies under the leg
-    /// key, strictly. The identity key's forgery (R the identity, S = 0) and
-    /// a small-order R by an honest key (the "small-order A" and "identity R"
-    /// cases of cll-ed25519-vectors.json, over this JWS), which dalek's
-    /// `verify` accepts, do not count as a signature by that key.
+    /// `wrapped_resigned` counts a wrapped JWS as the leg key's own under the
+    /// cofactored equation with any canonical R (-01 section 8 rule 3). A key
+    /// holder's identity-R and mixed-order-R signatures count, though strict
+    /// Ed25519 refuses them; the identity key's forgery, which anyone can
+    /// make, does not, nor does a non-canonical R or an S at or above L.
     #[test]
-    fn jws_signatures_verify_strictly() {
-        use ed25519_dalek::{Signer, SigningKey, Verifier as _};
-        use sha2::{Digest as _, Sha512};
-        use std::ops::{Add, Mul};
-
-        // a * (wide little-endian integer mod L), in the type of a: the
-        // scalar type is curve25519-dalek's, which this crate does not name.
-        fn times_wide<S: Copy + From<u64> + Add<Output = S> + Mul<Output = S>>(
-            a: S,
-            wide: &[u8],
-        ) -> S {
-            let mut k = S::from(0);
-            for byte in wide.iter().rev() {
-                k = k * S::from(256) + S::from(u64::from(*byte));
-            }
-            k * a
-        }
+    fn jws_signatures_count_under_the_cofactored_equation() {
+        use curve25519_dalek::constants::ED25519_BASEPOINT_POINT;
+        use curve25519_dalek::edwards::CompressedEdwardsY;
+        use curve25519_dalek::scalar::Scalar;
+        use ed25519_dalek::{Signature, Signer, SigningKey, Verifier as _, VerifyingKey};
+        use sha2::Sha512;
 
         let input = "eyJhbGciOiJFZERTQSJ9.eyJhIjoxfQ";
         let lenient = |key: &[u8; 32], signature: &[u8; 64]| {
@@ -1962,35 +1994,80 @@ mod tests {
                 .is_ok()
         };
         let jws = |signature: &[u8; 64]| format!("{input}.{}", B64URL.encode(signature));
+        let counts = |signature: &[u8; 64], key: &[u8; 32]| {
+            jws_verifies(jws(signature).as_bytes(), &hex::encode(key))
+        };
 
         let mut identity = [0u8; 32];
         identity[0] = 1;
         let mut forged = [0u8; 64];
         forged[0] = 1;
         assert!(lenient(&identity, &forged));
-        assert!(!jws_verifies(
-            jws(&forged).as_bytes(),
-            &hex::encode(identity)
-        ));
+        assert!(!counts(&forged, &identity));
 
         let key = SigningKey::from_bytes(&[9; 32]);
         let public = key.verifying_key().to_bytes();
-        let honest = key.sign(input.as_bytes()).to_bytes();
-        assert!(jws_verifies(jws(&honest).as_bytes(), &hex::encode(public)));
-        // R the identity, S = k * a mod L with k = SHA-512(R || A || M):
-        // [S]B = [k]A = R + [k]A, so the cofactorless equation holds.
-        let k = Sha512::new()
-            .chain_update(identity)
-            .chain_update(public)
-            .chain_update(input.as_bytes())
-            .finalize();
-        let mut small_r = [0u8; 64];
-        small_r[..32].copy_from_slice(&identity);
-        small_r[32..].copy_from_slice(&times_wide(key.to_scalar(), &k).to_bytes());
+        assert!(counts(&key.sign(input.as_bytes()).to_bytes(), &public));
+        let other = SigningKey::from_bytes(&[8; 32]);
+        assert!(!counts(&other.sign(input.as_bytes()).to_bytes(), &public));
+
+        // S = r + k * a mod L, k = SHA-512(R || A || M), for a chosen R.
+        let sign_with = |r_point: [u8; 32], r: Scalar| {
+            let k = Scalar::from_bytes_mod_order_wide(
+                &Sha512::new()
+                    .chain_update(r_point)
+                    .chain_update(public)
+                    .chain_update(input.as_bytes())
+                    .finalize()
+                    .into(),
+            );
+            let mut signature = [0u8; 64];
+            signature[..32].copy_from_slice(&r_point);
+            signature[32..].copy_from_slice(&(r + k * key.to_scalar()).to_bytes());
+            signature
+        };
+        // R the identity (r = 0): the cofactorless equation holds too.
+        let small_r = sign_with(identity, Scalar::ZERO);
         assert!(lenient(&public, &small_r));
-        assert!(!jws_verifies(
-            jws(&small_r).as_bytes(),
-            &hex::encode(public)
-        ));
+        assert!(counts(&small_r, &public));
+        // R = [r]B + T, T of order 8: only the cofactored equation holds.
+        let torsion = CompressedEdwardsY(
+            hex::decode("c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a")
+                .unwrap()
+                .try_into()
+                .unwrap(),
+        )
+        .decompress()
+        .unwrap();
+        let r = Scalar::from(12345u64);
+        let mixed_r = sign_with(
+            (ED25519_BASEPOINT_POINT * r + torsion)
+                .compress()
+                .to_bytes(),
+            r,
+        );
+        assert!(!lenient(&public, &mixed_r));
+        assert!(counts(&mixed_r, &public));
+
+        // R the identity with the sign bit set, R with y = p + 1, and S + L.
+        let mut sign_bit = small_r;
+        sign_bit[31] |= 0x80;
+        assert!(!counts(&sign_bit, &public));
+        let mut above_p = small_r;
+        above_p[..32].copy_from_slice(
+            &hex::decode("eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f")
+                .unwrap(),
+        );
+        assert!(!counts(&above_p, &public));
+        let l = hex::decode("edd3f55c1a631258d69cf7a2def9de1400000000000000000000000000000010")
+            .unwrap();
+        let mut s_plus_l = small_r;
+        let mut carry = 0u16;
+        for i in 0..32 {
+            let v = u16::from(s_plus_l[32 + i]) + u16::from(l[i]) + carry;
+            s_plus_l[32 + i] = v as u8;
+            carry = v >> 8;
+        }
+        assert!(!counts(&s_plus_l, &public));
     }
 }

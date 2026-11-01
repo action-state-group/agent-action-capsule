@@ -28,7 +28,7 @@ bundle = ["dep:cll", "dep:base64", "dep:serde", "dep:evidence-request"]
 # the witness receipt checks (`witness`).
 strict = ["bundle", "dep:p256"]
 # The two-party settlement verifier (`settlement`).
-settlement = ["dep:base64"]
+settlement = ["dep:base64", "dep:curve25519-dalek"]
 
 [dependencies]
 # arbitrary_precision keeps each number's source text, so float and
@@ -38,6 +38,9 @@ serde = { version = "1", optional = true }
 sha2 = "0.10"
 hex = "0.4"
 ed25519-dalek = "2"
+# The settlement re-signing test's cofactored equation (`settlement`). Version 4
+# is the one ed25519-dalek 2 builds on, so the tree keeps one copy.
+curve25519-dalek = { version = "4", optional = true }
 cll = { package = "checkpointed-local-log", version = "0.4.0", optional = true }
 base64 = { version = "0.22", optional = true }
 # The one Controller Binding v0 record verifier (`bundle`: the composed/v1

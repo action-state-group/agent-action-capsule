@@ -32,7 +32,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
-from ._ed25519_strict import verify_strict
+from ._ed25519_cofactored import verify_cofactored
 from .canonical import loads_bounded, too_deep
 from .verify import verify
 
@@ -291,8 +291,10 @@ def _envelope_key(capsule: dict) -> str | None:
 
 
 def _jws_verifies(octets: bytes, public_hex: str) -> bool:
-    """Whether ``octets`` are a compact JWS whose Ed25519 signature verifies,
-    strictly, under the hex key."""
+    """Whether ``octets`` are a compact JWS whose Ed25519 signature counts as
+    the hex key's own under the -01 re-signing test (Section "Wrapping
+    Existing Signed Objects", rule 3): the cofactored equation with any
+    canonical R, not strict Ed25519."""
     # An SD-JWT is the issuer-signed JWS, then "~" and any disclosures: only
     # the part before the first "~" is signed.
     parts = octets.split(b"~", 1)[0].split(b".")
@@ -302,7 +304,7 @@ def _jws_verifies(octets: bytes, public_hex: str) -> bool:
         key, signature = bytes.fromhex(public_hex), _b64u_decode(parts[2].decode("ascii"))
     except (ValueError, UnicodeDecodeError):
         return False
-    return verify_strict(key, parts[0] + b"." + parts[1], signature)
+    return verify_cofactored(key, parts[0] + b"." + parts[1], signature)
 
 
 def _wrapped_failures(s: dict, kid: str | None, objects: dict[str, bytes]) -> list[str]:

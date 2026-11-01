@@ -4,12 +4,14 @@ package settlement
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"testing"
 
+	"filippo.io/edwards25519"
 	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict/ed25519stricttest"
 	"github.com/stretchr/testify/require"
 )
@@ -276,12 +278,13 @@ func TestUTCTimesNameARealInstant(t *testing.T) {
 	}
 }
 
-// The wrapped_resigned check verifies a wrapped JWS under the leg key with
-// strict Ed25519. The identity key's forgery and a small-order R by an honest
-// key (the "small-order A" and "identity R" cases of cll-ed25519-vectors.json,
-// over this JWS), which ed25519.Verify accepts, do not count as a signature by
-// that key.
-func TestJWSVerifiesIsStrict(t *testing.T) {
+// The wrapped_resigned check counts a wrapped JWS as the leg key's own under
+// the cofactored equation with any canonical R (settlement -01, Section
+// "Wrapping Existing Signed Objects", rule 3). A key holder's identity-R and
+// mixed-order-R signatures count, though strict Ed25519 refuses them; the
+// identity key's forgery, which anyone can make, does not, nor does a
+// non-canonical R, an S at or above L or another key's signature.
+func TestJWSVerifiesReadsReSigning(t *testing.T) {
 	b64 := base64.RawURLEncoding.EncodeToString
 	signingInput := []byte(b64([]byte(`{"alg":"EdDSA"}`)) + "." + b64([]byte(`{}`)))
 	compact := func(signature []byte) []byte { return []byte(string(signingInput) + "." + b64(signature)) }
@@ -294,10 +297,70 @@ func TestJWSVerifiesIsStrict(t *testing.T) {
 	_, private, err := ed25519.GenerateKey(nil)
 	require.NoError(t, err)
 	public := private.Public().(ed25519.PublicKey)
-	require.True(t, jwsVerifies(compact(ed25519.Sign(private, signingInput)), hex.EncodeToString(public)))
+	publicHex := hex.EncodeToString(public)
+	require.True(t, jwsVerifies(compact(ed25519.Sign(private, signingInput)), publicHex))
 	smallR := ed25519stricttest.IdentityR(private, signingInput)
 	require.True(t, ed25519.Verify(public, signingInput, smallR))
-	require.False(t, jwsVerifies(compact(smallR), hex.EncodeToString(public)))
+	require.True(t, jwsVerifies(compact(smallR), publicHex))
+
+	mixedR := mixedOrderR(t, private, signingInput)
+	require.False(t, ed25519.Verify(public, signingInput, mixedR), "the cofactorless equation fails")
+	require.True(t, jwsVerifies(compact(mixedR), publicHex))
+
+	_, other, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	require.False(t, jwsVerifies(compact(ed25519.Sign(other, signingInput)), publicHex))
+
+	// R the identity with the sign bit set (x = 0 cannot carry it), and S + L.
+	signBit := append([]byte(nil), smallR...)
+	signBit[31] |= 0x80
+	require.False(t, jwsVerifies(compact(signBit), publicHex))
+	require.False(t, jwsVerifies(compact(addL(t, smallR)), publicHex))
+	// R = p + 1 encodes the identity with y not below p.
+	nonCanonical := append(hexBytes(t, "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f"), smallR[32:]...)
+	require.False(t, jwsVerifies(compact(nonCanonical), publicHex))
+}
+
+func hexBytes(t *testing.T, s string) []byte {
+	b, err := hex.DecodeString(s)
+	require.NoError(t, err)
+	return b
+}
+
+// addL adds the group order L to the little-endian scalar in the last 32
+// octets of a signature, which stays below 2^256 for any S < L.
+func addL(t *testing.T, signature []byte) []byte {
+	l := hexBytes(t, "edd3f55c1a631258d69cf7a2def9de1400000000000000000000000000000010")
+	out := append([]byte(nil), signature...)
+	carry := 0
+	for i := 0; i < 32; i++ {
+		v := int(out[32+i]) + int(l[i]) + carry
+		out[32+i], carry = byte(v), v>>8
+	}
+	return out
+}
+
+// mixedOrderR signs message under key with R = [r]B + T, T a point of order
+// 8, and S = r + k·a mod L: the cofactored equation holds and the
+// cofactorless one does not. Only the key's holder can make it.
+func mixedOrderR(t *testing.T, key ed25519.PrivateKey, message []byte) []byte {
+	h := sha512.Sum512(key.Seed())
+	a, err := edwards25519.NewScalar().SetBytesWithClamping(h[:32])
+	require.NoError(t, err)
+	nonce := sha512.Sum512(append([]byte("mixed-order R nonce"), message...))
+	r, err := edwards25519.NewScalar().SetUniformBytes(nonce[:])
+	require.NoError(t, err)
+	torsion, err := new(edwards25519.Point).SetBytes(hexBytes(t, "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"))
+	require.NoError(t, err)
+	R := new(edwards25519.Point).Add(new(edwards25519.Point).ScalarBaseMult(r), torsion).Bytes()
+	digest := sha512.New()
+	digest.Write(R)
+	digest.Write(key.Public().(ed25519.PublicKey))
+	digest.Write(message)
+	k, err := edwards25519.NewScalar().SetUniformBytes(digest.Sum(nil))
+	require.NoError(t, err)
+	S := edwards25519.NewScalar().MultiplyAdd(k, a, r)
+	return append(R, S.Bytes()...)
 }
 
 func TestEnvelopeSignatureIsHexPairs(t *testing.T) {

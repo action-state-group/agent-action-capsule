@@ -27,7 +27,7 @@
     <keyword>transparency</keyword>
     <keyword>evidence</keyword>
     <abstract>
-      <?line 168?>
+      <?line 169?>
 
 <t>A payment between two agents is observed by two systems: the payer's wallet
 or bank and the payee's. Existing payment protocols record one of those
@@ -47,7 +47,7 @@ ISO 20022, and Open Payments, and maps its states to ISO 20022 status codes.</t>
     </abstract>
     <note>
       <name>Note to Readers</name>
-      <?line 186?>
+      <?line 187?>
 
 <t>This document is an individual submission. It is a companion to the Agent
 Action Capsule profile <xref target="I-D.mih-scitt-agent-action-capsule"/> and to the
@@ -57,7 +57,7 @@ this document's source repository.</t>
     </note>
   </front>
   <middle>
-    <?line 194?>
+    <?line 195?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -980,7 +980,18 @@ leg, and therefore the digest of the wrapped object; it says that the
 sealer holds an object with that digest, not that the sealer issued it.
 A wrapped object whose signature verifies under the sealer's own leg key,
 where the wrapped type's issuer is a different party, is
-<tt>wrapped_resigned</tt>.</t>
+<tt>wrapped_resigned</tt>. For this check, an Ed25519 signature verifies under
+the leg key A when A is a canonical encoding (<xref target="RFC8032"/>, Section
+5.1.3) of a point not of small order (the eight points whose order
+divides 8), the signature's R is a canonical encoding of any point, the
+scalar S is below the group order L, and the cofactored equation
+<tt>[8][S]B = [8]R + [8][k]A</tt> of <xref target="RFC8032"/>, Section 5.1.7, holds. This is
+deliberately not the strict verification of
+<xref target="I-D.mih-scitt-agent-action-capsule"/>, Conventions. The check looks for
+the leg key's own signature, and only the holder of that key can produce
+one whose R is of small or mixed order, so a verifier that refused such
+an R would let a re-signing sealer evade the check. A small-order A is
+refused, since anyone can produce a signature that verifies under it.</t>
         </li>
         <li>
           <t><strong>Verification of the wrapped object is the wrapped protocol's.</strong> A
@@ -1622,7 +1633,10 @@ content verifies that object under its own protocol.</t>
       <t><strong>Re-signing.</strong> A sealer that re-signs an upstream object makes it look as
 though the sealer issued it, and replaces the upstream signer's evidence
 with its own. The never-re-sign rule (<xref target="wrap"/>) prevents this; the
-<tt>wrapped_resigned</tt> check detects the simplest case.</t>
+<tt>wrapped_resigned</tt> check detects the simplest case. A re-signer can always
+avoid the check by signing with a key other than its leg key, so the
+absence of <tt>wrapped_resigned</tt> does not show that the sealer did not
+re-sign.</t>
       <t><strong>Amounts.</strong> Floating-point amounts produce different values on different
 platforms and make digests unstable. Amounts are exact integers with a
 scale (<xref target="amounts"/>); comparing assets by identical <tt>assetCode</tt> prevents a
@@ -1863,6 +1877,19 @@ updates this document.</t>
           </front>
           <seriesInfo name="RFC" value="4648"/>
           <seriesInfo name="DOI" value="10.17487/RFC4648"/>
+        </reference>
+        <reference anchor="RFC8032">
+          <front>
+            <title>Edwards-Curve Digital Signature Algorithm (EdDSA)</title>
+            <author fullname="S. Josefsson" initials="S." surname="Josefsson"/>
+            <author fullname="I. Liusvaara" initials="I." surname="Liusvaara"/>
+            <date month="January" year="2017"/>
+            <abstract>
+              <t>This document describes elliptic curve signature scheme Edwards-curve Digital Signature Algorithm (EdDSA). The algorithm is instantiated with recommended parameters for the edwards25519 and edwards448 curves. An example implementation and test vectors are provided.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="RFC" value="8032"/>
+          <seriesInfo name="DOI" value="10.17487/RFC8032"/>
         </reference>
         <reference anchor="RFC8126">
           <front>
@@ -2243,7 +2270,7 @@ been incorporated into this document. This document obsoletes RFC
         </reference>
       </references>
     </references>
-    <?line 1313?>
+    <?line 1328?>
 
 <section numbered="false" anchor="vectors">
       <name>Conformance Vectors</name>
@@ -2315,6 +2342,14 @@ before publication.</t>
 record before any check in this document (<xref target="conventions"/>). The
 Capsule profile reference is updated to
 draft-mih-scitt-agent-action-capsule-06, which states the limit.</t>
+        </li>
+        <li>
+          <t>Re-signing: the <tt>wrapped_resigned</tt> check states how a signature is
+verified under the leg key: the cofactored equation of <xref target="RFC8032"/>, with
+any canonical R, and a key not of small order (<xref target="wrap"/>). A key holder's
+signature with an R of small or mixed order is still found. Security
+Considerations says that the absence of <tt>wrapped_resigned</tt> does not clear
+the sealer (<xref target="security"/>).</t>
         </li>
         <li>
           <t>Wire unchanged: the <tt>settlement</tt> member's <tt>version</tt> is still <tt>"0"</tt>
