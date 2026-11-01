@@ -80,7 +80,8 @@ _SHA_TAG = re.compile(r"sha256:[0-9a-f]{64}")
 
 # Every check a mutant test may switch off.
 ALL_CHECKS = frozenset({"discovery_object", "nostr_event", "key_id_spki", "commitment_signature",
-                        "staple_digest", "future", "newest", "conflict", "key_binding"})
+                        "staple_digest", "future", "newest", "conflict", "key_binding",
+                        "handoff_gate"})
 
 # ---------------------------------------------------------------------------
 # V0 and V1: carrier forms, and where the octets are
@@ -250,11 +251,13 @@ def answer_key(answer: dict) -> str:
 
 
 def handed(c: dict) -> list[dict]:
+    """V6: the cards of a commitment that V5 bound, handed on with its key_id."""
     out = []
     for s in c["history_cards"]:
         card = json.loads(base64.b64decode(s["bytes"]))
         assert card["evidence_stream"] == s["stream"] and card["derivation"] == "history_card/1"
-        out.append({"stream": s["stream"], "checkpoint_key": s.get("checkpoint_key"), "sha256": s["sha256"]})
+        out.append({"key_id": c["key_id"], "stream": s["stream"], "checkpoint_key": s.get("checkpoint_key"),
+                    "sha256": s["sha256"]})
     return out
 
 
@@ -302,7 +305,7 @@ def run_case(case: dict, checks: frozenset = ALL_CHECKS) -> dict:
         assert len(current) == 1
         bound = "key_binding" not in checks or answer_key(case["answer"]) == current[0]["key_id"]
         out["key_binding"] = "bound" if bound else "key_mismatch"
-    if len(current) == 1:
+    if "answer" in case and (out["key_binding"] == "bound" or "handoff_gate" not in checks):
         out["cards"] = handed(current[0])
     return out
 
@@ -404,6 +407,7 @@ def test_commitments_carry_no_count():
     ("newest", "older-beside-newer"),
     ("conflict", "same-issued-at-conflict"),
     ("key_binding", "answer-key-mismatch"),
+    ("handoff_gate", "answer-key-mismatch"),
     ("future", "future-dated-issued-at"),
 ])
 def test_mutant_check_removed(check, case_id):

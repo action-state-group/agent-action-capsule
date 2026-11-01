@@ -248,6 +248,7 @@
     "key_binding": "bound",
     "cards": [
      {
+      "key_id": "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117",
       "stream": "book-a",
       "checkpoint_key": "MCowBQYDK2VwAyEADPrRKjmhDlP9fh6RYNdtA9Q4XSYSGhdhlNU0f65DhFY",
       "sha256": "a32de3630af3b54aacadbe7d12b83e33c096eb191e59164e301aaa9cb00d75e0"
@@ -324,13 +325,6 @@
       "result": "verified",
       "standing": "current"
      }
-    ],
-    "cards": [
-     {
-      "stream": "book-a",
-      "checkpoint_key": "MCowBQYDK2VwAyEADPrRKjmhDlP9fh6RYNdtA9Q4XSYSGhdhlNU0f65DhFY",
-      "sha256": "a32de3630af3b54aacadbe7d12b83e33c096eb191e59164e301aaa9cb00d75e0"
-     }
     ]
    }
   },
@@ -391,13 +385,6 @@
       "result": "verified",
       "standing": "current"
      }
-    ],
-    "cards": [
-     {
-      "stream": "book-a",
-      "checkpoint_key": "MCowBQYDK2VwAyEADPrRKjmhDlP9fh6RYNdtA9Q4XSYSGhdhlNU0f65DhFY",
-      "sha256": "a32de3630af3b54aacadbe7d12b83e33c096eb191e59164e301aaa9cb00d75e0"
-     }
     ]
    }
   },
@@ -451,13 +438,6 @@
       "sha256": "94c427bd2c9c820187956875eceff245bb19869bbff5d9b704895d4e34205e7e",
       "result": "verified",
       "standing": "current"
-     }
-    ],
-    "cards": [
-     {
-      "stream": "book-a",
-      "checkpoint_key": "MCowBQYDK2VwAyEADPrRKjmhDlP9fh6RYNdtA9Q4XSYSGhdhlNU0f65DhFY",
-      "sha256": "a32de3630af3b54aacadbe7d12b83e33c096eb191e59164e301aaa9cb00d75e0"
      }
     ]
    }
@@ -612,13 +592,6 @@
       "result": "verified",
       "standing": "current"
      }
-    ],
-    "cards": [
-     {
-      "stream": "book-a",
-      "checkpoint_key": "MCowBQYDK2VwAyEADPrRKjmhDlP9fh6RYNdtA9Q4XSYSGhdhlNU0f65DhFY",
-      "sha256": "a32de3630af3b54aacadbe7d12b83e33c096eb191e59164e301aaa9cb00d75e0"
-     }
     ]
    }
   },
@@ -724,14 +697,7 @@
       "standing": "current"
      }
     ],
-    "key_binding": "key_mismatch",
-    "cards": [
-     {
-      "stream": "book-a",
-      "checkpoint_key": "MCowBQYDK2VwAyEADPrRKjmhDlP9fh6RYNdtA9Q4XSYSGhdhlNU0f65DhFY",
-      "sha256": "a32de3630af3b54aacadbe7d12b83e33c096eb191e59164e301aaa9cb00d75e0"
-     }
-    ]
+    "key_binding": "key_mismatch"
    }
   },
   {
@@ -817,13 +783,6 @@
       "sha256": "94c427bd2c9c820187956875eceff245bb19869bbff5d9b704895d4e34205e7e",
       "result": "verified",
       "standing": "current"
-     }
-    ],
-    "cards": [
-     {
-      "stream": "book-a",
-      "checkpoint_key": "MCowBQYDK2VwAyEADPrRKjmhDlP9fh6RYNdtA9Q4XSYSGhdhlNU0f65DhFY",
-      "sha256": "a32de3630af3b54aacadbe7d12b83e33c096eb191e59164e301aaa9cb00d75e0"
      }
     ]
    }
@@ -998,13 +957,6 @@
       "sha256": "94c427bd2c9c820187956875eceff245bb19869bbff5d9b704895d4e34205e7e",
       "result": "verified",
       "standing": "current"
-     }
-    ],
-    "cards": [
-     {
-      "stream": "book-a",
-      "checkpoint_key": "MCowBQYDK2VwAyEADPrRKjmhDlP9fh6RYNdtA9Q4XSYSGhdhlNU0f65DhFY",
-      "sha256": "a32de3630af3b54aacadbe7d12b83e33c096eb191e59164e301aaa9cb00d75e0"
      }
     ]
    }
