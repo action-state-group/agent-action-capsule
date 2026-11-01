@@ -6,8 +6,8 @@ The generator states the expected values. This test re-runs it and requires byte
 With its own code it applies the binding's verify steps V0 to V5 to every carrier entry: the
 carrier forms, the NIP-01 id and BIP-340 signature of each announce event (the mailbox test's
 checks), the naddr (bech32), the commitment's Ed25519 signature over JCS, its staples, the newest
-issued_at, and the witness and first-use labels of §7 over the test-only card format. A V5 answer
-goes to the reference verifier of the interop profile, offline.
+issued_at, and the cards V6 hands to the admission pack. A V5 answer goes to the reference
+verifier of the interop profile, offline.
 """
 from __future__ import annotations
 
@@ -43,7 +43,6 @@ CASES = DATA["cases"]
 KIND = DATA["carriage"]["announce_kind"]
 EXT_URI = DATA["carriage"]["a2a_extension_uri"]
 ER_EXT_URI = "https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"
-WITNESS_KEYS = set(DATA["verifier"]["witness_keys"])
 READ_AT = DATA["verifier"]["read_at"]
 assert DATA["verifier"]["clock_skew"] == "PT5M"
 SKEW = timedelta(minutes=5)
@@ -81,8 +80,7 @@ _SHA_TAG = re.compile(r"sha256:[0-9a-f]{64}")
 
 # Every check a mutant test may switch off.
 ALL_CHECKS = frozenset({"discovery_object", "nostr_event", "key_id_spki", "commitment_signature",
-                        "staple_digest", "future", "newest", "conflict", "key_binding", "witness_key",
-                        "dropped", "behind_pin"})
+                        "staple_digest", "future", "newest", "conflict", "key_binding"})
 
 # ---------------------------------------------------------------------------
 # V0 and V1: carrier forms, and where the octets are
@@ -247,66 +245,17 @@ def answer_key(answer: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# §7: witness labels and first use
+# V6: the cards handed to the admission pack
 # ---------------------------------------------------------------------------
 
 
-def _ed_verify(raw_hex: str, sig_hex: str, body: dict) -> bool:
-    try:
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(raw_hex)).verify(bytes.fromhex(sig_hex), jcs(body))
-        return True
-    except (InvalidSignature, ValueError):
-        return False
-
-
-def stream_label(staple: dict, checks: frozenset) -> dict:
-    card = json.loads(base64.b64decode(staple["bytes"]))
-    assert card["evidence_stream"] == staple["stream"] and card["derivation"] == "history_card/1"
-    ck = staple.get("checkpoint_key")
-    log_key = (load_der_public_key(b64u(ck)).public_bytes(Encoding.Raw, PublicFormat.Raw).hex() if ck else None)
-    counted, seen = [], False
-    for h in card["history"]:
-        cp = h["checkpoint"]
-        cp_body = {k: v for k, v in cp.items() if k != "sig"}
-        cp_ok = log_key is not None and cp["key_id"] == log_key and _ed_verify(log_key, cp["sig"], cp_body)
-        for rc in h["receipts"]:
-            seen = True
-            rc_body = {k: v for k, v in rc.items() if k != "sig"}
-            if (cp_ok and rc["checkpoint"] == sha(jcs(cp)) and _ed_verify(rc["witness"], rc["sig"], rc_body)
-                    and ("witness_key" not in checks or rc["witness"] in WITNESS_KEYS)):
-                counted.append((cp["timestamp"], rc["witness"]))
-    if counted:
-        since, witness = min(counted)
-        return {"stream": staple["stream"], "label": "witnessed", "log_key": log_key, "witness": witness,
-                "since": since}
-    return {"stream": staple["stream"], "label": "unknown_witness" if seen else "unwitnessed", "log_key": log_key}
-
-
-def first_use(c: dict, pins: list[dict], checks: frozenset) -> list[dict]:
-    mine = {p["stream"] for p in pins if p["key_id"] == c["key_id"]}
-    now = {s["stream"] for s in c["history_cards"]}
-    out = []
-    if "dropped" in checks:
-        out += [{"stream": s, "state": "dropped", "since": READ_AT} for s in sorted(mine - now)]
-    out += [{"stream": s, "state": "new", "since": READ_AT} for s in sorted(now - mine)]
-    return sorted(out, key=lambda x: (x["stream"], x["state"]))
-
-
-def behind_pin(c: dict, pins: list[dict], checks: frozenset) -> list[str]:
-    """V6, offline: a card whose last checkpoint is earlier than the held pin, or whose checkpoint at
-    the pin's log size is another one, is behind_pin."""
-    if "behind_pin" not in checks:
-        return []
+def handed(c: dict) -> list[dict]:
     out = []
     for s in c["history_cards"]:
-        cps = [h["checkpoint"] for h in json.loads(base64.b64decode(s["bytes"]))["history"]]
-        for p in pins:
-            if (p["key_id"], p["stream"]) != (c["key_id"], s["stream"]):
-                continue
-            at = [cp for cp in cps if cp["log_size"] == p["log_size"]]
-            if cps[-1]["log_size"] < p["log_size"] or any(sha(jcs(cp)) != p["checkpoint"] for cp in at):
-                out.append(s["stream"])
-    return sorted(out)
+        card = json.loads(base64.b64decode(s["bytes"]))
+        assert card["evidence_stream"] == s["stream"] and card["derivation"] == "history_card/1"
+        out.append({"stream": s["stream"], "checkpoint_key": s.get("checkpoint_key"), "sha256": s["sha256"]})
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -354,10 +303,7 @@ def run_case(case: dict, checks: frozenset = ALL_CHECKS) -> dict:
         bound = "key_binding" not in checks or answer_key(case["answer"]) == current[0]["key_id"]
         out["key_binding"] = "bound" if bound else "key_mismatch"
     if len(current) == 1:
-        out["streams"] = [stream_label(s, checks) for s in current[0]["history_cards"]]
-        if "pins" in case:
-            out["first_use"] = first_use(current[0], case["pins"], checks)
-            out["behind_pin"] = behind_pin(current[0], case["pins"], checks)
+        out["cards"] = handed(current[0])
     return out
 
 
@@ -387,21 +333,18 @@ def test_case_matches_expectation(case):
 
 def test_corpus_covers_the_acceptance():
     """AAC#541's acceptance: one commitment carried three ways that all verify to the same octets; a
-    forged carrier entry, a key mismatch, an older commitment beside a newer one, and an unwitnessed
-    card that verifies but is labelled."""
+    forged carrier entry, a key mismatch and an older commitment beside a newer one. The unwitnessed
+    label is the admission pack's term (binding §7, C-6), not this corpus's."""
     got = {c["id"]: run_case(c) for c in CASES}
     three = got["three-carriers-one-commitment"]
     assert [r["carrier"] for r in three["carriers"]] == ["directory", "a2a", "nostr"]
     assert len({r["octets_sha256"] for r in three["carriers"]}) == 1
     assert three["commitments"] == [{"sha256": three["carriers"][0]["octets_sha256"], "result": "verified",
                                      "standing": "current"}]
-    assert three["key_binding"] == "bound" and three["streams"][0]["label"] == "witnessed"
+    assert three["key_binding"] == "bound" and [c["stream"] for c in three["cards"]] == ["book-a"]
     assert got["forged-carrier-entry"]["commitments"][0]["result"] == "commitment_signature"
     assert got["answer-key-mismatch"]["key_binding"] == "key_mismatch"
     assert [c["standing"] for c in got["older-beside-newer"]["commitments"]] == ["superseded", "current"]
-    unw = got["unwitnessed-labelled"]
-    assert unw["commitments"][0]["result"] == "verified"
-    assert {s["label"] for s in unw["streams"]} == {"unwitnessed", "unknown_witness"}
     assert DATA["count"] == len(CASES)
 
 
@@ -461,9 +404,6 @@ def test_commitments_carry_no_count():
     ("newest", "older-beside-newer"),
     ("conflict", "same-issued-at-conflict"),
     ("key_binding", "answer-key-mismatch"),
-    ("witness_key", "unwitnessed-labelled"),
-    ("dropped", "first-use-dropped-and-new"),
-    ("behind_pin", "short-card-behind-pin"),
     ("future", "future-dated-issued-at"),
 ])
 def test_mutant_check_removed(check, case_id):

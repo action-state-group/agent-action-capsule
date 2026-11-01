@@ -17,8 +17,8 @@ or AI Catalog record), an extension entry in an A2A Agent Card, and an addressab
 The carriers differ only in how a stranger finds them. A verifier ignores everything a carrier
 says except where the octets are. It verifies the commitment's own signature, its staples and its
 `issued_at`, relies on it for a responder only when that responder's signed answers are under the
-commitment's key, and labels each stream witnessed or unwitnessed from the receipts it can check
-itself. Finding a commitment confers no trust.
+commitment's key, and hands the stapled history cards to the asker's admission pack, which judges
+them as it judges any history. Finding a commitment confers no trust.
 
 ER is `draft-mih-agent-evidence-request-00` (`spec/draft-mih-agent-evidence-request-00.md`).
 Section numbers are those of its rendered `.txt`.
@@ -71,7 +71,7 @@ other member rule.
 | `spki` | base64: the same key as DER SubjectPublicKeyInfo |
 | `issued_at` | `YYYY-MM-DDTHH:MM:SSZ`: when the responder signed it (§6, V4) |
 | `checkpoint.bytes`, `checkpoint.sha256` | the latest checkpoint, base64, and its SHA-256 in 64 lowercase hex (V3) |
-| `history_cards[]` (`/1`) | one stapled card per stream: `stream`, `checkpoint_key` (base64url DER SPKI, optional), `bytes` (base64), `sha256` (V3, §7) |
+| `history_cards[]` (`/1`) | one stapled card per stream: `stream`, `checkpoint_key` (base64url DER SPKI, optional), `bytes` (base64), `sha256` (V3, V6) |
 | `history_card` (`/0`) | one stapled card; read as a list of one |
 | `ask.nostr` (`/1`, optional) | the Nostr route (below) |
 | `sig` | `{"alg": "Ed25519", "canon": "jcs", "value": <base64url>}` |
@@ -211,7 +211,7 @@ that fails names the result.
   refused, whichever carrier brought it.
 - **V3, staples.** `checkpoint.sha256` and every card's `sha256` are the SHA-256 of their decoded
   `bytes`. Failure: `staple_digest`. This document reads the top-level `checkpoint` for nothing
-  else: V6 and §7 work per stream, from each card's last checkpoint.
+  else.
 - **V4, newest wins.** A commitment whose `issued_at` is later than the verifier's time plus the
   clock skew it configures is **future_dated** and takes no part in this step, so a commitment
   signed with a wrong clock cannot supersede every later one. Among the other commitments that
@@ -225,53 +225,26 @@ that fails names the result.
   `key_id`. A commitment under another key does not describe that responder (`key_mismatch`). The
   mailbox key, the Nostr event author and an A2A card's JWS signer are never compared with
   `key_id`: they are routes or carriage, not the responder's identity [NMB §3; ER §3.6].
-- **V6, still extended.** This step is per stream. The **held checkpoint** of a stream is the
-  asker's first-use pin for (`key_id`, `stream`) (§7), or, with no pin, the card's last
-  checkpoint. Offline, a card whose last checkpoint is earlier than the held checkpoint (a smaller
-  log size), or whose checkpoint at the held checkpoint's log size is a different one, is
-  **behind_pin**: the log was cut back or forked, and the stream is not relied on. Before relying on
-  a stream, the verifier asks the responder a `checkpoints` request for it with
-  `coverage.expected_pin` set to the held checkpoint's digest [ER §3.2]. The answer relies only if
-  it carries a checkpoint at or past the card's last checkpoint and a consistency proof from the
-  held checkpoint to it, verified offline. An answer that stops at or before the held checkpoint,
-  or does not prove consistency, is treated as ER treats an unverifiable artifact.
+- **V6, hand-off.** Each stapled card of a current commitment that passed V5 goes to the asker's
+  admission pack as history: its `bytes`, `stream` and `checkpoint_key`, with the commitment's
+  `key_id`. Whatever a card is judged by (its witness receipts and the keys the asker accepts for
+  them, its age, the asker's first-use pins, dropped or new streams, and consistency to a
+  checkpoint the asker holds) is that pack's terms, not this document's (§7).
 - **V7, no trust from discovery.** Passing V0 to V5 means the commitment is the responder's own
-  signed statement, and nothing more. Admission policy reads the cards (§7).
+  signed statement, and nothing more.
 
 To learn a newer commitment, the verifier reads the carriers again. This revision defines no
 request for the commitment itself (C-3).
 
-## 7. Witness label and first use
+## 7. History cards go to the admission pack
 
-**Witnessed.** A stream's receipt counts when the card's checkpoint it covers is signed by the
-stream's `checkpoint_key`, the receipt names that checkpoint's digest, and the receipt's signature
-verifies offline under a witness key in the verifier's own configuration. A stream with at least
-one counted receipt is labelled `witnessed`, with the witness key and the timestamp of the earliest
-checkpoint it covers.
-
-**Unwitnessed.** The verifier derives the label; the responder never sets it, so it cannot lie
-about it. A stream whose card carries no receipt is labelled `unwitnessed`: its log age and timing
-are the responder's own word. A stream whose receipts are all under keys the verifier does not
-configure, or do not verify, is labelled `unknown_witness`: a responder can mint receipts of its
-own. A stream without a `checkpoint_key` has no receipt counted. A stream whose card carries
-receipts of which none counts is labelled `unknown_witness`. The label is not a failure: an
-unwitnessed commitment still passes V0 to V5, and admission policy decides. A policy MAY refuse
-unwitnessed responders.
-
-**A label is the log's, not the responder's.** Nothing in a card binds its log to `key_id`: the
-log key need not be the responder's key, and another commitment can staple the same public card.
-So a label, and the age it gives, describe the log signed by `checkpoint_key`. The verifier
-reports each label with that `checkpoint_key`. Whether that log key is right for the responder is
-the relying party's policy, as it is for any checkpoint [IP §6.2.1; P-31], and an admission policy
-that relies on a stream's witnesses or age accepts the log key for that responder first.
-
-**Trust on first use.** For every (`key_id`, `stream`) pair, the asker keeps the first checkpoint
-it saw: its digest, and when the asker saw it. Every later answer for that stream must prove
-consistency from that pin (V6). A stream missing from a later current commitment is shown as
-`dropped` since the time the asker first saw it missing, and a stream not seen before as `new`
-since the time it first appeared. A responder that restarts a log under a new stream name is never
-shown as continuing the old one. Pins are per `key_id`: a commitment under a new key starts with
-no pins and inherits nothing.
+This document does not judge a history card. It delivers each card of a verified commitment (V6)
+to the asker's admission pack, which reads it as any other history, with the same terms and no
+mechanism of its own here. Witness labels, log age, first-use pins and their consistency checks
+are left to that pack and to the history-card and admission design that defines them (C-6). Two
+facts constrain any such term: the card's checkpoints are signed by `checkpoint_key`, which need
+not be the responder's key [IP §6.2.1; P-31], and another commitment can staple the same public
+card, so nothing in a card alone binds its log to `key_id`.
 
 The vectors fix a card format for testing only, the one of
 [`inference-service-history-profile-v0.md`](../inference-service-history-profile-v0.md) §9: a card
@@ -282,20 +255,18 @@ The vectors fix a card format for testing only, the one of
 
 | A carrier, or whoever controls it, can | What the verifier sees | Result |
 |---|---|---|
-| serve stale octets | an older `issued_at` | superseded by a newer commitment from any carrier (V4); V6 catches a log that stopped |
-| sign a short card, cut back below a pin | a card's last checkpoint earlier than the held one | `behind_pin` (V6) |
-| staple another responder's public cards | cards whose `checkpoint_key` is that responder's log key | the labels carry that log key; the relying party's policy decides whether it is this responder's (§7) |
+| serve stale octets | an older `issued_at` | superseded by a newer commitment from any carrier (V4) |
+| staple another responder's public cards | cards whose `checkpoint_key` is that responder's log key | handed to the admission pack with that key (V6, §7) |
 | point at another responder's commitment | a commitment under that responder's key | `key_mismatch` for the responder it is asked about (V5) |
 | alter the octets | a signature that fails | refused, `commitment_signature` (V2) |
 | keep a digest that does not match | `digest_mismatch` | the octets are verified on their own (V1) |
 | re-post a commitment under another Nostr key | an author that is not the mailbox key | relayed, the same verified octets (§5.3) |
-| take over a domain and replace card and commitment | a commitment under a new `key_id` | a different responder; no pin carries over (§7) |
+| take over a domain and replace card and commitment | a commitment under a new `key_id` | a different responder (V5) |
 | hide or drop the entry | nothing | other carriers still work |
 
 | A carrier cannot | Why |
 |---|---|
 | make a commitment that verifies | it does not hold the responder key |
-| mark a stream witnessed | the label comes from receipts under keys the verifier configures (§7) |
 | make a newer commitment lose to an older one | V4 compares signed `issued_at`, not carrier or arrival; a future-dated one takes no part |
 
 ## 9. Privacy considerations
@@ -312,15 +283,15 @@ and the mailbox key are public [NMB §8].
 The vectors are in `vectors/adapters/evidence-commitment-carriers/`.
 `python/scripts/generate_evidence_commitment_carriers_vectors.py` generates them
 deterministically, and `python/tests/test_evidence_commitment_carriers_vectors.py` checks them
-offline with its own code: Ed25519 for commitments, checkpoints and receipts, NIP-01 `id` and
+offline with its own code: Ed25519 for commitments, NIP-01 `id` and
 BIP-340 for events (NMB's checks), and bech32 for `naddr`. Answers for V5 are envelopes of the IP
 corpus, verified by IP's reference verifier. Each case carries the carrier entries, the octets each
-URI serves, the verifier's witness configuration and, where it applies, the answer and the pins,
-with the expected result of every step.
+URI serves, the verifier's time and, where it applies, the answer, with the expected result of
+every step.
 
 | Case | What it shows | Sections |
 |---|---|---|
-| `three-carriers-one-commitment` | the same commitment through a directory entry, an A2A entry and a Nostr event: one digest, verified once, current, key bound, stream `witnessed`, the event announced | §5, §6, §7 |
+| `three-carriers-one-commitment` | the same commitment through a directory entry, an A2A entry and a Nostr event: one digest, verified once, current, key bound, its card handed on, the event announced | §5, §6 |
 | `directory-entry-naddr` | a directory entry whose `uri` is the announce event's `naddr`: resolved to the event, same octets | §5.1, §5.3 |
 | `nostr-over-size-r-tag` | an event with empty `content`, its `x` digest and an `r` URI: octets fetched from `r` | §5.3 |
 | `nostr-relayed-by-other-key` | the genuine commitment in an event by another key: verified, relayed | §5.3 |
@@ -331,16 +302,13 @@ with the expected result of every step.
 | `answer-key-mismatch` | a valid commitment under another key, and an answer signed by the responder: `key_mismatch` | §6 V5 |
 | `older-beside-newer` | two valid commitments under one key from two carriers: the later `issued_at` is current, the other superseded | §6 V4 |
 | `same-issued-at-conflict` | two valid commitments with one `issued_at` and different octets: conflicting, none current | §6 V4 |
-| `unwitnessed-labelled` | two streams, one with no receipt and one with a receipt under an unconfigured witness: verified, labelled `unwitnessed` and `unknown_witness` | §7 |
-| `first-use-dropped-and-new` | pins from an earlier commitment, and a current one that drops a stream and starts another: `dropped` and `new` | §7 |
-| `short-card-behind-pin` | a newer commitment whose card's last checkpoint is earlier than the asker's pin: `behind_pin` | §6 V6, §7 |
 | `future-dated-issued-at` | a valid commitment dated past the verifier's time and clock skew, beside the current one: `future_dated` | §6 V4 |
 | `a2a-commitment-in-discovery-object` | the commitment pointer in the evidence-request entry's `params`: `discovery_object`, not read | §5.2, §6 V0 |
 | `nostr-event-bad-signature` | an announce event whose signature does not verify: `nostr_event`, not read | §6 V0 |
 
 The workflow `.github/workflows/evidence-commitment-carriers.yml` regenerates the vectors, fails
 when the committed files differ, and runs the test. No relay, directory or host is contacted. V6
-needs a live responder for its request; its offline part, `behind_pin`, has a vector.
+only hands the cards on, so it has no result of its own to test.
 
 ## 11. Open points
 
@@ -350,12 +318,17 @@ needs a live responder for its request; its offline part, `behind_pin`, has a ve
 - **C-2. Over the size cap with nowhere to host.** Such a responder is not findable on Nostr. Its
   commitment can still reach a stranger through a directory record with an `https:` URI.
 - **C-3. Asking for the commitment.** The verifier rereads carriers for a newer commitment. A
-  request for the responder's current commitment over the mailbox or A2A is not defined: V6 needs
-  only the checkpoint pin, and re-reading the carriers serves the size fallback except for C-2.
+  request for the responder's current commitment over the mailbox or A2A is not defined:
+  re-reading the carriers serves the size fallback except for C-2.
 - **C-4. The extension URI.** The A2A entry's URI names this document. If the text moves into an
   Internet-Draft, the URI moves with it, as IP's extension URI names its draft [IP §11.4.4].
 - **C-5. A directory type URI.** The directory entry's `type` is the profile string. A URL type is
   not proposed; no registry is.
+
+- **C-6. Judging the cards.** Witness labels, log age, first-use pins and consistency to a held
+  checkpoint are terms of the admission pack, under the history-card and admission design now in
+  progress. This document adds none, so a card is judged the same whether it arrived by a carrier
+  here or another route.
 
 ## References
 

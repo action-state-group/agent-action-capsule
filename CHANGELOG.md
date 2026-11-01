@@ -28,8 +28,9 @@ has not yet.
   commitment over three carriers: an attestation entry in a directory record's trust manifest (ARD,
   NANDA Index, AI Catalog), an A2A Agent Card extension entry, and an addressable Nostr announce
   event (placeholder kind 34700). The verifier trusts only the commitment's own signature, staples
-  and `issued_at`, binds it to a responder only through that responder's signed answers, and labels
-  each stream witnessed, unwitnessed or unknown-witness itself. Names the commitment's Nostr route
+  and `issued_at`, binds it to a responder only through that responder's signed answers, and hands
+  the stapled history cards to the asker's admission pack, which judges them; the binding adds no
+  witness label or first-use pin of its own. Names the commitment's Nostr route
   `ask.nostr` (`mailbox_key`, `relays`), which settles the mailbox carriage's open points N-4 and
   N-5. Vectors in `vectors/adapters/evidence-commitment-carriers/` and the drift workflow
   `evidence-commitment-carriers.yml`. Not part of the profile; it defines no binding token.
