@@ -77,7 +77,7 @@ def test_instances_match_documents_and_spec() -> None:
     """HF §6: the listed digests are the documents' digests, and the spec text lists each one."""
     spec = SPEC.read_text(encoding="utf-8")
     assert [x["instance"] for x in DATA["instances"]] == [
-        "standard_history/1", "personal_history_basic/1", "personal_history_outcome/1", "inference-service-history/0"]
+        "standard_history/1", "standard_history/2", "personal_history_basic/1", "personal_history_outcome/1", "inference-service-history/0"]
     for x in DATA["instances"]:
         table = json.loads((ROOT / x["table"]).read_text(encoding="utf-8"))
         pack = json.loads((ROOT / x["pack"]).read_text(encoding="utf-8"))

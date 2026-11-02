@@ -4,7 +4,7 @@
 
 Each case is one instance's counting table and wording pack, with the digests HF §6 lists for that
 instance, and the three document properties of HF §6.2 stated by hand: ``table_binding``,
-``pack_binding`` and ``pack_form``. The positives are the four instances' documents as
+``pack_binding`` and ``pack_form``. The positives are the five instances' documents as
 ``spec/history-frame/`` holds them. The negatives change one document each: a pack whose label is
 made stronger (its digest no longer matches), a translated pack offered in place of the pinned one,
 a table with a member added, a pack that carries a string its table checks, and a pack naming
@@ -34,8 +34,8 @@ STATUS = ("Conformance vectors for the informational History frame v0 (spec/hist
           "counting table and wording pack each instance pins, and their digests.")
 PROPERTIES = ("table_binding", "pack_binding", "pack_form")
 
-SH, PH, PO, ISH = ("standard_history/1", "personal_history_basic/1", "personal_history_outcome/1",
-                   "inference-service-history/0")
+SH, SH2, PH, PO, ISH = ("standard_history/1", "standard_history/2", "personal_history_basic/1",
+                        "personal_history_outcome/1", "inference-service-history/0")
 
 
 def props(**overrides: str) -> dict:
@@ -71,7 +71,7 @@ def cases() -> list[dict]:
     docs = {i: history_frame.load(i) for i in history_frame.FILES}
     out = [case(f"{tag}-as-pinned", f"The counting table and wording pack of {i}, as spec/history-frame/ holds them",
                 ["§5", "§6"], i, *docs[i], props())
-           for tag, i in (("standard-history", SH), ("personal-history-basic", PH),
+           for tag, i in (("standard-history", SH), ("standard-history-2", SH2), ("personal-history-basic", PH),
                           ("personal-history-outcome", PO), ("inference-service-history", ISH))]
     ish_table, ish_pack = docs[ISH]
     ph_table, ph_pack = docs[PH]

@@ -8,6 +8,10 @@ Every case runs from its inputs alone through ``agent_action_capsule.standard_hi
 - for every standard card checked with the policy, the anchor and the deal entries,
   ``derive_card`` rebuilds exactly the case's card from them.
 
+``vectors.json`` holds the ``standard_history/1`` cases and ``vectors-2.json`` the
+``standard_history/2`` ones; a case's ``inputs.derivation`` names the token it is checked under,
+``/1`` when absent.
+
 ``go/standardhistory`` runs the same cases. The test regenerates the corpus twice and requires
 both runs to be byte-identical to the committed files, and runs defective evaluators, each of
 which must disagree with at least one case.
@@ -31,12 +35,16 @@ VECTORS = ROOT / "vectors" / "standard-history-v0"
 GENERATOR = ROOT / "python" / "scripts" / "generate_standard_history_v0_vectors.py"
 HAND_WRITTEN = ("README.md",)
 DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
+DATA_2 = json.loads((VECTORS / "vectors-2.json").read_text(encoding="utf-8"))
 CASES = DATA["cases"]
+CASES_2 = DATA_2["cases"]
+ALL_CASES = CASES + CASES_2
 
 
 def _check(c: dict) -> dict:
     i = c["inputs"]
-    return sh.check_card(i["card"], policy=i.get("policy"), as_of=i.get("as_of"), deals=i.get("deals"))
+    return sh.check_card(i["card"], policy=i.get("policy"), as_of=i.get("as_of"), deals=i.get("deals"),
+                         derivation=i.get("derivation", sh.DERIVATION))
 
 
 def _derivable(c: dict) -> bool:
@@ -48,19 +56,23 @@ def _derive(c: dict) -> dict:
     return sh.derive_card(holder_kind=card["holder_kind"], controller_class=card["controller_class"],
                           anchor=i["as_of"]["anchor"], anchor_time=i["as_of"]["anchor_time"],
                           first_checkpoint_time=i["as_of"]["first_checkpoint_time"], policy=i["policy"],
-                          deals=i["deals"])
+                          deals=i["deals"], derivation=i.get("derivation", sh.DERIVATION))
 
 
 def test_corpus_header() -> None:
-    assert DATA["spec"] == "spec/standard-history-v0.md"
-    assert tuple(DATA["properties"]) == sh.PROPERTIES
-    assert DATA["count"] == len(CASES)
+    for data in (DATA, DATA_2):
+        assert data["spec"] == "spec/standard-history-v0.md"
+        assert tuple(data["properties"]) == sh.PROPERTIES
+        assert data["count"] == len(data["cases"])
+    assert DATA_2["derivation"] == sh.DERIVATION_2
+    assert all(c["inputs"]["derivation"] in sh.DERIVATIONS for c in CASES_2)
+    assert not any("derivation" in c["inputs"] for c in CASES)
     spec = (ROOT / DATA["spec"]).read_text(encoding="utf-8")
     for prop in sh.PROPERTIES:
         assert f"| `{prop}` |" in spec, prop
 
 
-@pytest.mark.parametrize("c", CASES, ids=[c["id"] for c in CASES])
+@pytest.mark.parametrize("c", ALL_CASES, ids=[c["id"] for c in ALL_CASES])
 def test_case(c: dict) -> None:
     props = _check(c)
     assert props == c["expected"]["properties"]
@@ -78,6 +90,48 @@ def test_every_negative_named_in_sh_6_is_present() -> None:
                 "other-anchor"):
         assert cid in ids
         assert next(c for c in CASES if c["id"] == cid)["expected"]["fails"], cid
+
+
+def test_every_negative_named_for_v2_is_present() -> None:
+    """SH §6 "Vectors": the /2 negatives, each failing the property named."""
+    fails = {c["id"]: c["expected"]["fails"] for c in CASES_2}
+    assert fails["unpriced-left-out"] == ["counts_recompute"]
+    assert fails["unpriced-in-band"] == ["counts_recompute"]
+    assert fails["unpriced-outside-outcomes"] == ["denominator"]
+    for cid in ("v2-without-unpriced", "v1-card-with-unpriced", "unpriced-with-currency",
+                "v1-card-for-v2-request", "v2-card-for-v1-request"):
+        assert fails[cid] == ["card_form"], cid
+    assert next(c for c in CASES_2 if c["id"] == "unpriced-counted")["expected"]["standard"]
+
+
+def test_v1_cannot_count_an_unpriced_deal() -> None:
+    """SH §3, §5.2: a /1 deal entry needs an amount, so a /1 card over an unpriced deal cannot be built;
+    the same entries build a /2 card."""
+    c = next(c for c in CASES_2 if c["id"] == "unpriced-counted")
+    i = c["inputs"]
+    with pytest.raises(ValueError):
+        sh.derive_card(holder_kind="person", controller_class="person_declared", anchor=i["as_of"]["anchor"],
+                       anchor_time=i["as_of"]["anchor_time"],
+                       first_checkpoint_time=i["as_of"]["first_checkpoint_time"], policy=i["policy"],
+                       deals=i["deals"])
+    with pytest.raises(ValueError):
+        sh.check_card(CASES[0]["inputs"]["card"], policy=i["policy"], as_of=i["as_of"], deals=i["deals"])
+    assert _derive(c) == i["card"]
+
+
+@pytest.mark.parametrize("amount", [None, {}, {"value": "500", "assetScale": 2}])
+def test_v2_amount_present_must_be_an_amount(amount) -> None:
+    """SH §5.2: under /2 an amount is absent or an SR amount triple; null is neither."""
+    c = next(c for c in CASES_2 if c["id"] == "unpriced-counted")
+    deals = json.loads(json.dumps(c["inputs"]["deals"]))
+    deals[-2]["amount"] = amount
+    with pytest.raises(ValueError):
+        _check({**c, "inputs": {**c["inputs"], "deals": deals}})
+
+
+def test_unknown_token_raises() -> None:
+    with pytest.raises(ValueError):
+        sh.check_card(CASES[0]["inputs"]["card"], derivation="standard_history/3")
 
 
 def test_counts_integral_reads_the_value() -> None:
@@ -146,13 +200,21 @@ def _mutant_disagrees(monkeypatch: pytest.MonkeyPatch, name: str, replacement) -
     with monkeypatch.context() as m:
         m.setattr(sh, name, replacement)
         return any(_check(c) != c["expected"]["properties"] or (_derivable(c) and _derive(c) != c["inputs"]["card"])
-                   for c in CASES)
+                   for c in ALL_CASES)
 
 
 def _partitions_only(card: dict) -> bool:
     """A denominator check that skips the cross-tally totals of SH §4."""
     return all("of" in card[name] and (name == "class_missing" or sh._partitions(card[name], parts))
                for name, parts in sh.TALLIES.items())
+
+
+_REAL_DENOMINATOR = sh._denominator
+
+
+def _bands_only(card: dict) -> bool:
+    """A denominator check that reads a /2 card as a /1 one: the bands alone partition the outcomes."""
+    return _REAL_DENOMINATOR({k: v for k, v in card.items() if k != "unpriced"})
 
 
 def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -169,6 +231,9 @@ def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
         "checks no cross-tally total": ("_denominator", _partitions_only),
         "lets a node card carry the person class": ("CONTROLLER_CLASSES", {"person": "person_declared",
                                                                             "node": "person_declared"}),
+        "lets a /2 card leave out unpriced": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_2: sh.CARD_MEMBERS}),
+        "lets a /1 card carry unpriced": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION: sh.MEMBERS[sh.DERIVATION_2]}),
+        "leaves unpriced out of the outcome totals": ("_denominator", _bands_only),
     }
     agreeing = [desc for desc, (name, value) in mutants.items()
                 if not _mutant_disagrees(monkeypatch, name, value)]

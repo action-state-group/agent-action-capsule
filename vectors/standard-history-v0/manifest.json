@@ -5,6 +5,11 @@
   "generator": "python/scripts/generate_standard_history_v0_vectors.py",
   "files": [
     {
+      "path": "vectors-2.json",
+      "sha256": "704b201482d7399c5494a30f53a9f03de6002917506f1d21e599548426bfb2f2",
+      "count": 12
+    },
+    {
       "path": "vectors.json",
       "sha256": "b1fbc5de68e69dee59f4da522f9dbe78e0d76ba57ef09e113f44aab6c9637bfc",
       "count": 30

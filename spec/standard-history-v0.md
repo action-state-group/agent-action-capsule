@@ -11,7 +11,9 @@ This document defines three things:
 
 - the derivation `standard_history/1` (§3 to §6): one signed card, as of one anchor, that counts
   the holder's deals in a window the holder's policy sets. It is recipient-free: every requester
-  the holder answers gets the same bytes;
+  the holder answers gets the same bytes. Its revision `standard_history/2` counts, in the same
+  card, the deals whose agreed amount the holder's records do not give (§4, §5.3); a card under
+  `/1` cannot count them;
 - the deal member `counterparty_class` (§7), which decides whether a deal is counted;
 - the record kind `receipt_document` (§8): a document the holder holds, sealed by its digest.
 
@@ -21,7 +23,8 @@ month (§4).
 
 ## Dependency boundary
 
-**Owns:** the derivation token `standard_history/1` and its registry row (`spec/REGISTRY.md` §16),
+**Owns:** the derivation tokens `standard_history/1` and `standard_history/2` and their registry
+rows (`spec/REGISTRY.md` §16),
 the deal entry and the counting rules (§5), the card and its members (§4), the card properties
 (§6), the member `counterparty_class` and its three values (§7), and the record kind
 `receipt_document` (§8).
@@ -58,8 +61,9 @@ Outcome level `personal_history_outcome/1`.
 
 ## Instance of the History frame
 
-`standard_history/1` is an instance of the History frame (HF). This section names its values; it
-changes no member, value, identifier or vector of this document.
+`standard_history/1` and `standard_history/2` are instances of the History frame (HF), with the
+same parameters. This section names their values; it changes no member, value, identifier or
+vector of this document.
 
 - **Parameters** (HF §3; the SH column of HF §6.1): `identification` `token`; `level`
   `recipient_free` (§3); `subject_form` `full_history`; `coverage_kind` `policy_window`, carried as
@@ -77,8 +81,15 @@ changes no member, value, identifier or vector of this document.
 - **Wording pack:** `spec/history-frame/standard-history-1-pack.json`, digest
   `dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74`: the display strings of §6
   "What a verifier shows".
-- **Pinning.** `standard_history/1` pins both documents' bytes (HF §5.4): any change to either is
-  `standard_history/2`. Where a document and this text disagree, HF §6.3 applies.
+- **`/2`'s documents:** the counting table `spec/history-frame/standard-history-2-table.json`,
+  digest `c18c28b9830440fddb0d2963c6731da698b019d00606e3f3e4205dfb34c48a1a`, which adds to `/1`'s
+  table the card member and tally `unpriced` (§4); and the wording pack
+  `spec/history-frame/standard-history-2-pack.json`, digest
+  `212fa32bf4a5193f4161ecc86059cf4b79bac9af183350a1800a05834797a564`, which adds the string that
+  words it (§6).
+- **Pinning.** Each token pins both of its documents' bytes (HF §5.4): any change to either of
+  `/2`'s is `standard_history/3`, and `/1`'s stay as they are. Where a document and this text
+  disagree, HF §6.3 applies.
 - **Frame rules.** One holder key per card (HF §4.1), envelope acceptance (HF §4.3), card
   properties outside the IP §8 mapping (HF §4.4), acceptance (HF §4.5: a standard card, §6), no
   score, grade, ratio or ordering (HF §4.6) and differencing (HF §4.8; §9 "Differencing") are the
@@ -94,12 +105,14 @@ described in BCP 14 (RFC 2119, RFC 8174) when, and only when, they appear in all
 
 Terms from PH §1, IP §1 and ER §2 are used unchanged. This document adds:
 
-- **Card:** the artifact of an answer under `standard_history/1` (§4).
+- **Card:** the artifact of an answer under `standard_history/1` or `standard_history/2` (§4).
 - **Policy:** the holder's disclosure policy in force at the anchor, in whatever format the
   holder's host keeps it.
 - **Window:** the span of deals a card counts, set by the policy (§5.1).
 - **Deal entry:** the abstract facts about one deal that the counting rules read (§5.2).
 - **Counted deal:** a deal in the window whose `counterparty_class` is not `shop_preauth` (§7).
+- **Unpriced deal:** under `/2`, a deal whose entry carries no `amount`, because the holder's
+  records do not give the deal's agreed amount (§5.2).
 - **Tally:** a card member that holds counts. Every tally carries its own denominator, `of`.
 
 All values follow IP §5.2: digests are 64 lowercase hexadecimal characters and times are RFC 3339
@@ -123,13 +136,19 @@ a warning: the holder signed the counts, and recomputing them needs the whole st
 
 ## 3. The derivation
 
-`standard_history/1` is a registered derivation token [ER "Derivation"; `spec/REGISTRY.md` §16].
-A request for it is the IP request [IP §6.1] with:
+`standard_history/1` and `standard_history/2` are registered derivation tokens [ER "Derivation";
+`spec/REGISTRY.md` §16]. A request for either is the IP request [IP §6.1] with:
 
 - `subject` `{"full_history": null}` [ER §3.1]: the holder's stream;
 - `coverage` `{"expected_pin": <the anchor>}`;
-- `derivation` `"standard_history/1"`;
+- `derivation` `"standard_history/1"` or `"standard_history/2"`;
 - `profile` `"evidence-interop/0"`.
+
+Everything this document says of a card holds under both tokens unless it names one. A responder
+answers a request with a card of the token the request names, never of the other one. A
+responder whose records do not give a deal's agreed amount cannot fill that deal's `/1` entry
+(§5.2), so it cannot answer `/1`: it refuses the request [IP §6.3]. It never leaves the deal out
+of a `/1` card, and it never fills an amount it was not given; it can answer `/2`.
 
 The responder answers with an IP envelope [IP §6.2] whose `artifact` is UTF-8 of JCS of the card
 (§4).
@@ -153,13 +172,14 @@ The responder answers with an IP envelope [IP §6.2] whose `artifact` is UTF-8 o
 
 ## 4. The card
 
-A card is a JSON object with exactly these members, all REQUIRED:
+A `/1` card is a JSON object with exactly these members, all REQUIRED. A `/2` card has exactly
+the same members and `unpriced`, all REQUIRED:
 
 | Member | Value |
 |---|---|
-| `derivation` | `"standard_history/1"` |
+| `derivation` | the token: `"standard_history/1"` or `"standard_history/2"` |
 | `holder_kind` | `"person"` or `"node"`: the kind of holder the holder key answers for, as the holder's own controller declaration states it |
-| `controller_class` | the class of that declaration: `"person_declared"` on a `person` card and `"node_declared"` on a `node` card, and no other value in `/1`. Finer classes of a node's declaration are SH-5 |
+| `controller_class` | the class of that declaration: `"person_declared"` on a `person` card and `"node_declared"` on a `node` card, and no other value in `/1` or `/2`. Finer classes of a node's declaration are SH-5 |
 | `anchor` | the anchor the card is as of: equal to the envelope's `anchor.digest` |
 | `since` | the year and month of the holder stream's first checkpoint, `YYYY-MM` |
 | `window` | the policy's window (§5.1): `{"months": N}` with `N` a positive integer, or `{"all": true}` |
@@ -168,6 +188,7 @@ A card is a JSON object with exactly these members, all REQUIRED:
 | `class_missing` | tally: `of` (counted deals), `count` (counted deals that carry no `counterparty_class`) |
 | `outcomes` | tally over counted deals: `of`, `held`, `did_not_hold`, `undecided` |
 | `bands` | an array of band tallies (below) |
+| `unpriced` | `/2` only. Tally over counted unpriced deals: `of`, `held`, `did_not_hold`, `undecided` |
 | `roles` | tally over counted deals: `of`, `provided`, `bought` |
 | `happened` | tally over counted deals: `of`, `stamped_by_both`, `receipt_only`, `no_record` |
 | `disputes` | `{"raised": D, "received": D}`, each `D` a dispute tally (below) |
@@ -195,11 +216,13 @@ each other:
 
 - `in_window.counted` equals `class_missing.of`, `outcomes.of`, `roles.of` and `happened.of`;
 - the bands' `of` sum to `outcomes.of`, and for each outcome the bands' counts sum to that
-  outcome's count;
+  outcome's count. On a `/2` card, the bands and `unpriced` together do: the bands' `of` and
+  `unpriced.of` sum to `outcomes.of`, and for each outcome the bands' counts and `unpriced`'s
+  count sum to that outcome's count;
 - in each dispute tally, `by_outcome.of` and `by_forum.of` equal its `of`.
 
-No other member is allowed in `/1`, at any level of the card. Any change to a member, a value
-list or a counting rule is `/2`. Nothing is extended in place.
+No other member is allowed in either token's card, at any level. Any change to a member, a value
+list or a counting rule of `/2` is `/3`, and `/1` stays as it is. Nothing is extended in place.
 
 **Example** (members in JCS order):
 
@@ -214,6 +237,10 @@ list or a counting rule is `/2`. Nothing is extended in place.
  "in_window": {"counted": 3, "not_counted": 1, "of": 4}, "outcomes": {"did_not_hold": 0, "held": 2, "of": 3, "undecided": 1},
  "policy": "<64 hex>", "roles": {"bought": 1, "of": 3, "provided": 2}, "since": "2026-03", "window": {"months": 3}}
 ```
+
+The `/2` card over the same deals, none of them unpriced, has `derivation`
+`"standard_history/2"` and also carries
+`"unpriced": {"did_not_hold": 0, "held": 0, "of": 0, "undecided": 0}`.
 
 ## 5. Counting
 
@@ -234,7 +261,7 @@ policy's `N` is a whole number: 3.0 is 3, as JCS writes it.
 
 The card's `window` is the policy's window, exactly. A card with any other window is not a
 standard card (§6 `window_from_policy`), whatever its counts. A holder who sends a wider window
-to one requester sends a different disclosure, never a `standard_history/1` card (SH-6).
+to one requester sends a different disclosure, never a `standard_history/1` or `/2` card (SH-6).
 
 ### 5.2 The deal entry
 
@@ -248,14 +275,17 @@ its own records (SH-2):
 | `agreed_at` | REQUIRED | RFC 3339 time | when the holder's book committed the deal's terms |
 | `counterparty_class` | OPTIONAL | §7's three values | the deal's `counterparty_class` member (§7) |
 | `role` | REQUIRED | `provided` or `bought` | `provided` when the holder sold or provided; `bought` when the holder paid |
-| `amount` | REQUIRED | the SR amount triple | the deal's agreed amount [SR "Amounts"] |
+| `amount` | REQUIRED in `/1`; OPTIONAL in `/2` | the SR amount triple | the deal's agreed amount [SR "Amounts"]. Under `/2`, absent when the holder's records do not give it |
 | `outcome` | REQUIRED | `held`, `did_not_hold` or `undecided` | the verdict of the deal's outcome claim [RES §4]: `met` is `held`, `not_met` is `did_not_hold`, and anything else, a missing claim included, is `undecided` |
 | `happened` | REQUIRED | `stamped_by_both`, `receipt_only` or `no_record` | §5.5 |
 | `disputes` | REQUIRED | an array, possibly empty, of `{"side", "outcome", "forum"}` | §5.4 |
 
 A deal entry is never disclosed by a card. A host MUST NOT fill a member from text it was not
 given for that member: a deal it cannot classify is `undecided`, `no_record` or without
-`counterparty_class`, never guessed.
+`counterparty_class`, never guessed. So too for `amount` under `/2`: a deal whose records do not
+give its agreed amount has no `amount`, never an estimated or zero one, and a host whose records
+give the amount fills it. A zero amount (`value` `"0"`) is an amount the records give, not a
+missing one.
 
 ### 5.3 Counted deals and value bands
 
@@ -272,6 +302,11 @@ given for that member: a deal it cannot classify is `undecided`, `no_record` or 
   is 0.1 to below 1: 250 satoshi (`value` `"250000"`, `assetScale` 11) is decade -6. A deal whose
   `value` is `"0"` is in its currency's band whose `decade` is `null`. A band shows the size of a
   deal to a power of ten, never its amount.
+- Under `/2`, a counted unpriced deal is counted like any other counted deal: in `in_window`,
+  `class_missing`, `outcomes`, `roles`, `happened` and its disputes. It has no value band: it is
+  in `unpriced`, by its outcome, and in no band, not even a zero-amount band. A card carries no
+  amount and no sum of amounts, so it adds to no sum either. A counted deal that is not unpriced
+  is in its band and never in `unpriced`.
 
 ### 5.4 Disputes
 
@@ -307,11 +342,13 @@ record missing is not disagreement.
 
 ## 6. Card properties
 
-A verifier reports these properties of a card, in the IP §7.1 vocabulary [SH-1]:
+A verifier reports these properties of a card, in the IP §7.1 vocabulary [SH-1]. It checks a card
+under the token the request named: a `/1` card answering a `/2` request, or a `/2` card answering
+a `/1` request, fails `card_form`.
 
 | Property | Check | Needs |
 |---|---|---|
-| `card_form` | the card carries exactly §4's members, at every level, with the values §4 fixes for each; `since` is `YYYY-MM` in ASCII digits; each `currency` is of §4's form; `bands` is sorted as §4 says, with no two entries for one band. It does not check that a tally carries `of`, or that a count is an integer | the card |
+| `card_form` | the card carries exactly §4's members for the token, at every level, with the values §4 fixes for each; `since` is `YYYY-MM` in ASCII digits; each `currency` is of §4's form; `bands` is sorted as §4 says, with no two entries for one band. It does not check that a tally carries `of`, or that a count is an integer | the card |
 | `counts_integral` | every JSON number in the card, at every level, is an integer of at most 2^53 - 1 in magnitude, and 0 or more except a band's `decade` (§4 "Counts") | the card |
 | `denominator` | every tally carries `of`; its counts partition `of` (for `class_missing`, `count` is at most `of`); every band's `of` is 1 or more; the tallies agree as §4 says. `NOT_CHECKED` when `card_form` or `counts_integral` is `FAIL` | the card |
 | `window_from_policy` | the card's `window` equals the policy's window, and its `policy` the policy's digest. `NOT_CHECKED` without the policy | the policy's two members (§5.1) |
@@ -371,12 +408,13 @@ card's counts being the holder's statement (above), not as a defect of the card 
 
 **What a verifier shows** for a standard card, in this order: that the counts cover counted deals
 in the stated window, how many deals in it were not counted, and how many counted deals are
-`undecided`; each count with its `of` on the same line; which checks ran and which did not,
+`undecided`; on a `/2` card, how many counted deals have no recorded amount and so are in no
+band, as `unpriced.of` of `outcomes.of`; each count with its `of` on the same line; which checks ran and which did not,
 including `anchor_inclusion` `NOT_CHECKED`, `anchor_witnessed` with its status, and, without
 their inputs, `window_from_policy`, `as_of` and `counts_recompute` `NOT_CHECKED`. It shows the
 bands grouped by `currency`, each band with its own currency, and never merges bands of two
 currencies into one row or shows a band in another currency: amounts in different assets are never equal or converted [SR "Amounts"
-rule 4]. It shows no ratio of two counts, in figures, words or a graphic, but for the outcome bar
+rule 4]. It shows `unpriced` apart from the bands, never as a band, a currency or a zero amount. It shows no ratio of two counts, in figures, words or a graphic, but for the outcome bar
 below, which draws the counts and is not itself a ratio; and it never ranks or grades the holder.
 
 **The outcome bar.** A verifier MAY draw the `outcomes` tally's `held`, `did_not_hold` and
@@ -408,7 +446,13 @@ property named: a share stated as a fraction (`counts_integral`), a percentage m
 (`window_from_policy`), a counterparty member (`card_form`), a free-text `currency`
 and a free-text node `controller_class` (`card_form`), a `since` finer than a month or in other
 digits (`card_form`), bands out of order or repeated (`card_form`), an empty band
-(`denominator`), and another anchor (`as_of`), among others.
+(`denominator`), and another anchor (`as_of`), among others. The `/1` cases are in `vectors.json`.
+The `/2` cases are in `vectors-2.json`: a card with one unpriced deal, which the totals count and
+no band does, and negatives each failing the property named: the unpriced deal left out of
+every tally (`counts_recompute`), counted in a band (`counts_recompute`), counted in `unpriced`
+but not in the outcomes (`denominator`), a `/2` card without `unpriced`, a `/1` card with it, a
+`/1` card answering a `/2` request and the reverse (`card_form`), and `unpriced` with a currency
+(`card_form`).
 
 ## 7. `counterparty_class`
 
@@ -463,13 +507,16 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 
 - **Counts only.** A card carries no deal, deal reference, record digest, amount, item or party,
   and no date but `since` (§4). `bands` shows a deal's size only to a power of ten, and only in
-  aggregate. A `currency` is an asset code, never free text, but a CAIP-19 asset type names a
+  aggregate. `unpriced` shows only how many counted deals have no recorded amount. A `currency` is an asset code, never free text, but a CAIP-19 asset type names a
   token contract, and a token one business issued can name that business. Which deals a card
   counts, and so which asset codes it shows, is the holder's control through the policy.
 - **The holder's levers.** The holder's own records set `counterparty_class` and the outcome
   claim. Marking a deal `shop_preauth` takes it out of every count but `in_window`, and never
   recording an outcome claim leaves it `undecided`. The card shows both, as
-  `in_window.not_counted` and `outcomes.undecided`, and a verifier shows them (§6).
+  `in_window.not_counted` and `outcomes.undecided`, and a verifier shows them (§6). Under `/2`,
+  never recording a deal's amount takes it out of the bands but not out of any other count: the
+  card shows it as `unpriced`, and a verifier shows that too. Leaving out the amount never hides
+  the deal, and `/1` gives a host no way to leave the deal out instead (§3).
 - **Small counts.** A card with few deals in a band, or one dispute, can still tell a recipient
   who knows one of the deals something about it. The window and the bands are the holder's
   control, through the policy.
@@ -478,7 +525,7 @@ its correlation identifier is the deal reference. Its payload has exactly these 
   a recipient that holds both learns about the deals that entered or left the window between
   them, even though each card alone shows deals only in aggregate. This document sets no floor
   and no period rule (HF-1). A holder key that also serves Standard Histories under
-  `inference-service-history/0` serves no `standard_history/1` card: a holder that serves both
+  `inference-service-history/0` serves no `standard_history/1` or `/2` card: a holder that serves both
   under the same key is out of conformance by ISH's text already
   (`spec/inference-service-history-profile-v0.md` §6.1 item 8; HF §4.8).
 - **Same bytes for every requester.** A card is recipient-free (§3): two requesters who compare
@@ -505,8 +552,8 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-2 | Filling the deal entry (§5.2) from a host's records: which record gives `agreed_at`, `role` and `amount`, and which claim is a deal's outcome claim. A host profile states its mapping, as `spec/deal-reconcile-contract-v0.md` §4.2 does for a half. |
 | SH-3 | Closed (§6 "Handing the material"): the carriage is one `evidence-bundle/v2` per log the anchor commits, and `counts_recompute` needs coverage shown. ER asks a derivation's result to be re-derivable by the requester; this revision meets that only with that material, and only where coverage can be shown (SH-10). |
 | SH-4 | Closed for the anchor: a card's page checks the anchor's witness Receipts with `anchor_witnessed` (IP1 §6.2.2, §6 "The witness line"). Still open: a verification-material kind that proves a derivation's artifact against the anchor (IP P-13), as PH's PA-13, without which `anchor_inclusion` stays `NOT_CHECKED` and no Receipt says anything about a card's counts; and carrying the Receipts in the envelope's `verification` instead of beside the card. |
-| SH-5 | Finer `controller_class` values for a node's declaration, and the node's further counts, such as counts per tier of paired answers and of referee findings. This revision defines a `node` card with the same members as a `person` card. The further counts belong in a separate derivation token for nodes, so that `/1` stays the same for every holder. |
-| SH-6 | A disclosure wider than the policy's window, sent to one requester at the holder's choice. It declares the IP §6.7 coverage kind `holder_selected` and is never a `standard_history/1` card. |
+| SH-5 | Finer `controller_class` values for a node's declaration, and the node's further counts, such as counts per tier of paired answers and of referee findings. This revision defines a `node` card with the same members as a `person` card. The further counts belong in a separate derivation token for nodes, so that `/1` and `/2` stay the same for every holder. |
+| SH-6 | A disclosure wider than the policy's window, sent to one requester at the holder's choice. It declares the IP §6.7 coverage kind `holder_selected` and is never a `standard_history/1` or `/2` card. |
 | SH-7 | Reading a dispute's `outcome` and `forum` (§5.4) from the resolving process's statement: IP §11.2.6's statuses (`open`, `upheld`, `dismissed`, `conflicting`) do not say for whom a resolution found, and IP names no forum. |
 | SH-8 | Carrying `counterparty_class` in SR's terms leg, whose `settlement` member is closed in -00. Until a revision lists it, it is carried in another record of the deal (§7). |
 | SH-9 | Handing a recipient the policy, or the two members of it the card reads (§5.1), so that `window_from_policy` can run. Until a carriage is defined, a recipient's verifier reports it `NOT_CHECKED`, and the window is the holder's statement. |

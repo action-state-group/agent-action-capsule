@@ -24,6 +24,7 @@ FRAME = "history-frame/0"
 # HF §6: each instance identifier, its two documents and their digests (SHA-256 of UTF-8 of JCS).
 FILES = {
     "standard_history/1": ("standard-history-1-table.json", "standard-history-1-pack.json"),
+    "standard_history/2": ("standard-history-2-table.json", "standard-history-2-pack.json"),
     "personal_history_basic/1": ("personal-history-basic-1-table.json", "personal-history-basic-1-pack.json"),
     "personal_history_outcome/1": ("personal-history-outcome-1-table.json", "personal-history-outcome-1-pack.json"),
     "inference-service-history/0": ("inference-service-history-0-table.json", "inference-service-history-0-pack.json"),
@@ -32,6 +33,10 @@ DIGESTS = {
     "standard_history/1": {
         "table": "31122b837d2bea44dd3f559ca90a69f666c146ebb3f1b4d9f7df1c1fd3d47c53",
         "pack": "dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74",
+    },
+    "standard_history/2": {
+        "table": "c18c28b9830440fddb0d2963c6731da698b019d00606e3f3e4205dfb34c48a1a",
+        "pack": "212fa32bf4a5193f4161ecc86059cf4b79bac9af183350a1800a05834797a564",
     },
     "personal_history_basic/1": {
         "table": "d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1",

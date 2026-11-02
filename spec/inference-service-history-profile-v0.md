@@ -24,12 +24,13 @@ The personal-agent History profile (`spec/personal-agent-history-profile-v0.md`)
 profile. The two families are separate subjects. They compose only by an explicit, evidence-backed
 link between their keys, never by being shown together (`spec/history-frame-v0.md` §4.7).
 
-The Standard History derivation `standard_history/1` (`spec/standard-history-v0.md`) is a separate
+The Standard History derivation `standard_history/1`, and its revision `standard_history/2`
+(`spec/standard-history-v0.md`), is a separate
 derivation with its own purpose: one card that counts a holder's deals over a window ending at any
 anchor, with no period floor. It is not this profile's Standard level. Both are instances of the
 History frame (`spec/history-frame-v0.md`), which unifies their frame and keeps this profile's
 period rules (§6) as its own; it does not reconcile their counts. A node that serves this profile's Standard Histories serves no
-`standard_history/1` card under the same key (§6.1 item 8). Their labels do not map onto each
+`standard_history/1` or `standard_history/2` card under the same key (§6.1 item 8). Their labels do not map onto each
 other: `stamped_by_both` there is not `peer_confirmed` here. The two documents number their open
 points (SH-n) independently.
 
@@ -397,8 +398,8 @@ A record is in a period by the time the node's stream committed it.
    A verifier shows the policy's `length_s` and `floor` beside the counts. This profile sets no
    minimum for either; whether a policy is strong enough is the relying party's judgement (SH-7).
 8. **No `standard_history/1` beside it.** A node that serves Standard Histories under this profile
-   MUST NOT serve a `standard_history/1` card (`spec/standard-history-v0.md`) under the same node
-   key. That card counts over a window that ends at any anchor, with no floor, so two of its cards
+   MUST NOT serve a `standard_history/1` or `standard_history/2` card (`spec/standard-history-v0.md`)
+   under the same node key. That card counts over a window that ends at any anchor, with no floor, so two of its cards
    at consecutive checkpoints could be subtracted to isolate one exchange that these periods
    protect (§12).
 
@@ -725,8 +726,8 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
   exchange of a cell can still learn the last; the floor limits, and does not remove, what such a
   requester learns.
 - **Another derivation of the same stream.** §6 bounds only this profile's answers. A
-  `standard_history/1` card counts the holder's deals over a window ending at any anchor, with no
-  floor: two such cards under the node key, at consecutive checkpoints, differ by what was
+  `standard_history/1` or `standard_history/2` card counts the holder's deals over a window ending
+  at any anchor, with no floor: two such cards under the node key, at consecutive checkpoints, differ by what was
   committed between them, which can be one exchange. §6.1 item 8 therefore forbids a node that
   serves this profile's Standard level to serve that card under the same key. A verifier sees a
   breach only when it holds both answers.

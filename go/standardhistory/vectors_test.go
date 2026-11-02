@@ -17,7 +17,9 @@ import (
 // Every case of vectors/standard-history-v0 runs from its inputs alone and
 // is compared with the case's whole expected block, as
 // python/tests/test_standard_history_v0_vectors.py compares the Python
-// reference. Every fully checked standard card is also rebuilt by Derive.
+// reference. Every fully checked standard card is also rebuilt by DeriveAs.
+// vectors.json holds the standard_history/1 cases and vectors-2.json the
+// standard_history/2 ones, each naming the token it is checked under.
 
 type vectorCase struct {
 	ID     string `json:"id"`
@@ -26,6 +28,8 @@ type vectorCase struct {
 		Policy *standardhistory.Policy `json:"policy"`
 		AsOf   *standardhistory.AsOf   `json:"as_of"`
 		Deals  []standardhistory.Deal  `json:"deals"`
+		// Derivation is the token the card is checked under; empty is /1.
+		Derivation string `json:"derivation"`
 	} `json:"inputs"`
 	Expected struct {
 		Properties map[string]string `json:"properties"`
@@ -34,8 +38,16 @@ type vectorCase struct {
 	} `json:"expected"`
 }
 
+func (tc vectorCase) derivation() string {
+	if tc.Inputs.Derivation == "" {
+		return standardhistory.Derivation
+	}
+	return tc.Inputs.Derivation
+}
+
 type corpus struct {
 	Spec       string       `json:"spec"`
+	Derivation string       `json:"derivation"`
 	Properties []string     `json:"properties"`
 	Count      int          `json:"count"`
 	Cases      []vectorCase `json:"cases"`
@@ -43,7 +55,12 @@ type corpus struct {
 
 func load(t *testing.T) corpus {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", "..", "vectors", "standard-history-v0", "vectors.json"))
+	return loadFile(t, "vectors.json")
+}
+
+func loadFile(t *testing.T, name string) corpus {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("..", "..", "vectors", "standard-history-v0", name))
 	require.NoError(t, err)
 	var c corpus
 	require.NoError(t, json.Unmarshal(data, &c))
@@ -52,15 +69,19 @@ func load(t *testing.T) corpus {
 }
 
 func TestCorpusHeader(t *testing.T) {
-	c := load(t)
-	assert.Equal(t, "spec/standard-history-v0.md", c.Spec)
-	assert.Equal(t, standardhistory.Properties, c.Properties)
+	for _, c := range []corpus{load(t), loadFile(t, "vectors-2.json")} {
+		assert.Equal(t, "spec/standard-history-v0.md", c.Spec)
+		assert.Equal(t, standardhistory.Properties, c.Properties)
+	}
+	assert.Equal(t, standardhistory.Derivation2, loadFile(t, "vectors-2.json").Derivation)
 }
 
 func TestVectors(t *testing.T) {
-	for _, tc := range load(t).Cases {
+	all := append(load(t).Cases, loadFile(t, "vectors-2.json").Cases...)
+	for _, tc := range all {
 		t.Run(tc.ID, func(t *testing.T) {
-			got, err := standardhistory.Check(tc.Inputs.Card, tc.Inputs.Policy, tc.Inputs.AsOf, tc.Inputs.Deals)
+			got, err := standardhistory.CheckAs(tc.derivation(), tc.Inputs.Card, tc.Inputs.Policy, tc.Inputs.AsOf,
+				tc.Inputs.Deals)
 			require.NoError(t, err)
 			assert.Equal(t, tc.Expected.Properties, got)
 			assert.Equal(t, tc.Expected.Standard, standardhistory.IsStandard(got))
@@ -80,8 +101,8 @@ func TestVectors(t *testing.T) {
 			}
 			var card map[string]any
 			require.NoError(t, json.Unmarshal(tc.Inputs.Card, &card))
-			derived, err := standardhistory.Derive(card["holder_kind"].(string), card["controller_class"].(string),
-				*tc.Inputs.AsOf, *tc.Inputs.Policy, tc.Inputs.Deals)
+			derived, err := standardhistory.DeriveAs(tc.derivation(), card["holder_kind"].(string),
+				card["controller_class"].(string), *tc.Inputs.AsOf, *tc.Inputs.Policy, tc.Inputs.Deals)
 			require.NoError(t, err)
 			assert.JSONEq(t, string(tc.Inputs.Card), string(derived))
 		})
@@ -175,4 +196,42 @@ func TestDealBuiltInCode(t *testing.T) {
 	got, err = standardhistory.Check([]byte("{"), nil, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, standardhistory.Fail, got["counts_integral"])
+}
+
+// SH §3, §5.2: a standard_history/1 deal entry needs an amount, so a /1 card
+// over an unpriced deal cannot be built or recomputed; the same entries build
+// the /2 card.
+func TestV1CannotCountAnUnpricedDeal(t *testing.T) {
+	var tc vectorCase
+	for _, c := range loadFile(t, "vectors-2.json").Cases {
+		if c.ID == "unpriced-counted" {
+			tc = c
+		}
+	}
+	require.Equal(t, "unpriced-counted", tc.ID)
+	_, err := standardhistory.Derive("person", "person_declared", *tc.Inputs.AsOf, *tc.Inputs.Policy, tc.Inputs.Deals)
+	require.Error(t, err)
+	_, err = standardhistory.Check(baseCase(t).Inputs.Card, tc.Inputs.Policy, tc.Inputs.AsOf, tc.Inputs.Deals)
+	require.Error(t, err)
+	_, err = standardhistory.DeriveAs(standardhistory.Derivation2, "person", "person_declared", *tc.Inputs.AsOf,
+		*tc.Inputs.Policy, tc.Inputs.Deals)
+	require.NoError(t, err)
+}
+
+func TestUnpricedDealDecoding(t *testing.T) {
+	var d standardhistory.Deal
+	require.NoError(t, json.Unmarshal([]byte(`{"deal":"d"}`), &d))
+	assert.True(t, d.Unpriced)
+	require.Error(t, json.Unmarshal([]byte(`{"deal":"d","amount":null}`), &d))
+	require.Error(t, json.Unmarshal([]byte(`{"deal":"d","amount":"500"}`), &d))
+	require.NoError(t, json.Unmarshal([]byte(`{"deal":"d","amount":{"value":"1","assetCode":"USD","assetScale":2}}`), &d))
+	assert.False(t, d.Unpriced)
+}
+
+func TestUnknownTokenIsAnError(t *testing.T) {
+	_, err := standardhistory.CheckAs("standard_history/3", baseCase(t).Inputs.Card, nil, nil, nil)
+	require.Error(t, err)
+	_, err = standardhistory.DeriveAs("standard_history/3", "person", "person_declared", standardhistory.AsOf{},
+		standardhistory.Policy{}, nil)
+	require.Error(t, err)
 }

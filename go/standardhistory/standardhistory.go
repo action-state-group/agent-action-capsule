@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// Package standardhistory implements the standard_history/1 derivation
-// (spec/standard-history-v0.md, cited as SH): Derive builds a card from the
-// deal entries (SH §5.2), the policy's window and digest (SH §5.1) and the
-// anchor; Check reports the six card properties of SH §6 for a card, from
-// whatever the caller holds beside it.
+// Package standardhistory implements the standard_history/1 and
+// standard_history/2 derivations (spec/standard-history-v0.md, cited as SH):
+// DeriveAs builds a card of either token from the deal entries (SH §5.2), the
+// policy's window and digest (SH §5.1) and the anchor; CheckAs reports the six
+// card properties of SH §6 for a card, under the token the request named,
+// from whatever the caller holds beside it. Derive and Check are DeriveAs and
+// CheckAs for standard_history/1.
 //
 // It is at parity with the Python reference,
 // python/agent_action_capsule/standard_history.py. The vectors of
@@ -27,8 +29,13 @@ import (
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
 )
 
-// Derivation is the registered token (SH §3).
+// Derivation is the registered token standard_history/1 (SH §3).
 const Derivation = "standard_history/1"
+
+// Derivation2 is the registered token standard_history/2 (SH §3), whose card
+// also counts the counted deals with no recorded amount, in `unpriced`
+// (SH §4, §5.3).
+const Derivation2 = "standard_history/2"
 
 // Properties are the card properties of SH §6, in the order a verifier
 // reports them.
@@ -78,6 +85,19 @@ var tallies = []struct {
 var cardMembers = []string{
 	"derivation", "holder_kind", "controller_class", "anchor", "since", "window", "policy", "bands",
 	"disputes", "in_window", "class_missing", "outcomes", "roles", "happened",
+}
+
+// members are the members of each token's card (SH §4).
+var members = map[string][]string{
+	Derivation:  cardMembers,
+	Derivation2: append(slices.Clone(cardMembers), "unpriced"),
+}
+
+func checkToken(derivation string) error {
+	if _, ok := members[derivation]; !ok {
+		return fmt.Errorf("not a standard_history token: %q", derivation)
+	}
+	return nil
 }
 
 const maxCount = 1<<53 - 1
@@ -152,41 +172,53 @@ type Dispute struct {
 }
 
 // Deal is one deal entry (SH §5.2). A nil CounterpartyClass is a deal
-// without the member.
+// without the member. Unpriced is a deal without an amount, because the
+// holder's records do not give it: only a standard_history/2 card counts one
+// (SH §3), and Amount is then not read.
 type Deal struct {
 	Deal              string    `json:"deal"`
 	AgreedAt          string    `json:"agreed_at"`
 	CounterpartyClass *string   `json:"counterparty_class,omitempty"`
 	Role              string    `json:"role"`
 	Amount            Amount    `json:"amount"`
+	Unpriced          bool      `json:"-"`
 	Outcome           string    `json:"outcome"`
 	Happened          string    `json:"happened"`
 	Disputes          []Dispute `json:"disputes"`
 }
 
 // UnmarshalJSON refuses a counterparty_class of null, which would otherwise
-// read as a deal without the member, and an assetScale that is not a JSON
-// integer (SR "Amounts" rule 2).
+// read as a deal without the member, and an amount of null or an assetScale
+// that is not a JSON integer (SR "Amounts" rule 2). A deal without the amount
+// member is Unpriced.
 func (d *Deal) UnmarshalJSON(data []byte) error {
 	type plain Deal
 	var p plain
 	if err := json.Unmarshal(data, &p); err != nil {
 		return err
 	}
-	var members struct {
+	var raw struct {
 		Class  json.RawMessage `json:"counterparty_class"`
-		Amount struct {
-			AssetScale json.RawMessage `json:"assetScale"`
-		} `json:"amount"`
+		Amount json.RawMessage `json:"amount"`
 	}
-	if err := json.Unmarshal(data, &members); err != nil {
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	if members.Class != nil && p.CounterpartyClass == nil {
+	if raw.Class != nil && p.CounterpartyClass == nil {
 		return fmt.Errorf("deal %s: counterparty_class is not a string", p.Deal)
 	}
-	if !intLiteral.Match(members.Amount.AssetScale) {
-		return fmt.Errorf("deal %s: assetScale is not a JSON integer", p.Deal)
+	if raw.Amount == nil {
+		p.Unpriced = true
+	} else {
+		var amount struct {
+			AssetScale json.RawMessage `json:"assetScale"`
+		}
+		if bytes.Equal(raw.Amount, []byte("null")) || json.Unmarshal(raw.Amount, &amount) != nil {
+			return fmt.Errorf("deal %s: amount is not an object", p.Deal)
+		}
+		if !intLiteral.Match(amount.AssetScale) {
+			return fmt.Errorf("deal %s: assetScale is not a JSON integer", p.Deal)
+		}
 	}
 	*d = Deal(p)
 	return nil
@@ -250,7 +282,7 @@ func decade(a Amount) (*int, error) {
 	return &d, nil
 }
 
-func checkEntry(d Deal) error {
+func checkEntry(d Deal, derivation string) error {
 	if d.Deal == "" {
 		return errors.New("deal entry without a deal reference")
 	}
@@ -268,11 +300,17 @@ func checkEntry(d Deal) error {
 			return fmt.Errorf("deal %s: %s %q", d.Deal, c.member, c.value)
 		}
 	}
-	if !currencyForm.MatchString(d.Amount.AssetCode) {
+	switch {
+	case d.Unpriced && derivation != Derivation2:
+		// SH §3: a /1 entry cannot be filled without the amount.
+		return fmt.Errorf("deal %s: no amount, which only %s counts", d.Deal, Derivation2)
+	case d.Unpriced:
+	case !currencyForm.MatchString(d.Amount.AssetCode):
 		return fmt.Errorf("deal %s: amount without an SR assetCode", d.Deal)
-	}
-	if _, err := decade(d.Amount); err != nil {
-		return err
+	default:
+		if _, err := decade(d.Amount); err != nil {
+			return err
+		}
 	}
 	if d.Disputes == nil {
 		return fmt.Errorf("deal %s: disputes is not an array", d.Deal)
@@ -301,11 +339,14 @@ type disputeTally struct {
 }
 
 // counts are the tallies SH §5 derives from the deal entries, keyed by card
-// member.
-func counts(deals []Deal, w Window, anchor time.Time) (map[string]any, error) {
+// member, for the token's card.
+func counts(deals []Deal, w Window, anchor time.Time, derivation string) (map[string]any, error) {
 	t := map[string]map[string]int{}
 	for _, x := range tallies {
 		t[x.name] = zero(x.parts)
+	}
+	if derivation == Derivation2 {
+		t["unpriced"] = zero(outcomes)
 	}
 	// A zero amount's band has no decade (null), and sorts first.
 	type key struct {
@@ -319,7 +360,7 @@ func counts(deals []Deal, w Window, anchor time.Time) (map[string]any, error) {
 		disputes[s] = &disputeTally{ByOutcome: zero(disputeOutcomes), ByForum: zero(forums)}
 	}
 	for _, d := range deals {
-		if err := checkEntry(d); err != nil {
+		if err := checkEntry(d, derivation); err != nil {
 			return nil, err
 		}
 		agreed, _ := parseTime(d.AgreedAt)
@@ -342,6 +383,13 @@ func counts(deals []Deal, w Window, anchor time.Time) (map[string]any, error) {
 			t[x.name]["of"]++
 			t[x.name][x.value]++
 		}
+		countDisputes(disputes, d.Disputes)
+		if d.Unpriced {
+			// SH §5.3: an unpriced deal (/2 only) is in `unpriced` and in no band.
+			t["unpriced"]["of"]++
+			t["unpriced"][d.Outcome]++
+			continue
+		}
 		dec, _ := decade(d.Amount)
 		k := key{currency: d.Amount.AssetCode}
 		var decadeValue any
@@ -358,14 +406,6 @@ func counts(deals []Deal, w Window, anchor time.Time) (map[string]any, error) {
 		}
 		b["of"] = b["of"].(int) + 1
 		b[d.Outcome] = b[d.Outcome].(int) + 1
-		for _, x := range d.Disputes {
-			dt := disputes[x.Side]
-			dt.Of++
-			dt.ByOutcome["of"]++
-			dt.ByOutcome[x.Outcome]++
-			dt.ByForum["of"]++
-			dt.ByForum[x.Forum]++
-		}
 	}
 	keys := make([]key, 0, len(bands))
 	for k := range bands {
@@ -393,9 +433,29 @@ func counts(deals []Deal, w Window, anchor time.Time) (map[string]any, error) {
 	return out, nil
 }
 
-// Derive returns the card SH §4 states for these inputs, as JCS-ready JSON
-// octets (members in any order; callers canonicalize).
+func countDisputes(tallies map[string]*disputeTally, disputes []Dispute) {
+	for _, x := range disputes {
+		dt := tallies[x.Side]
+		dt.Of++
+		dt.ByOutcome["of"]++
+		dt.ByOutcome[x.Outcome]++
+		dt.ByForum["of"]++
+		dt.ByForum[x.Forum]++
+	}
+}
+
+// Derive is DeriveAs for standard_history/1.
 func Derive(holderKind, controllerClass string, asOf AsOf, policy Policy, deals []Deal) ([]byte, error) {
+	return DeriveAs(Derivation, holderKind, controllerClass, asOf, policy, deals)
+}
+
+// DeriveAs returns the card of the token derivation that SH §4 states for
+// these inputs, as JCS-ready JSON octets (members in any order; callers
+// canonicalize). An Unpriced deal is an error under standard_history/1.
+func DeriveAs(derivation, holderKind, controllerClass string, asOf AsOf, policy Policy, deals []Deal) ([]byte, error) {
+	if err := checkToken(derivation); err != nil {
+		return nil, err
+	}
 	if _, err := parseTime(asOf.FirstCheckpointTime); err != nil {
 		return nil, err
 	}
@@ -406,11 +466,11 @@ func Derive(holderKind, controllerClass string, asOf AsOf, policy Policy, deals 
 	if !policy.Window.All && (policy.Window.Months < 1 || policy.Window.Months > maxCount) {
 		return nil, fmt.Errorf("not a policy window: %+v", policy.Window)
 	}
-	card, err := counts(deals, policy.Window, anchor)
+	card, err := counts(deals, policy.Window, anchor, derivation)
 	if err != nil {
 		return nil, err
 	}
-	card["derivation"] = Derivation
+	card["derivation"] = derivation
 	card["holder_kind"] = holderKind
 	card["controller_class"] = controllerClass
 	card["anchor"] = asOf.Anchor
@@ -514,12 +574,12 @@ func str(v any) (string, bool) {
 	return s, ok
 }
 
-func cardForm(v any) bool {
+func cardForm(v any, derivation string) bool {
 	card, ok := v.(map[string]any)
-	if !ok || !keysExactly(card, cardMembers) {
+	if !ok || !keysExactly(card, members[derivation]) {
 		return false
 	}
-	if card["derivation"] != Derivation {
+	if card["derivation"] != derivation {
 		return false
 	}
 	kind, ok := str(card["holder_kind"])
@@ -544,6 +604,9 @@ func cardForm(v any) bool {
 		if !tallyForm(card[t.name], t.parts) {
 			return false
 		}
+	}
+	if derivation == Derivation2 && !tallyForm(card["unpriced"], outcomes) {
+		return false
 	}
 	bands, ok := card["bands"].([]any)
 	if !ok {
@@ -728,9 +791,18 @@ func denominator(v any) bool {
 			return false
 		}
 	}
+	// SH §4: on a /2 card the bands and `unpriced` together partition the
+	// outcomes.
+	priced := slices.Clone(bands)
+	if u, ok := card["unpriced"]; ok {
+		if !partitions(u, outcomes) {
+			return false
+		}
+		priced = append(priced, u)
+	}
 	for _, o := range append([]string{"of"}, outcomes...) {
 		sum := 0.0
-		for _, b := range bands {
+		for _, b := range priced {
 			sum += field(b, o)
 		}
 		if sum != field(card["outcomes"], o) {
@@ -781,7 +853,13 @@ func numbers(v any) any {
 	return v
 }
 
-// Check reports the six card properties of SH §6 for the card's JSON octets.
+// Check is CheckAs for standard_history/1.
+func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]string, error) {
+	return CheckAs(Derivation, card, policy, asOf, deals)
+}
+
+// CheckAs reports the six card properties of SH §6 for the card's JSON
+// octets, checked under the token derivation, the one the request named.
 // policy, asOf and deals are each optional (nil); a property that needs a
 // missing one is NOT_CHECKED. deals is every deal entry the stream holds at
 // the anchor, passed only when the verifier has shown coverage and no
@@ -790,14 +868,17 @@ func numbers(v any) any {
 // window, so counts_recompute does not need the policy. It returns an error for a malformed input,
 // never for a malformed card: a card that is not JSON at all fails every
 // property that reads it.
-func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]string, error) {
+func CheckAs(derivation string, card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]string, error) {
+	if err := checkToken(derivation); err != nil {
+		return nil, err
+	}
 	p := map[string]string{}
 	v, err := decode(card)
 	parsed := err == nil
 	if !parsed {
 		v = nil
 	}
-	p["card_form"] = status(cardForm(v))
+	p["card_form"] = status(cardForm(v, derivation))
 	p["counts_integral"] = status(parsed && countsIntegral(v))
 	if p["card_form"] == Pass && p["counts_integral"] == Pass {
 		p["denominator"] = status(denominator(v))
@@ -833,7 +914,7 @@ func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]st
 		return nil, err
 	}
 	window, _ := windowOf(m["window"]) // card_form is Pass, so the window is well-formed
-	derived, err := counts(deals, window, anchor)
+	derived, err := counts(deals, window, anchor, derivation)
 	if err != nil {
 		return nil, err
 	}

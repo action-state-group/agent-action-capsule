@@ -1,8 +1,10 @@
 # Standard History Derivation v0: conformance vectors
 
-These vectors exercise `spec/standard-history-v0.md` (`standard_history/1`, cited as SH): the
-card (SH §4), the counting rules (SH §5) and the six card properties (SH §6), including
-`counterparty_class` (SH §7) as the input that decides whether a deal is counted.
+These vectors exercise `spec/standard-history-v0.md` (`standard_history/1` and
+`standard_history/2`, cited as SH): the card (SH §4), the counting rules (SH §5) and the six card
+properties (SH §6), including `counterparty_class` (SH §7) as the input that decides whether a
+deal is counted. `vectors.json` holds the `/1` cases. `vectors-2.json` holds the `/2` cases: a
+deal whose agreed amount the records do not give, counted in every total and in no band.
 
 ## Derivation
 
@@ -16,6 +18,7 @@ a verifier may hold beside it:
 | `policy` | the policy's two members (SH §5.1): `digest` and `window` | `window_from_policy` |
 | `as_of` | the anchor's digest and time, and the stream's first checkpoint time | `as_of`, `counts_recompute` |
 | `deals` | every deal entry (SH §5.2) the stream holds at the anchor, given only when coverage is shown and no payload member the mapping reads is withheld (SH §6 "Handing the material"; a vector cannot carry the proof, so `deals` stands for a complete handover) | `counts_recompute` |
+| `derivation` | in `vectors-2.json` only: the token the request named, which the card is checked under (SH §6) | every property |
 
 `counts_recompute` recomputes over the card's own `window`, so it needs the anchor and the deal entries but not the policy. A case without an input expects `NOT_CHECKED` for each property that needs it. `expected` gives
 all six properties, whether the card is a standard card (SH §6), and the properties that `FAIL`.
@@ -38,12 +41,21 @@ Negative, each failing the properties its `expected.fails` lists: `percentage-fr
 `node-class-free-text`, `window-all-false`,
 `class-missing-over`, `dispute-forum-total` and `other-anchor`.
 
+In `vectors-2.json`, positive: `unpriced-counted` (one counted deal without an amount: every total
+counts it, `unpriced` is 1 of 1, no band counts it, and an unpriced shop purchase is only
+`not_counted`), the same card without the deal entries (`unpriced-without-deals`) and with nothing
+beside it (`unpriced-card-only`), and a `/2` card whose every deal has an amount
+(`unpriced-none`). Negative: `unpriced-left-out`, `unpriced-in-band`, `unpriced-outside-outcomes`,
+`v2-without-unpriced`, `unpriced-with-currency`, `v1-card-for-v2-request`,
+`v2-card-for-v1-request` and `v1-card-with-unpriced`.
+
 ## Gates
 
 - `python/tests/test_standard_history_v0_vectors.py` runs every case through the Python
   reference, `agent_action_capsule.standard_history`, rebuilds each fully checked standard card
   from its inputs with `derive_card`, runs defective evaluators that must each disagree with a
-  case, and regenerates the directory twice, byte-identical.
+  case, checks that a `/1` card cannot be built over an unpriced deal, and regenerates the
+  directory twice, byte-identical.
 - `go/standardhistory` runs every case through the Go package and rebuilds the same cards with
   `Derive`.
 
