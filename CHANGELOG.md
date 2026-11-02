@@ -40,6 +40,15 @@ has not yet.
   is never refused `request_unauthenticated` (§4.1), and how ER -02's unavailable-window statements
   meet the mailbox's absence window (§5.3). `vectors/adapters/nostr-mailbox/` is regenerated
   against the `evidence-interop/1` corpus (15 cases).
+- Spec, normative (AAC#548): `spec/evidence-result-v0.md` §4.1 and both schema copies gain the claim
+  type `calibration`: exactly one `calibration-summary/v1` and zero or more `human-rating/v1`
+  records, k-of-n counts with no rate, period or body. The Go and Python checkers enforce it;
+  `go/evidenceresult` reads the cited records as given, not wrapped in `agent_input`.
+- Spec, normative (AAC#529): `spec/interop-profile-v1.md` §5.2 and P-12 say a CBOR request is read
+  only in core deterministic encoding with every item, ignored members included, in the JSON data
+  model; anything else is `request_malformed`. This is what Rust and Python already enforce. Go:
+  `ParseRequest` now refuses a CBOR request outside deterministic encoding or the data model at any
+  depth, which it used to accept. New vectors `vectors/cbor-request-model/` (18 cases).
 
 ## go 0.19.0 — 2026-10-31
 

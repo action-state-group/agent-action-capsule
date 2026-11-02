@@ -58,7 +58,7 @@ position (NMB §4.2). It does not establish that the responder produced `C`, tha
 | `reply` | every check of NMB §4.2 holds | the decoded content goes to IP §7 as a reply |
 | `reply_by_content:<check>` | the format checks hold, the named attribution check (`id`, `signature`, `author`) failed first, the event is within the requester's limit on replies by content, and the content proves itself (NMB §4.2, reply by content) | the decoded content goes to IP §7 as a reply |
 | `not_a_reply:<check>` | the named check of NMB §4.2 failed first (`kind`, `reply_to`, `media_type`, `content`), or an attribution check failed and the content did not prove itself, or an attribution check failed beyond the requester's limit on replies by content (`limit`, NMB §4.2) | a transport condition [IP §9.2]; the request stays pending, then becomes an absence |
-| `duplicate` | an event whose `id` was already taken as a reply | ignored; it is the same event |
+| `duplicate` | an event whose claimed `id` was already taken as a reply | ignored; it is the same event |
 
 ## 3. Why the native check is not a property
 

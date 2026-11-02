@@ -135,7 +135,7 @@ schema cannot express (spec `evidence-result-v0.md` sections 3, 4, 4.1 to 4.3
 and 7.1). It returns the claims, each marked in force or later. `records` are
 the record headers the close claims cite (`DecodeRecords`). A close claim
 whose Close is not among them is refused, since its state is recomputed from
-the records' links, never trusted. Formats are annotations, as in the Python
+the records' links, never trusted. A calibration claim's cited records are read as given: pass the unwrapped judge records (`calibration-summary/v1`, `human-rating/v1`), not records wrapped in `agent_input`. Formats are annotations, as in the Python
 reference: `generated_at` is held to RFC 3339 by the applicability rule when a
 claim is dated. Schema patterns are read as ECMA-262, JSON Schema's dialect:
 `\s` is Unicode whitespace and `$` matches only at the end of the text.
