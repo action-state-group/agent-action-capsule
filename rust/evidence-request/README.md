@@ -10,7 +10,7 @@ refusal, or the requester's own record that nothing arrived.
 | `request` | parse a request in its JSON or CBOR binding (CBOR in core deterministic encoding only, 0.0.4) and check it: the six subject forms, exactly one coverage member, the optional fields; the exact refusal reason when it is not well formed |
 | `digest` | the request digest: SHA-256 over the bytes as received |
 | `resolve` | exact-match resolution against a responder's holdings (the `Responder` trait): the anchor to serve under, or the most specific refusal reason |
-| `refusal` | sign a refusal; check a received one (signature, registry and conformance, reported separately) |
+| `refusal` | sign a refusal; check a received one (signature, registry and conformance, reported separately); under `evidence-interop/2`, sign and check one with a signed `policy_digest` (unreleased) |
 | `outcome` | the one state an interaction is recorded as; a signed refusal is never an absence, and silence is never a refusal |
 | `invariance` | caller invariance: the same subject under the same anchor gives the same bytes |
 | `retention` | retention commitments and the breach table |

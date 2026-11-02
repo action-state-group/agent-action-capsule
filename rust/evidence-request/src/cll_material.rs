@@ -105,7 +105,7 @@ pub fn check_anchor_inclusion(envelope: &Envelope, policy: &dyn LogKeyPolicy) ->
     if !crate::envelope::PROFILES.contains(&envelope.profile.as_str()) {
         return report(
             Status::NotChecked,
-            "the envelope is not evidence-interop/0 or evidence-interop/1",
+            "the envelope is not evidence-interop/0, /1 or /2",
         );
     }
     // Step 1.

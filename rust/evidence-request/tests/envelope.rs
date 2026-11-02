@@ -5,7 +5,9 @@ use ed25519_dalek::SigningKey;
 use evidence_request::envelope::{
     parse_reply, refusal_reasons, sign, sign_with_profile, Anchor, AnchorFreshness, Binding,
     Envelope, EnvelopeError, EnvelopeParts, Reply, ReplyError, SignError, PROFILE, PROFILE_V1,
+    PROFILE_V2,
 };
+use evidence_request::refusal;
 use evidence_request::registry::Reason;
 use evidence_request::request::{Derivation, Subject};
 use serde_json::Value;
@@ -118,7 +120,7 @@ fn verify_names_what_is_wrong() {
         Err(EnvelopeError::WrongRequest)
     );
     let mut t = env.clone();
-    t.profile = "evidence-interop/2".into();
+    t.profile = "evidence-interop/9".into();
     assert_eq!(
         t.verify_for(&k.verifying_key(), REQUEST),
         Err(EnvelopeError::Profile)
@@ -139,29 +141,41 @@ fn verify_names_what_is_wrong() {
         env.verify_for_profile(PROFILE_V1, &k.verifying_key(), REQUEST),
         Err(EnvelopeError::Profile)
     );
+    // So does v2 (spec/interop-profile-v2.md, "How to read this revision").
+    let v2 = sign_with_profile(PROFILE_V2, REQUEST, parts(), &k).unwrap();
+    assert_eq!(
+        v2.verify_for_profile(PROFILE_V2, &k.verifying_key(), REQUEST),
+        Ok(())
+    );
+    assert_eq!(
+        v2.verify_for_profile(PROFILE_V1, &k.verifying_key(), REQUEST),
+        Err(EnvelopeError::Profile)
+    );
 }
 
 #[test]
 fn sign_with_profile_refuses_an_unknown_identifier() {
     let k = key("responder");
     assert_eq!(
-        sign_with_profile("evidence-interop/2", REQUEST, parts(), &k),
+        sign_with_profile("evidence-interop/9", REQUEST, parts(), &k),
         Err(SignError::Profile)
     );
 }
 
-/// Each revision's §9.1: /0 pins ER -01's eight, /1 ER -02's ten (v1 §6.3).
+/// Each revision's §9.1: /0 pins ER -01's eight, /1 and /2 ER -02's ten
+/// (v1 §6.3, v2 §6.3).
 #[test]
 fn refusal_reasons_per_identifier() {
     let v0 = refusal_reasons(PROFILE);
     let v1 = refusal_reasons(PROFILE_V1);
     assert_eq!(v0.len(), 8);
     assert_eq!(v1.len(), 10);
+    assert_eq!(refusal_reasons(PROFILE_V2), v1);
     for r in [Reason::CapacityExceeded, Reason::RequestUnauthenticated] {
         assert!(!v0.contains(&r) && v1.contains(&r), "{r}");
     }
     assert!(v0.contains(&Reason::PolicyDeclined));
-    // An identifier the crate does not implement: every token of /0 and /1.
+    // An identifier the crate does not implement: every token of those it does.
     assert_eq!(refusal_reasons("evidence-interop/9"), v1);
 }
 
@@ -278,7 +292,7 @@ fn parse_reply_reads_only_what_it_can_authenticate() {
 /// Re-signing the corpus's own envelopes with its test responder key gives
 /// the corpus octets, in both bindings: the members, their encodings and the
 /// signing input are those of `vectors/interop-profile-v0/` and of its v1
-/// regeneration.
+/// and v2 regenerations.
 #[test]
 fn reproduces_the_corpus_envelopes_byte_for_byte() {
     reproduces_corpus_envelopes(concat!(
@@ -288,6 +302,10 @@ fn reproduces_the_corpus_envelopes_byte_for_byte() {
     reproduces_corpus_envelopes(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../vectors/interop-profile-v1/vectors.json"
+    ));
+    reproduces_corpus_envelopes(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../vectors/interop-profile-v2/vectors.json"
     ));
 }
 
@@ -388,6 +406,23 @@ fn signed_members_are_never_byte_strings_or_empty_arrays() {
         parse_reply(&octets, Binding::Cbor),
         Err(ReplyError::Encoding(_))
     ));
+    // Nor in policy_digest, which verification reads under v2 (v2 §6.3).
+    let refusal = ciborium::Value::Map(vec![
+        (
+            ciborium::Value::Text("reason".into()),
+            ciborium::Value::Text("declined".into()),
+        ),
+        (
+            ciborium::Value::Text("policy_digest".into()),
+            ciborium::Value::Bytes(vec![0; 48]),
+        ),
+    ]);
+    let mut octets = Vec::new();
+    ciborium::into_writer(&refusal, &mut octets).unwrap();
+    assert!(matches!(
+        parse_reply(&octets, Binding::Cbor),
+        Err(ReplyError::Encoding(_))
+    ));
     // A byte string in a member no verification reads passes through, as in Go.
     let refusal = ciborium::Value::Map(vec![
         // "x" encodes shorter, so it comes first in deterministic order.
@@ -417,4 +452,82 @@ fn signed_members_are_never_byte_strings_or_empty_arrays() {
         parse_reply(&injected, Binding::Json),
         Err(ReplyError::Member("verification"))
     );
+}
+
+/// The refusal cases of `vectors/interop-profile-v2/` (v2 §6.3, §11.5): for
+/// each, read the reply as carried and give `refusal_signature` the
+/// verdict the corpus states. The verifier's rule is the refusal API's:
+/// check under the identifier the request asks for when the verifier
+/// implements it, else under each identifier it does implement.
+#[test]
+fn v2_refusal_signatures_match_the_corpus() {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../vectors/interop-profile-v2/vectors.json"
+    );
+    let corpus: Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    let mut checked = 0;
+    for case in corpus["cases"].as_array().unwrap() {
+        let id = case["id"].as_str().unwrap();
+        if !(id.starts_with("refusal-policy-digest-") || id.starts_with("refusal-under-v1-")) {
+            continue;
+        }
+        let request = case["inputs"]["request"]["octets_text"].as_str().unwrap();
+        let asked = serde_json::from_str::<Value>(request).unwrap()["profile"]
+            .as_str()
+            .unwrap_or(PROFILE)
+            .to_string();
+        let implemented: Vec<&str> = case["pins"]["verification_policy"]["profiles_implemented"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p.as_str().unwrap())
+            .collect();
+        let rules: Vec<&str> = if implemented.contains(&asked.as_str()) {
+            vec![asked.as_str()]
+        } else {
+            implemented.clone()
+        };
+        let trusted = case["pins"]["trust_policy"]["responder_keys"][0]
+            .as_str()
+            .unwrap();
+        let responder = ed25519_dalek::VerifyingKey::from_bytes(
+            &hex::decode(trusted).unwrap().try_into().unwrap(),
+        )
+        .unwrap();
+        let digest = evidence_request::digest::request_digest(request.as_bytes());
+        for (i, reply) in case["inputs"]["replies"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .enumerate()
+        {
+            let octets = reply["octets_text"].as_str().unwrap().as_bytes();
+            let Ok(Reply::Refusal(object)) = parse_reply(octets, Binding::Json) else {
+                panic!("{id}: reply {i} is not a refusal");
+            };
+            let expected = &case["expected"]["replies"][i]["properties"];
+            // Every other property passes, so the signature verdict is the
+            // conformance verdict.
+            for (name, status) in expected.as_object().unwrap() {
+                if name != "refusal_signature" {
+                    assert!(
+                        status == "PASS" || status == "NOT_CHECKED",
+                        "{id}: {name} {status}"
+                    );
+                }
+            }
+            let pass = expected["refusal_signature"] == "PASS";
+            let conformant = rules
+                .iter()
+                .any(|p| refusal::check_for_profile(&object, p).conformant);
+            assert_eq!(conformant, pass, "{id}: refusal_signature");
+            let verified = rules
+                .iter()
+                .any(|p| refusal::verify_for_profile(&object, p, &responder, &digest).is_ok());
+            assert_eq!(verified, pass, "{id}: verify_for_profile");
+            checked += 1;
+        }
+    }
+    assert_eq!(checked, 10, "the corpus has ten v2 refusal cases");
 }
