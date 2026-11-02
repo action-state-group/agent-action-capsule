@@ -72,6 +72,25 @@ entries. Both are at parity with the Python reference
 `agent_action_capsule.standard_history`, and both run
 `../vectors/standard-history-v0/`.
 
+## Outcome level and Inference-Service History
+
+`personalhistoryoutcome.Evaluate` reads a `personal_history_outcome/1` History
+(spec `personal-agent-history-outcome-v0.md`): each exchange through
+`evidencerequest.Verifier`, the level's History properties, each outcome
+claim's properties, the requirement results and the deal commitment openings.
+A native object's check belongs to its adapter: a caller passes a
+`NativeChecker`, and with none the check is `NOT_CHECKED`. It runs
+`../vectors/personal-history-outcome-v0/`.
+
+`inferencehistory.Evaluate` reads an `inference-service-history/0` History,
+Standard or Detailed (spec `inference-service-history-profile-v0.md`): the
+History properties, the coverage report, the witness receipts and exchange
+labels shown, and `EvaluatePair` checks `period_fixed` across Histories. It
+runs `../vectors/inference-service-history-v0/` and
+`../vectors/inference-service-history-v0-interop-v1/`. Both packages report
+each property as `PASS`, `FAIL` or `NOT_CHECKED`, at parity with the
+vector evaluators in `python/tests`.
+
 ## Controller binding v0
 
 `controllerbinding.Verify(record, times, opts)` checks one binding record
