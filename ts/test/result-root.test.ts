@@ -327,6 +327,21 @@ describe("buildResultRoot", () => {
     expect(result.claims[1]!.reconcile).toBeUndefined();
   });
 
+  it("recognizes a calibration claim, which carries no body (spec section 4.1)", async () => {
+    const source = fixture("result-root-bundle.json");
+    const claims = resultOf(source).claims as Obj[];
+    claims[2]!.type = "calibration";
+    const result = await buildResultRoot(
+      (await sealEvidenceBundle(source)).bundle,
+    );
+    expect(result.claims[2]).toMatchObject({
+      type: "calibration",
+      recognized: true,
+    });
+    expect(result.claims[2]!.close).toBeUndefined();
+    expect(result.claims[2]!.reconcile).toBeUndefined();
+  });
+
   it("accepts a Result carried in the root's agent_output member", async () => {
     const source = fixture("result-root-bundle.json");
     const disclosures = source.disclosures as Record<string, Obj>;

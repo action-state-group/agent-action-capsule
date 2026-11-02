@@ -194,6 +194,14 @@ export const CLOSE_CLAIM = "close";
  * them.
  */
 export const RECONCILE_CLAIM = "reconcile";
+/**
+ * The claim type that reports one judge's calibration
+ * (spec/evidence-result-v0.md section 4.1, normative from 2026-11-01). It
+ * adds no body: the row is a requirement row whose evidence[] cites a
+ * `calibration-summary/v1` record, so recognizing it needs nothing beyond
+ * the type.
+ */
+export const CALIBRATION_CLAIM = "calibration";
 /** The six tally keys, keyed as schemas/judge/close-v1.json keys them. */
 export const RECONCILE_TALLY_KEYS = Object.freeze([
   "matched",
@@ -1994,6 +2002,7 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
       type,
       recognized:
         type === REQUIREMENT_CLAIM ||
+        type === CALIBRATION_CLAIM ||
         body !== undefined ||
         reconcile !== undefined,
       contractRef: raw.contract_ref as string,
