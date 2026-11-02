@@ -104,6 +104,7 @@ func TestArtifactFormHoldsTheBasicEntryForms(t *testing.T) {
 		"leaf_index as text":  func(r map[string]any) { r["leaf_index"] = "1" },
 		"fraction in a time":  func(r map[string]any) { r["committed_at"] = "2026-10-15T00:00:02.5Z" },
 		"offset in a time":    func(r map[string]any) { r["event_time_claim"] = "2026-10-15T00:00:02+00:00" },
+		"no such day":         func(r map[string]any) { r["committed_at"] = "2026-02-30T00:00:00Z" },
 		"epistemic outside":   func(r map[string]any) { r["epistemic_type"] = "verified_fact" },
 		"object in epistemic": func(r map[string]any) { r["epistemic_type"] = map[string]any{"x": "y"} },
 	} {

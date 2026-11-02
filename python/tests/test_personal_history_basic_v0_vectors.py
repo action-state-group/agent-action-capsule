@@ -240,9 +240,11 @@ def deal_states(envs: list[dict]) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def tick_path_status(case: dict, anchor: str, anchor_tick: str, path: dict, *, consistency: bool = True) -> str:
+def tick_path_status(case: dict, anchor: str, streams: set, anchor_tick: str, path: dict, *,
+                     consistency: bool = True, binding: bool = True) -> str:
+    """``streams`` are the streams the Artifacts of the envelopes §6.1 accepted name."""
     trust = TrustPolicy.from_dict(case["pins"]["trust_policy"])
-    if sha(bytes.fromhex(anchor_tick)) != anchor:  # step 1
+    if binding and (sha(bytes.fromhex(anchor_tick)) != anchor or path["evidence_stream"] not in streams):  # step 1
         return "FAIL"
     ticks = []
     for octets in (bytes.fromhex(path["tick"]), bytes.fromhex(anchor_tick)):  # step 2
@@ -271,14 +273,20 @@ def tick_path_status(case: dict, anchor: str, anchor_tick: str, path: dict, *, c
     return "PASS"
 
 
-def tick_paths(case: dict, check: Callable[..., str] = tick_path_status) -> list[dict] | None:
-    """Each tick path's status (§8.3), or None when the History carries none."""
+def accepted_envs(case: dict) -> list[dict]:
+    return [x["_env"] for x in run_exchanges(case) if x["accepted"]]
+
+
+def tick_paths(case: dict, envs: list[dict], check: Callable[..., str] = tick_path_status) -> list[dict] | None:
+    """Each tick path's status (§8.3) over the envelopes §6.1 accepted, or None when the History
+    carries none. Step 1 needs one anchor that every accepted envelope names."""
     tp = case["inputs"].get("tick_paths")
     if tp is None:
         return None
-    anchors = {json.loads(x["reply"]["octets_text"])["anchor"]["digest"] for x in case["inputs"]["exchanges"]}
-    (anchor,) = anchors
-    return [{"evidence_stream": p["evidence_stream"], "status": check(case, anchor, tp["anchor_tick"], p)}
+    anchors = {e["anchor"].get("digest") for e in envs}
+    anchor = next(iter(anchors)) if len(anchors) == 1 and isinstance(next(iter(anchors)), str) else ""
+    streams = {e["artifact"]["evidence_stream"] for e in envs if isinstance(e["artifact"], dict)}
+    return [{"evidence_stream": p["evidence_stream"], "status": check(case, anchor, streams, tp["anchor_tick"], p)}
             for p in tp["paths"]]
 
 
@@ -294,7 +302,7 @@ def run_history(case: dict, evaluate: Evaluator = history_properties) -> dict:
     out = {"exchanges": exchanges, "history_properties": hprops, "accepted": accepted}
     if accepted:
         out["deal_states"] = deal_states(accepted_envs)
-    paths = tick_paths(case)
+    paths = tick_paths(case, accepted_envs)
     if paths is not None:  # §6.2: reported beside the History properties, never among them
         out["tick_paths"] = paths
     return out
@@ -508,32 +516,38 @@ def test_every_defective_evaluator_is_caught():
 
 
 def test_tick_path_cases():
-    """§8.3: the earlier tick and the anchor tick are checkpoints of one tick log, and the History's
-    anchor is the anchor tick's digest. A defective check that skips the consistency proof, or the
-    anchor's digest, disagrees with a case."""
+    """§8.3: the earlier tick and the anchor tick are checkpoints of one tick log, the History's
+    anchor is the anchor tick's digest, and each path names a stream an accepted Artifact names.
+    A defective check that skips the consistency proof, or step 1, disagrees with the correct one."""
     by_id = {c["id"]: c for c in CASES}
     positive = by_id["multi-stream-earlier-tick"]
     tp = positive["inputs"]["tick_paths"]
     assert set(tp) == {"anchor_tick", "paths"}
     (path,) = tp["paths"]
     assert set(path) == {"consistency", "evidence_stream", "tick"}
-    streams = {json.loads(base64.urlsafe_b64decode(e["artifact"] + "=" * (-len(e["artifact"]) % 4)))["evidence_stream"]
-               for e in (json.loads(x["reply"]["octets_text"]) for x in positive["inputs"]["exchanges"])}
+    envs = accepted_envs(positive)
+    streams = {e["artifact"]["evidence_stream"] for e in envs}
     assert path["evidence_stream"] in streams and len(streams) == 3
     mutant = by_id["mutant-tick-path-consistency-changed"]
     assert mutant["expected"]["accepted"] and mutant["expected"]["tick_paths"][0]["status"] == "FAIL"
 
-    def skip_consistency(case, anchor, anchor_tick, p):
-        return tick_path_status(case, anchor, anchor_tick, p, consistency=False)
+    def skip_consistency(case, anchor, streams, anchor_tick, p):
+        return tick_path_status(case, anchor, streams, anchor_tick, p, consistency=False)
 
-    assert tick_paths(mutant, skip_consistency) != mutant["expected"]["tick_paths"]
+    def skip_step_1(case, anchor, streams, anchor_tick, p):
+        return tick_path_status(case, anchor, streams, anchor_tick, p, binding=False)
+
+    assert tick_paths(mutant, accepted_envs(mutant), skip_consistency) != mutant["expected"]["tick_paths"]
+    # Step 1: another anchor, or a stream no accepted Artifact names. Steps 2 to 5 pass for both.
+    for anchor, names in (("0" * 64, streams), (sha(bytes.fromhex(tp["anchor_tick"])), streams - {path["evidence_stream"]})):
+        assert tick_path_status(positive, anchor, names, tp["anchor_tick"], path) == "FAIL"
+        assert skip_step_1(positive, anchor, names, tp["anchor_tick"], path) == "PASS"
     other = copy.deepcopy(positive)
     other["inputs"]["tick_paths"]["anchor_tick"] = path["tick"]
-    assert tick_paths(other) == [{"evidence_stream": path["evidence_stream"], "status": "FAIL"}]
-    assert tick_path_status(positive, "0" * 64, tp["anchor_tick"], path) == "FAIL"
+    assert tick_paths(other, envs) == [{"evidence_stream": path["evidence_stream"], "status": "FAIL"}]
     swapped = copy.deepcopy(positive)
     swapped["inputs"]["tick_paths"]["paths"][0]["tick"] = tp["anchor_tick"]
-    assert tick_paths(swapped) == [{"evidence_stream": path["evidence_stream"], "status": "FAIL"}]
+    assert tick_paths(swapped, envs) == [{"evidence_stream": path["evidence_stream"], "status": "FAIL"}]
 
 
 def test_accepting_every_envelope_is_caught():

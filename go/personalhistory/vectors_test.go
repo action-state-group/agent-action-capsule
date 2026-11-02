@@ -166,9 +166,10 @@ func evaluate(t *testing.T, c corpus, vc vectorCase) personalhistory.Result {
 	return res
 }
 
-// tickPaths checks a case's tick paths (PH §8.3), rendered as the corpus
-// states them; nil when the case carries none.
-func tickPaths(t *testing.T, vc vectorCase) []any {
+// tickPaths checks a case's tick paths (PH §8.3) over its evaluated
+// History, rendered as the corpus states them; nil when the case carries
+// none.
+func tickPaths(t *testing.T, vc vectorCase, res personalhistory.Result) []any {
 	t.Helper()
 	if vc.Inputs.TickPaths == nil {
 		return nil
@@ -177,10 +178,8 @@ func tickPaths(t *testing.T, vc vectorCase) []any {
 	require.NoError(t, err)
 	trust, err := evidencerequest.TrustPolicyFromPin(vc.Pins.TrustPolicy)
 	require.NoError(t, err)
-	var env map[string]any
-	require.NoError(t, json.Unmarshal([]byte(vc.Inputs.Exchanges[0].Reply.OctetsText), &env))
 	out := []any{}
-	for _, r := range personalhistory.CheckTickPaths(trust, env["anchor"].(map[string]any)["digest"].(string), tp) {
+	for _, r := range personalhistory.CheckTickPaths(trust, res, tp) {
 		out = append(out, map[string]any{"evidence_stream": r.EvidenceStream, "status": r.Status})
 	}
 	return out
@@ -197,8 +196,9 @@ func TestPersonalHistoryBasicVectors(t *testing.T) {
 		}
 		history++
 		t.Run(vc.ID, func(t *testing.T) {
-			got := render(evaluate(t, c, vc))
-			if paths := tickPaths(t, vc); paths != nil {
+			res := evaluate(t, c, vc)
+			got := render(res)
+			if paths := tickPaths(t, vc, res); paths != nil {
 				got["tick_paths"] = paths
 			}
 			expected := map[string]any{}
@@ -516,9 +516,9 @@ func TestParseFileRefusesWhatIsNotTheContainer(t *testing.T) {
 }
 
 // The tick path check (PH §8.3) decides at the first step that fails: an
-// anchor tick that is not the History's anchor, an earlier tick that is
-// the anchor tick itself, a tick of another log key, and a consistency
-// proof cut short each FAIL.
+// anchor tick that is not the History's anchor, a stream no accepted
+// Artifact names, an earlier tick that is the anchor tick itself, a tick of
+// another log key, and a consistency proof cut short each FAIL.
 func TestTickPathCheckSteps(t *testing.T) {
 	c := load(t)
 	var positive vectorCase
@@ -532,33 +532,45 @@ func TestTickPathCheckSteps(t *testing.T) {
 	require.NoError(t, err)
 	trust, err := evidencerequest.TrustPolicyFromPin(positive.Pins.TrustPolicy)
 	require.NoError(t, err)
-	anchor := evidencerequest.Digest(tp.AnchorTick)
-	check := func(tp personalhistory.TickPaths, anchor string) personalhistory.TickPathResult {
-		return personalhistory.CheckTickPaths(trust, anchor, tp)[0]
+	res := evaluate(t, c, positive)
+	check := func(tp personalhistory.TickPaths) personalhistory.TickPathResult {
+		return personalhistory.CheckTickPaths(trust, res, tp)[0]
 	}
-	assert.Equal(t, evidencerequest.StatusPass, check(tp, anchor).Status)
+	assert.Equal(t, evidencerequest.StatusPass, check(tp).Status)
 
-	r := check(tp, strings.Repeat("0", 64))
+	other := tp
+	other.AnchorTick = tp.Paths[0].Tick
+	r := check(other)
 	assert.Equal(t, evidencerequest.StatusFail, r.Status)
 	assert.Contains(t, r.Detail, "step 1")
+
+	stray := tp
+	stray.Paths = []personalhistory.TickPath{tp.Paths[0]}
+	stray.Paths[0].EvidenceStream = "deal/not-in-the-history"
+	r = check(stray)
+	assert.Equal(t, evidencerequest.StatusFail, r.Status)
+	assert.Contains(t, r.Detail, "step 1")
+
+	r = personalhistory.CheckTickPaths(trust, personalhistory.Result{}, tp)[0]
+	assert.Equal(t, evidencerequest.StatusFail, r.Status, "no accepted envelope, so no anchor")
 
 	same := tp
 	same.Paths = []personalhistory.TickPath{tp.Paths[0]}
 	same.Paths[0].Tick = tp.AnchorTick
-	r = check(same, anchor)
+	r = check(same)
 	assert.Equal(t, evidencerequest.StatusFail, r.Status)
 	assert.Contains(t, r.Detail, "step 4")
 
 	short := tp
 	short.Paths = []personalhistory.TickPath{tp.Paths[0]}
 	short.Paths[0].Consistency = tp.Paths[0].Consistency[:len(tp.Paths[0].Consistency)-1]
-	r = check(short, anchor)
+	r = check(short)
 	assert.Equal(t, evidencerequest.StatusFail, r.Status)
 	assert.Contains(t, r.Detail, "step 5")
 
 	untrusted := trust
 	untrusted.LogKeys = nil
-	r = personalhistory.CheckTickPaths(untrusted, anchor, tp)[0]
+	r = personalhistory.CheckTickPaths(untrusted, res, tp)[0]
 	assert.Equal(t, evidencerequest.StatusFail, r.Status)
 	assert.Contains(t, r.Detail, "step 2")
 }

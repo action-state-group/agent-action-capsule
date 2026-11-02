@@ -184,6 +184,8 @@ that choice with the host, under these rules [PA-17]:
   MAY hold only a deal's steps under its correlation, so that records about the deal, such as a
   report on it, a Result about it, a record that it was shared, an exchange about it or a
   composition built from it, are not records of the deal.
+- The rule is stated in the host's own documentation, outside the History. No member of a
+  History carries it, so a recipient cannot check that an answer applies it (§9).
 - The rule MAY carry membership in a header member other than `subject_ref` [EL], or in no header
   member at all. A host that uses `subject_ref` for another purpose, such as identifying a retried
   step, does not thereby hold each `subject_ref` value as a correlation of its own.
@@ -395,7 +397,10 @@ A verifier showing an accepted History at the Basic level shows, in this order:
 1. that outcomes are not established (§5), and that the coverage kind is `holder_selected`, with
    completeness not asserted [IP §6.7.3], before any count;
 2. the number of selected deals, and the count of each deal state of §5, each in its own unit;
-3. per deal, its records' committed and claimed times as two separate values, and their kinds;
+3. per deal, its records' committed and claimed times as two separate values, and their kinds,
+   and, for a deal whose stream has a tick path, that path's status beside the deal, or that it
+   was not checked. Where it is not `PASS`, nothing the History carries supports that deal's
+   records being those at the anchor, and the verifier says so beside the deal;
 4. which checks ran and which did not, including `anchor_inclusion` `NOT_CHECKED`, and each tick
    path's status (§8.3) or that it was not checked;
 5. the limits of §4.5 and §9, including that a deal reference may have been chosen by the other
@@ -513,9 +518,11 @@ does for any checkpoint.
 **The tick path check.** For each tick path, a verifier that runs the check reports one IP §7.1
 status. Steps run in order, and the first that yields a status decides:
 
-1. If SHA-256 of `anchor_tick` differs from the anchor every envelope names: `FAIL`.
-2. Decode both ticks as IP §6.2.1 step 7 does, with its `FAIL`s. Apply its steps 8 to 10 to each,
-   with their statuses: the algorithm, the relying party's policy for (`iss`, `sub`, `kid`), and
+1. If SHA-256 of `anchor_tick` differs from the anchor every envelope names, or the path's
+   `evidence_stream` is not the `evidence_stream` of an Artifact of an envelope §6.1 accepted:
+   `FAIL`.
+2. Apply IP §6.2.1 steps 7 to 10 to the earlier tick, then to the anchor tick, with their
+   statuses: the form, the algorithm, the relying party's policy for (`iss`, `sub`, `kid`), and
    the signature.
 3. If the two ticks' `iss` differ: `FAIL`. They are not one log. `sub` is not compared, because a
    log may name each checkpoint in it, as CLL's reference implementation names it by the log and
@@ -552,6 +559,9 @@ not a History property (§6.2).
   `not_asserted` says so, and a verifier shows it. Every envelope verifying under the holder key
   does not change that: a valid signature never implies completeness [IP §6.7]. A requirement that
   relies on completeness is never `SATISFIED` from a Basic level History [IP §6.7.3 item 4].
+- **Correlation rule.** Which records a deal holds is the host's rule (§3.1), stated outside the
+  History. A recipient cannot check that an answer holds every record the rule names, or only
+  those, any more than it can check that a selection is complete.
 - **Claimed times.** `event_time_claim` is the holder's agent's claim. `committed_at` is the time
   the holder's own stream assigned. Neither is a witnessed time; both are shown, separately.
 - **Tick paths.** A tick path carries two signed checkpoints of the holder's tick log. Their

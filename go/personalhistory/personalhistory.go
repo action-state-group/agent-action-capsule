@@ -262,22 +262,45 @@ type TickPathResult struct {
 	Detail         string
 }
 
-// CheckTickPaths runs the tick path check (PH §8.3) over each path, for a
-// History answered at anchor (the digest every envelope names), resolving
-// each tick's log key under trust. Its results are not History properties
-// and never change whether a History is accepted (PH §6.2).
-func CheckTickPaths(trust evidencerequest.TrustPolicy, anchor string, tp TickPaths) []TickPathResult {
+// CheckTickPaths runs the tick path check (PH §8.3) over each path, for
+// the History res evaluated: its anchor is the one anchor digest every
+// envelope §6.1 accepted names, and each path's stream must be one their
+// Artifacts name. Each tick's log key is resolved under trust. The results
+// are not History properties and never change whether a History is
+// accepted (PH §6.2).
+func CheckTickPaths(trust evidencerequest.TrustPolicy, res Result, tp TickPaths) []TickPathResult {
+	anchors := map[string]bool{}
+	streams := map[string]bool{}
+	for _, x := range res.Exchanges {
+		if !x.Accepted {
+			continue
+		}
+		digest, _ := asMap(x.Reply.Envelope["anchor"])["digest"].(string)
+		anchors[digest] = true
+		if stream, ok := asMap(x.Artifact)["evidence_stream"].(string); ok {
+			streams[stream] = true
+		}
+	}
+	anchor := ""
+	if len(anchors) == 1 {
+		for a := range anchors {
+			anchor = a
+		}
+	}
 	out := make([]TickPathResult, len(tp.Paths))
 	for i, p := range tp.Paths {
-		status, detail := checkTickPath(trust, anchor, tp.AnchorTick, p)
+		status, detail := checkTickPath(trust, anchor, streams, tp.AnchorTick, p)
 		out[i] = TickPathResult{EvidenceStream: p.EvidenceStream, Status: status, Detail: detail}
 	}
 	return out
 }
 
-func checkTickPath(trust evidencerequest.TrustPolicy, anchor string, anchorTick []byte, p TickPath) (string, string) {
-	if evidencerequest.Digest(anchorTick) != anchor {
-		return evidencerequest.StatusFail, "step 1: anchor_tick is not the History's anchor"
+func checkTickPath(trust evidencerequest.TrustPolicy, anchor string, streams map[string]bool, anchorTick []byte, p TickPath) (string, string) {
+	if anchor == "" || evidencerequest.Digest(anchorTick) != anchor {
+		return evidencerequest.StatusFail, "step 1: anchor_tick is not the anchor every accepted envelope names"
+	}
+	if !streams[p.EvidenceStream] {
+		return evidencerequest.StatusFail, "step 1: no accepted envelope's Artifact names the path's stream"
 	}
 	var ticks [2]*evidencerequest.CLLCheckpoint
 	for i, octets := range [][]byte{p.Tick, anchorTick} {
@@ -762,4 +785,9 @@ func hexBytes(s string) ([]byte, error) {
 		return nil, ErrInvalid
 	}
 	return hex.DecodeString(s)
+}
+
+func asMap(v any) map[string]any {
+	m, _ := v.(map[string]any)
+	return m
 }

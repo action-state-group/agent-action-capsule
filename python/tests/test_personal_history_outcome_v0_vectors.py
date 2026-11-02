@@ -29,6 +29,7 @@ import subprocess
 import sys
 from collections import Counter
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -95,7 +96,7 @@ X402_ALSO = ["payer_trust", "asset_trust"]
 # The Basic level corpus as it stood when this level was cut, with its multi-stream revision and the
 # readings of agent-action-capsule#328 (the §4.3 entry forms and the §8.3 tick paths).
 BASIC_RELEASED = {
-    "README.md": "50688a1cf3cd1aad7a722cbab63fc3a16222d679f79b9dba9061cafcaa6e1817",
+    "README.md": "f153449adf9937d6383a5b213d188be444b6e3c968b3e07b6ca40887648ed3f2",
     "manifest.json": "f8e29f02384ae6be638c74010031e5d2b947bba711926fe7b50d4cff6d5e3aea",
     "producer/main.go": "e9054656ad2431de9c5cf9bed89cdb2316314039db0eb077148e3e8a20f7c38e",
     "responder-run.json": "f7d77d56d81ca187cb9a8118f8a15aae5407f5a96aca1c5525a5f5d2e827b848",
@@ -215,8 +216,14 @@ def artifact_value(octets: bytes | None) -> Any:
 
 
 def is_time(v: Any) -> bool:
-    """IP §5.2's time form."""
-    return isinstance(v, str) and bool(re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", v))
+    """IP §5.2's time form, naming a real calendar instant."""
+    if not (isinstance(v, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", v)):
+        return False
+    try:
+        datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return False
+    return True
 
 
 # PH §4.3: the forms of the entry members this level shares with the Basic level. PH fixes none for
@@ -788,7 +795,8 @@ def test_artifact_form_holds_the_basic_entry_forms():
 
     assert artifact_form(env())
     for change in ({"digest": "private value"}, {"leaf_index": "1"}, {"committed_at": "2026-10-15T00:00:02.5Z"},
-                   {"event_time_claim": "2026-10-15T00:00:02+00:00"}, {"epistemic_type": "verified_fact"},
+                   {"event_time_claim": "2026-10-15T00:00:02+00:00"}, {"committed_at": "2026-02-30T00:00:00Z"},
+                   {"epistemic_type": "verified_fact"},
                    {"epistemic_type": {"x": "y"}}):
         assert not artifact_form(env(**change)), change
     assert artifact_value(b'{ "a":1}') is None and artifact_value(b'{"a":1}') == {"a": 1}

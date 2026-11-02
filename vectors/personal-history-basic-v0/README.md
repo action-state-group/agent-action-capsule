@@ -51,8 +51,11 @@ alone:
 - It compares all three with the case's whole `expected` block.
 - It checks that each row of the §6.4 mutant table has a case that fails the property the row
   names.
-- It runs twelve defective History evaluators and two defective tick path checks, each of which must disagree with at least one case,
-  and one evaluator that counts envelopes §6.1 rejected, which must also disagree.
+- It runs twelve defective History evaluators, each of which must disagree with at least one
+  case, and one evaluator that counts envelopes §6.1 rejected, which must also disagree.
+- It runs two defective tick path checks: one that skips the consistency proof must disagree with
+  `mutant-tick-path-consistency-changed`, and one that skips step 1 must pass a path the correct
+  check fails, at another anchor or for a stream no accepted Artifact names.
 - It regenerates the directory twice and requires both runs to be byte-identical to the committed
   files.
 
