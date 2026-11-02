@@ -110,8 +110,8 @@ type Requirement struct {
 type NativeClaim struct {
 	Adapter          string
 	AdapterPredicate string
-	// Evidence lists the digests the claim cites; Objects holds each
-	// object's octets by digest.
+	// Evidence lists the digests the claim cites; Objects holds a copy of
+	// each cited object's octets by digest.
 	Evidence []string
 	Objects  map[string][]byte
 }
@@ -278,10 +278,28 @@ func withArtifact(r *evidencerequest.ReplyResult) map[string]any {
 	for k, v := range r.Envelope {
 		env[k] = v
 	}
-	if a, err := evidencerequest.DecodeJSON(r.Artifact); r.Artifact != nil && err == nil {
+	if a := artifactValue(r.Artifact); a != nil {
 		env["artifact"] = a
 	}
 	return env
+}
+
+// artifactValue reads an Artifact: nil unless the octets are exactly the JCS
+// of one JSON value, so a duplicate member, trailing data or any other
+// encoding cannot carry bytes that artifact_form never reads.
+func artifactValue(octets []byte) any {
+	if octets == nil {
+		return nil
+	}
+	v, err := evidencerequest.DecodeJSON(octets)
+	if err != nil {
+		return nil
+	}
+	again, err := evidencerequest.EncodeJCS(v)
+	if err != nil || !bytes.Equal(again, octets) {
+		return nil
+	}
+	return v
 }
 
 // ---------------------------------------------------------------------------
@@ -642,8 +660,12 @@ func (e evaluator) nativeCheck(o map[string]any, evidence []string) string {
 			return evidencerequest.StatusNotChecked
 		}
 	}
+	cited := make(map[string][]byte, len(evidence))
+	for _, d := range evidence {
+		cited[d] = slices.Clone(e.objects[d])
+	}
 	got := e.cfg.Native(NativeClaim{Adapter: str(o["adapter"]), AdapterPredicate: str(o["adapter_predicate"]),
-		Evidence: evidence, Objects: e.objects})
+		Evidence: evidence, Objects: cited})
 	switch got {
 	case evidencerequest.StatusPass, evidencerequest.StatusFail:
 		return got
@@ -800,14 +822,15 @@ func openingResults(envs []map[string]any, openings map[string]any) map[string]s
 			continue
 		}
 		o, ok := openings[deal]
-		if !ok {
+		if !ok || o == nil {
 			out[deal] = NotPresent
 			continue
 		}
 		m, isMap := o.(map[string]any)
 		nonce, _ := get(o, "nonce").(string)
+		body := jcs(o)
 		out[deal] = status(isMap && hex64.MatchString(nonce) && hasKeys(m, []string{"nonce", "text"}) &&
-			equal(sha(jcs(o)), committed))
+			body != nil && equal(sha(body), committed))
 	}
 	return out
 }

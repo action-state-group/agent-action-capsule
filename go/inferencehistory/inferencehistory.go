@@ -47,6 +47,9 @@ const (
 	Corroborated  = "corroborated"
 )
 
+// maxLengthS keeps a period length within time.Duration.
+const maxLengthS = uint64(1<<63-1) / uint64(time.Second)
+
 const (
 	peerShown  = "peer-confirmed; not corroborating (independence not established)"
 	relativeTo = "the node's stream at the anchor, under all_records; completeness not established: " +
@@ -188,16 +191,35 @@ func acceptedEnvelope(r *evidencerequest.ReplyResult) bool {
 }
 
 // withArtifact is the envelope with its Artifact decoded as the member
-// "artifact"; the member is absent when the Artifact is not one JSON value.
+// "artifact"; the member is absent when the Artifact is not UTF-8 of JCS of
+// one JSON value (ISH §8.2).
 func withArtifact(r *evidencerequest.ReplyResult) map[string]any {
 	env := map[string]any{}
 	for k, v := range r.Envelope {
 		env[k] = v
 	}
-	if a, err := evidencerequest.DecodeJSON(r.Artifact); r.Artifact != nil && err == nil {
+	if a := artifactValue(r.Artifact); a != nil {
 		env["artifact"] = a
 	}
 	return env
+}
+
+// artifactValue reads an Artifact: nil unless the octets are exactly the JCS
+// of one JSON value, so a duplicate member, trailing data or any other
+// encoding cannot carry bytes that artifact_form never reads.
+func artifactValue(octets []byte) any {
+	if octets == nil {
+		return nil
+	}
+	v, err := evidencerequest.DecodeJSON(octets)
+	if err != nil {
+		return nil
+	}
+	again, err := evidencerequest.EncodeJCS(v)
+	if err != nil || !bytes.Equal(again, octets) {
+		return nil
+	}
+	return v
 }
 
 // Evaluate verifies the exchange with v and checks the History properties
@@ -519,16 +541,31 @@ func witnessShown(pins Pins, env map[string]any) WitnessShown {
 	return out
 }
 
-func cells(env map[string]any) []map[string]any {
+// cells are the cells of every period, and false when period_counts is
+// present but its periods or cells are not lists of objects.
+func cells(env map[string]any) ([]map[string]any, bool) {
+	if _, ok := asMap(env["artifact"])["period_counts"]; !ok {
+		return nil, true
+	}
+	periods, ok := get(get(env["artifact"], "period_counts"), "periods").([]any)
+	if !ok {
+		return nil, false
+	}
 	var out []map[string]any
-	for _, p := range list(get(get(env["artifact"], "period_counts"), "periods")) {
-		for _, c := range list(get(p, "cells")) {
-			if m, ok := c.(map[string]any); ok {
-				out = append(out, m)
+	for _, p := range periods {
+		raw, ok := get(p, "cells").([]any)
+		if !ok {
+			return nil, false
+		}
+		for _, c := range raw {
+			m, ok := c.(map[string]any)
+			if !ok {
+				return nil, false
 			}
+			out = append(out, m)
 		}
 	}
-	return out
+	return out, true
 }
 
 func unitsOK(d any, env map[string]any) bool {
@@ -540,7 +577,11 @@ func unitsOK(d any, env map[string]any) bool {
 		}
 		byMember[str(get(raw, "name"))] = set
 	}
-	for _, c := range cells(env) {
+	all, wellFormed := cells(env)
+	if !wellFormed {
+		return false
+	}
+	for _, c := range all {
 		u := str(c["unit"])
 		if !slices.Contains(units, u) || !byMember["period_counts"][u] {
 			return false
@@ -609,7 +650,11 @@ func exchangesShown(pins Pins, env map[string]any) []ExchangeShown {
 // labelsOK is ISH §7.3: no label is stronger than its evidence. A Standard
 // count is the node's own statement.
 func labelsOK(pins Pins, env map[string]any) bool {
-	for _, c := range cells(env) {
+	all, wellFormed := cells(env)
+	if !wellFormed {
+		return false
+	}
+	for _, c := range all {
 		if r, ok := rank[str(c["label"])]; !ok || r > 0 {
 			return false
 		}
@@ -636,7 +681,7 @@ func periodsOK(d any, env map[string]any) bool {
 	epoch, ok1 := when(get(p, "epoch"))
 	lengthS, ok2 := evidencerequest.UintValue(get(p, "length_s"))
 	history := list(get(get(env["artifact"], "history_card"), "history"))
-	if !ok1 || !ok2 || lengthS == 0 || len(history) == 0 {
+	if !ok1 || !ok2 || lengthS == 0 || lengthS > maxLengthS || len(history) == 0 {
 		return false
 	}
 	length := time.Duration(lengthS) * time.Second
@@ -694,7 +739,7 @@ func anchorOK(d any, env map[string]any) bool {
 	at, ok1 := when(get(get(history[len(history)-1], "checkpoint"), "timestamp"))
 	epoch, ok2 := when(get(p, "epoch"))
 	lengthS, ok3 := evidencerequest.UintValue(get(p, "length_s"))
-	return ok1 && ok2 && ok3 && lengthS != 0 && at.Sub(epoch)%(time.Duration(lengthS)*time.Second) == 0
+	return ok1 && ok2 && ok3 && lengthS != 0 && lengthS <= maxLengthS && at.Sub(epoch)%(time.Duration(lengthS)*time.Second) == 0
 }
 
 // floorOK is ISH §6.2: a published cell is at least the floor; a suppressed
@@ -707,8 +752,12 @@ func floorOK(d any, env map[string]any) bool {
 		return false
 	}
 	for _, period := range periods {
+		raw, ok := get(period, "cells").([]any)
+		if !ok {
+			return false
+		}
 		var all []map[string]any
-		for _, c := range list(get(period, "cells")) {
+		for _, c := range raw {
 			cell, ok := c.(map[string]any)
 			if !ok {
 				return false
@@ -780,10 +829,10 @@ func coverageReport(d any, env map[string]any) Coverage {
 	anchor, _ := env["anchor"].(map[string]any)
 	ok := equal(interval["to"], anchor["digest"]) && !equal(interval["from"], interval["to"])
 	return Coverage{DeclaredKind: "stream_interval", RelativeTo: relativeTo, Properties: map[string]string{
-		"coverage_declaration_form":       evidencerequest.StatusPass,
-		"coverage_declaration_anchor":     status(ok),
-		"coverage_declaration_population": evidencerequest.StatusNotChecked,
+		"coverage_declaration_form":   evidencerequest.StatusPass,
+		"coverage_declaration_anchor": status(ok),
 		// ISH §4.2, SH-4: a count of records carries no records to compare.
+		"coverage_declaration_population": evidencerequest.StatusNotChecked,
 		"coverage_declaration_commitment": evidencerequest.StatusNotChecked,
 	}}
 }
@@ -914,8 +963,16 @@ func jcs(v any) []byte {
 	return out
 }
 
+// unencodable is the digest of a value JCS cannot encode: never a SHA-256
+// hex, so no member equals it.
+const unencodable = "unencodable"
+
 func digest(v any) string {
-	return evidencerequest.Digest(jcs(v))
+	body := jcs(v)
+	if body == nil {
+		return unencodable
+	}
+	return evidencerequest.Digest(body)
 }
 
 func equal(a, b any) bool {
