@@ -568,8 +568,9 @@ pub struct Counts {
 /// Check a Service History artifact `art` against its embedded card, already
 /// checked by the caller (checkpoint signatures, consistency proofs, witness
 /// receipts): its checkpoints `chain`, the stream's first to the anchor, each
-/// with its time and the records it covers; the anchor digest and stream; and
-/// the records the anchor covers. Every rule a verifier can check from one
+/// with its time and the records it covers (the anchor's, the last, are the
+/// records the coverage declaration counts); and the anchor digest and
+/// stream. Every rule a verifier can check from one
 /// History: that it names `def` and the `full_history` subject, the members,
 /// the card's digest and subject, the coverage declaration (ISH §4.2), and
 /// `period_alignment`, `period_anchor` and `period_floor` (ISH §6.3), with
@@ -581,7 +582,6 @@ pub fn check_artifact(
     chain: &[Cut<'_>],
     anchor: &str,
     stream: &str,
-    log_size: u64,
 ) -> Result<Counts, String> {
     let mut keys: Vec<&str> = art.keys().map(String::as_str).collect();
     keys.sort_unstable();
@@ -608,7 +608,13 @@ pub fn check_artifact(
     {
         return Err("the card is not for this History's subject, stream and anchor".into());
     }
-    if art.get("coverage_declaration") != Some(&coverage_declaration(anchor, stream, log_size)) {
+    if art.get("coverage_declaration")
+        != Some(&coverage_declaration(
+            anchor,
+            stream,
+            chain[chain.len() - 1].leaves,
+        ))
+    {
         return Err("the coverage declaration is not the Standard one at this anchor".into());
     }
     let anchor_time = chain

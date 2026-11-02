@@ -285,7 +285,7 @@ fn built() -> (Map<String, Value>, Vec<Cut<'static>>, String) {
 }
 
 fn check(art: &Map<String, Value>, chain: &[Cut<'_>], anchor: &str) -> Result<Counts, String> {
-    check_artifact(&definition(), art, chain, anchor, STREAM, 30)
+    check_artifact(&definition(), art, chain, anchor, STREAM)
 }
 
 #[test]
@@ -544,10 +544,10 @@ fn periods_start_at_the_first_record_and_an_empty_stream_lists_none() {
     let octets = artifact(&def, &jcs(&card).unwrap(), none, &pin, STREAM, 0).unwrap();
     let art = serde_json::from_slice::<Value>(&octets).unwrap();
     let art = art.as_object().unwrap();
-    let checked = check_artifact(&def, art, &empty, &pin, STREAM, 0).unwrap();
+    let checked = check_artifact(&def, art, &empty, &pin, STREAM).unwrap();
     assert!(checked.periods.is_empty());
     let full = cuts(&[("2026-01-06T00:00:00Z", 1), (WEEK_2, 1)]);
-    assert!(check_artifact(&def, art, &full, &pin, STREAM, 0).is_err());
+    assert!(check_artifact(&def, art, &full, &pin, STREAM).is_err());
 }
 
 /// A period index no Unix time can hold gives no start, not a wrap or a
@@ -557,4 +557,11 @@ fn a_period_past_a_unix_time_has_no_start() {
     let def = definition();
     assert_eq!(def.policy().start_of(i64::MAX / 2), None);
     assert!(def.policy().start_of(-1).is_some());
+}
+
+#[test]
+fn a_card_with_no_checkpoint_does_not_check() {
+    let (art, _, anchor) = built();
+    let why = check(&art, &[], &anchor).unwrap_err();
+    assert!(why.contains("no checkpoint"), "{why}");
 }

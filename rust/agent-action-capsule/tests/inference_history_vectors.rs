@@ -70,14 +70,12 @@ fn check_history(definition: &Value, reply: &Value) -> Result<Counts, String> {
             leaves: h["checkpoint"]["log_size"].as_u64().unwrap(),
         })
         .collect();
-    let log_size = chain.last().unwrap().leaves;
     agent_action_capsule::inference_history::check_artifact(
         &def,
         &art,
         &chain,
         art["anchor"].as_str().unwrap(),
         art["evidence_stream"].as_str().unwrap(),
-        log_size,
     )
 }
 
