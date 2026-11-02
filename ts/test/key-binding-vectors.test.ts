@@ -137,4 +137,22 @@ describe("verifyKeyBinding", () => {
     expect(r.status).toBe("PASS");
     expect(r.revocationChecked).toBe(true);
   });
+  const pinned: [string, string][] = [
+    ["valid-same-controller", "PASS"],
+    ["valid-delegated-by", "PASS"],
+    ["valid-same-organization-credentialed", "PASS"],
+    ["expired", "FAIL"],
+    ["one-key-signed", "FAIL"],
+    ["nostr-wrong-digest", "FAIL"],
+  ];
+  for (const [id, status] of pinned)
+    it(`${id} reads ${status}`, async () => {
+      const c = get(id);
+      const r = await verifyKeyBinding(
+        half(c, 0).producer,
+        parseProfileTime(half(c, 0).issued_at)!,
+        [c.inputs.binding.octets_text],
+      );
+      expect(r.status).toBe(status);
+    });
 });
