@@ -79,7 +79,12 @@ type StrictResult struct {
 	// nil when the kind check failed.
 	Witnesses       *ClaimResult
 	WitnessReceipts []witness.ReceiptResult
-	Records         []RecordResult
+	// ParentWitness is the parent-log-witness/v1 extension's result (Bundle
+	// -03), reported beside the claims; nil when the Bundle's extensions do
+	// not carry that kind. Its status is also that extension's Status in
+	// Extensions, and a fail makes the verdict INVALID.
+	ParentWitness *ParentWitnessResult
+	Records       []RecordResult
 	// SignedCheckpoint is the checkpoint as its COSE statement states it,
 	// when the checkpoint claim passed (the checkpoint is authenticated).
 	SignedCheckpoint *witness.SignedCheckpoint
@@ -88,7 +93,7 @@ type StrictResult struct {
 	// key_id. It is reported and never gates.
 	SignerMatchesCheckpoint *bool
 	// Verdict is VALID when every claim passed, INVALID when a claim, the
-	// witnesses or a gating category_coverage property failed, and
+	// witnesses, the parent witness or a gating category_coverage property failed, and
 	// INCOMPLETE otherwise.
 	Verdict string
 }
@@ -120,7 +125,9 @@ func (r StrictResult) Claim(name string) *ClaimResult {
 //     consistency makes the verdict INVALID;
 //   - the disclosures overlay as one claim, when the Bundle carries one;
 //   - the witness receipts in checkpoint.witnesses under the keys of
-//     WitnessDirectory.
+//     WitnessDirectory;
+//   - a parent-log-witness/v1 extension (VerifyParentLogWitness), whose
+//     fail makes the verdict INVALID.
 func VerifyStrict(value interface{}, opts StrictOptions) StrictResult {
 	// A value nested more than canonical.MaxNestingDepth levels deep is
 	// refused before any recursive check runs: bundle_malformed on every claim, as the plain verifier reports a
@@ -270,6 +277,17 @@ func VerifyStrict(value interface{}, opts StrictOptions) StrictResult {
 	status, findings, receipts := witness.VerifyReceipts(stated["witnesses"], anchor, cose, directory)
 	result.Witnesses = &ClaimResult{Status: status, Findings: findings}
 	result.WitnessReceipts = receipts
+	if extensionValues, isObject := bundle["extensions"].(map[string]interface{}); isObject {
+		if block, present := extensionValues[ParentLogWitnessKind]; present {
+			parentWitness := VerifyParentLogWitness(block, anchor, cose, directory)
+			result.ParentWitness = &parentWitness
+			for i := range result.Extensions {
+				if result.Extensions[i].Kind == ParentLogWitnessKind {
+					result.Extensions[i].Status = parentWitness.Status
+				}
+			}
+		}
+	}
 
 	if authenticated {
 		result.SignedCheckpoint = signed
@@ -284,7 +302,7 @@ func VerifyStrict(value interface{}, opts StrictOptions) StrictResult {
 		}
 	}
 	result.Verdict = strictVerdict(result.Claims, *result.Witnesses)
-	if coverageFails(result.CategoryCoverage) {
+	if coverageFails(result.CategoryCoverage) || (result.ParentWitness != nil && result.ParentWitness.Status == witness.StatusFail) {
 		result.Verdict = VerdictInvalid
 	}
 	return result

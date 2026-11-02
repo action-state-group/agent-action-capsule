@@ -41,6 +41,13 @@ pub use composed::{
     COMPOSED_KIND, SIGNATURE_INVALID, SIGNATURE_UNVERIFIED, SIGNATURE_VERIFIED,
 };
 #[cfg(feature = "strict")]
+mod parent_witness;
+#[cfg(feature = "strict")]
+pub use parent_witness::{
+    verify_parent_log_witness, ParentWitnessExtent, ParentWitnessResult, PARENT_LOG_WITNESS_KIND,
+    PARENT_WITNESS_MAX_PATH,
+};
+#[cfg(feature = "strict")]
 mod strict;
 #[cfg(feature = "strict")]
 pub use strict::{verify_bundle_strict, RecordResult, StrictOptions, StrictVerificationResult};

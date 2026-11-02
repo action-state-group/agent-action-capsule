@@ -201,7 +201,12 @@ def verify_parent_log_witness(
     salt, index = block.get("salt"), block.get("index")
     if not isinstance(salt, str) or salt == "" or not _uint(index) or index >= 1 << len(path):
         return _fail("parent_witness_leaf_malformed")
-    root = tree_root(leaf(log_id, size, covered_cose, salt), index, [bytes.fromhex(h) for h in path])
+    try:
+        leaf_hash = leaf(log_id, size, covered_cose, salt)
+    except ValueError:
+        # A salt JCS cannot write (an unpaired surrogate) names no leaf.
+        return _fail("parent_witness_leaf_malformed")
+    root = tree_root(leaf_hash, index, [bytes.fromhex(h) for h in path])
 
     parent = block.get("parent")
     error, parent_signed, parent_cose = _signed_checkpoint(parent)

@@ -116,3 +116,12 @@ def test_plain_mode_leaves_the_block_uninterpreted():
     result = verify_bundle(case["bundle"])
     assert result.parent_witness is None
     assert [e.status for e in result.extensions if e.kind == PARENT_LOG_WITNESS_KIND] == ["uninterpreted"]
+
+
+def test_a_salt_jcs_cannot_write_is_a_malformed_leaf():
+    case = next(c for c in VECTORS["cases"] if c["id"] == "pos-witnessed-whole")
+    bundle = json.loads(json.dumps(case["bundle"]))
+    bundle["extensions"][PARENT_LOG_WITNESS_KIND]["salt"] = "\ud800"
+    result = verify_bundle(bundle, strict=True, witness_directory=VECTORS["witness_directory"])
+    assert result.parent_witness.status == "fail"
+    assert result.parent_witness.findings == ("parent_witness_leaf_malformed",)

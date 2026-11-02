@@ -1,6 +1,6 @@
 {
   "description": "The core's fixed text (spec/verification-display-v0.md sections 6.1, 6.2 and 8): one banner line per verification state, the refusal, the unable-to-verify lines, the check lists' headings and lines, and the extension rows. A viewer draws exactly these words; no module, wording pack or bundle supplies them.",
-  "count": 21,
+  "count": 22,
   "banner": [
     {
       "id": "checking",
@@ -131,6 +131,11 @@
         "id": "witness-receipts",
         "words": "Each witness receipt this file carries.",
         "technical_name": "witness receipts"
+      },
+      {
+        "id": "parent-log-witness",
+        "words": "The chain from this file's log to another log whose checkpoint a witness signed, and that witness's receipt.",
+        "technical_name": "parent-log witness (parent-log-witness/v1)"
       },
       {
         "id": "countersignature-types",

@@ -41,6 +41,28 @@ export interface ReceiptEntry {
   readonly time: string;
 }
 
+/**
+ * A checkpoint witnessed through a parent log (`parent-log-witness/v1`,
+ * Evidence Bundle -03), drawn only when this runtime's strict check passed:
+ * the receipts are over the parent log's checkpoint, never over the
+ * Bundle's own, and `entries` of `of` is the extent the verifier computed.
+ */
+export interface ParentWitnessEntry {
+  /** Log entries the witnessed checkpoint covers. */
+  readonly entries: number;
+  /** Log entries under the Bundle's checkpoint. */
+  readonly of: number;
+  /** `entries` equals `of`: every entry was witnessed. */
+  readonly whole: boolean;
+  /** The receipts over the parent checkpoint that verified. */
+  readonly receipts: readonly {
+    readonly witness: string;
+    readonly keyId: string | null;
+    /** The time the witness signed into the receipt, seconds since the epoch. */
+    readonly registrationTime: number | null;
+  }[];
+}
+
 export interface CompletenessStatement {
   readonly closureDepth?: number;
   readonly recordsMode?: string;
@@ -183,11 +205,14 @@ export interface VerificationPageModel {
   readonly checkpointSize?: number;
   readonly receipts: readonly ReceiptEntry[];
   /**
-   * True when a checkpoint is supplied but no transparency-service receipt
-   * is: the checkpoint is at most producer-signed, so the log witnesses
-   * only itself.
+   * True when a checkpoint is supplied and no transparency-service receipt
+   * covers it: none is carried, no strict witness check passed and no
+   * parent-log witness passed. The checkpoint is then at most
+   * producer-signed, so the log witnesses only itself.
    */
   readonly selfWitnessed: boolean;
+  /** Present when the strict parent-log witness check passed. */
+  readonly parentWitness?: ParentWitnessEntry;
   /** Every supplied record, in bundle order, with its own coverage status. */
   readonly records: readonly RecordCoverage[];
   /** Records with status `uncheckpointed`: unbound and nothing else wrong. */
@@ -360,6 +385,8 @@ function recordCoverage(
  *   cites as signers (a Close and the records that link to it);
  * - `producer-signatures`: the producer signature on every record;
  * - `witness-receipts`: the witness receipts the bundle carries;
+ * - `parent-log-witness`: a parent-log-witness/v1 chain and the receipts
+ *   over its parent log's checkpoint;
  * - `countersignature-types`: a countersignature of a type this runtime does
  *   not check;
  * - `countersignature-receipts`: a receipt carried with a countersignature.
@@ -377,6 +404,7 @@ export const VERIFICATION_CHECK_IDS = Object.freeze([
   "cited-signers",
   "producer-signatures",
   "witness-receipts",
+  "parent-log-witness",
   "countersignature-types",
   "countersignature-receipts",
 ] as const);
@@ -622,7 +650,8 @@ function bannerWords(
         coverage.uncheckpointed > 0 &&
         failed.length === 1 &&
         failed[0]!.name === "per_record_membership" &&
-        strict.witnesses?.status !== "fail";
+        strict.witnesses?.status !== "fail" &&
+        strict.parentWitness?.status !== "fail";
       const named = failed.map((entry) => {
         const invalid = entry.findings.filter((f) =>
           f.startsWith("producer_signature_invalid:"),
@@ -675,6 +704,11 @@ function bannerWords(
             `${receipts(invalid, "do not verify", "does not verify")} (witness_receipt_invalid)`,
           );
       }
+      const parent = strict.parentWitness;
+      if (parent?.status === "fail")
+        named.push(
+          `the chain to the parent log's witnessed checkpoint does not hold (${findingNames(parent.findings).join(", ")})`,
+        );
       sentences.push(
         unboundOnly ? uncheckpointed : `What failed: ${named.join("; ")}.`,
       );
@@ -830,6 +864,8 @@ export const VERIFICATION_CHECK_WORDS: Readonly<
     "The producer signature on the records this page cites as signers, each marked beside it as verified or not. Not the signature on every record.",
   "producer-signatures": "The producer signature on every record.",
   "witness-receipts": "Each witness receipt this file carries.",
+  "parent-log-witness":
+    "The chain from this file's log to another log whose checkpoint a witness signed, and that witness's receipt.",
   "countersignature-types":
     "A countersignature of a type this page does not check.",
   "countersignature-receipts": "The receipt carried with a countersignature.",
@@ -855,6 +891,7 @@ export const VERIFICATION_CHECK_TECHNICAL_NAMES: Readonly<
   "cited-signers": "cited producer signatures",
   "producer-signatures": "producer signatures",
   "witness-receipts": "witness receipts",
+  "parent-log-witness": "parent-log witness (parent-log-witness/v1)",
   "countersignature-types": "countersignature types",
   "countersignature-receipts": "countersignature receipts",
 });
@@ -1056,6 +1093,12 @@ export function verificationCheckLists(
       !witnesses.findings.includes("witness_receipt_absent")
     )
       outcome.set("witness-receipts", "notChecked");
+    // The chain through a parent log, when the bundle carries one.
+    const parent = strict.parentWitness;
+    if (parent?.status === "fail") ran("parent-log-witness", false);
+    else if (parent?.status === "pass") ran("parent-log-witness", true);
+    else if (parent !== null && parent !== undefined)
+      outcome.set("parent-log-witness", "notChecked");
   }
 
   const pick = (which: "page" | "failed" | "notChecked") =>
@@ -1134,6 +1177,25 @@ function receipts(raw: unknown): ReceiptEntry[] {
   });
 }
 
+function parentWitnessEntry(
+  strict: StrictBundleResult | undefined,
+): ParentWitnessEntry | undefined {
+  const parent = strict?.parentWitness;
+  if (parent?.status !== "pass" || parent.extent === null) return undefined;
+  return {
+    entries: parent.extent.entries,
+    of: parent.extent.of,
+    whole: parent.extent.entries === parent.extent.of,
+    receipts: parent.receipts
+      .filter((r) => r.status === "pass")
+      .map((r) => ({
+        witness: r.tsUrl,
+        keyId: r.keyId,
+        registrationTime: r.registrationTime,
+      })),
+  };
+}
+
 function completenessStatement(
   raw: unknown,
 ): CompletenessStatement | undefined {
@@ -1207,6 +1269,7 @@ export function buildVerificationPageModel(
     summarize("Per-record membership", verified.perRecordMembership.status),
   ];
   const coverage = coverageStatement(verified);
+  const parentWitness = parentWitnessEntry(checkInputs.strict);
   return {
     ...(verified.bundleDigest === undefined
       ? {}
@@ -1219,7 +1282,11 @@ export function buildVerificationPageModel(
       : {}),
     receipts: receipts(top.receipts),
     selfWitnessed:
-      checkpoint !== undefined && receipts(top.receipts).length === 0,
+      checkpoint !== undefined &&
+      receipts(top.receipts).length === 0 &&
+      checkInputs.strict?.witnesses?.status !== "pass" &&
+      parentWitness === undefined,
+    ...(parentWitness === undefined ? {} : { parentWitness }),
     records: recordCoverage(top, verified, coverage),
     uncheckpointedCount: unboundRecordIds(verified).length,
     coverage,
