@@ -5,6 +5,7 @@ export * from "./calibration-summary.js";
 export * from "./category-coverage.js";
 export * from "./composed.js";
 export * from "./controller-binding.js";
+export * from "./key-binding.js";
 export * from "./contract-report.js";
 export * from "./evidence-graph.js";
 export * from "./json.js";
