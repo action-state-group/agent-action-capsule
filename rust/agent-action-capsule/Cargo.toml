@@ -29,6 +29,10 @@ bundle = ["dep:cll", "dep:base64", "dep:serde", "dep:evidence-request"]
 strict = ["bundle", "dep:p256"]
 # The two-party settlement verifier (`settlement`).
 settlement = ["dep:base64"]
+# The inference-service history profile's Standard level
+# (`inference_history`): derivation and checks. Reads checkpoint times with
+# the evidence-request crate's RFC 3339 reader.
+inference-history = ["dep:evidence-request"]
 
 [dependencies]
 # arbitrary_precision keeps each number's source text, so float and
@@ -49,6 +53,7 @@ evidence-request = { version = "0.4.0", path = "../evidence-request", default-fe
 p256 = { version = "0.13", features = ["ecdsa", "pkcs8"], optional = true }
 
 [dev-dependencies]
+base64 = "0.22"
 serde = { version = "1", features = ["derive"] }
 # Test receipts and statements are built with coset.
 coset = "0.4"
@@ -84,3 +89,11 @@ required-features = ["strict"]
 [[test]]
 name = "bundle_composed_vectors"
 required-features = ["strict"]
+
+[[test]]
+name = "inference_history_vectors"
+required-features = ["inference-history"]
+
+[[test]]
+name = "inference_history_derive"
+required-features = ["inference-history"]

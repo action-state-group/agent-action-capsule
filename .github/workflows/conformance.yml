@@ -157,7 +157,7 @@ jobs:
       # `settlement` alone also runs without serde_json's preserve_order.
       - name: Check agent-action-capsule's feature combinations
         run: |
-          for features in "--no-default-features --features bundle" "--no-default-features --features strict" "--no-default-features --features settlement"; do
+          for features in "--no-default-features --features bundle" "--no-default-features --features strict" "--no-default-features --features settlement" "--no-default-features --features inference-history"; do
             cargo clippy --locked -p agent-action-capsule --all-targets $features -- -D warnings
             cargo test --locked -p agent-action-capsule $features
           done
