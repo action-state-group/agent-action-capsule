@@ -15,7 +15,7 @@
   "cases": [
     {
       "id": "unpriced-counted",
-      "description": "One counted deal without a recorded amount: every total counts it, no band does, and unpriced is 1 of 1; an unpriced shop purchase is only not_counted",
+      "description": "Two counted deals without a recorded amount, one held and one undecided: every total counts them, no band does, and unpriced is 2 of 2; an unpriced shop purchase is only not_counted, and an unpriced deal before the window counts nowhere",
       "sections": [
         "§4",
         "§5.2",
@@ -34,19 +34,19 @@
           },
           "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
           "in_window": {
-            "of": 9,
-            "counted": 6,
+            "of": 10,
+            "counted": 7,
             "not_counted": 3
           },
           "class_missing": {
-            "of": 6,
-            "count": 1
+            "of": 7,
+            "count": 2
           },
           "outcomes": {
-            "of": 6,
+            "of": 7,
             "held": 4,
             "did_not_hold": 1,
-            "undecided": 1
+            "undecided": 2
           },
           "bands": [
             {
@@ -83,21 +83,21 @@
             }
           ],
           "unpriced": {
-            "of": 1,
+            "of": 2,
             "held": 1,
             "did_not_hold": 0,
-            "undecided": 0
+            "undecided": 1
           },
           "roles": {
-            "of": 6,
+            "of": 7,
             "provided": 4,
-            "bought": 2
+            "bought": 3
           },
           "happened": {
-            "of": 6,
+            "of": 7,
             "stamped_by_both": 2,
             "receipt_only": 3,
-            "no_record": 1
+            "no_record": 2
           },
           "disputes": {
             "raised": {
@@ -311,6 +311,23 @@
             "happened": "receipt_only",
             "disputes": [],
             "counterparty_class": "shop_preauth"
+          },
+          {
+            "deal": "deal-11",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "bought",
+            "outcome": "undecided",
+            "happened": "no_record",
+            "disputes": []
+          },
+          {
+            "deal": "deal-12",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "outcome": "did_not_hold",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent"
           }
         ]
       },
@@ -346,19 +363,19 @@
           },
           "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
           "in_window": {
-            "of": 9,
-            "counted": 6,
+            "of": 10,
+            "counted": 7,
             "not_counted": 3
           },
           "class_missing": {
-            "of": 6,
-            "count": 1
+            "of": 7,
+            "count": 2
           },
           "outcomes": {
-            "of": 6,
+            "of": 7,
             "held": 4,
             "did_not_hold": 1,
-            "undecided": 1
+            "undecided": 2
           },
           "bands": [
             {
@@ -395,21 +412,21 @@
             }
           ],
           "unpriced": {
-            "of": 1,
+            "of": 2,
             "held": 1,
             "did_not_hold": 0,
-            "undecided": 0
+            "undecided": 1
           },
           "roles": {
-            "of": 6,
+            "of": 7,
             "provided": 4,
-            "bought": 2
+            "bought": 3
           },
           "happened": {
-            "of": 6,
+            "of": 7,
             "stamped_by_both": 2,
             "receipt_only": 3,
-            "no_record": 1
+            "no_record": 2
           },
           "disputes": {
             "raised": {
@@ -496,19 +513,19 @@
           },
           "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
           "in_window": {
-            "of": 9,
-            "counted": 6,
+            "of": 10,
+            "counted": 7,
             "not_counted": 3
           },
           "class_missing": {
-            "of": 6,
-            "count": 1
+            "of": 7,
+            "count": 2
           },
           "outcomes": {
-            "of": 6,
+            "of": 7,
             "held": 4,
             "did_not_hold": 1,
-            "undecided": 1
+            "undecided": 2
           },
           "bands": [
             {
@@ -545,21 +562,21 @@
             }
           ],
           "unpriced": {
-            "of": 1,
+            "of": 2,
             "held": 1,
             "did_not_hold": 0,
-            "undecided": 0
+            "undecided": 1
           },
           "roles": {
-            "of": 6,
+            "of": 7,
             "provided": 4,
-            "bought": 2
+            "bought": 3
           },
           "happened": {
-            "of": 6,
+            "of": 7,
             "stamped_by_both": 2,
             "receipt_only": 3,
-            "no_record": 1
+            "no_record": 2
           },
           "disputes": {
             "raised": {
@@ -907,7 +924,7 @@
     },
     {
       "id": "unpriced-left-out",
-      "description": "The unpriced deal left out of every tally, the tallies agreeing with each other",
+      "description": "The unpriced deals left out of every tally, the tallies agreeing with each other",
       "sections": [
         "§3",
         "§5.3",
@@ -1202,6 +1219,23 @@
             "happened": "receipt_only",
             "disputes": [],
             "counterparty_class": "shop_preauth"
+          },
+          {
+            "deal": "deal-11",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "bought",
+            "outcome": "undecided",
+            "happened": "no_record",
+            "disputes": []
+          },
+          {
+            "deal": "deal-12",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "outcome": "did_not_hold",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent"
           }
         ]
       },
@@ -1222,7 +1256,7 @@
     },
     {
       "id": "unpriced-in-band",
-      "description": "The unpriced deal counted in a zero-amount USD band instead of unpriced, the tallies agreeing with each other",
+      "description": "The unpriced deals counted in a zero-amount USD band instead of unpriced, the tallies agreeing with each other",
       "sections": [
         "§5.3",
         "§6"
@@ -1239,19 +1273,19 @@
           },
           "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
           "in_window": {
-            "of": 9,
-            "counted": 6,
+            "of": 10,
+            "counted": 7,
             "not_counted": 3
           },
           "class_missing": {
-            "of": 6,
-            "count": 1
+            "of": 7,
+            "count": 2
           },
           "outcomes": {
-            "of": 6,
+            "of": 7,
             "held": 4,
             "did_not_hold": 1,
-            "undecided": 1
+            "undecided": 2
           },
           "bands": [
             {
@@ -1273,10 +1307,10 @@
             {
               "currency": "USD",
               "decade": null,
-              "of": 1,
+              "of": 2,
               "held": 1,
               "did_not_hold": 0,
-              "undecided": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
@@ -1302,15 +1336,15 @@
             "undecided": 0
           },
           "roles": {
-            "of": 6,
+            "of": 7,
             "provided": 4,
-            "bought": 2
+            "bought": 3
           },
           "happened": {
-            "of": 6,
+            "of": 7,
             "stamped_by_both": 2,
             "receipt_only": 3,
-            "no_record": 1
+            "no_record": 2
           },
           "disputes": {
             "raised": {
@@ -1524,6 +1558,23 @@
             "happened": "receipt_only",
             "disputes": [],
             "counterparty_class": "shop_preauth"
+          },
+          {
+            "deal": "deal-11",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "bought",
+            "outcome": "undecided",
+            "happened": "no_record",
+            "disputes": []
+          },
+          {
+            "deal": "deal-12",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "outcome": "did_not_hold",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent"
           }
         ]
       },
@@ -1544,7 +1595,7 @@
     },
     {
       "id": "unpriced-outside-outcomes",
-      "description": "unpriced counts the deal but outcomes and the other totals do not",
+      "description": "unpriced counts a deal but outcomes and the other totals do not",
       "sections": [
         "§4 Denominators",
         "§6"
@@ -1838,6 +1889,23 @@
             "happened": "receipt_only",
             "disputes": [],
             "counterparty_class": "shop_preauth"
+          },
+          {
+            "deal": "deal-11",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "bought",
+            "outcome": "undecided",
+            "happened": "no_record",
+            "disputes": []
+          },
+          {
+            "deal": "deal-12",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "outcome": "did_not_hold",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent"
           }
         ]
       },
@@ -1875,19 +1943,19 @@
           },
           "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
           "in_window": {
-            "of": 9,
-            "counted": 6,
+            "of": 10,
+            "counted": 7,
             "not_counted": 3
           },
           "class_missing": {
-            "of": 6,
-            "count": 1
+            "of": 7,
+            "count": 2
           },
           "outcomes": {
-            "of": 6,
+            "of": 7,
             "held": 4,
             "did_not_hold": 1,
-            "undecided": 1
+            "undecided": 2
           },
           "bands": [
             {
@@ -1924,15 +1992,15 @@
             }
           ],
           "roles": {
-            "of": 6,
+            "of": 7,
             "provided": 4,
-            "bought": 2
+            "bought": 3
           },
           "happened": {
-            "of": 6,
+            "of": 7,
             "stamped_by_both": 2,
             "receipt_only": 3,
-            "no_record": 1
+            "no_record": 2
           },
           "disputes": {
             "raised": {
@@ -2146,6 +2214,23 @@
             "happened": "receipt_only",
             "disputes": [],
             "counterparty_class": "shop_preauth"
+          },
+          {
+            "deal": "deal-11",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "bought",
+            "outcome": "undecided",
+            "happened": "no_record",
+            "disputes": []
+          },
+          {
+            "deal": "deal-12",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "outcome": "did_not_hold",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent"
           }
         ]
       },
@@ -2183,19 +2268,19 @@
           },
           "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
           "in_window": {
-            "of": 9,
-            "counted": 6,
+            "of": 10,
+            "counted": 7,
             "not_counted": 3
           },
           "class_missing": {
-            "of": 6,
-            "count": 1
+            "of": 7,
+            "count": 2
           },
           "outcomes": {
-            "of": 6,
+            "of": 7,
             "held": 4,
             "did_not_hold": 1,
-            "undecided": 1
+            "undecided": 2
           },
           "bands": [
             {
@@ -2232,22 +2317,22 @@
             }
           ],
           "unpriced": {
-            "of": 1,
+            "of": 2,
             "held": 1,
             "did_not_hold": 0,
-            "undecided": 0,
+            "undecided": 1,
             "currency": "USD"
           },
           "roles": {
-            "of": 6,
+            "of": 7,
             "provided": 4,
-            "bought": 2
+            "bought": 3
           },
           "happened": {
-            "of": 6,
+            "of": 7,
             "stamped_by_both": 2,
             "receipt_only": 3,
-            "no_record": 1
+            "no_record": 2
           },
           "disputes": {
             "raised": {
@@ -2461,6 +2546,23 @@
             "happened": "receipt_only",
             "disputes": [],
             "counterparty_class": "shop_preauth"
+          },
+          {
+            "deal": "deal-11",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "bought",
+            "outcome": "undecided",
+            "happened": "no_record",
+            "disputes": []
+          },
+          {
+            "deal": "deal-12",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "outcome": "did_not_hold",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent"
           }
         ]
       },

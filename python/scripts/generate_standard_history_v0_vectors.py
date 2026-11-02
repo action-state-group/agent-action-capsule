@@ -388,6 +388,10 @@ UNPRICED_DEALS = DEALS + [
          (("raised", "withdrawn", "external"),)),
     # Unpriced and a shop purchase paid up front: in the window, not counted, so in no tally but in_window.
     deal("deal-10", "2026-10-05T10:00:00Z", "bought", None, "held", "receipt_only", "shop_preauth"),
+    # Counted and unpriced, undecided, without counterparty_class: in unpriced.undecided and class_missing.
+    deal("deal-11", "2026-10-12T10:00:00Z", "bought", None, "undecided", "no_record", None),
+    # Unpriced and before the window start: in no count at all.
+    deal("deal-12", "2026-06-01T10:00:00Z", "provided", None, "did_not_hold", "no_record", "person_agent"),
 ]
 
 
@@ -405,15 +409,16 @@ def card2(base: dict, unpriced: dict, **members) -> dict:
 
 NO_UNPRICED = tally(0, held=0, did_not_hold=0, undecided=0)
 
-# SH §5 by hand over UNPRICED_DEALS, 3-month window: PERSON_3M's counts, deal-09 counted in every
-# tally and in `unpriced` but in no band, deal-10 in in_window.not_counted only.
+# SH §5 by hand over UNPRICED_DEALS, 3-month window: PERSON_3M's counts, deal-09 and deal-11 counted
+# in every tally and in `unpriced` but in no band, deal-10 in in_window.not_counted only, deal-12 in
+# nothing.
 PERSON_3M_2 = card2(
-    PERSON_3M, tally(1, held=1, did_not_hold=0, undecided=0),
-    in_window=tally(9, counted=6, not_counted=3),
-    class_missing=tally(6, count=1),
-    outcomes=tally(6, held=4, did_not_hold=1, undecided=1),
-    roles=tally(6, provided=4, bought=2),
-    happened=tally(6, stamped_by_both=2, receipt_only=3, no_record=1),
+    PERSON_3M, tally(2, held=1, did_not_hold=0, undecided=1),
+    in_window=tally(10, counted=7, not_counted=3),
+    class_missing=tally(7, count=2),
+    outcomes=tally(7, held=4, did_not_hold=1, undecided=2),
+    roles=tally(7, provided=4, bought=3),
+    happened=tally(7, stamped_by_both=2, receipt_only=3, no_record=2),
     disputes={"raised": disputes_tally(3, {"for": 1, "split": 1, "withdrawn": 1},
                                        {"rail": 1, "auto": 1, "external": 1}),
               "received": PERSON_3M["disputes"]["received"]},
@@ -426,8 +431,9 @@ FULL_2 = {"policy": POLICY_3M, "as_of": AS_OF, "deals": UNPRICED_DEALS, "derivat
 def cases_2() -> list:
     return [
         # Positive.
-        case("unpriced-counted", "One counted deal without a recorded amount: every total counts it, no "
-             "band does, and unpriced is 1 of 1; an unpriced shop purchase is only not_counted",
+        case("unpriced-counted", "Two counted deals without a recorded amount, one held and one undecided: "
+             "every total counts them, no band does, and unpriced is 2 of 2; an unpriced shop purchase is "
+             "only not_counted, and an unpriced deal before the window counts nowhere",
              ["§4", "§5.2", "§5.3", "§6"], PERSON_3M_2, props(), **FULL_2),
         case("unpriced-without-deals", "The same card, checked without the deal entries: the counts, "
              "unpriced included, are the holder's statement", ["§2", "§6"], PERSON_3M_2,
@@ -438,19 +444,19 @@ def cases_2() -> list:
              ["§4", "§5.3"], PERSON_3M_2_PRICED, props(), policy=POLICY_3M, as_of=AS_OF, deals=DEALS,
              derivation=SH2),
         # Negative.
-        case("unpriced-left-out", "The unpriced deal left out of every tally, the tallies agreeing with "
+        case("unpriced-left-out", "The unpriced deals left out of every tally, the tallies agreeing with "
              "each other", ["§3", "§5.3", "§6"],
              card2(PERSON_3M, NO_UNPRICED, in_window=tally(8, counted=5, not_counted=3)),
              props(counts_recompute="FAIL"), **FULL_2),
-        case("unpriced-in-band", "The unpriced deal counted in a zero-amount USD band instead of unpriced, "
+        case("unpriced-in-band", "The unpriced deals counted in a zero-amount USD band instead of unpriced, "
              "the tallies agreeing with each other", ["§5.3", "§6"],
              mutate(PERSON_3M_2, lambda c: c.update(
                  unpriced=NO_UNPRICED,
                  bands=[band("BTC", -7, 1, held=1), band("EUR", 0, 1, did_not_hold=1),
-                        band("USD", None, 1, held=1), band("USD", 1, 2, held=1, undecided=1),
+                        band("USD", None, 2, held=1, undecided=1), band("USD", 1, 2, held=1, undecided=1),
                         band("USD", 2, 1, held=1)])),
              props(counts_recompute="FAIL"), **FULL_2),
-        case("unpriced-outside-outcomes", "unpriced counts the deal but outcomes and the other totals do "
+        case("unpriced-outside-outcomes", "unpriced counts a deal but outcomes and the other totals do "
              "not", ["§4 Denominators", "§6"],
              card2(PERSON_3M, tally(1, held=1, did_not_hold=0, undecided=0),
                    in_window=tally(8, counted=5, not_counted=3)),

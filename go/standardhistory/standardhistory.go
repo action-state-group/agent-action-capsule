@@ -224,6 +224,19 @@ func (d *Deal) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON leaves out the amount of an Unpriced deal, so that the entry
+// reads back as Unpriced.
+func (d Deal) MarshalJSON() ([]byte, error) {
+	type plain Deal
+	if !d.Unpriced {
+		return json.Marshal(plain(d))
+	}
+	return json.Marshal(struct {
+		plain
+		Amount *Amount `json:"amount,omitempty"`
+	}{plain: plain(d)})
+}
+
 // parseTime reads an IP §5.2 time from year 1 on, as Python's datetime does.
 func parseTime(s string) (time.Time, error) {
 	if !timeForm.MatchString(s) {

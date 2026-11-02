@@ -226,6 +226,19 @@ func TestUnpricedDealDecoding(t *testing.T) {
 	require.Error(t, json.Unmarshal([]byte(`{"deal":"d","amount":"500"}`), &d))
 	require.NoError(t, json.Unmarshal([]byte(`{"deal":"d","amount":{"value":"1","assetCode":"USD","assetScale":2}}`), &d))
 	assert.False(t, d.Unpriced)
+
+	// Every deal entry of the vectors reads back as itself after a round
+	// trip, an Unpriced one without an amount.
+	for _, tc := range loadFile(t, "vectors-2.json").Cases {
+		for _, deal := range tc.Inputs.Deals {
+			octets, err := json.Marshal(deal)
+			require.NoError(t, err)
+			assert.Equal(t, deal.Unpriced, !strings.Contains(string(octets), `"amount"`), string(octets))
+			var back standardhistory.Deal
+			require.NoError(t, json.Unmarshal(octets, &back))
+			assert.Equal(t, deal, back)
+		}
+	}
 }
 
 func TestUnknownTokenIsAnError(t *testing.T) {

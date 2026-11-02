@@ -447,9 +447,9 @@ property named: a share stated as a fraction (`counts_integral`), a percentage m
 and a free-text node `controller_class` (`card_form`), a `since` finer than a month or in other
 digits (`card_form`), bands out of order or repeated (`card_form`), an empty band
 (`denominator`), and another anchor (`as_of`), among others. The `/1` cases are in `vectors.json`.
-The `/2` cases are in `vectors-2.json`: a card with one unpriced deal, which the totals count and
-no band does, and negatives each failing the property named: the unpriced deal left out of
-every tally (`counts_recompute`), counted in a band (`counts_recompute`), counted in `unpriced`
+The `/2` cases are in `vectors-2.json`: a card with two unpriced deals of different outcomes,
+which the totals count and no band does, and negatives each failing the property named: the
+unpriced deals left out of every tally (`counts_recompute`), counted in a band (`counts_recompute`), counted in `unpriced`
 but not in the outcomes (`denominator`), a `/2` card without `unpriced`, a `/1` card with it, a
 `/1` card answering a `/2` request and the reverse (`card_form`), and `unpriced` with a currency
 (`card_form`).

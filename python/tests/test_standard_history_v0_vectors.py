@@ -124,7 +124,7 @@ def test_v2_amount_present_must_be_an_amount(amount) -> None:
     """SH §5.2: under /2 an amount is absent or an SR amount triple; null is neither."""
     c = next(c for c in CASES_2 if c["id"] == "unpriced-counted")
     deals = json.loads(json.dumps(c["inputs"]["deals"]))
-    deals[-2]["amount"] = amount
+    deals[-4]["amount"] = amount   # deal-09, counted and unpriced
     with pytest.raises(ValueError):
         _check({**c, "inputs": {**c["inputs"], "deals": deals}})
 

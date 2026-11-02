@@ -41,9 +41,9 @@ Negative, each failing the properties its `expected.fails` lists: `percentage-fr
 `node-class-free-text`, `window-all-false`,
 `class-missing-over`, `dispute-forum-total` and `other-anchor`.
 
-In `vectors-2.json`, positive: `unpriced-counted` (one counted deal without an amount: every total
-counts it, `unpriced` is 1 of 1, no band counts it, and an unpriced shop purchase is only
-`not_counted`), the same card without the deal entries (`unpriced-without-deals`) and with nothing
+In `vectors-2.json`, positive: `unpriced-counted` (two counted deals without an amount, one held
+and one undecided: every total counts them, `unpriced` is 2 of 2, no band counts them, an unpriced
+shop purchase is only `not_counted`, and an unpriced deal before the window counts nowhere), the same card without the deal entries (`unpriced-without-deals`) and with nothing
 beside it (`unpriced-card-only`), and a `/2` card whose every deal has an amount
 (`unpriced-none`). Negative: `unpriced-left-out`, `unpriced-in-band`, `unpriced-outside-outcomes`,
 `v2-without-unpriced`, `unpriced-with-currency`, `v1-card-for-v2-request`,
