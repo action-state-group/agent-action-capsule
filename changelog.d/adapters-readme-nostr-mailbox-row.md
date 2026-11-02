@@ -1,0 +1,1 @@
+- `spec/adapters/README.md`: add the `nostr-mailbox-v0` declaration to the worked-examples table with its `{id, digest}` pair, and to the list of declarations in the directory.
