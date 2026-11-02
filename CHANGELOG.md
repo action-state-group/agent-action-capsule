@@ -1303,6 +1303,15 @@ Tag `python/v0.13.0`.
   `schemas/check_evidence_result_examples.py` now reads the schema's patterns as ECMA-262, as the Go
   gate `evidenceresult` already did, so it refuses all three. The schema is unchanged. (#434, #436)
 
+- Schemas: `schemas/evidence-contract-v0.json`, the Evidence Contract v0 schema, now lives here
+  beside `evidence-result-v0.json` with `$id`
+  `https://agentactioncapsule.org/schemas/evidence-contract-v0.json`. Its bytes are capsule-engine's
+  copy (SHA-256 `6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770`, the interop
+  profile's EC pin) with only the `$id` line changed, which `schemas/check_evidence_contract_examples.py`
+  checks. That checker also validates the contract in every vector corpus that carries one, with
+  its pinned schema digest (`personal-history-basic-v0` still pins capsule-engine's older copy). The
+  interop profile's EC pin is unchanged.
+
 - **Breaking**, spec: the presentation contract moved to capsule-viewer, so this repository no
   longer states conformance for manifests, registries, resolution or I4; a claim of
   `presentation-contract-v0` conformance now refers to capsule-viewer's copy. What a page states
