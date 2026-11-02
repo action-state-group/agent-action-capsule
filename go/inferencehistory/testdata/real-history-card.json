@@ -1,0 +1,105 @@
+{
+ "source": "evidencebook v0.13.2 Book (Mesh node 'mesh/node'): Book.Respond history_card/1 embedded in an inference-service-history/0 History, answered at 2026-11-02T00:00:00Z",
+ "responder_key": "6dc69d472f7f40f4769eadb159b32edae69b0729a33277980d074365311f4d77",
+ "contract": {
+  "id": "S",
+  "requirements": [
+   {
+    "evidence_requirements": {
+     "accepted_epistemic_types": [
+      "producer_claim"
+     ]
+    },
+    "id": "r-service",
+    "profile": "outcome",
+    "statement": "The node's served exchanges are shown under a verified envelope."
+   }
+  ],
+  "version": "1"
+ },
+ "definition": {
+  "profile": "inference-service-history/0",
+  "name": "service_history/1",
+  "kind": "projection",
+  "level": "standard",
+  "embeds": [
+   "history_card/1"
+  ],
+  "subjects": [
+   "full_history"
+  ],
+  "members": [
+   {
+    "name": "history_card",
+    "required": true,
+    "derivation": "history_card/1",
+    "reads": [
+     "checkpoint: v, kind, log_id, mmr_size, root, prev_size, prev_root, key_id, timestamp, signature",
+     "log: the MMR nodes of each consistency proof"
+    ],
+    "units": [
+     {
+      "where": "history (one entry per checkpoint)",
+      "unit": "checkpoints"
+     },
+     {
+      "where": "witness_receipts beside the envelope, one per receipt of a listed checkpoint",
+      "unit": "witness_receipts"
+     }
+    ]
+   },
+   {
+    "name": "period_counts",
+    "required": true,
+    "reads": [
+     "record: model_attestation.compute_attestation.x-mesh-poc-v1.role",
+     "record: model_attestation.compute_attestation.x-mesh-lifecycle-v1.observation_point",
+     "record: model_attestation.compute_attestation.x-mesh-poc-v1.serving_provenance.model_canonical_ref",
+     "checkpoint: timestamp and mmr_size of the first checkpoint that covers each record"
+    ],
+    "units": [
+     {
+      "where": "periods[].cells[]",
+      "unit": "exchanges_served"
+     }
+    ],
+    "claims": {
+     "asserted_by": "provider",
+     "label": "provider states",
+     "where": [
+      "periods[].cells[].dimension.model"
+     ]
+    }
+   }
+  ],
+  "reads": [
+   "checkpoint: v, kind, log_id, mmr_size, root, prev_size, prev_root, key_id, timestamp, signature",
+   "log: the MMR nodes of each consistency proof",
+   "record: model_attestation.compute_attestation.x-mesh-poc-v1.role",
+   "record: model_attestation.compute_attestation.x-mesh-lifecycle-v1.observation_point",
+   "record: model_attestation.compute_attestation.x-mesh-poc-v1.serving_provenance.model_canonical_ref",
+   "checkpoint: timestamp and mmr_size of the first checkpoint that covers each record"
+  ],
+  "excludes": [
+   "requester identity",
+   "per-recipient release state",
+   "latency"
+  ],
+  "coverage_declaration": {
+   "kind": "stream_interval",
+   "rule": "all_records"
+  },
+  "period_policy": {
+   "epoch": "2026-01-05T00:00:00Z",
+   "length_s": 604800,
+   "min_length_s": 86400,
+   "floor": 5,
+   "suppression": "complementary"
+  },
+  "spec": "https://github.com/Mesh-LLM/capsules-plugin/blob/main/docs/SERVICE-HISTORY.md"
+ },
+ "evaluation_time": "2026-11-02T01:00:00Z",
+ "log_key": "da971dcae2b290b4025e2881d19f815591bf76c97693c595af3512c211fed947",
+ "reply": "{\"anchor\":{\"digest\":\"2aaa5c0c2da49404e0456eae92bb781c1bccd53ac00775c0bfabc2542cf198f9\"},\"artifact\":\"eyJhbmNob3IiOiIyYWFhNWMwYzJkYTQ5NDA0ZTA0NTZlYWU5MmJiNzgxYzFiY2NkNTNhYzAwNzc1YzBiZmFiYzI1NDJjZjE5OGY5IiwiY292ZXJhZ2VfZGVjbGFyYXRpb24iOnsiaW50ZXJ2YWwiOnsiZnJvbSI6bnVsbCwidG8iOiIyYWFhNWMwYzJkYTQ5NDA0ZTA0NTZlYWU5MmJiNzgxYzFiY2NkNTNhYzAwNzc1YzBiZmFiYzI1NDJjZjE5OGY5In0sImtpbmQiOiJzdHJlYW1faW50ZXJ2YWwiLCJsaXZlX3NldCI6W3siY2hlY2twb2ludCI6IjJhYWE1YzBjMmRhNDk0MDRlMDQ1NmVhZTkyYmI3ODFjMWJjY2Q1M2FjMDA3NzVjMGJmYWJjMjU0MmNmMTk4ZjkiLCJjb3VudCI6MTMsInN0YXJ0IjowLCJzdHJlYW0iOiJtZXNoL25vZGUifV0sInJ1bGUiOiJhbGxfcmVjb3JkcyJ9LCJkZWNsYXJlZCI6WyJoaXN0b3J5X2NhcmQiLCJwZXJpb2RfY291bnRzIl0sImRlcml2YXRpb24iOiJjYmM5NmQ4MDBhZDIwNjc5MWRiN2UwNzkzYjgwYTI3MjBjMTkwODQ2OGJhOTk2OTJiNzM5YWE4ZTc0YWFiMmQ4IiwiZXZpZGVuY2Vfc3RyZWFtIjoibWVzaC9ub2RlIiwiaGlzdG9yeV9jYXJkIjp7ImFuY2hvciI6IjJhYWE1YzBjMmRhNDk0MDRlMDQ1NmVhZTkyYmI3ODFjMWJjY2Q1M2FjMDA3NzVjMGJmYWJjMjU0MmNmMTk4ZjkiLCJkZXJpdmF0aW9uIjoiaGlzdG9yeV9jYXJkLzEiLCJldmlkZW5jZV9zdHJlYW0iOiJtZXNoL25vZGUiLCJoaXN0b3J5IjpbeyJjaGVja3BvaW50IjoiZDI4NDU4NjJhNDAxMjcwMzc4MWY2MTcwNzA2YzY5NjM2MTc0Njk2ZjZlMmY2MzZjNmMyZDYzNjg2NTYzNmI3MDZmNjk2ZTc0MmI2MzYyNmY3MjA0NTgyMGRhOTcxZGNhZTJiMjkwYjQwMjVlMjg4MWQxOWY4MTU1OTFiZjc2Yzk3NjkzYzU5NWFmMzUxMmMyMTFmZWQ5NDcwZmEyMDE2OTZkNjU3MzY4MmY2ZTZmNjQ2NTAyNmI2ZDY1NzM2ODJmNmU2ZjY0NjUyMzMxYTA1ODhhYTY2NDZiNjk2ZTY0NmU2MzZjNmMyZDYzNjg2NTYzNmI3MDZmNjk2ZTc0Njg2YzZmNjc1ZjczNjk3YTY1MDE2OTY5NzM3Mzc1NjU2NDVmNjE3NDc0MzIzMDMyMzYyZDMxMzAyZDMyMzc1NDMxMzIzYTMwMzEzYTMwMzA1YTY5NzA3MjY1NzY1ZjczNjk3YTY1MDA2YTYzNmY2ZDZkNjk3NDZkNjU2ZTc0NTgyMzgxNTgyMGEzMjI1ZWUyOTU5OTUwZTUzNzdkN2FlYzM1NWUzNjllNWMzODNiNzg4ZTllMjBhMThlNmE3NjQ5NzNhYzIzYjM2ZjcwNzI2NTc2NWY2MzZmNmQ2ZDY5NzQ2ZDY1NmU3NDQwNTg0MGFjN2E3YThhZGVmZTFjMTcyMTgxZjM3NGFhYzk4ZDUwODg4ZTVjNWExOWM0N2NiZThiMTUzYzllMjEzM2EwYzEzOTliZGM2ZDc0MzQ3OGEwYjcyMWFjMWJmMDZkOWQxZGIzMjUzNjkzN2ZmZDA4OTU2ZjUwOWFiZDI2YzI4NjA3IiwiY29uc2lzdGVuY3lfZnJvbV9wcmV2aW91cyI6bnVsbH0seyJjaGVja3BvaW50IjoiZDI4NDU4NjNhNDAxMjcwMzc4MWY2MTcwNzA2YzY5NjM2MTc0Njk2ZjZlMmY2MzZjNmMyZDYzNjg2NTYzNmI3MDZmNjk2ZTc0MmI2MzYyNmY3MjA0NTgyMGRhOTcxZGNhZTJiMjkwYjQwMjVlMjg4MWQxOWY4MTU1OTFiZjc2Yzk3NjkzYzU5NWFmMzUxMmMyMTFmZWQ5NDcwZmEyMDE2OTZkNjU3MzY4MmY2ZTZmNjQ2NTAyNmM2ZDY1NzM2ODJmNmU2ZjY0NjUyMzMyMzNhMDU5MDIyM2E3NjQ2YjY5NmU2NDZlNjM2YzZjMmQ2MzY4NjU2MzZiNzA2ZjY5NmU3NDY4NmM2ZjY3NWY3MzY5N2E2NTE3Njk2OTczNzM3NTY1NjQ1ZjYxNzQ3NDMyMzAzMjM2MmQzMTMxMmQzMDMyNTQzMDMwM2EzMDMwM2EzMDMwNWE2OTcwNzI2NTc2NWY3MzY5N2E2NTAxNmE2MzZmNmQ2ZDY5NzQ2ZDY1NmU3NDU4Njc4MzU4MjA2YjViNGRlN2IxM2M3NjAzMTA2ZTFiMTA4ODU4ZTdiOWE1OGZhN2MwMDg5ZDU4NjUwZDQ1NmIxZWY0NTJjMTczNTgyMDc1NDQ0ZjBlZjUzMTUxZWNkYWQxNzgyNzYxNzczMWQzMDUxNDBlNDAxZWYzODJhZGJmYjI5YTkzYWU0MmY3YzQ1ODIwMDg1MTg5ZTE5YjgwMjIwNjQ1ZWQ5YzM5M2IwNTI1NjRjM2M3MzAzNzM3MTg3NTYzMjY4YzViOTI5ZTI1ZmFkNTZmNzA3MjY1NzY1ZjYzNmY2ZDZkNjk3NDZkNjU2ZTc0NTgyMzgxNTgyMGEzMjI1ZWUyOTU5OTUwZTUzNzdkN2FlYzM1NWUzNjllNWMzODNiNzg4ZTllMjBhMThlNmE3NjQ5NzNhYzIzYjM3MTYzNmY2ZTczNjk3Mzc0NjU2ZTYzNzk1ZjcwNzI2ZjZmNjZhNTY2NzM2OTdhNjU1ZjYxMDE2NjczNjk3YTY1NWY2MjE3Njc3NzY5NzQ2ZTY1NzM3MzgxODM1ODIwMmIzODVhMjNiMGRmZjMxZmIzMDliNThjMDkyMzMyYWIyYTRmY2E1MzUwN2ZmYzFkODQxYjZjMWQ5MGJhMDgxODU4MjAyMTQ2ZDUxY2U5NzM2ZjUwNmZjNzdhMjA1YTBhNDJiYzllYjY4YTAzNDBmM2FmNjA2M2UzZTE2M2IyMTNlYTk1NTgyMDY2YjJhOWNhZTEyNTk5NTg0M2IzOGEyY2E2M2IyOWM4NWZlMjcyZTg5OWQxOWQ5MjFhOGUyYTRmMjkyZTA4YTk2OTZlNjU3NzVmNzA2NTYxNmI3MzgzNTgyMDZiNWI0ZGU3YjEzYzc2MDMxMDZlMWIxMDg4NThlN2I5YTU4ZmE3YzAwODlkNTg2NTBkNDU2YjFlZjQ1MmMxNzM1ODIwNzU0NDRmMGVmNTMxNTFlY2RhZDE3ODI3NjE3NzMxZDMwNTE0MGU0MDFlZjM4MmFkYmZiMjlhOTNhZTQyZjdjNDU4MjAwODUxODllMTliODAyMjA2NDVlZDljMzkzYjA1MjU2NGMzYzczMDM3MzcxODc1NjMyNjhjNWI5MjllMjVmYWQ1Njk2ZjZjNjQ1ZjcwNjU2MTZiNzM4MTU4MjBhMzIyNWVlMjk1OTk1MGU1Mzc3ZDdhZWMzNTVlMzY5ZTVjMzgzYjc4OGU5ZTIwYTE4ZTZhNzY0OTczYWMyM2IzNTg0MDUzY2U3Mzg5NWRjYzEyOTNmNWRiNzUxZmEzZjBjOWU1YmQ4MjQ5NTZhNTBhMDVhYzViMGUzMTljMGQ1ZGExNjUxMzM2NzBlOTYxZDZjNGRmM2E0NzY3NDkzYWVhOWRhN2RkOGZkM2E3YjI3ZTA2ZjMxM2VjYTIxYWQ3OGVhMTAxIiwiY29uc2lzdGVuY3lfZnJvbV9wcmV2aW91cyI6Ijg0MDExNzgxODM1ODIwMmIzODVhMjNiMGRmZjMxZmIzMDliNThjMDkyMzMyYWIyYTRmY2E1MzUwN2ZmYzFkODQxYjZjMWQ5MGJhMDgxODU4MjAyMTQ2ZDUxY2U5NzM2ZjUwNmZjNzdhMjA1YTBhNDJiYzllYjY4YTAzNDBmM2FmNjA2M2UzZTE2M2IyMTNlYTk1NTgyMDY2YjJhOWNhZTEyNTk5NTg0M2IzOGEyY2E2M2IyOWM4NWZlMjcyZTg5OWQxOWQ5MjFhOGUyYTRmMjkyZTA4YTk4MjU4MjA3NTQ0NGYwZWY1MzE1MWVjZGFkMTc4Mjc2MTc3MzFkMzA1MTQwZTQwMWVmMzgyYWRiZmIyOWE5M2FlNDJmN2M0NTgyMDA4NTE4OWUxOWI4MDIyMDY0NWVkOWMzOTNiMDUyNTY0YzNjNzMwMzczNzE4NzU2MzI2OGM1YjkyOWUyNWZhZDUifV0sInN1YmplY3QiOnsiZnVsbF9oaXN0b3J5IjpudWxsfX0sImhpc3RvcnlfY2FyZF9kaWdlc3QiOiJmNjA1YTMyZWFlZTE1ODE1OTg4OTVkM2RmZmEzYTUzYmRhN2Q1OWUxMTNlZmMyYTZhZGIxNTlhYTE3MTZjNjUwIiwicGVyaW9kX2NvdW50cyI6eyJwZXJpb2RzIjpbeyJjZWxscyI6W3siZGltZW5zaW9uIjp7Im1vZGVsIjoibW9kZWwtYSJ9LCJsYWJlbCI6InNlbGZfcmVwb3J0ZWQiLCJzdXBwcmVzc2VkIjoiY29tcGxlbWVudGFyeSIsInVuaXQiOiJleGNoYW5nZXNfc2VydmVkIiwidmFsdWUiOm51bGx9LHsiZGltZW5zaW9uIjp7Im1vZGVsIjoibW9kZWwtYiJ9LCJsYWJlbCI6InNlbGZfcmVwb3J0ZWQiLCJzdXBwcmVzc2VkIjoiYmVsb3dfZmxvb3IiLCJ1bml0IjoiZXhjaGFuZ2VzX3NlcnZlZCIsInZhbHVlIjpudWxsfSx7ImRpbWVuc2lvbiI6bnVsbCwibGFiZWwiOiJzZWxmX3JlcG9ydGVkIiwidW5pdCI6ImV4Y2hhbmdlc19zZXJ2ZWQiLCJ2YWx1ZSI6MTJ9XSwiZnJvbSI6IjIwMjYtMTAtMjZUMDA6MDA6MDBaIiwidG8iOiIyMDI2LTExLTAyVDAwOjAwOjAwWiJ9XSwicG9saWN5IjoiMGQ0YjI4YWY3ZWJmY2EwMWE0OWMxYWQ1OWU3NGI3ZDliZmYwZTY3MTJkZDM0NzhiNGVlMzViOGZmNmFmNTE1MCJ9LCJzdWJqZWN0Ijp7ImZ1bGxfaGlzdG9yeSI6bnVsbH19\",\"artifact_digest\":\"70e23830cab050ae932fd9781b60b9ffcb2c9c040b1a9cbc017641ea043a91ad\",\"derivation\":\"cbc96d800ad206791db7e0793b80a2720c1908468ba99692b739aa8e74aab2d8\",\"issued_at\":\"2026-11-02T00:00:01Z\",\"profile\":\"evidence-interop/0\",\"request_digest\":\"3cdadf2f6ffc774c04191b07f35d6364d3d049ab0329a36d3b94eeaf55417227\",\"responder\":\"6dc69d472f7f40f4769eadb159b32edae69b0729a33277980d074365311f4d77\",\"sig\":\"e75fa37b47ca80482c44c63dc766cd2cc0eea16f797c98c1fe1484a6b79ffc6b891962b2e926d112c4f0ddd14ddb7cc27cf7ce6a399f866abbe520aafe9fa700\",\"subject\":{\"full_history\":null}}",
+ "request": "{\"coverage\":{\"expected_pin\":\"2aaa5c0c2da49404e0456eae92bb781c1bccd53ac00775c0bfabc2542cf198f9\"},\"derivation\":\"cbc96d800ad206791db7e0793b80a2720c1908468ba99692b739aa8e74aab2d8\",\"nonce\":\"mesh-history\",\"profile\":\"evidence-interop/0\",\"subject\":{\"full_history\":null}}"
+}

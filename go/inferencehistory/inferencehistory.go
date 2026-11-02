@@ -492,8 +492,20 @@ func cardContent(pins Pins, env map[string]any) bool {
 		return false
 	}
 	var prev map[string]any
-	for _, raw := range history {
+	var prevCLL *evidencerequest.CLLCheckpoint
+	for i, raw := range history {
 		h, _ := raw.(map[string]any)
+		if statement, isCLL := h["checkpoint"].(string); isCLL {
+			cp, ok := cllEntry(pins, h, statement, prevCLL, i == 0)
+			if !ok {
+				return false
+			}
+			prev, prevCLL = nil, cp
+			continue
+		}
+		if prevCLL != nil {
+			return false
+		}
 		cp, ok := h["checkpoint"].(map[string]any)
 		if !ok {
 			return false
@@ -523,7 +535,70 @@ func cardContent(pins Pins, env map[string]any) bool {
 		prev = cp
 	}
 	last, _ := history[len(history)-1].(map[string]any)
+	if statement, isCLL := last["checkpoint"].(string); isCLL {
+		octets, err := hex.DecodeString(statement)
+		return err == nil && equal(a["anchor"], evidencerequest.Digest(octets))
+	}
 	return digestIs(a["anchor"], last["checkpoint"])
+}
+
+// cllEntry checks one history entry whose checkpoint is a hex cll-checkpoint
+// statement, as history_card/1 carries it (ER §8.1): signed by a pinned log
+// key, no earlier than the entry before it, and extending that entry's
+// commitment by the entry's consistency_from_previous proof, which is null
+// for the first entry and for a checkpoint of the same size. The form
+// carries no witness receipts, so an entry that lists any fails.
+func cllEntry(pins Pins, h map[string]any, statement string, prev *evidencerequest.CLLCheckpoint, first bool) (*evidencerequest.CLLCheckpoint, bool) {
+	octets, err := hex.DecodeString(statement)
+	if err != nil || !hasKeys(h, []string{"checkpoint", "consistency_from_previous"}) {
+		return nil, false
+	}
+	cp, err := evidencerequest.DecodeCLLCheckpoint(octets)
+	if err != nil || !slices.Contains(pins.LogKeys, hex.EncodeToString(cp.Key)) || cp.VerifySignature() != nil {
+		return nil, false
+	}
+	proof := h["consistency_from_previous"]
+	if first != (prev == nil) {
+		return nil, false
+	}
+	if prev == nil {
+		return cp, proof == nil
+	}
+	at, ok1 := when(cp.IssuedAt)
+	prevAt, ok2 := when(prev.IssuedAt)
+	if !ok1 || !ok2 || cp.LogSize < prev.LogSize || !at.After(prevAt) {
+		return nil, false
+	}
+	if cp.LogSize == prev.LogSize {
+		return cp, proof == nil && slices.EqualFunc(cp.Commitment, prev.Commitment, bytes.Equal)
+	}
+	text, isText := proof.(string)
+	consistency, err := hex.DecodeString(text)
+	if !isText || err != nil || evidencerequest.VerifyCLLConsistency(prev.Commitment, cp.Commitment, consistency) != nil {
+		return nil, false
+	}
+	return cp, true
+}
+
+// cutOf is a card checkpoint's time and log size, in either form: the
+// vectors' JSON object or a hex cll-checkpoint statement. ok is false when
+// the statement cannot be read; its signature is cardContent's to check.
+func cutOf(h any) (at any, size any, ok bool) {
+	switch cp := get(h, "checkpoint").(type) {
+	case map[string]any:
+		return cp["timestamp"], cp["log_size"], true
+	case string:
+		octets, err := hex.DecodeString(cp)
+		if err != nil {
+			return nil, nil, false
+		}
+		c, err := evidencerequest.DecodeCLLCheckpoint(octets)
+		if err != nil {
+			return nil, nil, false
+		}
+		return c.IssuedAt, c.LogSize, true
+	}
+	return nil, nil, false
 }
 
 func witnessShown(pins Pins, env map[string]any) WitnessShown {
@@ -685,7 +760,7 @@ func periodsOK(d any, env map[string]any) bool {
 		return false
 	}
 	length := time.Duration(lengthS) * time.Second
-	anchorTime, ok := when(get(get(history[len(history)-1], "checkpoint"), "timestamp"))
+	anchorTime, ok := when(cutTime(history[len(history)-1]))
 	if !ok {
 		return false
 	}
@@ -711,9 +786,9 @@ func periodsOK(d any, env map[string]any) bool {
 	var first time.Time
 	found := false
 	for _, h := range history {
-		cp := get(h, "checkpoint")
-		if n, _ := evidencerequest.UintValue(get(cp, "log_size")); n != 0 {
-			first, found = mustWhen(get(cp, "timestamp")), true
+		at, size, _ := cutOf(h)
+		if n, _ := evidencerequest.UintValue(size); n != 0 {
+			first, found = mustWhen(at), true
 			break
 		}
 	}
@@ -736,7 +811,7 @@ func anchorOK(d any, env map[string]any) bool {
 	if len(history) == 0 {
 		return false
 	}
-	at, ok1 := when(get(get(history[len(history)-1], "checkpoint"), "timestamp"))
+	at, ok1 := when(cutTime(history[len(history)-1]))
 	epoch, ok2 := when(get(p, "epoch"))
 	lengthS, ok3 := evidencerequest.UintValue(get(p, "length_s"))
 	return ok1 && ok2 && ok3 && lengthS != 0 && lengthS <= maxLengthS && at.Sub(epoch)%(time.Duration(lengthS)*time.Second) == 0
@@ -854,7 +929,7 @@ func periodFixed(envs []map[string]any) string {
 		if len(history) == 0 {
 			return time.Time{}
 		}
-		return mustWhen(get(get(history[len(history)-1], "checkpoint"), "timestamp"))
+		return mustWhen(cutTime(history[len(history)-1]))
 	}
 	for i, earlier := range envs {
 		for j, later := range envs {
@@ -909,6 +984,12 @@ func when(v any) (time.Time, bool) {
 	}
 	t, err := time.Parse(time.RFC3339Nano, s)
 	return t, err == nil
+}
+
+// cutTime is the time of a card entry's checkpoint, nil when unreadable.
+func cutTime(h any) any {
+	at, _, _ := cutOf(h)
+	return at
 }
 
 func mustWhen(v any) time.Time {
