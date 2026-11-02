@@ -93,6 +93,10 @@ def test_a_policy_digest_is_signed_only_under_evidence_interop_2():
     bad["sig"] = PRIMARY.sign(stub.signing_body(v2))[0]
     check = check_refusal(bad, profile=v2)
     assert check.signature_valid and not check.conformant
+    # An identifier not implemented: either signing input verifies (v2 §6.3).
+    assert check_refusal(signed.to_dict(), profile="evidence-interop/9").signature_valid
+    assert verify_refusal_offline(plain, profile="evidence-interop/9")
+    assert not check_refusal(tampered, profile="evidence-interop/9").signature_valid
     with pytest.raises(ValueError):
         sign_refusal(digest, "no_such_subject", signer=PRIMARY, issued_at="2026-09-28T00:00:00Z",
                      policy_digest=policy, profile="evidence-interop/1")

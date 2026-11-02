@@ -1257,6 +1257,14 @@ def _signing_body(members: Mapping[str, Any], profile: str | None = None) -> byt
     return jcs({k: members[k] for k in refusal_signed_members(profile) if k in members})
 
 
+def _signature_verifies(members: Mapping[str, Any], profile: str | None) -> bool:
+    """v2 §6.3: the signing input of ``profile``; for an identifier not in :data:`PROFILES`, that
+    of any identifier implemented, so the signature passes when either input verifies."""
+    rules = [profile] if profile is None or profile in PROFILES else [None, PROFILE_V2]
+    return any(_ed25519_verifies(members.get("key_id"), members.get("sig"), _signing_body(members, p))
+               for p in rules)
+
+
 @dataclass(frozen=True)
 class Refusal:
     """A signed refusal (§4.2) in the vectors' profile (A7). ``detail`` is
@@ -1369,7 +1377,7 @@ def verify_refusal_offline(refusal: Refusal, *, profile: str | None = None) -> b
     :class:`ImportError` rather than report a refusal as unsigned.
     """
     try:
-        return _ed25519_verifies(refusal.key_id, refusal.sig, refusal.signing_body(profile))
+        return _signature_verifies(refusal.to_dict(), profile)
     except (TypeError, ValueError, RecursionError):  # members that have no RFC 8785 form
         return False
 
@@ -1393,11 +1401,13 @@ def check_refusal(obj: Any, *, profile: str | None = None) -> RefusalCheck:
     and self-consistency, not who signed it (see :func:`verify_refusal_offline`).
     ``profile`` is the identifier the refused request asked for: under
     :data:`PROFILE_V2` a ``policy_digest`` the refusal carries is signed and
-    must be a digest (v2 §6.3); under any other it is outside the signature."""
+    must be a digest (v2 §6.3); under ``evidence-interop/0`` and ``/1`` it is
+    outside the signature; under an identifier not in :data:`PROFILES` the
+    signature passes over the signing input of any identifier implemented."""
     if not isinstance(obj, Mapping):
         return RefusalCheck(False, False, False)
     try:
-        signature_valid = _ed25519_verifies(obj.get("key_id"), obj.get("sig"), _signing_body(obj, profile))
+        signature_valid = _signature_verifies(obj, profile)
     except (TypeError, ValueError, RecursionError):
         signature_valid = False
     reason = obj.get("reason")
