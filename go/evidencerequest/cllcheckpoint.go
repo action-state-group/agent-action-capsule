@@ -45,10 +45,16 @@ func DecodeCLLCheckpoint(octets []byte) (*CLLCheckpoint, error) {
 	return &CLLCheckpoint{Key: kid, IssuedAt: cp.issuedAt, LogSize: cp.logSize, Commitment: cp.commitment, cp: cp}, nil
 }
 
-// VerifySignature checks the statement's COSE_Sign1 signature (step 10).
+// VerifySignature checks the statement's COSE_Sign1 signature (step 10)
+// under the kid of its protected header. The value must come from
+// DecodeCLLCheckpoint.
 func (c *CLLCheckpoint) VerifySignature() error {
-	if len(c.cp.signature) != ed25519.SignatureSize ||
-		!ed25519strict.Verify(c.Key, sigStructure(c.cp.protected, c.cp.payload), c.cp.signature) {
+	if c == nil || c.cp == nil {
+		return errors.Join(ErrInvalid, errors.New("the checkpoint was not decoded"))
+	}
+	kid, _ := c.cp.kid.([]byte)
+	if len(c.cp.signature) != ed25519.SignatureSize || len(kid) != ed25519.PublicKeySize ||
+		!ed25519strict.Verify(kid, sigStructure(c.cp.protected, c.cp.payload), c.cp.signature) {
 		return errors.Join(ErrInvalid, errors.New("the checkpoint's COSE_Sign1 signature does not verify"))
 	}
 	return nil

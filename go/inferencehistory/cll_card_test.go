@@ -35,7 +35,7 @@ func realEnv(t *testing.T) (Pins, map[string]any) {
 	return Pins{LogKeys: []string{fx.LogKey}}, map[string]any{"artifact": artifactValue(octets)}
 }
 
-// reseal re-derives the card digest and anchor after a mutation, so a test
+// reseal re-derives the card digest after a mutation, so a test
 // fails on the mutation itself and not on the digest over it.
 func reseal(env map[string]any) {
 	a := env["artifact"].(map[string]any)

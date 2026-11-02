@@ -574,10 +574,25 @@ func cllEntry(pins Pins, h map[string]any, statement string, prev *evidencereque
 	}
 	text, isText := proof.(string)
 	consistency, err := hex.DecodeString(text)
-	if !isText || err != nil || evidencerequest.VerifyCLLConsistency(prev.Commitment, cp.Commitment, consistency) != nil {
+	if !isText || err != nil || !proofSpans(consistency, prev.LogSize, cp.LogSize) ||
+		evidencerequest.VerifyCLLConsistency(prev.Commitment, cp.Commitment, consistency) != nil {
 		return nil, false
 	}
 	return cp, true
+}
+
+// proofSpans is whether cll-consistency-proof octets are between the two
+// signed log sizes, so the proof checked is the one for this pair of
+// statements.
+func proofSpans(octets []byte, from, to uint64) bool {
+	v, err := evidencerequest.DecodeCBOR(octets)
+	parts, ok := v.([]any)
+	if err != nil || !ok || len(parts) < 2 {
+		return false
+	}
+	a, ok1 := evidencerequest.UintValue(parts[0])
+	b, ok2 := evidencerequest.UintValue(parts[1])
+	return ok1 && ok2 && a == from && b == to
 }
 
 // cutOf is a card checkpoint's time and log size, in either form: the
