@@ -6,7 +6,7 @@
 // identifier (PH §4.1, §4.2), the acceptance of each answer under the
 // Minimum Evidence Interoperability Profile (PH §6.1), the seven History
 // properties (PH §6.2), the deal states (PH §5), and the one-file History
-// (PH §8.2).
+// (PH §8.2), and the tick path check (PH §8.3).
 //
 // Each exchange is verified by evidencerequest.Verifier. The History
 // properties are checked only over the envelopes PH §6.1 accepts. The
@@ -102,10 +102,31 @@ type FileExchange struct {
 	Reply   evidencerequest.Message
 }
 
-// File is the one-file History (PH §8.2).
+// File is the one-file History (PH §8.2). TickPaths is nil unless the
+// History relies on a commitment through an earlier tick (PH §2).
 type File struct {
 	Definition any
 	Exchanges  []FileExchange
+	TickPaths  *TickPaths
+}
+
+// TickPaths is a History's tick paths (PH §8.3): the anchor tick, and one
+// path per stream the anchor commits to through an earlier tick.
+type TickPaths struct {
+	// AnchorTick is the anchor tick's cll-checkpoint octets.
+	AnchorTick []byte
+	// Paths are sorted by EvidenceStream, without duplicates.
+	Paths []TickPath
+}
+
+// TickPath is one stream's path to an earlier tick (PH §8.3).
+type TickPath struct {
+	EvidenceStream string
+	// Tick is the earlier tick's cll-checkpoint octets.
+	Tick []byte
+	// Consistency is the cll-consistency-proof octets from the earlier
+	// tick's commitment to the anchor tick's.
+	Consistency []byte
 }
 
 type fileMessage struct {
@@ -118,17 +139,18 @@ type fileMessage struct {
 var ErrInvalid = errors.New("personalhistory: invalid")
 
 // ParseFile reads a one-file History (PH §8.2): exactly the members
-// history (this level's name), definition and exchanges, each exchange
-// exactly a request and a reply, each as {media_type, octets_text} for
-// JSON or {media_type, octets_hex} for CBOR.
+// history (this level's name), definition and exchanges, and tick_paths
+// when present, each exchange exactly a request and a reply, each as
+// {media_type, octets_text} for JSON or {media_type, octets_hex} for CBOR.
 func ParseFile(data []byte) (File, error) {
 	root, err := evidencerequest.DecodeJSON(data)
 	if err != nil {
 		return File{}, fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
 	obj, ok := root.(map[string]any)
-	if !ok || !sameKeys(obj, []string{"definition", "exchanges", "history"}) {
-		return File{}, fmt.Errorf("%w: a History file holds exactly history, definition and exchanges (PH §8.2)", ErrInvalid)
+	if !ok || (!sameKeys(obj, []string{"definition", "exchanges", "history"}) &&
+		!sameKeys(obj, []string{"definition", "exchanges", "history", "tick_paths"})) {
+		return File{}, fmt.Errorf("%w: a History file holds exactly history, definition and exchanges, and tick_paths when present (PH §8.2)", ErrInvalid)
 	}
 	if obj["history"] != Name {
 		return File{}, fmt.Errorf("%w: history is not %s", ErrInvalid, Name)
@@ -153,7 +175,138 @@ func ParseFile(data []byte) (File, error) {
 		}
 		f.Exchanges = append(f.Exchanges, FileExchange{Request: request, Reply: reply})
 	}
+	if raw, ok := obj["tick_paths"]; ok {
+		tp, err := tickPathsValue(raw)
+		if err != nil {
+			return File{}, err
+		}
+		f.TickPaths = &tp
+	}
 	return f, nil
+}
+
+// ParseTickPaths reads a History's tick paths (PH §8.3) as JSON: the
+// value a §8.2 file carries as tick_paths, or that reaches a recipient
+// beside the definition (PH §8.1).
+func ParseTickPaths(data []byte) (TickPaths, error) {
+	v, err := evidencerequest.DecodeJSON(data)
+	if err != nil {
+		return TickPaths{}, fmt.Errorf("%w: tick_paths: %v", ErrInvalid, err)
+	}
+	return tickPathsValue(v)
+}
+
+func tickPathsValue(v any) (TickPaths, error) {
+	bad := func(why string) (TickPaths, error) {
+		return TickPaths{}, fmt.Errorf("%w: tick_paths %s (PH §8.3)", ErrInvalid, why)
+	}
+	obj, ok := v.(map[string]any)
+	if !ok || !sameKeys(obj, []string{"anchor_tick", "paths"}) {
+		return bad("is not {anchor_tick, paths}")
+	}
+	var tp TickPaths
+	var err error
+	if tp.AnchorTick, err = hexMember(obj["anchor_tick"]); err != nil {
+		return bad("anchor_tick is not lowercase hex")
+	}
+	paths, ok := obj["paths"].([]any)
+	if !ok || len(paths) == 0 {
+		return bad("paths is not a non-empty array")
+	}
+	for i, raw := range paths {
+		p, ok := raw.(map[string]any)
+		if !ok || !sameKeys(p, []string{"consistency", "evidence_stream", "tick"}) {
+			return bad(fmt.Sprintf("path %d is not {evidence_stream, tick, consistency}", i))
+		}
+		stream, ok := p["evidence_stream"].(string)
+		if !ok || stream == "" {
+			return bad(fmt.Sprintf("path %d evidence_stream is not a non-empty text string", i))
+		}
+		if i > 0 && stream <= tp.Paths[i-1].EvidenceStream {
+			return bad("paths are not sorted by evidence_stream without duplicates")
+		}
+		path := TickPath{EvidenceStream: stream}
+		if path.Tick, err = hexMember(p["tick"]); err != nil {
+			return bad(fmt.Sprintf("path %d tick is not lowercase hex", i))
+		}
+		if path.Consistency, err = hexMember(p["consistency"]); err != nil {
+			return bad(fmt.Sprintf("path %d consistency is not lowercase hex", i))
+		}
+		tp.Paths = append(tp.Paths, path)
+	}
+	return tp, nil
+}
+
+func hexMember(v any) ([]byte, error) {
+	s, ok := v.(string)
+	if !ok || s == "" {
+		return nil, errors.New("not a non-empty text string")
+	}
+	return hexBytes(s)
+}
+
+func (tp TickPaths) value() map[string]any {
+	paths := make([]any, len(tp.Paths))
+	for i, p := range tp.Paths {
+		paths[i] = map[string]any{"evidence_stream": p.EvidenceStream, "tick": hex.EncodeToString(p.Tick),
+			"consistency": hex.EncodeToString(p.Consistency)}
+	}
+	return map[string]any{"anchor_tick": hex.EncodeToString(tp.AnchorTick), "paths": paths}
+}
+
+// TickPathResult is one tick path's check (PH §8.3): an IP §7.1 status
+// and, when it is not PASS, the step that decided it.
+type TickPathResult struct {
+	EvidenceStream string
+	Status         string
+	Detail         string
+}
+
+// CheckTickPaths runs the tick path check (PH §8.3) over each path, for a
+// History answered at anchor (the digest every envelope names), resolving
+// each tick's log key under trust. Its results are not History properties
+// and never change whether a History is accepted (PH §6.2).
+func CheckTickPaths(trust evidencerequest.TrustPolicy, anchor string, tp TickPaths) []TickPathResult {
+	out := make([]TickPathResult, len(tp.Paths))
+	for i, p := range tp.Paths {
+		status, detail := checkTickPath(trust, anchor, tp.AnchorTick, p)
+		out[i] = TickPathResult{EvidenceStream: p.EvidenceStream, Status: status, Detail: detail}
+	}
+	return out
+}
+
+func checkTickPath(trust evidencerequest.TrustPolicy, anchor string, anchorTick []byte, p TickPath) (string, string) {
+	if evidencerequest.Digest(anchorTick) != anchor {
+		return evidencerequest.StatusFail, "step 1: anchor_tick is not the History's anchor"
+	}
+	var ticks [2]*evidencerequest.CLLCheckpoint
+	for i, octets := range [][]byte{p.Tick, anchorTick} {
+		cp, err := evidencerequest.DecodeCLLCheckpoint(octets)
+		if errors.Is(err, evidencerequest.ErrCheckpointNotChecked) {
+			return evidencerequest.StatusNotChecked, "step 2: " + err.Error()
+		}
+		if err != nil {
+			return evidencerequest.StatusFail, "step 2: " + err.Error()
+		}
+		if status := trust.AcceptsLogKey(cp.Iss, cp.Sub, hex.EncodeToString(cp.Key), cp.IssuedAt); status != evidencerequest.StatusPass {
+			return status, "step 2: the trust policy does not accept the tick's log key"
+		}
+		if err := cp.VerifySignature(); err != nil {
+			return evidencerequest.StatusFail, "step 2: " + err.Error()
+		}
+		ticks[i] = cp
+	}
+	earlier, anchorCP := ticks[0], ticks[1]
+	if !equal(earlier.Iss, anchorCP.Iss) {
+		return evidencerequest.StatusFail, "step 3: the two ticks are not of one log"
+	}
+	if earlier.LogSize >= anchorCP.LogSize {
+		return evidencerequest.StatusFail, "step 4: the earlier tick's log_size is not less than the anchor tick's"
+	}
+	if err := evidencerequest.VerifyCLLConsistency(earlier.Commitment, anchorCP.Commitment, p.Consistency); err != nil {
+		return evidencerequest.StatusFail, "step 5: " + err.Error()
+	}
+	return evidencerequest.StatusPass, ""
 }
 
 func carriedMessage(v any) (evidencerequest.Message, error) {
@@ -194,7 +347,11 @@ func EncodeFile(f File) ([]byte, error) {
 		}
 		exchanges[i] = map[string]any{"request": request, "reply": reply}
 	}
-	return evidencerequest.EncodeJCS(map[string]any{"history": Name, "definition": f.Definition, "exchanges": exchanges})
+	file := map[string]any{"history": Name, "definition": f.Definition, "exchanges": exchanges}
+	if f.TickPaths != nil {
+		file["tick_paths"] = f.TickPaths.value()
+	}
+	return evidencerequest.EncodeJCS(file)
 }
 
 func fileValue(m evidencerequest.Message) (map[string]any, error) {
@@ -451,13 +608,33 @@ func artifactForm(envs []ExchangeResult, reads []string) bool {
 	return true
 }
 
+// epistemicTypes are the eight values of EL §4.1.
+var epistemicTypes = []string{"observed_event", "system_of_record_fact", "producer_claim", "human_report",
+	"semantic_judgment", "derived_metric", "adjudication", "obligation_reference"}
+
+// readForm is a read member's form (PH §4.3): IP §5.2 times, EL §4.1's
+// epistemic types, and text for record_type, whose values record_kinds
+// bounds.
+func readForm(k string, v any) bool {
+	s, ok := v.(string)
+	if !ok {
+		return false
+	}
+	switch k {
+	case "committed_at", "event_time_claim":
+		_, ok = evidencerequest.ParseProfileTime(s)
+		return ok
+	case "epistemic_type":
+		return slices.Contains(epistemicTypes, s)
+	}
+	return true
+}
+
 // entryForm is one records entry (PH §4.3): a digest and a position, and
 // otherwise only members of reads, each a header value. The values are
-// held to their forms, a 64-hex record digest, an unsigned position and a
-// text string for each read member, so no permitted member can carry an
-// object or an array. A read member's text is still the holder's: PH fixes
-// no form for it, and keeping private text out of it is the holder's
-// pre-release scan (PH §4.4).
+// held to their forms, a 64-hex record digest, an unsigned position and
+// each read member's form, so no permitted member can carry an object, an
+// array or text the holder chose beyond record_type's bounded kinds.
 func entryForm(r map[string]any, reads []string) bool {
 	digest, ok := r["digest"].(string)
 	if !ok || !evidencerequest.IsDigest(digest) {
@@ -470,7 +647,7 @@ func entryForm(r map[string]any, reads []string) bool {
 		if k == "digest" || k == "leaf_index" {
 			continue
 		}
-		if _, isText := v.(string); !isText || !slices.Contains(reads, k) {
+		if !slices.Contains(reads, k) || !readForm(k, v) {
 			return false
 		}
 	}

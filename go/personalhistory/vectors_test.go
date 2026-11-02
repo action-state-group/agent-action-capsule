@@ -23,8 +23,9 @@ import (
 // Every case of vectors/personal-history-basic-v0 runs from its inputs
 // alone and is compared with the case's whole expected block, as
 // python/tests/test_personal_history_basic_v0_vectors.py compares the
-// Python reference verifier and its History evaluator: the 13 History
-// cases through Evaluate, and the lone refusal through the Verifier.
+// Python reference verifier and its History evaluator: the 22 History
+// cases through Evaluate (and CheckTickPaths where a case carries tick
+// paths), and the lone refusal through the Verifier.
 
 type message struct {
 	MediaType  string `json:"media_type"`
@@ -50,9 +51,10 @@ type vectorCase struct {
 			Request message `json:"request"`
 			Reply   message `json:"reply"`
 		} `json:"exchanges"`
-		Request   message `json:"request"`
-		Reply     message `json:"reply"`
-		Requester string  `json:"requester"`
+		TickPaths json.RawMessage `json:"tick_paths"`
+		Request   message         `json:"request"`
+		Reply     message         `json:"reply"`
+		Requester string          `json:"requester"`
 	} `json:"inputs"`
 	Expected map[string]any `json:"expected"`
 }
@@ -164,10 +166,30 @@ func evaluate(t *testing.T, c corpus, vc vectorCase) personalhistory.Result {
 	return res
 }
 
+// tickPaths checks a case's tick paths (PH §8.3), rendered as the corpus
+// states them; nil when the case carries none.
+func tickPaths(t *testing.T, vc vectorCase) []any {
+	t.Helper()
+	if vc.Inputs.TickPaths == nil {
+		return nil
+	}
+	tp, err := personalhistory.ParseTickPaths(vc.Inputs.TickPaths)
+	require.NoError(t, err)
+	trust, err := evidencerequest.TrustPolicyFromPin(vc.Pins.TrustPolicy)
+	require.NoError(t, err)
+	var env map[string]any
+	require.NoError(t, json.Unmarshal([]byte(vc.Inputs.Exchanges[0].Reply.OctetsText), &env))
+	out := []any{}
+	for _, r := range personalhistory.CheckTickPaths(trust, env["anchor"].(map[string]any)["digest"].(string), tp) {
+		out = append(out, map[string]any{"evidence_stream": r.EvidenceStream, "status": r.Status})
+	}
+	return out
+}
+
 func TestPersonalHistoryBasicVectors(t *testing.T) {
 	c := load(t)
-	require.Equal(t, 14, c.Count)
-	require.Len(t, c.Cases, 14)
+	require.Equal(t, 23, c.Count)
+	require.Len(t, c.Cases, 23)
 	history := 0
 	for _, vc := range c.Cases {
 		if vc.Inputs.Definition == nil {
@@ -176,6 +198,9 @@ func TestPersonalHistoryBasicVectors(t *testing.T) {
 		history++
 		t.Run(vc.ID, func(t *testing.T) {
 			got := render(evaluate(t, c, vc))
+			if paths := tickPaths(t, vc); paths != nil {
+				got["tick_paths"] = paths
+			}
 			expected := map[string]any{}
 			for k, v := range vc.Expected {
 				if k != "fails" {
@@ -185,7 +210,7 @@ func TestPersonalHistoryBasicVectors(t *testing.T) {
 			assert.Equal(t, normalize(t, expected), normalize(t, got))
 		})
 	}
-	assert.Equal(t, 13, history)
+	assert.Equal(t, 22, history)
 }
 
 // Each case fails at least the properties it names (the §6.4 table), and
@@ -335,6 +360,11 @@ func TestArtifactBytesBesideTheObjectFail(t *testing.T) {
 		"digest not hex":        jcsOf(t, text, func(r map[string]any) { r["digest"] = "private value" }),
 		"object in a read":      jcsOf(t, text, func(r map[string]any) { r["committed_at"] = map[string]any{"counterparty": "private value"} }),
 		"object in record_type": jcsOf(t, text, func(r map[string]any) { r["record_type"] = map[string]any{"counterparty": "private value"} }),
+		"fraction in a time":    jcsOf(t, text, func(r map[string]any) { r["committed_at"] = "2026-10-15T00:00:02.5Z" }),
+		"offset in a time":      jcsOf(t, text, func(r map[string]any) { r["event_time_claim"] = "2026-10-14T23:25:02+00:00" }),
+		"text in a time":        jcsOf(t, text, func(r map[string]any) { r["committed_at"] = "private value" }),
+		"no such day in a time": jcsOf(t, text, func(r map[string]any) { r["committed_at"] = "2026-02-30T00:00:00Z" }),
+		"text in epistemic":     jcsOf(t, text, func(r map[string]any) { r["epistemic_type"] = "verified_fact" }),
 	} {
 		require.NotEqual(t, text, mutated, name)
 		res := evaluate(t, c, resign(t, c, positive, []byte(mutated)))
@@ -483,4 +513,102 @@ func TestParseFileRefusesWhatIsNotTheContainer(t *testing.T) {
 	}
 	_, err := personalhistory.ParseFile([]byte(`{"history":"personal_history_basic/1","definition":{},"exchanges":[{"request":` + msg + `,"reply":` + msg + `}]}`))
 	assert.NoError(t, err, "the container itself")
+}
+
+// The tick path check (PH §8.3) decides at the first step that fails: an
+// anchor tick that is not the History's anchor, an earlier tick that is
+// the anchor tick itself, a tick of another log key, and a consistency
+// proof cut short each FAIL.
+func TestTickPathCheckSteps(t *testing.T) {
+	c := load(t)
+	var positive vectorCase
+	for _, vc := range c.Cases {
+		if vc.ID == "multi-stream-earlier-tick" {
+			positive = vc
+		}
+	}
+	require.NotNil(t, positive.Inputs.TickPaths)
+	tp, err := personalhistory.ParseTickPaths(positive.Inputs.TickPaths)
+	require.NoError(t, err)
+	trust, err := evidencerequest.TrustPolicyFromPin(positive.Pins.TrustPolicy)
+	require.NoError(t, err)
+	anchor := evidencerequest.Digest(tp.AnchorTick)
+	check := func(tp personalhistory.TickPaths, anchor string) personalhistory.TickPathResult {
+		return personalhistory.CheckTickPaths(trust, anchor, tp)[0]
+	}
+	assert.Equal(t, evidencerequest.StatusPass, check(tp, anchor).Status)
+
+	r := check(tp, strings.Repeat("0", 64))
+	assert.Equal(t, evidencerequest.StatusFail, r.Status)
+	assert.Contains(t, r.Detail, "step 1")
+
+	same := tp
+	same.Paths = []personalhistory.TickPath{tp.Paths[0]}
+	same.Paths[0].Tick = tp.AnchorTick
+	r = check(same, anchor)
+	assert.Equal(t, evidencerequest.StatusFail, r.Status)
+	assert.Contains(t, r.Detail, "step 4")
+
+	short := tp
+	short.Paths = []personalhistory.TickPath{tp.Paths[0]}
+	short.Paths[0].Consistency = tp.Paths[0].Consistency[:len(tp.Paths[0].Consistency)-1]
+	r = check(short, anchor)
+	assert.Equal(t, evidencerequest.StatusFail, r.Status)
+	assert.Contains(t, r.Detail, "step 5")
+
+	untrusted := trust
+	untrusted.LogKeys = nil
+	r = personalhistory.CheckTickPaths(untrusted, anchor, tp)[0]
+	assert.Equal(t, evidencerequest.StatusFail, r.Status)
+	assert.Contains(t, r.Detail, "step 2")
+}
+
+// A History file carries tick_paths when present (PH §8.2), round-trips it
+// exactly, and refuses one not of the §8.3 form.
+func TestFileTickPaths(t *testing.T) {
+	c := load(t)
+	var positive vectorCase
+	for _, vc := range c.Cases {
+		if vc.ID == "multi-stream-earlier-tick" {
+			positive = vc
+		}
+	}
+	tp, err := personalhistory.ParseTickPaths(positive.Inputs.TickPaths)
+	require.NoError(t, err)
+	f := personalhistory.File{Definition: positive.Inputs.Definition, TickPaths: &tp}
+	for _, x := range positive.Inputs.Exchanges {
+		f.Exchanges = append(f.Exchanges, personalhistory.FileExchange{Request: x.Request.wire(), Reply: x.Reply.wire()})
+	}
+	encoded, err := personalhistory.EncodeFile(f)
+	require.NoError(t, err)
+	back, err := personalhistory.ParseFile(encoded)
+	require.NoError(t, err)
+	require.NotNil(t, back.TickPaths)
+	assert.Equal(t, tp, *back.TickPaths)
+	value, err := evidencerequest.DecodeJSON(positive.Inputs.TickPaths)
+	require.NoError(t, err)
+	want, err := evidencerequest.EncodeJCS(value)
+	require.NoError(t, err)
+	var file map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(encoded, &file))
+	assert.JSONEq(t, string(want), string(file["tick_paths"]))
+
+	path := `{"consistency":"00","evidence_stream":"s","tick":"00"}`
+	for name, text := range map[string]string{
+		"not an object":       `[]`,
+		"an extra member":     `{"anchor_tick":"00","paths":[` + path + `],"x":1}`,
+		"no paths":            `{"anchor_tick":"00","paths":[]}`,
+		"anchor not hex":      `{"anchor_tick":"zz","paths":[` + path + `]}`,
+		"uppercase hex":       `{"anchor_tick":"AB","paths":[` + path + `]}`,
+		"path extra member":   `{"anchor_tick":"00","paths":[{"consistency":"00","evidence_stream":"s","tick":"00","x":1}]}`,
+		"empty stream":        `{"anchor_tick":"00","paths":[{"consistency":"00","evidence_stream":"","tick":"00"}]}`,
+		"duplicate stream":    `{"anchor_tick":"00","paths":[` + path + `,` + path + `]}`,
+		"unsorted streams":    `{"anchor_tick":"00","paths":[{"consistency":"00","evidence_stream":"t","tick":"00"},` + path + `]}`,
+		"consistency missing": `{"anchor_tick":"00","paths":[{"evidence_stream":"s","tick":"00"}]}`,
+	} {
+		_, err := personalhistory.ParseTickPaths([]byte(text))
+		assert.ErrorIs(t, err, personalhistory.ErrInvalid, name)
+		_, err = personalhistory.ParseFile([]byte(`{"history":"personal_history_basic/1","definition":{},"exchanges":[],"tick_paths":` + text + `}`))
+		assert.ErrorIs(t, err, personalhistory.ErrInvalid, name)
+	}
 }

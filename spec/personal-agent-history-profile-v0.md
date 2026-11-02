@@ -21,7 +21,8 @@ two compose only by an explicit, evidence-backed link, never by being shown toge
 
 **Owns:** the Basic level's definition document and its member names (§4.1), the record kinds the
 Basic level reveals (§3), the artifact form of its answers (§4.3), the History properties and
-the acceptance rule (§6), the History container (§8.2), and the units a History is counted in (§5).
+the acceptance rule (§6), the History container and its tick paths (§8.2, §8.3), and the units a
+History is counted in (§5).
 
 **Uses unchanged:**
 
@@ -89,7 +90,8 @@ Terms from IP §1 and ER §2 are used unchanged. This profile adds:
 - **Holder:** the party whose agent recorded the deals, and who selects which of them a recipient
   receives.
 - **Holder key:** the key that signs every envelope of a History (§2).
-- **Deal:** every record the holder's evidence stream holds under one correlation identifier.
+- **Deal:** every record the holder's evidence stream holds under one correlation identifier,
+  by the host's correlation rule (§3.1).
 - **Deal reference:** that correlation identifier.
 - **Selection:** the set of deal references the holder picked for one recipient.
 - **History:** the definition document (§4.1) and one answered exchange per selected deal.
@@ -114,11 +116,26 @@ holder's own statement and is never checked by this profile.
   of those streams at that tick. Its digest is taken as for any checkpoint [IP §6.2.1], so a
   witness's countersignature does not change it. A deal's records "at the anchor" (§4.3) are then
   those its stream holds at the checkpoint the tick commits to.
+- A tick commits to a stream's checkpoint **directly** when that checkpoint is one the tick itself
+  commits to. It commits to it **through an earlier tick** when an earlier checkpoint of the same
+  tick log commits to it directly, since the anchor tick's checkpoint commits to every earlier
+  entry of its own log. That is what happens when a stream that has ended and not grown since an
+  earlier tick is no longer cut at every tick. A holder MAY rely on a commitment through an
+  earlier tick only when [PA-16]:
+  1. the earlier tick is the newest tick of that log, up to the anchor, that commits to a
+     checkpoint of the stream, and
+  2. the History carries a tick path for the stream (§8.3).
+
+  A deal's records at the anchor are then those its stream holds at the checkpoint the earlier
+  tick commits to. Without a tick path, the anchor MUST commit to each stream's checkpoint
+  directly.
 - At the Basic level a verifier checks only that every envelope names the same anchor (§6.2
   `single_anchor`). It does not check that the anchor is witnessed, or that it commits to the
   stream an artifact names: like `anchor_inclusion` (§6.1), that needs verification material IP
   does not register (PA-13, PA-14). Both are among the checks a verifier shows as not run
-  (§6.3 item 4).
+  (§6.3 item 4). A tick path's check (§8.3) shows only that the anchor tick's log extends the
+  earlier tick's. It is not a History property, and its result never changes whether a History is
+  accepted (§6.2).
 - One anchor over several streams says nothing about which of their records a History includes.
   That is the History's coverage declaration [IP §6.7]. A History at the Basic level declares
   `holder_selected`: its definition's `completeness` `not_asserted` (§4.1) is that declaration, and
@@ -142,6 +159,14 @@ from this closed list [PA-2]:
 
 - A host whose native records carry a step status elsewhere (for example an effect status on an
   action record) maps that status onto these two kinds when it writes the deal's records.
+- **Header values are written at seal time [PA-18].** Each member of `reads` that an answer carries
+  is the value the record's header carried when the record was sealed (§4.3). A host MUST NOT
+  compute an entry's value when it answers, from the sealed record or otherwise, and MUST NOT
+  carry a value that differs from the sealed header's. A record whose sealed header does not carry
+  a `record_type` of the list above, or carries a read member that is not in its §4.3 form, cannot
+  be answered at the Basic level. The holder's host MUST NOT select a deal that holds one, so a
+  deal sealed before its host wrote these headers is never selected. Because every value is
+  sealed, a holder cannot state one status to one recipient and another to the next.
 - `record_type` is open vocabulary in EL, so a host could write a type that names an item, a
   category or a counterparty. That is why the list is closed: a record of any other type MUST NOT
   be in a selected deal, and a verifier reports it as `record_kinds` `FAIL` (§6.2).
@@ -149,6 +174,28 @@ from this closed list [PA-2]:
   the holder's agent recorded a step as completed, and nothing about what the step was (§5).
 - `epistemic_type` is revealed as the holder's agent recorded it. It is the holder's own label.
   A verifier MUST NOT present it as corroboration by anyone else.
+
+### 3.1 Correlation membership
+
+EL leaves to the host which records it holds under one correlation identifier. This profile keeps
+that choice with the host, under these rules [PA-17]:
+
+- The host states one **correlation rule**, and applies it to every deal it answers for. The rule
+  MAY hold only a deal's steps under its correlation, so that records about the deal, such as a
+  report on it, a Result about it, a record that it was shared, an exchange about it or a
+  composition built from it, are not records of the deal.
+- The rule MAY carry membership in a header member other than `subject_ref` [EL], or in no header
+  member at all. A host that uses `subject_ref` for another purpose, such as identifying a retried
+  step, does not thereby hold each `subject_ref` value as a correlation of its own.
+- The responder answering a `correlation` subject (§4.3) applies the host's rule: an answer holds
+  exactly the records the rule names for the deal, and no other. A responder that resolves the
+  subject by another rule is not answering at this level.
+- A History never borrows a completeness proof built for another set of records. An index's proof
+  that it holds every record filed under some key shows nothing about the records the host's rule
+  names, unless that key is the rule's. A verifier MUST NOT present such a proof as evidence about
+  a deal of a Basic level History, which asserts no completeness (§2).
+- Records the rule leaves out may still sit in the deal's stream. Their positions then show as gaps
+  in the deal's `leaf_index` values (§4.5).
 
 ## 4. Disclosure identification
 
@@ -212,10 +259,27 @@ The responder answers with an IP envelope [IP §6.2]. Its `artifact` is UTF-8 of
 | `records` | one entry per record of the deal at the anchor, in log order |
 | `subject` | the request's `subject`, by value |
 
+`anchor` and `derivation` are digests in the IP §5.2 form. `evidence_stream` is a non-empty text
+string.
+
 Each `records` entry carries `digest` (the record's identifier), `leaf_index` (its position in
-the stream), and those members of `reads` that the record's header carries. It carries no other
-member: no payload, no payload commitment, no statement, no counterparty or principal reference,
-no links.
+the stream), and those members of `reads` that the record's header carried when it was sealed
+(§3). It carries no other member: no payload, no payload commitment, no statement, no
+counterparty or principal reference, no links. Each value is in its form [PA-4]:
+
+| Member | Form |
+|---|---|
+| `digest` | a digest in the IP §5.2 form |
+| `leaf_index` | an unsigned integer in the IP §5.2 range |
+| `committed_at` | a time in the IP §5.2 form |
+| `event_time_claim` | a time in the IP §5.2 form |
+| `epistemic_type` | one of the eight values of EL §4.1 |
+| `record_type` | a text string (§3 bounds its values) |
+
+The forms leave no permitted member able to hold an object, a number or free text the holder
+chose. The Artifact is exactly UTF-8 of JCS of this one object: octets with any other encoding,
+a duplicate member or trailing data are not the §4.3 Artifact, even where the envelope's
+`artifact_digest` matches them.
 
 The artifact is caller-invariant for (subject, anchor, derivation) [ER §5; IP §6.2]. Every member
 is a function of those three and the stream; nothing in it depends on the request's nonce, route
@@ -238,9 +302,18 @@ The scan is the holder's control. A recipient's verifier checks the field set (�
 - Deal references are carried in the clear in `selection` and in every request. They MUST NOT be
   derived from counterparty, item, amount or message text [PA-6]. A random identifier chosen when
   the deal is opened meets this.
+- That obligation is the **choosing party's**: the party whose agent drew the reference when the
+  deal was opened. A holder that joins a deal under a reference the other party chose cannot check
+  how it was drawn. Such a holder MAY select the deal when it knows that the other party chose the
+  reference, and a verifier states that limit (§6.3 item 5). The holder MUST NOT select a deal
+  whose reference has a source it does not know, neither drawn by its own agent nor known to have
+  been chosen by the other party.
 - A deal's references and its record digests are the same in every History that includes it. Two
   recipients who compare their Histories can tell that they received the same deal. This revision
   has no per-share handle that would prevent that (PA-7). A verifier states the limit (§6.3).
+- A deal's `leaf_index` values show where in its stream its records sit. Gaps between them show
+  that the stream holds other records there, such as records the host's correlation rule leaves
+  out (§3.1). A host that keeps such records off the deal's stream shows no gaps.
 
 ## 5. Units
 
@@ -304,12 +377,16 @@ Each is reported in the IP §7.1 vocabulary [PA-10]:
 | `selection_coverage` | every envelope's `subject` is `{"correlation": r}` with `r` in `selection`, and every member of `selection` is answered by exactly one envelope |
 | `single_signer` | every envelope names the same `responder` |
 | `single_anchor` | every envelope carries the same `anchor`, whether or not the envelopes name the same stream. Whether that anchor is a checkpoint or a witnessed checkpoint tick is not checked (§2, PA-14) |
-| `artifact_form` | every artifact is the §4.3 object: exactly its five members, `anchor`, `derivation` and `subject` equal to the envelope's, `records` non-empty, each entry carrying `digest` and `leaf_index` and no member outside `reads`; checked per envelope, `evidence_stream` a non-empty text string. Two envelopes may name different streams. Whether the named stream holds the records is not checked (§2, PA-14) |
+| `artifact_form` | every Artifact's octets are exactly UTF-8 of JCS of one object, and that object is the §4.3 object: exactly its five members, `anchor` a digest, `anchor`, `derivation` and `subject` equal to the envelope's, `records` non-empty, each entry carrying `digest` and `leaf_index` and no member outside `reads`, and every entry value in its §4.3 form; checked per envelope, `evidence_stream` a non-empty text string. Two envelopes may name different streams. Whether the named stream holds the records is not checked (§2, PA-14) |
 | `record_kinds` | every record's `record_type` is in §3's list |
 
 The History properties are checked only over envelopes accepted under §6.1. A History property
 that is not `PASS` means the History is not accepted, whatever the envelopes' own statuses are.
 A History property never changes an envelope property or an IP §8 status.
+
+The tick path check (§8.3) is not a History property. The counting table fixes this level's
+properties, so its result never changes whether a History is accepted. A verifier that runs it
+shows its status for each stream with the checks of §6.3 item 4.
 
 ### 6.3 What a verifier shows
 
@@ -319,8 +396,10 @@ A verifier showing an accepted History at the Basic level shows, in this order:
    completeness not asserted [IP §6.7.3], before any count;
 2. the number of selected deals, and the count of each deal state of §5, each in its own unit;
 3. per deal, its records' committed and claimed times as two separate values, and their kinds;
-4. which checks ran and which did not, including `anchor_inclusion` `NOT_CHECKED`;
-5. the limits of §4.5 and §9.
+4. which checks ran and which did not, including `anchor_inclusion` `NOT_CHECKED`, and each tick
+   path's status (§8.3) or that it was not checked;
+5. the limits of §4.5 and §9, including that a deal reference may have been chosen by the other
+   party, whose drawing the holder could not check (§4.5).
 
 ### 6.4 Acceptance vectors (informative)
 
@@ -340,6 +419,18 @@ requirement was `UNKNOWN`/`not_evaluable`. Each of these mutants failed the prop
 | a record kind outside §3, re-signed by the holder key | `record_kinds` |
 | a record carrying a member outside `reads`, re-signed by the holder key | `artifact_form` |
 | a definition whose `reads` adds `statement` and `counterparty_ref` | `definition_form` |
+| an Artifact that is not exactly JCS (a space added), re-signed by the holder key | `artifact_form` |
+| an entry `digest` that is not a digest, re-signed by the holder key | `artifact_form` |
+| an entry `leaf_index` given as text, re-signed by the holder key | `artifact_form` |
+| a read member holding an object, re-signed by the holder key | `artifact_form` |
+| a `committed_at` with fractional seconds, re-signed by the holder key | `artifact_form` |
+| an `event_time_claim` with a UTC offset in place of `Z`, re-signed by the holder key | `artifact_form` |
+| an `epistemic_type` outside EL §4.1, re-signed by the holder key | `artifact_form` |
+
+A History over three streams whose anchor tick commits to one deal's stream through an earlier
+tick, carrying that stream's tick path (§8.3), was accepted, and its tick path check was `PASS`.
+With the path's consistency proof changed, the check was `FAIL`, and the History was still
+accepted (§6.2).
 
 A request under the definition from any requester other than its `recipient` was refused
 `not_authorized` [ER §4.2]. Publishing these as conformance vectors beside IP §11.5 is PA-11. They
@@ -367,7 +458,9 @@ supported state apart [IP §11.2.6].
 The recipient receives the definition document from the holder, by any channel, and asks for each
 selected deal under it. The requests and replies are carried by any IP carriage (the native
 stream, HTTP, A2A or MCP), with IP's rules unchanged [IP §11.4]. In this mode `request_binding`
-binds each answer to a request the recipient itself made.
+binds each answer to a request the recipient itself made. A History that relies on a commitment
+through an earlier tick (§2) reaches the recipient with its `tick_paths` value (§8.3) beside the
+definition, by any channel. It is never added to an envelope or an Artifact.
 
 A responder answers a Basic level request only for the requester its definition names, after
 authenticating it [IP §6.5 item 4]. Any other requester is refused `not_authorized`, or
@@ -387,10 +480,58 @@ A holder MAY instead hand the recipient a History as one JSON object [PA-12]:
 | `history` | `"personal_history_basic/1"` |
 | `definition` | the definition document, as a JSON value |
 | `exchanges` | one `{"request": C, "reply": C}` per selected deal, where `C` is `{"media_type", "octets_text"}` for JSON or `{"media_type", "octets_hex"}` for CBOR: the octets exactly as carried |
+| `tick_paths` | present exactly when the History relies on a commitment through an earlier tick (§2): the §8.3 value |
 
 The holder's host forms the requests. Then `request_binding` shows only that each answer matches
 the request octets in the file, not that the recipient asked. A verifier states which mode it
-checked. Everything else in §6 is the same.
+checked. Everything else in §6 is the same. A file with any other member, or with a `tick_paths`
+value not of the §8.3 form, is not a History at this level.
+
+### 8.3 Tick paths
+
+A **tick path** is the material that lets anyone holding it check that the anchor tick's log
+extends an earlier tick's log, so that the anchor commits to what the earlier tick commits to
+(§2) [PA-16]. A History's tick paths are one JSON object:
+
+| Member | Value |
+|---|---|
+| `anchor_tick` | the anchor tick as the octets of an IP §6.2.1 `cll-checkpoint` item, in lowercase hex. Its SHA-256 is the History's anchor |
+| `paths` | a non-empty array of tick paths, one per stream that relies on an earlier tick, sorted by `evidence_stream` by code point, without duplicates |
+
+Each tick path is an object of exactly these members:
+
+| Member | Value |
+|---|---|
+| `evidence_stream` | the stream, a non-empty text string equal to the `evidence_stream` of the Artifact that answers its deal |
+| `tick` | the earlier tick (§2 item 1) as the octets of an IP §6.2.1 `cll-checkpoint` item, in lowercase hex |
+| `consistency` | an MMR consistency proof from the earlier tick's `commitment` to the anchor tick's, as the octets of an IP §6.2.1 `cll-consistency-proof` item, in lowercase hex |
+
+Both ticks are checkpoints of the one tick log, each in IP §6.2.1's one form, with no witness
+countersignature in it. A witness's countersignature on the anchor tick travels outside it, as it
+does for any checkpoint.
+
+**The tick path check.** For each tick path, a verifier that runs the check reports one IP §7.1
+status. Steps run in order, and the first that yields a status decides:
+
+1. If SHA-256 of `anchor_tick` differs from the anchor every envelope names: `FAIL`.
+2. Decode both ticks as IP §6.2.1 step 7 does, with its `FAIL`s. Apply its steps 8 to 10 to each,
+   with their statuses: the algorithm, the relying party's policy for (`iss`, `sub`, `kid`), and
+   the signature.
+3. If the two ticks' `iss` differ: `FAIL`. They are not one log. `sub` is not compared, because a
+   log may name each checkpoint in it, as CLL's reference implementation names it by the log and
+   its size.
+4. If the earlier tick's `log_size` is not less than the anchor tick's: `FAIL`. A tick that commits
+   to the stream directly needs no path.
+5. Apply IP §6.2.1 step 13 to `consistency`, with the earlier tick's `commitment` in place of
+   `prev_commitment` and the anchor tick's `commitment` in place of `commitment`, with its
+   `FAIL`s. The check of `prev_size` there does not apply.
+6. Otherwise: `PASS`.
+
+A `PASS` shows that the anchor tick's log extends the earlier tick's, both signed by a key the
+policy accepts for that log. It does not show that the earlier tick commits to the stream's
+checkpoint, that it is the newest tick to do so (§2 item 1), or that either tick was witnessed.
+Those need verification material IP does not register (PA-14). At the Basic level the check is
+not a History property (§6.2).
 
 ## 9. Security and privacy considerations
 
@@ -413,6 +554,11 @@ checked. Everything else in §6 is the same.
   relies on completeness is never `SATISFIED` from a Basic level History [IP §6.7.3 item 4].
 - **Claimed times.** `event_time_claim` is the holder's agent's claim. `committed_at` is the time
   the holder's own stream assigned. Neither is a witnessed time; both are shown, separately.
+- **Tick paths.** A tick path carries two signed checkpoints of the holder's tick log. Their
+  `issued_at` and `log_size` show when the earlier tick was cut and how many ticks followed it,
+  which bounds when the stream stopped growing, for example when a deal ended. A holder that would
+  not reveal that answers at a tick that commits to every selected stream directly, or leaves the
+  deal out.
 - **No ordering.** As HF §4.6: this profile defines no figure that orders or grades deals,
   holders or counterparties, and a verifier that follows it shows none.
 
@@ -423,9 +569,9 @@ checked. Everything else in §6 is the same.
 | PA-1 | One holder key per History. Composing Histories across a key rotation needs a signed link between the two keys, which no pinned document defines yet. |
 | PA-2 | The closed list of record kinds (§3). Its two kinds may later move into an EL revision's `record_type` guidance. |
 | PA-3 | The definition document's member names (§4.1), which IP leaves open as P-14. If IP fixes common names, `/2` adopts them. |
-| PA-4 | The artifact form of a derivation answer (§4.3). IP fixes no artifact content; this profile fixes it for its derivation so that two responders give the same bytes. |
+| PA-4 | The artifact form of a derivation answer (§4.3), including the form of each entry value. IP fixes no artifact content; this profile fixes it for its derivation so that two responders give the same bytes, and so that no permitted member can carry text the holder chose. |
 | PA-5 | The holder's pre-release byte scan (§4.4) as a requirement of the host, not of the responder. |
-| PA-6 | Deal references not derived from counterparty, item, amount or message text. |
+| PA-6 | Deal references not derived from counterparty, item, amount or message text, as the obligation of the party that chose the reference (§4.5). |
 | PA-7 | Per-share handles that would stop two recipients joining a deal through its reference. Records' digests would still link it. |
 | PA-8 | Units (§5). |
 | PA-9 | Outcome claims with source labels (the holder's agent's own outcome record, a third party's signed message, an adjudicator's statement, the other party's own record), each shown side by side and never combined. Defined as the Outcome level, `personal_history_outcome/1`, in `spec/personal-agent-history-outcome-v0.md`. |
@@ -433,5 +579,8 @@ checked. Everything else in §6 is the same.
 | PA-11 | Publishing the §6.4 run as conformance vectors beside IP §11.5. |
 | PA-12 | The one-file History container (§8.2). |
 | PA-13 | Record-level inclusion for a derivation's artifact: needs an IP verification-material kind (IP P-13); until then `anchor_inclusion` is `NOT_CHECKED`. |
-| PA-14 | A History over several streams at one witnessed checkpoint tick (§2). Showing that the tick is witnessed and commits to each stream an artifact names needs verification material from the tick to the stream's checkpoint, which IP does not register (IP P-13); until then a verifier checks only that every envelope names the same anchor. |
+| PA-14 | A History over several streams at one witnessed checkpoint tick (§2). Showing that the tick is witnessed and commits to each stream an artifact names needs verification material from the tick to the stream's checkpoint, which IP does not register (IP P-13); until then a verifier checks only that every envelope names the same anchor. A tick path (§8.3) covers only the step from the anchor tick to an earlier tick (PA-16). |
 | PA-15 | The Basic level's coverage kind (§2, §4.1). `completeness` `not_asserted` is read as IP §6.7's `holder_selected`, so `/1` keeps its bytes. A level that declares `stream_interval` or `source_authoritative` carries `coverage_declaration` in its definition instead. The IP vectors use an example definition for both, which is not registered (IP §6.7.6). The Outcome level (`spec/personal-agent-history-outcome-v0.md` §3) is that level. |
+| PA-16 | A commitment through an earlier tick of the same tick log (§2), and the tick path that carries it (§8.3). The tick path check reuses IP §6.2.1's checkpoint and consistency-proof forms and steps. It is not a History property of `/1`; a level that makes it one, together with PA-14's material, is a later revision. |
+| PA-17 | The host's correlation rule (§3.1): which records a deal holds is the host's stated rule, which may hold only the deal's steps and need not use `subject_ref`, applied by the responder and never backed by a completeness proof built for another set. |
+| PA-18 | The read members written into the record's header at seal time and answered as sealed (§3, §4.3). A deal holding a record sealed without them is not selected. |

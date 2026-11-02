@@ -46,10 +46,12 @@ alone:
   and applies §6.1 to the result.
 - It derives the seven History properties of §6.2 and the deal states of §5 with its own
   evaluator, written from the profile.
-- It compares both with the case's whole `expected` block.
+- It runs the §8.3 tick path check over each tick path, with the IP reference verifier's checkpoint
+  and consistency-proof steps.
+- It compares all three with the case's whole `expected` block.
 - It checks that each row of the §6.4 mutant table has a case that fails the property the row
   names.
-- It runs ten defective History evaluators, each of which must disagree with at least one case,
+- It runs twelve defective History evaluators and two defective tick path checks, each of which must disagree with at least one case,
   and one evaluator that counts envelopes §6.1 rejected, which must also disagree.
 - It regenerates the directory twice and requires both runs to be byte-identical to the committed
   files.
@@ -88,6 +90,15 @@ second checkpoint.
 | `mutant-definition-reads-widened` | a definition whose `reads` adds `statement` and `counterparty_ref` | responder | `definition_form` |
 | `multi-stream-one-tick` | (§2: the positive deals, each in its own stream, at one witnessed checkpoint tick) | derived | nothing: every History property `PASS`, every envelope accepted, each requirement row `envelope-4` |
 | `mutant-multi-stream-mixed-anchor` | (§2: the same, one deal at its own stream's checkpoint) | derived | `single_anchor` |
+| `mutant-artifact-not-jcs` | an Artifact that is not exactly JCS (a space added), re-signed by the holder key | derived | `artifact_form` (and `record_kinds`) |
+| `mutant-entry-digest-not-digest` | an entry `digest` that is not a digest, re-signed by the holder key | derived | `artifact_form` |
+| `mutant-entry-leaf-index-text` | an entry `leaf_index` given as text, re-signed by the holder key | derived | `artifact_form` |
+| `mutant-read-member-object` | a read member holding an object, re-signed by the holder key | derived | `artifact_form` |
+| `mutant-committed-at-fraction` | a `committed_at` with fractional seconds, re-signed by the holder key | derived | `artifact_form` |
+| `mutant-event-time-claim-offset` | an `event_time_claim` with a UTC offset in place of `Z`, re-signed by the holder key | derived | `artifact_form` |
+| `mutant-epistemic-type-outside-el` | an `epistemic_type` outside EL §4.1, re-signed by the holder key | derived | `artifact_form` |
+| `multi-stream-earlier-tick` | (§2, §8.3: three streams at one anchor tick, one committed through an earlier tick, with its tick path) | derived | nothing: every History property `PASS`, the tick path check `PASS` |
+| `mutant-tick-path-consistency-changed` | (§8.3: the same, with the tick path's consistency proof changed) | derived | nothing: every History property `PASS`, the tick path check `FAIL`, still accepted |
 | `refused-other-requester` | a request under the definition from another requester | responder | refused `not_authorized`: refusal properties `PASS`, row `refusal-withheld` |
 
 ## Reading the expected values
@@ -97,6 +108,8 @@ second checkpoint.
 - `history_properties` gives the seven §6.2 statuses. `accepted` is true when every envelope is
   accepted and every History property is `PASS`. `deal_states` (accepted Histories only) gives the
   number of selected deals and each deal's §5 state.
+- `tick_paths` (the two tick path cases only) gives each tick path's §8.3 check status, beside the
+  History properties and never among them: it does not change `accepted` (§6.2).
 - `fails` names the property the §6.4 table names. A case may fail other properties too. Each of
   those is a consequence that the case states and the test derives.
 - Every accepted envelope has `anchor_inclusion` `NOT_CHECKED`, `verification_binding`
@@ -127,6 +140,15 @@ The profile leaves some readings open. This corpus fixes them as follows:
   request. The tick and the one stream's checkpoint in `mutant-multi-stream-mixed-anchor` are label
   digests, not real checkpoints: at the Basic level a verifier checks only that every envelope
   names the same anchor (§2, PA-14). The definition, and so the derivation, is the positive run's.
+- **The tick log is real; the ticks' trees are not.** In the two tick path cases the earlier tick and
+  the anchor tick are checkpoints of one tick log (`holder-tick-log`), in IP §6.2.1's one form,
+  signed by the holder log key, and the consistency proof between them is real. Each entry of the
+  tick log is a label digest standing for a tick's root: how a tick commits to each stream's
+  checkpoint is not checked at the Basic level (PA-14). Each checkpoint's `sub` names the log and
+  its MMR size, as CLL's reference implementation does, and the pins accept both.
+- **An Artifact that is not exactly JCS has no records to read**, so `mutant-artifact-not-jcs`
+  fails `record_kinds` as well as `artifact_form`. The other entry-form mutants keep a readable
+  Artifact and fail `artifact_form` only.
 - **A definition with one more deal still has a valid form.** In `mutant-deal-added-to-definition`
   the selection stays sorted and free of duplicates, so `definition_form` passes. Only the binding
   and the coverage fail.

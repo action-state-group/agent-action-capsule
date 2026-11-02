@@ -83,3 +83,30 @@ func TestNativeCheckerGetsACopyOfTheCitedObjectsOnly(t *testing.T) {
 	assert.Equal(t, evidencerequest.StatusPass, e.nativeCheck(map[string]any{}, []string{d1}))
 	assert.Equal(t, []byte("a"), e.objects[d1])
 }
+
+// The entry members this level shares with the Basic level keep PH §4.3's
+// forms; the members it adds to reads have none from PH.
+func TestArtifactFormHoldsTheBasicEntryForms(t *testing.T) {
+	digest := "0000000000000000000000000000000000000000000000000000000000000000"
+	env := func(edit func(map[string]any)) []map[string]any {
+		r := map[string]any{"digest": digest, "leaf_index": uint64(1), "committed_at": "2026-10-15T00:00:02Z",
+			"epistemic_type": "producer_claim", "record_type": "outcome_recorded", "outcome": map[string]any{"any": "object"}}
+		edit(r)
+		return []map[string]any{{
+			"anchor": map[string]any{"digest": digest}, "derivation": "d", "subject": map[string]any{"correlation": "deal"},
+			"artifact": map[string]any{"anchor": digest, "derivation": "d", "evidence_stream": "s",
+				"subject": map[string]any{"correlation": "deal"}, "records": []any{r}},
+		}}
+	}
+	assert.True(t, artifactForm(env(func(map[string]any) {})))
+	for name, edit := range map[string]func(map[string]any){
+		"digest not hex":      func(r map[string]any) { r["digest"] = "private value" },
+		"leaf_index as text":  func(r map[string]any) { r["leaf_index"] = "1" },
+		"fraction in a time":  func(r map[string]any) { r["committed_at"] = "2026-10-15T00:00:02.5Z" },
+		"offset in a time":    func(r map[string]any) { r["event_time_claim"] = "2026-10-15T00:00:02+00:00" },
+		"epistemic outside":   func(r map[string]any) { r["epistemic_type"] = "verified_fact" },
+		"object in epistemic": func(r map[string]any) { r["epistemic_type"] = map[string]any{"x": "y"} },
+	} {
+		assert.False(t, artifactForm(env(edit)), name)
+	}
+}

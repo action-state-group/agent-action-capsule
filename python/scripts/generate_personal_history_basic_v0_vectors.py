@@ -37,10 +37,16 @@ from generate_interop_profile_v0_vectors import (
     PROFILE,
     REFUSAL_PROPS,
     b64u,
+    cbor,
     env_props,
+    hash_pospair64,
+    included_root,
+    inclusion_path,
+    index_height,
     jcs,
     json_digest,
     mapped,
+    mmr_peaks,
     ref,
     ref_props,
     sha,
@@ -109,6 +115,60 @@ TICK = shx(b"personal-agent-history-profile-v0 conformance vectors: witnessed ch
 STREAM_CHECKPOINT = shx(b"personal-agent-history-profile-v0 conformance vectors: one deal stream's checkpoint")
 
 
+# §2, §8.3: a tick log of real checkpoints, for a History whose anchor tick commits to one stream
+# through an earlier tick. Its entries stand for the roots of six ticks: how a tick commits to each
+# stream's checkpoint is not checked at the Basic level (PA-14), so each is a label digest. The
+# earlier tick is the log's checkpoint after three ticks, and the anchor tick its checkpoint after
+# six, whose consistency proof from the earlier tick is the tick path's.
+TICK_LOG = "holder-tick-log"
+TICK_ROOTS = [sha(f"personal-agent-history-profile-v0 conformance vectors: tick root {k}".encode()) for k in range(6)]
+
+
+def tick_checkpoint(entries: list[bytes], prev_entries: int, issued_at: str) -> dict:
+    """The tick log's checkpoint over ``entries`` in IP §6.2.1's one form, signed by the holder log
+    key, with the MMR consistency proof from its ``prev_entries`` checkpoint. The MMR is IP §10.1's
+    (leaf value SHA-256(0x00 || E)), and ``sub`` names the checkpoint as CLL's reference
+    implementation does: the log and its MMR size."""
+    db: list[bytes] = []
+    sizes = {0: 0}
+    for n, e in enumerate(entries):
+        db.append(sha(b"\x00" + e))
+        g = 0
+        while index_height(len(db)) > g:
+            i = len(db)
+            db.append(hash_pospair64(i + 1, db[i - (2 << g)], db[i - 1]))
+            g += 1
+        sizes[n + 1] = len(db)
+    size, prev_size = sizes[len(entries)], sizes[prev_entries]
+    commitment = [db[p] for p in mmr_peaks(size - 1)]
+    prev_commitment = [db[p] for p in mmr_peaks(prev_size - 1)] if prev_size else []
+    sub = f"{TICK_LOG}#{size}"
+    protected = cbor({1: -8, 4: bytes.fromhex(PUB["holder-log"]), 15: {1: TICK_LOG, 2: sub}})
+    payload = cbor({"kind": "cll-checkpoint", "log_size": len(entries), "prev_size": prev_entries,
+                    "issued_at": issued_at, "commitment": cbor(commitment),
+                    "prev_commitment": cbor(prev_commitment) if prev_size else b""})
+    sig = PRIV["holder-log"].sign(cbor(["Signature1", protected, b"", payload]))
+    out = {"checkpoint": b"\xd2" + cbor([protected, {}, payload, sig]), "commitment": commitment,
+           "log_key": {"iss": TICK_LOG, "sub": sub, "kid": PUB["holder-log"]}}
+    if prev_size:
+        paths, roots = [], []
+        for p in mmr_peaks(prev_size - 1):
+            path = [db[j] for j in inclusion_path(p, size - 1)]
+            paths.append(path)
+            r = included_root(p, db[p], path)
+            if not roots or roots[-1] != r:
+                roots.append(r)
+        right = commitment[len(roots):]
+        assert roots + right == commitment
+        out["consistency"] = cbor([prev_size, size, paths, right])
+    return out
+
+
+EARLIER_TICK = tick_checkpoint(TICK_ROOTS[:3], 2, "2026-10-15T00:10:00Z")
+ANCHOR_TICK = tick_checkpoint(TICK_ROOTS, 3, "2026-10-15T00:25:00Z")
+ANCHOR_TICK_DIGEST = shx(ANCHOR_TICK["checkpoint"])
+
+
 def load_run(path: Path) -> dict:
     run = json.loads(path.read_text(encoding="utf-8"))
     if run["holder_key"] != PUB["holder"] or run["checkpoints"][0]["log_key"]["kid"] != PUB["holder-log"]:
@@ -130,14 +190,16 @@ def artifact_of(env: dict) -> dict:
     return json.loads(base64.urlsafe_b64decode(a + "=" * (-len(a) % 4)))
 
 
-def resign(env: dict, key: str, *, artifact: dict | None = None, **members: Any) -> dict:
-    """The envelope with ``members`` replaced (and ``artifact``, as JCS octets), signed by ``key``."""
+def resign(env: dict, key: str, *, artifact: dict | None = None, octets: bytes | None = None, **members: Any) -> dict:
+    """The envelope with ``members`` replaced (and ``artifact``, as JCS octets, or the Artifact
+    ``octets`` as given), signed by ``key``."""
     out = {k: v for k, v in env.items() if k != "sig"}
     out.update(members)
     out["responder"] = PUB[key]
     if artifact is not None:
-        data = jcs(artifact).encode()
-        out["artifact"], out["artifact_digest"] = b64u(data), shx(data)
+        octets = jcs(artifact).encode()
+    if octets is not None:
+        out["artifact"], out["artifact_digest"] = b64u(octets), shx(octets)
     body = {k: out[k] for k in SIGNED if k in out}
     out["sig"] = PRIV[key].sign(jcs(body).encode()).hex()
     return out
@@ -198,14 +260,17 @@ FAILED, COMPLETED, NO_STEP = ("with a recorded failed step", "with recorded comp
 # ---------------------------------------------------------------------------
 
 
-def trust_policy(run: dict, *keys: str) -> dict:
+def trust_policy(run: dict, *keys: str, ticks: bool = False) -> dict:
+    log_keys = [cp["log_key"] for cp in run["checkpoints"]]
+    if ticks:  # §8.3: the tick log's two checkpoints
+        log_keys += [EARLIER_TICK["log_key"], ANCHOR_TICK["log_key"]]
     return {"responder_keys": [PUB[k] for k in keys or ("holder",)],
-            "log_keys": [cp["log_key"] for cp in run["checkpoints"]], "foreign_keys": [], "parties": {},
+            "log_keys": log_keys, "foreign_keys": [], "parties": {},
             "successions": [], "require_action_time_from_other_party": False}
 
 
-def pins(run: dict, *keys: str) -> dict:
-    return {"trust_policy": trust_policy(run, *keys),
+def pins(run: dict, *keys: str, ticks: bool = False) -> dict:
+    return {"trust_policy": trust_policy(run, *keys, ticks=ticks),
             "verification_policy": {"online": False, "profiles_implemented": [PROFILE], "kinds_implemented": KINDS},
             "contract_ref": CONTRACT_REF, "contract_digest": CONTRACT_DIGEST, "evaluation_time": EVAL}
 
@@ -215,10 +280,20 @@ def swap(items: list, i: int, item: Any) -> list:
     return [item if k == i else x for k, x in enumerate(items)]
 
 
-def container(definition: dict, exchanges: list[tuple[dict, dict]]) -> dict:
+def container(definition: dict, exchanges: list[tuple[dict, dict]], tick_paths: dict | None = None) -> dict:
     """§8.2's one-file History, holding the requests the recipient made (§8.1)."""
-    return {"history": HISTORY, "definition": definition,
-            "exchanges": [{"request": req, "reply": rep} for req, rep in exchanges]}
+    out = {"history": HISTORY, "definition": definition,
+           "exchanges": [{"request": req, "reply": rep} for req, rep in exchanges]}
+    if tick_paths is not None:
+        out["tick_paths"] = tick_paths
+    return out
+
+
+def tick_paths(stream: str, consistency: bytes) -> dict:
+    """§8.3: the anchor tick, and one stream's path to the earlier tick."""
+    return {"anchor_tick": ANCHOR_TICK["checkpoint"].hex(),
+            "paths": [{"consistency": consistency.hex(), "evidence_stream": stream,
+                       "tick": EARLIER_TICK["checkpoint"].hex()}]}
 
 
 def cases(run: dict) -> list[dict]:
@@ -233,15 +308,18 @@ def cases(run: dict) -> list[dict]:
     positive = [answered(env) for env in envs]
 
     def case(cid: str, title: str, cites: list[str], source: str, inputs: dict, exchanges: list[dict],
-             hprops: dict, fails: list[str], *, keys: tuple[str, ...] = (), states: dict | None = None) -> dict:
+             hprops: dict, fails: list[str], *, keys: tuple[str, ...] = (), states: dict | None = None,
+             paths: list[dict] | None = None) -> dict:
         accepted = all(e["accepted"] for e in exchanges) and all(v == "PASS" for v in hprops.values())
         assert accepted is (states is not None), cid
         expected: dict[str, Any] = {"exchanges": exchanges, "history_properties": hprops, "accepted": accepted,
                                     "fails": fails}
         if states is not None:
             expected["deal_states"] = states
+        if paths is not None:
+            expected["tick_paths"] = paths
         return {"id": cid, "title": title, "cites": cites, "source": source, "mode": "asked",
-                "pins": pins(run, *keys), "inputs": inputs, "expected": expected}
+                "pins": pins(run, *keys, ticks=paths is not None), "inputs": inputs, "expected": expected}
 
     # §5, as producer/main.go seeds the stream: deal 1 records two completed steps, deal 2 a completed
     # and a failed one, deal 3 one completed step. Deal 4 is not selected.
@@ -362,6 +440,47 @@ def cases(run: dict) -> list[dict]:
         [answered(decode(e["reply"])) for e in wides],
         history_props(definition_form="FAIL"), ["definition_form"]))
 
+    # §4.3, §6.2 (PA-4): an Artifact that is not exactly JCS, and entry values beside their forms, each
+    # re-signed by the holder key so that only artifact_form can see them.
+    def entry_form(cid: str, title: str, cites: list[str], what: str, *, octets: bytes | None = None,
+                   **change: Any) -> dict:
+        a = artifact_of(envs[0])
+        a["records"][0].update(change)
+        env = resign(envs[0], "holder", artifact=None if octets is not None else a, octets=octets)
+        return case(cid, title, cites, f"derived: {what} in history-1's artifact, re-signed by the holder key",
+                    container(basic, [(pairs[0][0], carried(env)), pairs[1], pairs[2]]),
+                    [answered(env), positive[1], positive[2]],
+                    # An Artifact that is not the §4.3 object has no records to read, so record_kinds fails too.
+                    history_props(artifact_form="FAIL", **({"record_kinds": "FAIL"} if octets is not None else {})),
+                    ["artifact_form"])
+
+    spaced = jcs(artifact_of(envs[0])).encode().replace(b'{"anchor"', b'{ "anchor"', 1)
+    r0 = artifact_of(envs[0])["records"][0]
+    assert r0["committed_at"].endswith("Z") and r0["event_time_claim"].endswith(":02Z"), r0
+    out += [
+        entry_form("mutant-artifact-not-jcs", "An Artifact that is not exactly JCS, re-signed by the holder key",
+                   ["§4.3", "§6.2", "§6.4"], "a space added after the opening brace", octets=spaced),
+        entry_form("mutant-entry-digest-not-digest", "An entry digest that is not a digest, re-signed by the holder key",
+                   ["§4.3", "§6.2", "§6.4", "IP §5.2"], "the first record's digest in uppercase hex",
+                   digest=r0["digest"].upper()),
+        entry_form("mutant-entry-leaf-index-text", "An entry leaf_index given as text, re-signed by the holder key",
+                   ["§4.3", "§6.2", "§6.4", "IP §5.2"], "the first record's leaf_index as text",
+                   leaf_index=str(r0["leaf_index"])),
+        entry_form("mutant-read-member-object", "A read member holding an object, re-signed by the holder key",
+                   ["§4.3", "§6.2", "§6.4"], "the first record's committed_at replaced by an object",
+                   committed_at={"counterparty": "counterparty-1"}),
+        entry_form("mutant-committed-at-fraction", "A committed_at with fractional seconds, re-signed by the holder key",
+                   ["§4.3", "§6.2", "§6.4", "IP §5.2"], "the first record's committed_at given with fractional seconds",
+                   committed_at=r0["committed_at"][:-1] + ".5Z"),
+        entry_form("mutant-event-time-claim-offset",
+                   "An event_time_claim with a UTC offset in place of Z, re-signed by the holder key",
+                   ["§4.3", "§6.2", "§6.4", "IP §5.2"], "the first record's event_time_claim given as +00:00",
+                   event_time_claim=r0["event_time_claim"][:-1] + "+00:00"),
+        entry_form("mutant-epistemic-type-outside-el", "An epistemic_type outside EL §4.1, re-signed by the holder key",
+                   ["§4.3", "§6.2", "§6.4", "EL §4.1"], "the first record's epistemic_type made verified_fact",
+                   epistemic_type="verified_fact"),
+    ]
+
     # §2: the same three deals, each held in its own stream and answered at one witnessed checkpoint
     # tick. The responder of the run serves one stream, so these are derived: each deal's records
     # move to a stream of their own, keeping their order, and each request and reply names the tick.
@@ -385,6 +504,30 @@ def cases(run: dict) -> list[dict]:
         container(basic, swap(multi, o, alone)),
         swap([answered(decode(rep)) for _, rep in multi], o, answered(decode(alone[1]))),
         history_props(single_anchor="FAIL"), ["single_anchor"]))
+
+    # §2, §8.3 (PA-16): the same three deals answered at a real anchor tick that commits to one deal's
+    # stream only through an earlier tick, with that stream's tick path. The path check is not a
+    # History property, so its result never changes acceptance (§6.2).
+    late = [multi_stream(e, env, ANCHOR_TICK_DIGEST) for e, env in zip(history, envs)]
+    ended = artifact_of(decode(late[2][1]))["evidence_stream"]
+    late_exchanges = [answered(decode(rep)) for _, rep in late]
+    out.append(case(
+        "multi-stream-earlier-tick",
+        "Three deals in three streams at one anchor tick, one committed through an earlier tick with its tick path",
+        ["§2", "§6.2", "§6.3", "§8.2", "§8.3"],
+        "derived: multi-stream-one-tick requested at a tick log checkpoint and re-signed by the holder key, with "
+        "a tick path for history-3's stream",
+        container(basic, late, tick_paths(ended, ANCHOR_TICK["consistency"])), late_exchanges, history_props(), [],
+        states=states, paths=[{"evidence_stream": ended, "status": "PASS"}]))
+    bent = bytearray(ANCHOR_TICK["consistency"])
+    bent[-1] ^= 0x01  # the last byte of the last right peak
+    out.append(case(
+        "mutant-tick-path-consistency-changed",
+        "The same, with the tick path's consistency proof changed",
+        ["§2", "§6.2", "§8.3"],
+        "derived: multi-stream-earlier-tick with one octet of the consistency proof's last right peak flipped",
+        container(basic, late, tick_paths(ended, bytes(bent))), late_exchanges, history_props(), [],
+        states=states, paths=[{"evidence_stream": ended, "status": "FAIL"}]))
 
     # A request under the definition from a requester other than its recipient (§8.1, ER §4.2).
     refused = ex["other-requester"]

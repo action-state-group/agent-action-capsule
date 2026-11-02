@@ -25,6 +25,7 @@ import subprocess
 import sys
 from collections import Counter
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,7 @@ from agent_action_capsule.interop_profile import (  # noqa: E402
     Message,
     TrustPolicy,
     VerificationPolicy,
+    cll,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -58,6 +60,10 @@ FIXED = {"name": "personal_history_basic/1", "kind": "projection", "subject_form
          "completeness": "not_asserted"}
 ARTIFACT_MEMBERS = {"anchor", "derivation", "evidence_stream", "records", "subject"}
 KINDS = {"step_completed", "step_failed"}
+# §4.3: the forms of the read members. Times are IP §5.2's; epistemic types are EL §4.1's eight.
+TIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
+EPISTEMIC_TYPES = {"observed_event", "system_of_record_fact", "producer_claim", "human_report", "semantic_judgment",
+                   "derived_metric", "adjudication", "obligation_reference"}
 # §6.1: the envelope properties that must be PASS, and anchor_inclusion's one status.
 MUST_PASS = ("profile_version", "envelope_signature", "responder_trust", "issued_at_form", "request_binding",
              "subject_binding", "artifact_digest", "anchor_match")
@@ -146,6 +152,25 @@ def definition_form(d: Any) -> bool:
             and sel == sorted(set(sel)) and isinstance(rec, str) and bool(rec))
 
 
+def is_time(v: Any) -> bool:
+    if not (isinstance(v, str) and TIME.fullmatch(v)):
+        return False
+    try:
+        datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return False
+    return True
+
+
+# §4.3: each read member's form.
+READ_FORMS: dict[str, Callable[[Any], bool]] = {
+    "committed_at": is_time,
+    "event_time_claim": is_time,
+    "epistemic_type": lambda v: isinstance(v, str) and v in EPISTEMIC_TYPES,
+    "record_type": lambda v: isinstance(v, str),
+}
+
+
 def artifact_form(envs: list[dict], reads: set) -> bool:
     """Checked per envelope: each artifact names its own stream, and envelopes may name different ones (§2)."""
     for env in envs:
@@ -166,7 +191,8 @@ def artifact_form(envs: list[dict], reads: set) -> bool:
             # Each value in its form, so no permitted member carries an object the holder chose.
             if not (isinstance(r["digest"], str) and re.fullmatch(r"[0-9a-f]{64}", r["digest"])) \
                     or type(r["leaf_index"]) is not int or not 0 <= r["leaf_index"] <= 2**53 - 1 \
-                    or not all(isinstance(v, str) for k, v in r.items() if k not in ("digest", "leaf_index")):
+                    or not all(READ_FORMS.get(k, lambda v: isinstance(v, str))(v) for k, v in r.items()
+                               if k not in ("digest", "leaf_index")):
                 return False
         if not isinstance(a["evidence_stream"], str) or not a["evidence_stream"]:
             return False
@@ -209,6 +235,53 @@ def deal_states(envs: list[dict]) -> dict:
             "counts": {s: list(per.values()).count(s) for s in states}}
 
 
+# ---------------------------------------------------------------------------
+# §8.3: the tick path check, with IP §6.2.1's checkpoint decoding, signature and consistency steps
+# ---------------------------------------------------------------------------
+
+
+def tick_path_status(case: dict, anchor: str, anchor_tick: str, path: dict, *, consistency: bool = True) -> str:
+    trust = TrustPolicy.from_dict(case["pins"]["trust_policy"])
+    if sha(bytes.fromhex(anchor_tick)) != anchor:  # step 1
+        return "FAIL"
+    ticks = []
+    for octets in (bytes.fromhex(path["tick"]), bytes.fromhex(anchor_tick)):  # step 2
+        try:
+            cp = cll._decode_checkpoint(octets)
+        except cll._Malformed:
+            return "FAIL"
+        if cp.alg != -8 or cp.crit:
+            return "NOT_CHECKED"
+        if not isinstance(cp.kid, bytes) or len(cp.kid) != 32:
+            return "FAIL"
+        status = trust.accepts_log_key(cp.iss, cp.sub, cp.kid.hex(), cp.claims["issued_at"])
+        if status != "PASS":
+            return status
+        if not cll.ed25519_verify(cp.kid, cp.signature, cll._sig_structure(cp.protected, cp.payload)):
+            return "FAIL"
+        ticks.append(cp)
+    earlier, anchor_cp = ticks
+    if earlier.iss != anchor_cp.iss:  # step 3
+        return "FAIL"
+    if not earlier.claims["log_size"] < anchor_cp.claims["log_size"]:  # step 4
+        return "FAIL"
+    if consistency and cll.consistency_failure(earlier.commitment, anchor_cp.commitment,  # step 5
+                                               bytes.fromhex(path["consistency"])):
+        return "FAIL"
+    return "PASS"
+
+
+def tick_paths(case: dict, check: Callable[..., str] = tick_path_status) -> list[dict] | None:
+    """Each tick path's status (§8.3), or None when the History carries none."""
+    tp = case["inputs"].get("tick_paths")
+    if tp is None:
+        return None
+    anchors = {json.loads(x["reply"]["octets_text"])["anchor"]["digest"] for x in case["inputs"]["exchanges"]}
+    (anchor,) = anchors
+    return [{"evidence_stream": p["evidence_stream"], "status": check(case, anchor, tp["anchor_tick"], p)}
+            for p in tp["paths"]]
+
+
 Evaluator = Callable[[Any, list[dict]], dict]
 
 
@@ -221,6 +294,9 @@ def run_history(case: dict, evaluate: Evaluator = history_properties) -> dict:
     out = {"exchanges": exchanges, "history_properties": hprops, "accepted": accepted}
     if accepted:
         out["deal_states"] = deal_states(accepted_envs)
+    paths = tick_paths(case)
+    if paths is not None:  # §6.2: reported beside the History properties, never among them
+        out["tick_paths"] = paths
     return out
 
 
@@ -243,8 +319,8 @@ def failing(result: dict) -> set:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 14
-    assert len(HISTORY_CASES) == 13
+    assert DATA["count"] == len(CASES) == 23
+    assert len(HISTORY_CASES) == 22
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     assert DATA["contract"]["document_jcs"].encode() == jcs(CONTRACT)
     responder = DATA["responder"]
@@ -328,13 +404,16 @@ TABLE_CASES = [
     "mutant-step-kind-in-transit", "mutant-deal-added-to-definition", "mutant-envelope-for-deal-not-selected",
     "mutant-selected-deal-not-answered", "mutant-second-trusted-key", "mutant-deal-at-another-anchor",
     "mutant-record-kind-outside-list", "mutant-member-outside-reads", "mutant-definition-reads-widened",
+    "mutant-artifact-not-jcs", "mutant-entry-digest-not-digest", "mutant-entry-leaf-index-text",
+    "mutant-read-member-object", "mutant-committed-at-fraction", "mutant-event-time-claim-offset",
+    "mutant-epistemic-type-outside-el",
 ]
 
 
 def test_every_section_6_4_mutant_has_a_case():
     section = SPEC_TEXT.split("### 6.4", 1)[1].split("\n## ", 1)[0]
     rows = re.findall(r"^\| (?!Mutant|---)(.+?) \| (.+?) \|$", section, re.M)
-    assert len(rows) == len(TABLE_CASES) == 9
+    assert len(rows) == len(TABLE_CASES) == 16
     by_id = {c["id"]: c for c in CASES}
     for (_, fails), cid in zip(rows, TABLE_CASES):
         named = re.match(r"(?:IP )?`(\w+)`", fails).group(1)
@@ -354,6 +433,26 @@ def _replace(prop: str, check: Callable[[Any, list[dict]], bool]) -> Evaluator:
     return evaluate
 
 
+def _stream(env: dict) -> Any:
+    a = env["artifact"]
+    return a.get("evidence_stream") if isinstance(a, dict) else None
+
+
+def _entries_set(envs: list[dict], members: tuple[str, ...], value: str) -> list[dict]:
+    """``envs`` with every text value of ``members`` replaced by ``value``: an evaluator that reads
+    those members as any text."""
+    def entry(r: Any) -> Any:
+        return {k: value if k in members and isinstance(v, str) else v for k, v in r.items()} \
+            if isinstance(r, dict) else r
+    out = []
+    for x in envs:
+        a = x["artifact"]
+        if isinstance(a, dict) and isinstance(a.get("records"), list):
+            a = dict(a, records=[entry(r) for r in a["records"]])
+        out.append(dict(x, artifact=a))
+    return out
+
+
 DEFECTIVE: dict[str, Evaluator] = {
     "definition_form ignores reads": _replace(
         "definition_form", lambda d, _: isinstance(d, dict) and set(d) == MEMBERS),
@@ -371,9 +470,15 @@ DEFECTIVE: dict[str, Evaluator] = {
     "artifact_form requires one stream across the History": _replace(
         "artifact_form", lambda d, e: artifact_form(e, set(d["reads"]))
         and len({x["artifact"]["evidence_stream"] for x in e}) <= 1),
+    "artifact_form allows any time text": _replace(
+        "artifact_form", lambda d, e: artifact_form(_entries_set(e, ("committed_at", "event_time_claim"),
+                                                                 "2026-01-01T00:00:00Z"), set(d["reads"]))),
+    "artifact_form allows any epistemic_type text": _replace(
+        "artifact_form", lambda d, e: artifact_form(_entries_set(e, ("epistemic_type",), "producer_claim"),
+                                                    set(d["reads"]))),
     "single_anchor compared within each stream only": _replace(
-        "single_anchor", lambda d, e: all(len({jcs(x["anchor"]) for x in e if x["artifact"]["evidence_stream"] == s}) == 1
-                                          for s in {x["artifact"]["evidence_stream"] for x in e})),
+        "single_anchor", lambda d, e: all(len({jcs(x["anchor"]) for x in e if _stream(x) == s}) == 1
+                                          for s in {_stream(x) for x in e})),
 }
 
 
@@ -400,6 +505,35 @@ def test_multi_stream_history_spans_streams_at_one_anchor():
 def test_every_defective_evaluator_is_caught():
     for name, evaluate in DEFECTIVE.items():
         assert any(run_history(c, evaluate) != run_history(c) for c in HISTORY_CASES), name
+
+
+def test_tick_path_cases():
+    """§8.3: the earlier tick and the anchor tick are checkpoints of one tick log, and the History's
+    anchor is the anchor tick's digest. A defective check that skips the consistency proof, or the
+    anchor's digest, disagrees with a case."""
+    by_id = {c["id"]: c for c in CASES}
+    positive = by_id["multi-stream-earlier-tick"]
+    tp = positive["inputs"]["tick_paths"]
+    assert set(tp) == {"anchor_tick", "paths"}
+    (path,) = tp["paths"]
+    assert set(path) == {"consistency", "evidence_stream", "tick"}
+    streams = {json.loads(base64.urlsafe_b64decode(e["artifact"] + "=" * (-len(e["artifact"]) % 4)))["evidence_stream"]
+               for e in (json.loads(x["reply"]["octets_text"]) for x in positive["inputs"]["exchanges"])}
+    assert path["evidence_stream"] in streams and len(streams) == 3
+    mutant = by_id["mutant-tick-path-consistency-changed"]
+    assert mutant["expected"]["accepted"] and mutant["expected"]["tick_paths"][0]["status"] == "FAIL"
+
+    def skip_consistency(case, anchor, anchor_tick, p):
+        return tick_path_status(case, anchor, anchor_tick, p, consistency=False)
+
+    assert tick_paths(mutant, skip_consistency) != mutant["expected"]["tick_paths"]
+    other = copy.deepcopy(positive)
+    other["inputs"]["tick_paths"]["anchor_tick"] = path["tick"]
+    assert tick_paths(other) == [{"evidence_stream": path["evidence_stream"], "status": "FAIL"}]
+    assert tick_path_status(positive, "0" * 64, tp["anchor_tick"], path) == "FAIL"
+    swapped = copy.deepcopy(positive)
+    swapped["inputs"]["tick_paths"]["paths"][0]["tick"] = tp["anchor_tick"]
+    assert tick_paths(swapped) == [{"evidence_stream": path["evidence_stream"], "status": "FAIL"}]
 
 
 def test_accepting_every_envelope_is_caught():

@@ -17,6 +17,9 @@ import (
 type CLLCheckpoint struct {
 	// Key is the log's Ed25519 public key (the statement's kid).
 	Key []byte
+	// Iss and Sub are the CWT_Claims iss and sub of the protected header,
+	// as decoded: the log identity a relying party resolves the key for.
+	Iss, Sub any
 	// IssuedAt is the statement's issued_at, an RFC 3339 text string.
 	IssuedAt string
 	// LogSize is the log_size claim.
@@ -27,22 +30,28 @@ type CLLCheckpoint struct {
 	cp *cllCheckpoint
 }
 
+// ErrCheckpointNotChecked marks a well-formed checkpoint whose signature
+// this revision does not check (step 8): not EdDSA, or carrying crit. It is
+// returned wrapped together with ErrInvalid.
+var ErrCheckpointNotChecked = errors.New("evidencerequest: only EdDSA (-8) checkpoint signatures with no crit are checked")
+
 // DecodeCLLCheckpoint decodes cll-checkpoint octets as step 7 does. It
 // accepts only an EdDSA (-8) statement with no crit, whose kid is a 32-octet
 // Ed25519 key, as step 8 and step 9 require before a signature is checked.
+// A statement that fails only step 8 is ErrCheckpointNotChecked.
 func DecodeCLLCheckpoint(octets []byte) (*CLLCheckpoint, error) {
 	cp, err := decodeCLLCheckpoint(octets)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
 	if alg, ok := cp.alg.(int64); !ok || alg != -8 || cp.crit {
-		return nil, fmt.Errorf("%w: only EdDSA (-8) checkpoint signatures with no crit are checked", ErrInvalid)
+		return nil, fmt.Errorf("%w: %w", ErrInvalid, ErrCheckpointNotChecked)
 	}
 	kid, ok := cp.kid.([]byte)
 	if !ok || len(kid) != ed25519.PublicKeySize {
 		return nil, fmt.Errorf("%w: kid is not a 32-octet Ed25519 public key", ErrInvalid)
 	}
-	return &CLLCheckpoint{Key: kid, IssuedAt: cp.issuedAt, LogSize: cp.logSize, Commitment: cp.commitment, cp: cp}, nil
+	return &CLLCheckpoint{Key: kid, Iss: cp.iss, Sub: cp.sub, IssuedAt: cp.issuedAt, LogSize: cp.logSize, Commitment: cp.commitment, cp: cp}, nil
 }
 
 // VerifySignature checks the statement's COSE_Sign1 signature (step 10)
