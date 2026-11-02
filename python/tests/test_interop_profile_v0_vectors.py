@@ -869,10 +869,21 @@ class Verifier:
         if "manifests" in inp:
             ms = inp["manifests"]
             a2a_m, mcp_m = ms["a2a_extension"]["params"], ms["mcp_evidence_manifest"]["structuredContent"]
+            copies = [a2a_m, mcp_m]
             out["manifest_properties"] = {
                 "a2a_extension": {"manifest_form": self.manifest_form(a2a_m)},
-                "mcp_evidence_manifest": {"manifest_form": self.manifest_form(mcp_m)},
-                "manifest_consistency": "PASS" if jcs(a2a_m) == jcs(mcp_m) else "FAIL"}
+                "mcp_evidence_manifest": {"manifest_form": self.manifest_form(mcp_m)}}
+            if "http_well_known" in ms:
+                h = ms["http_well_known"]
+                body = self.octets(h["body"])
+                http_m = json.loads(body)
+                copies.append(http_m)
+                form = self.manifest_form(http_m)
+                if h["media_type"] != "application/json" or body != jcs(http_m):
+                    form = "FAIL"
+                out["manifest_properties"]["http_well_known"] = {"manifest_form": form}
+            out["manifest_properties"]["manifest_consistency"] = (
+                "PASS" if len({jcs(m) for m in copies}) == 1 else "FAIL")
         return out
 
     # ---- a whole case ----

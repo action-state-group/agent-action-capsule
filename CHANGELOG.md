@@ -16,6 +16,11 @@ Not in any tag yet: nothing after `go/v0.19.0`, `python/v0.15.0` and `ts/v0.13.0
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
+- Spec: `evidence-interop/1` fixes the HTTP location of the evidence manifest at
+  `/.well-known/evidence-manifest` (§11.4.2, P-69): a `GET` returns the JCS serialization of the same
+  manifest that the A2A `params` and the `evidence_manifest` result carry. No new member or outcome
+  word. The vector `carriage-invariance` gains the HTTP copy and `carriage-manifest-http-differs` and
+  `carriage-manifest-http-not-jcs` are new. The IANA well-known registration stays open.
 - Spec, experimental: `spec/bindings/nostr-mailbox-v0.md`, a carriage of the `evidence-interop/0`
   exchange through a Nostr relay for a responder with no inbound reachability, with its adapter
   declaration `spec/adapters/nostr-mailbox-v0.md`, vectors in `vectors/adapters/nostr-mailbox/` and

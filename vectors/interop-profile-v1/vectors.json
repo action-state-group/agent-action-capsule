@@ -138,7 +138,7 @@
     "producer_record": "members claim, issued_at, producer, sig; sig is Ed25519 by producer over UTF-8 of JCS of the other members; the producer is its issuer (§11.2.3)",
     "record_digest": "SHA-256 over UTF-8 of JCS of the whole object, sig included"
   },
-  "count": 62,
+  "count": 64,
   "cases": [
     {
       "id": "valid-exchange",
@@ -5680,6 +5680,15 @@
                 "record"
               ]
             }
+          },
+          "http_well_known": {
+            "path": "/.well-known/evidence-manifest",
+            "status": 200,
+            "media_type": "application/json",
+            "body": {
+              "media_type": "application/json",
+              "octets_text": "{\"bindings\":[\"a2a\",\"evidence-request/1\",\"mcp\"],\"drafts\":[\"draft-mih-agent-evidence-request-02\"],\"profiles\":[\"evidence-interop/1\"],\"subject_forms\":[\"record\"]}"
+            }
           }
         }
       },
@@ -5827,7 +5836,10 @@
           "mcp_evidence_manifest": {
             "manifest_form": "PASS"
           },
-          "manifest_consistency": "PASS"
+          "manifest_consistency": "PASS",
+          "http_well_known": {
+            "manifest_form": "PASS"
+          }
         }
       }
     },
@@ -6981,6 +6993,256 @@
             "manifest_form": "PASS"
           },
           "manifest_consistency": "FAIL"
+        }
+      }
+    },
+    {
+      "id": "carriage-manifest-http-differs",
+      "description": "§11.4.8: the body at /.well-known/evidence-manifest is a different manifest (another subject_forms) from the A2A params and the evidence_manifest result. Each copy passes manifest_form; manifest_consistency FAIL.",
+      "cites": [
+        "§11.4.1",
+        "§11.4.4",
+        "§11.4.5",
+        "§11.4.7",
+        "§11.4.8"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/cbor",
+          "octets_hex": "a4656e6f6e636576323032362d31302d31325430303a30303a31305a2f636770726f66696c657265766964656e63652d696e7465726f702f31677375626a656374a1667265636f726478403266626462393562646562613632663934396263623630323630363166636436366330323135323361333965353866633264653163643434666636333132343468636f766572616765a16c65787065637465645f70696e784031366631356464353437356435653865633166623761383434373033393165313164373636333233323336356331373439633630636137343839636666653939"
+        },
+        "manifests": {
+          "a2a_extension": {
+            "uri": "https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/",
+            "description": "Evidence request exchange, profile evidence-interop/1.",
+            "required": false,
+            "params": {
+              "bindings": [
+                "a2a",
+                "evidence-request/1",
+                "mcp"
+              ],
+              "drafts": [
+                "draft-mih-agent-evidence-request-02"
+              ],
+              "profiles": [
+                "evidence-interop/1"
+              ],
+              "subject_forms": [
+                "record"
+              ]
+            }
+          },
+          "mcp_evidence_manifest": {
+            "resultType": "complete",
+            "content": [],
+            "isError": false,
+            "structuredContent": {
+              "bindings": [
+                "a2a",
+                "evidence-request/1",
+                "mcp"
+              ],
+              "drafts": [
+                "draft-mih-agent-evidence-request-02"
+              ],
+              "profiles": [
+                "evidence-interop/1"
+              ],
+              "subject_forms": [
+                "record"
+              ]
+            }
+          },
+          "http_well_known": {
+            "path": "/.well-known/evidence-manifest",
+            "status": 200,
+            "media_type": "application/json",
+            "body": {
+              "media_type": "application/json",
+              "octets_text": "{\"bindings\":[\"a2a\",\"evidence-request/1\",\"mcp\"],\"drafts\":[\"draft-mih-agent-evidence-request-02\"],\"profiles\":[\"evidence-interop/1\"],\"subject_forms\":[\"range\",\"record\"]}"
+            }
+          }
+        }
+      },
+      "expected": {
+        "request_digest": "a14c0dbd409436ec160646a754dd128361efee51a486e8f0d8b2b23ed27b20c2",
+        "carriage_request_digests": {},
+        "classification": {},
+        "replies": [],
+        "manifest_properties": {
+          "a2a_extension": {
+            "manifest_form": "PASS"
+          },
+          "mcp_evidence_manifest": {
+            "manifest_form": "PASS"
+          },
+          "http_well_known": {
+            "manifest_form": "PASS"
+          },
+          "manifest_consistency": "FAIL"
+        }
+      }
+    },
+    {
+      "id": "carriage-manifest-http-not-jcs",
+      "description": "§11.4.8: the body at /.well-known/evidence-manifest is the same manifest, pretty-printed, not its JCS serialization. manifest_form FAIL for that copy and PASS for the others; manifest_consistency PASS, since the values are equal.",
+      "cites": [
+        "§11.4.1",
+        "§11.4.4",
+        "§11.4.5",
+        "§11.4.7",
+        "§11.4.8"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/cbor",
+          "octets_hex": "a4656e6f6e636576323032362d31302d31325430303a30303a31305a2f636770726f66696c657265766964656e63652d696e7465726f702f31677375626a656374a1667265636f726478403266626462393562646562613632663934396263623630323630363166636436366330323135323361333965353866633264653163643434666636333132343468636f766572616765a16c65787065637465645f70696e784031366631356464353437356435653865633166623761383434373033393165313164373636333233323336356331373439633630636137343839636666653939"
+        },
+        "manifests": {
+          "a2a_extension": {
+            "uri": "https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/",
+            "description": "Evidence request exchange, profile evidence-interop/1.",
+            "required": false,
+            "params": {
+              "bindings": [
+                "a2a",
+                "evidence-request/1",
+                "mcp"
+              ],
+              "drafts": [
+                "draft-mih-agent-evidence-request-02"
+              ],
+              "profiles": [
+                "evidence-interop/1"
+              ],
+              "subject_forms": [
+                "record"
+              ]
+            }
+          },
+          "mcp_evidence_manifest": {
+            "resultType": "complete",
+            "content": [],
+            "isError": false,
+            "structuredContent": {
+              "bindings": [
+                "a2a",
+                "evidence-request/1",
+                "mcp"
+              ],
+              "drafts": [
+                "draft-mih-agent-evidence-request-02"
+              ],
+              "profiles": [
+                "evidence-interop/1"
+              ],
+              "subject_forms": [
+                "record"
+              ]
+            }
+          },
+          "http_well_known": {
+            "path": "/.well-known/evidence-manifest",
+            "status": 200,
+            "media_type": "application/json",
+            "body": {
+              "media_type": "application/json",
+              "octets_text": "{\n \"bindings\": [\n  \"a2a\",\n  \"evidence-request/1\",\n  \"mcp\"\n ],\n \"drafts\": [\n  \"draft-mih-agent-evidence-request-02\"\n ],\n \"profiles\": [\n  \"evidence-interop/1\"\n ],\n \"subject_forms\": [\n  \"record\"\n ]\n}"
+            }
+          }
+        }
+      },
+      "expected": {
+        "request_digest": "a14c0dbd409436ec160646a754dd128361efee51a486e8f0d8b2b23ed27b20c2",
+        "carriage_request_digests": {},
+        "classification": {},
+        "replies": [],
+        "manifest_properties": {
+          "a2a_extension": {
+            "manifest_form": "PASS"
+          },
+          "mcp_evidence_manifest": {
+            "manifest_form": "PASS"
+          },
+          "http_well_known": {
+            "manifest_form": "FAIL"
+          },
+          "manifest_consistency": "PASS"
         }
       }
     }
