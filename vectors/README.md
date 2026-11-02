@@ -173,9 +173,9 @@ same-commit files in CI.
   `python/scripts/generate_ucp_adapter_vectors.py` regenerates them.
 - `adapters/nostr-mailbox/`: EXPERIMENTAL, not conformance vectors for any profile. The Nostr
   mailbox carriage of `spec/bindings/nostr-mailbox-v0.md`: request and reply events around the
-  `interop-profile-v0` envelopes and refusal, with a positive exchange, a refusal, a redelivery,
-  wrong-key and replayed envelopes, two replies accepted by their content, three events that are
-  not replies, and absences at a deadline and at a local timeout;
+  `interop-profile-v1` envelopes and refusal, with a positive exchange, a refusal, a redelivery,
+  wrong-key and replayed envelopes, replies accepted by their content and a limit on them, events
+  that are not replies, and absences at a deadline and at a local timeout;
   `python/scripts/generate_nostr_mailbox_vectors.py` regenerates them.
 
 Reference-derived corpora and checksum manifests can be regenerated with:

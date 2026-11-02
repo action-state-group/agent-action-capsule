@@ -5,8 +5,8 @@ part of any Internet-Draft revision and changes no posted draft or profile. It d
 foreign object the experimental Nostr mailbox carriage handles, the NIP-01 event, using the five
 declarations the other adapter declarations in this directory make. The carriage itself is
 specified in [`../bindings/nostr-mailbox-v0.md`](../bindings/nostr-mailbox-v0.md), cited here as
-NMB. The Minimum Evidence Interoperability Profile
-([`interop-profile-v0.md`](../interop-profile-v0.md)) is cited as IP. No binding token exists for
+NMB. The Minimum Evidence Interoperability Profile `evidence-interop/1`
+([`interop-profile-v1.md`](../interop-profile-v1.md)), whose exchange NMB carries, is cited as IP. No binding token exists for
 this carriage, and none appears in a conformant manifest (NMB Status; IP §11.4.2).
 
 **Answer in one paragraph.** A Nostr event is signed, so it has a native check: recompute its `id`
@@ -56,8 +56,8 @@ position (NMB §4.2). It does not establish that the responder produced `C`, tha
 | Result | Meaning | Consequence |
 |---|---|---|
 | `reply` | every check of NMB §4.2 holds | the decoded content goes to IP §7 as a reply |
-| `reply_by_content:<check>` | the format checks hold, the named attribution check (`id`, `signature`, `author`) failed first, and the content proves itself (NMB §4.2, reply by content) | the decoded content goes to IP §7 as a reply |
-| `not_a_reply:<check>` | the named check of NMB §4.2 failed first (`kind`, `reply_to`, `media_type`, `content`), or an attribution check failed and the content did not prove itself | a transport condition [IP §9.2]; the request stays pending, then becomes an absence |
+| `reply_by_content:<check>` | the format checks hold, the named attribution check (`id`, `signature`, `author`) failed first, the event is within the requester's limit on replies by content, and the content proves itself (NMB §4.2, reply by content) | the decoded content goes to IP §7 as a reply |
+| `not_a_reply:<check>` | the named check of NMB §4.2 failed first (`kind`, `reply_to`, `media_type`, `content`), or an attribution check failed and the content did not prove itself, or an attribution check failed beyond the requester's limit on replies by content (`limit`, NMB §4.2) | a transport condition [IP §9.2]; the request stays pending, then becomes an absence |
 | `duplicate` | an event whose `id` was already taken as a reply | ignored; it is the same event |
 
 ## 3. Why the native check is not a property

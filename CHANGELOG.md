@@ -24,6 +24,14 @@ has not yet.
   is kept beside it as its own later fact, citing the request by the digest it signs (§5.3, vector
   `mailbox-late-reply-after-absence`). Event kinds 4700/4701 stay placeholders until a second,
   independent implementation exists.
+- Spec, experimental: the Nostr mailbox binding and its adapter declaration re-pin to
+  `evidence-interop/1` and ER `draft-mih-agent-evidence-request-02`, and cite ER -02's own A2A, MCP
+  and carriage rules (ER §10.1 to §10.3). A requester SHOULD limit how many events not attributed to
+  the mailbox it verifies by content for one request; an event beyond the limit is not a reply
+  (§4.2, vector `mailbox-reply-by-content-limit`). The text also says that a failed request event
+  is never refused `request_unauthenticated` (§4.1), and how ER -02's unavailable-window statements
+  meet the mailbox's absence window (§5.3). `vectors/adapters/nostr-mailbox/` is regenerated
+  against the `evidence-interop/1` corpus (15 cases).
 
 ## go 0.19.0 — 2026-10-31
 

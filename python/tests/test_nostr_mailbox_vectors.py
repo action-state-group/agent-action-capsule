@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parents[2]
 VECTORS = ROOT / "vectors" / "adapters" / "nostr-mailbox"
 GENERATOR = ROOT / "python" / "scripts" / "generate_nostr_mailbox_vectors.py"
 BINDING_TEXT = (ROOT / "spec" / "bindings" / "nostr-mailbox-v0.md").read_text(encoding="utf-8")
-PROFILE_TEXT = (ROOT / "spec" / "interop-profile-v0.md").read_text(encoding="utf-8")
+PROFILE_TEXT = (ROOT / "spec" / "interop-profile-v1.md").read_text(encoding="utf-8")
 DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
 CASES = DATA["cases"]
 CONTRACT = DATA["contract"]["document"]
@@ -210,9 +210,10 @@ def proves(content: bytes, request: bytes, media_type: str, pins: dict) -> bool:
 
 
 def classify(ev: dict, request_event: dict, mailbox_key: str, media_type: str,
-             content_proves) -> tuple[str, bytes | None]:
+             content_proves, within_limit=lambda ev: True) -> tuple[str, bytes | None]:
     """§4.2: the format checks, then the attribution checks, in order. A format failure means the
-    event is not a reply. An attribution failure leaves a reply only when its content proves itself."""
+    event is not a reply. An attribution failure leaves a reply only when its content proves itself,
+    and only within the requester's limit on replies by content."""
     if ev["kind"] != REPLY_KIND:
         return "not_a_reply:kind", None
     if tag_values(ev, "e") != [request_event["id"]]:
@@ -225,9 +226,27 @@ def classify(ev: dict, request_event: dict, mailbox_key: str, media_type: str,
     failed = check_event(ev) or ("author" if ev["pubkey"] != mailbox_key else None)
     if failed is None:
         return "reply", data
+    if not within_limit(ev):
+        return "not_a_reply:limit", None
     if content_proves(data):
         return f"reply_by_content:{failed}", data
     return f"not_a_reply:{failed}", None
+
+
+def limiter(limit: int | None):
+    """§4.2: at most `limit` events not attributed to the mailbox are verified by content for one
+    request. An event is counted by its recomputed NIP-01 hash, never its claimed id, so a
+    redelivery counts once. No limit when the case sets none."""
+    counted: set = set()
+
+    def within(ev: dict) -> bool:
+        key = nip01_id(ev)
+        if key not in counted:
+            if limit is not None and len(counted) >= limit:
+                return False
+            counted.add(key)
+        return True
+    return within
 
 
 def seen_before(event_id: str, seen: set) -> bool:
@@ -321,8 +340,9 @@ def run_case(case: dict) -> dict:
         return proves(data, request, media_type, pins)
 
     classification, replies, seen = [], [], set()
+    within_limit = limiter(box.get("reply_by_content_limit"))
     for ev in box["events"]:
-        outcome, data = classify(ev, req_ev, box["mailbox_key"], media_type, content_proves)
+        outcome, data = classify(ev, req_ev, box["mailbox_key"], media_type, content_proves, within_limit)
         if data is not None and seen_before(ev["id"], seen):
             outcome = "duplicate"
         elif data is not None:
@@ -358,7 +378,8 @@ def run_case(case: dict) -> dict:
         for item in box["late_events"]:
             assert unix(item["received_at"]) > unix(record["window"]["closed"])
             assert unix(item["received_at"]) >= unix(record["recorded_at"])
-            outcome, data = classify(item["event"], req_ev, box["mailbox_key"], media_type, content_proves)
+            outcome, data = classify(item["event"], req_ev, box["mailbox_key"], media_type, content_proves,
+                                     within_limit)
             if data is not None and seen_before(item["event"]["id"], seen):
                 outcome = "duplicate"
             elif data is not None:
@@ -566,8 +587,8 @@ def _disagreeing(monkeypatch, name: str, replacement) -> set[str]:
 def test_mutant_author_not_checked(monkeypatch):
     real = classify
 
-    def no_author(ev, request_event, mailbox_key, media_type, content_proves):
-        return real(ev, request_event, ev["pubkey"], media_type, content_proves)
+    def no_author(ev, request_event, mailbox_key, media_type, content_proves, within_limit=lambda ev: True):
+        return real(ev, request_event, ev["pubkey"], media_type, content_proves, within_limit)
     assert {"mailbox-relayed-by-other-key", "mailbox-other-key-replays-old-envelope"} <= \
         _disagreeing(monkeypatch, "classify", no_author)
 
@@ -575,9 +596,9 @@ def test_mutant_author_not_checked(monkeypatch):
 def test_mutant_reply_to_not_checked(monkeypatch):
     real = classify
 
-    def any_request(ev, request_event, mailbox_key, media_type, content_proves):
+    def any_request(ev, request_event, mailbox_key, media_type, content_proves, within_limit=lambda ev: True):
         forged = dict(request_event, id=(tag_values(ev, "e") or [""])[0])
-        return real(ev, forged, mailbox_key, media_type, content_proves)
+        return real(ev, forged, mailbox_key, media_type, content_proves, within_limit)
     assert "mailbox-reply-to-other-request" in _disagreeing(monkeypatch, "classify", any_request)
 
 
@@ -621,3 +642,45 @@ def test_mutant_late_reply_rewrites_absence(monkeypatch):
 
 def test_mutant_late_reply_dropped(monkeypatch):
     assert "mailbox-late-reply-after-absence" in _disagreeing(monkeypatch, "keep_late", lambda absence, late: (absence, []))
+
+
+LIMIT_CASE = "mailbox-reply-by-content-limit"
+
+
+def test_mutant_no_limit_on_replies_by_content(monkeypatch):
+    assert LIMIT_CASE in _disagreeing(monkeypatch, "limiter", lambda limit: lambda ev: True)
+
+
+def test_mutant_limit_keyed_on_claimed_id(monkeypatch):
+    def by_claimed_id(limit):
+        counted: set = set()
+
+        def within(ev):
+            if ev["id"] not in counted:
+                if len(counted) >= limit:
+                    return False
+                counted.add(ev["id"])
+            return True
+        return within
+    assert LIMIT_CASE in _disagreeing(monkeypatch, "limiter", lambda limit: by_claimed_id(limit) if limit else (lambda ev: True))
+
+
+def test_mutant_limit_counts_redeliveries(monkeypatch):
+    def every_call(limit):
+        calls = []
+
+        def within(ev):
+            calls.append(ev)
+            return len(calls) <= limit
+        return within
+    assert LIMIT_CASE in _disagreeing(monkeypatch, "limiter", lambda limit: every_call(limit) if limit else (lambda ev: True))
+
+
+def test_mutant_limit_counts_mailbox_events(monkeypatch):
+    real = classify
+
+    def eager(ev, request_event, mailbox_key, media_type, content_proves, within_limit=lambda ev: True):
+        if ev["kind"] == REPLY_KIND and not within_limit(ev):
+            return "not_a_reply:limit", None
+        return real(ev, request_event, mailbox_key, media_type, content_proves, within_limit)
+    assert LIMIT_CASE in _disagreeing(monkeypatch, "classify", eager)
