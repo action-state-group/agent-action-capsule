@@ -1301,6 +1301,128 @@ neg_requirements_covered_duplicate["aggregate"]["coverage"]["requirements_covere
 )
 
 
+# ---------------------------------------------------------------------------
+# type: calibration (spec section 4.1): a claim that reports one judge's
+# calibration for one week. It keeps every base field and carries no body;
+# its evidence[] cites exactly one calibration-summary/v1 record and the
+# human-rating/v1 records of that week, and nothing else. The schema cannot
+# see the cited records, so every calibration fixture ships them as
+# `<name>.records.json` (the judge records themselves, keyed by json_digest)
+# and the checker reads each cited record's `record_version`.
+# ---------------------------------------------------------------------------
+
+CALIBRATION_JUDGE_PIN = {
+    "type": "judge-pin",
+    "digest_alg": "SHA-256",
+    "digest": json_digest({"note": "EXAMPLE-ORG judge pin, v0 placeholder"}),
+    "citation_purpose": "calibrates",
+}
+
+
+def _calibration_summary(record_id: str, agreement_k: int) -> dict:
+    return {
+        "record_version": "calibration-summary/v1",
+        "record_id": record_id,
+        "epistemic_type": "derived_metric",
+        "computed_at": "2026-09-21T00:00:00Z",
+        "judge_pin": CALIBRATION_JUDGE_PIN,
+        "clauses": [
+            {"clause_ref": "req-claim-1", "agreement": {"k": agreement_k, "n": 1}, "drift": {"k": 0, "n": 1}},
+            {"clause_ref": "req-claim-2", "agreement": {"k": 1, "n": 1}, "drift": {"k": 0, "n": 1}},
+        ],
+    }
+
+
+def _human_rating(record_id: str, rated: object, label: str) -> dict:
+    # `case` cites the evidence the judged claim cites, so a reader binds the
+    # rating to that claim's verdict and requirement.
+    return {
+        "record_version": "human-rating/v1",
+        "record_id": record_id,
+        "epistemic_type": "human_report",
+        "rated_at": "2026-09-20T00:00:00Z",
+        "blind": True,
+        "rater_ref": "principal:example-org-rater-1",
+        "case": {"type": "rated-case", **digest_ref(rated), "citation_purpose": "rated_case"},
+        "label": label,
+    }
+
+
+calibration_summary_content = _calibration_summary("cal-example-org-2026-W38", 1)
+second_summary_content = _calibration_summary("cal-example-org-2026-W38-rerun", 0)
+rating_1_content = _human_rating("hr-example-org-1", claim1_evidence_content, "met")
+rating_2_content = _human_rating("hr-example-org-2", claim2_evidence_content, "not_met")
+CALIBRATION_CONTRACT_REF = "ec:example-org-claims-calibration:2026-09-22@1"
+
+
+def _calibration_claim(*cited: object) -> ClaimDoc:
+    evidence = [digest_ref(c) for c in cited]
+    return {
+        "id": "calibration-1",
+        "type": "calibration",
+        "contract_ref": CALIBRATION_CONTRACT_REF,
+        "requirement_ref": "req-human-agreement",
+        "tier": "recomputed",
+        "grade": "self-attested",
+        "sufficiency": "SATISFIED",
+        "verdict": "met",
+        "evidence": evidence,
+        "proofs": [],
+        "presentation": {"kind": "disclosure", "status": "SATISFIED", "evidence": evidence},
+    }
+
+
+def _calibration_result(calibration_claim: ClaimDoc) -> EvidenceResultDoc:
+    return {
+        "result_version": "evidence-result-v0",
+        "generated_at": GENERATED_AT,
+        "claims": [claim_1, claim_2, calibration_claim],
+        "aggregate": {
+            "coverage": {
+                "evaluated_population": 3,
+                "excluded_not_applicable": 0,
+                "unknown_count": 0,
+            },
+            "buckets": {"met": ["claim-1", "calibration-1"], "not_met": ["claim-2"], "not_evaluable": []},
+        },
+        "view": {
+            "spec_version": "presentation/v1",
+            "producer_name": "EXAMPLE-ORG",
+            "title": "EXAMPLE-ORG Calibration -- 2026-W38",
+        },
+    }
+
+
+pos_example_org_calibration_result = _calibration_result(
+    _calibration_claim(calibration_summary_content, rating_1_content, rating_2_content)
+)
+
+# checker negatives: schema-valid, rejected by the calibration evidence rule
+neg_calibration_without_summary = _calibration_result(_calibration_claim(rating_1_content, rating_2_content))
+neg_calibration_two_summaries = _calibration_result(
+    _calibration_claim(calibration_summary_content, second_summary_content, rating_1_content)
+)
+neg_calibration_cites_other_record = _calibration_result(
+    _calibration_claim(calibration_summary_content, rating_1_content, claim1_evidence_content)
+)
+
+# schema negatives: a calibration claim carries no body, and is never out_of_scope
+neg_calibration_with_close_body = _mutated(pos_example_org_calibration_result)
+neg_calibration_with_close_body["claims"][2]["close"] = json.loads(json.dumps(close_unilateral["close"]))
+neg_out_of_scope_on_calibration_claim = _mutated(pos_example_org_calibration_result)
+neg_out_of_scope_on_calibration_claim["claims"][2]["out_of_scope_allowed"] = True
+neg_out_of_scope_on_calibration_claim["claims"][2]["verdict"] = "out_of_scope"
+neg_out_of_scope_on_calibration_claim["aggregate"]["buckets"]["met"] = ["claim-1"]
+neg_out_of_scope_on_calibration_claim["aggregate"]["buckets"]["out_of_scope"] = ["calibration-1"]
+
+CALIBRATION_RECORDS: dict = {
+    "pos-example-org-calibration-result": [calibration_summary_content, rating_1_content, rating_2_content],
+    "neg-calibration-without-summary": [rating_1_content, rating_2_content],
+    "neg-calibration-two-summaries": [calibration_summary_content, second_summary_content, rating_1_content],
+    "neg-calibration-cites-other-record": [calibration_summary_content, rating_1_content, claim1_evidence_content],
+}
+
+
 # --- JSON Schema reads `pattern` as ECMA-262 ----------------------------------
 #     Three schema negatives on which Python's `re` and ECMA-262 disagree. In
 #     ECMA-262 `$` (no m flag) matches only at the end of the text, where
@@ -1396,7 +1518,13 @@ def main() -> int:
     write("pos-example-org-dataset-result", pos_example_org_dataset_result)
     write("neg-dataset-ref-without-plan-ref", neg_dataset_ref_without_plan_ref)
     write("neg-plan-ref-inline-plan", neg_plan_ref_inline_plan)
-    for name, records in CLOSE_RECORDS.items():
+    write("pos-example-org-calibration-result", pos_example_org_calibration_result)
+    write("neg-calibration-without-summary", neg_calibration_without_summary)
+    write("neg-calibration-two-summaries", neg_calibration_two_summaries)
+    write("neg-calibration-cites-other-record", neg_calibration_cites_other_record)
+    write("neg-calibration-with-close-body", neg_calibration_with_close_body)
+    write("neg-out-of-scope-on-calibration-claim", neg_out_of_scope_on_calibration_claim)
+    for name, records in {**CLOSE_RECORDS, **CALIBRATION_RECORDS}.items():
         write(f"{name}.records", records)
     return 0
 

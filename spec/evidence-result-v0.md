@@ -281,15 +281,16 @@ are cross-element constraints over the `claims` array plain JSON Schema cannot e
 class of gap `evidence-plan-ir-v0.md` §3.1 documents for node `id` uniqueness and DAG order. A
 conforming verifier MUST check both in addition to schema validation.
 
-### 4.1 Claim types — `reconcile` and `close`
+### 4.1 Claim types — `reconcile`, `close` and `calibration`
 
 **Status: normative.** `type: reconcile` was made normative first; `type: close` is normative under
 the 2026-10-26 ruling (`type: close` becomes normative in this section, using the `close/v1`
 body). Normative for v0: the `type` member and its absent-means-`requirement` default;
 the `reconcile` body (`join_key`, `peer`, `period`, the six tallies, `state_of_record`) and its
 sufficiency derivation; the `close` body, the Close it cites, `close_state`'s derivation and the
-three further bindings; and every rule in the rendering paragraph. Both types were staged against
-the 2026-09-25 ruling, quoted verbatim:
+three further bindings; and every rule in the rendering paragraph. `type: calibration` is normative
+from 2026-11-01, with the rules under "A calibration claim" below. `reconcile` and `close` were
+staged against the 2026-09-25 ruling, quoted verbatim:
 
 > close + reconcile as claim types in result v0, so they feed the same result. the constraint i
 > care about more than the vocabulary: A_ONLY / B_ONLY must never render like CONFLICTING, and
@@ -297,10 +298,11 @@ the 2026-09-25 ruling, quoted verbatim:
 > i want negative fixtures pinning it rather than leaving it to styling. and anything that meets a
 > claim type it doesn't recognize should show 'unrecognized', never drop the row.
 
-Every claim MAY carry `type` (`requirement | reconcile | close`); **absent means `requirement`**,
-the shape above, so a Result that validated before this field existed validates unchanged. A typed
-claim keeps every base field with its §1–§3 semantics — sufficiency, verdict, tier, grade, and its
-place in coverage and buckets — and adds exactly one type-specific body bound to `type`:
+Every claim MAY carry `type` (`requirement | reconcile | close | calibration`); **absent means
+`requirement`**, the shape above, so a Result that validated before this field existed validates
+unchanged. A typed claim keeps every base field with its §1–§3 semantics — sufficiency, verdict,
+tier, grade, and its place in coverage and buckets. A `reconcile` or `close` claim adds exactly one
+type-specific body bound to `type`; a `calibration` claim adds none:
 
 ```
 claim (type: reconcile) adds:
@@ -423,6 +425,46 @@ not schema-enforced in v0): `INSUFFICIENT > 0` ⇒ `GAP`; else `UNRESOLVED > 0` 
 `SATISFIED`. `MATCHED / A_ONLY / B_ONLY / CONFLICTING` never move sufficiency; they are what the
 contract clause's verdict is judged over, and that verdict is never a ratio of them.
 
+**A calibration claim (normative).** A claim of `type: calibration` reports one judge's calibration
+as one `calibration-summary/v1` record states it (`spec/judge-record-family-v1.md` §8), with the
+`human-rating/v1` records (§5 of that document) behind it. It adds no member:
+
+```
+claim (type: calibration) adds no body; its evidence[] cites:
+  exactly one calibration-summary/v1 record
+  zero or more human-rating/v1 records
+  nothing else
+```
+
+- `contract_ref` and `requirement_ref` name the contract requirement the calibration reports on.
+  `tier`, `grade`, `sufficiency` and `verdict` are that requirement's, with their §1 meaning, and
+  the claim counts in coverage and buckets like any claim (§3). Whether a stated agreement meets the
+  requirement is the Evidence Contract's rule. This document defines no threshold, and a verdict is
+  never a ratio of the summary's counts.
+- It carries no `period` and no `reconcile` or `close` body; the schema's type-to-body binding
+  refuses either body. The time a calibration covers is its summary's: a producer emits one claim
+  per summary, and a reader orders the claims by the cited summary's `computed_at`.
+- Its `verdict` is never `out_of_scope` (§4.2, schema-enforced).
+- **Its evidence (checker-enforced, since JSON Schema cannot see the cited records).** The judge
+  record a cited digest names is the record itself when the bundle carries the judge record
+  directly, and otherwise the payload the record discloses: a Capsule's disclosed `agent_input`, or,
+  for an evidence-book record of a published Capsule, the carried Capsule's disclosed `agent_input`.
+  Every cited judge record MUST have `record_version` `calibration-summary/v1` or
+  `human-rating/v1`, and exactly one distinct cited digest MUST name a `calibration-summary/v1`. A
+  digest cited twice is one citation. A verifier fails the claim when a cited digest names no record
+  in the bundle the Result is verified against, when a disclosed judge record is of another kind, or
+  when the disclosed judge records include no summary or more than one. A cited record whose
+  payload is withheld has no kind a verifier can read and is checked only for its presence: a
+  withheld rating leaves the claim valid, and the one summary must be disclosed. In this revision a
+  verifier reads only `record_version`. A relying party that needs a judge record's shape validates
+  it against `schemas/judge/calibration-summary-v1.json` or `schemas/judge/human-rating-v1.json`
+  itself. The reference checkers are given the judge records directly, each keyed by the digest of
+  its JCS form (§11).
+
+Which judged claim a cited rating binds to, and whether the cited ratings recompute the summary's
+stated agreement, are questions for a reader, not validity rules: a claim whose ratings rate a case
+no claim of the Result cites is still valid.
+
 **The rendering constraints the ruling names are a renderer's obligation, pinned by negative
 fixtures in `capsule-viewer`, never by styling:** `A_ONLY` / `B_ONLY` are "one side missing" and
 MUST NOT render in the class or wording of `CONFLICTING` ("both sides disagree"); a `UNILATERAL`
@@ -460,7 +502,7 @@ producer that emits a claim for a requirement, typed or not, copies the switch b
 hold:
 
 - A claim whose `verdict` is `out_of_scope` MUST carry `out_of_scope_allowed`, MUST be a requirement
-  claim (`type` absent or `requirement`; never `reconcile` or `close`), and its carrier `status` MUST
+  claim (`type` absent or `requirement`; never `reconcile`, `close` or `calibration`), and its carrier `status` MUST
   NOT be `NOT_APPLICABLE` (schema).
 - `aggregate.buckets.out_of_scope` is REQUIRED when any claim carries `out_of_scope_allowed`, and
   MUST be absent otherwise (schema). A Result whose contract does not switch it on carries the
@@ -850,7 +892,7 @@ shape has no counterpart field at all in Result v0 and is not tabulated below.
 | `ReportNode.outcomes[].aggregate` (`pass \| fail \| null`) | *(no direct counterpart)* | Closest analogue is a claim's own `verdict`, but #102's `Outcome.aggregate` is a rollup across cases, and §3 forbids rolling verdicts up into anything narrower than the named buckets. `aggregate.buckets` is the v0 replacement shape, not a per-outcome pass/fail/null field. |
 | `ReportNode.withheldActs` | `presentation` = `analysis` or `story` carrier, `status` gated by §2 | #102 marks an act "withheld" structurally (missing `agentInput`/`agentOutput`) with no further typed distinction. Result v0 requires naming *why* via the eight-value `EvidenceStatus`, and gates which carrier may be used (§2) — a strictly more specific replacement. |
 | `SummaryNode.crossCaseAggregation` / `perAxis` / `counts` / `cohort` | *(no counterpart)* | Free-form cross-case aggregation and cohort fields; out of scope for v0's per-requirement claim model. A future revision MAY add a comparable rollup once a concrete need exists (the same deferral `evidence-plan-ir-v0.md` §3.1 uses for typed-ref alignment). |
-| `CalibrationNode.*` | *(no counterpart)* | Calibration (confusion matrix, agreement, corrected rate) is a derived-metric concept outside the per-requirement claim model; not part of v0. |
+| `CalibrationNode.*` | a `calibration-summary/v1` record (`spec/judge-record-family-v1.md` §8), cited by a `calibration` claim (§4.1) | The derived metric stays a record of its own, stated as k-of-n counts, never a rate; a Result carries it only by citation, never as claim fields. A confusion matrix and a corrected rate have no counterpart. |
 | *(no #102 counterpart)* | `claim.tier` | New in Result v0 — #102 has no recomputed/judged distinction; every judgment there is implicitly the semantic-adjudication kind. |
 | *(no #102 counterpart)* | `claim.grade` | New in Result v0 — #102 has no assurance-ladder concept at all. |
 | *(no #102 counterpart)* | `claim.proofs[]` | New in Result v0 — #102 has no inclusion-proof/receipt concept; its evidence is cited by bare id with no checkability claim. |
@@ -892,6 +934,16 @@ mutant proof. One further schema negative
 body, and the checker validates each against `schemas/judge/close-v1.json` and checks that each close
 claim's `period` is its cited Close's. The rendering rules of §4.1 are pinned in `capsule-viewer`'s tests against these same
 fixtures, not here.
+
+§4.1's `calibration` type adds one positive, `pos-example-org-calibration-result.json`: `claim-1`
+and `claim-2` beside `calibration-1`, which cites one `calibration-summary/v1` record and two
+`human-rating/v1` records, each rating the case its judged claim cites. Its `.records.json` holds
+those three records. Three checker negatives validate against the schema and are rejected by the
+evidence rule: `neg-calibration-without-summary` (ratings only), `neg-calibration-two-summaries` and
+`neg-calibration-cites-other-record` (a cited record of no judge kind). Two schema negatives:
+`neg-calibration-with-close-body` and `neg-out-of-scope-on-calibration-claim`. Each negative has its
+own mutant proof, and the checker validates every judge record in those sidecars against its
+`schemas/judge/` schema.
 
 §8a's extension slot adds three fixtures derived from `pos-example-org-claims-result.json`, plus a
 positive and negative pair taken from a real producer. `pos-example-org-extended-result.json` carries `x-judge-pin` on

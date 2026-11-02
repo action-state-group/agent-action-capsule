@@ -19,7 +19,7 @@ const vectorsDir = "../../vectors/evidence-result"
 
 // crossElementNegatives are the negatives the schema accepts and the
 // cross-element rules refuse (the Python reference's LINK_NEGATIVES,
-// COVERAGE_NEGATIVES and REVISION_NEGATIVES), each with the finding of the
+// CALIBRATION_NEGATIVES, COVERAGE_NEGATIVES and REVISION_NEGATIVES), each with the finding of the
 // rule its mutant switches off there. Every other negative is one of its
 // NEGATIVES, which the schema refuses.
 var crossElementNegatives = map[string]string{
@@ -46,6 +46,9 @@ var crossElementNegatives = map[string]string{
 	"neg-not-yet-in-force-without-later":      "not_yet_in_force is present, but no claim is later",
 	"neg-requirements-covered-omits-claimed":  "req-claim-2: a claim cites it, but requirements_covered does not list it",
 	"neg-requirements-covered-unaccounted":    "requirements_covered lists 1 requirement(s) no claim cites, but excluded_not_applicable is 0",
+	"neg-calibration-without-summary":         "claims[2] cites 0 calibration-summary/v1 record(s); a calibration claim cites exactly one",
+	"neg-calibration-two-summaries":           "claims[2] cites 2 calibration-summary/v1 record(s); a calibration claim cites exactly one",
+	"neg-calibration-cites-other-record":      "claims[2] cites 087f64cf513c..., a record of kind <nil>; a calibration claim cites only",
 }
 
 // vectorCases lists the cases of vectors/evidence-result: every .json file
@@ -111,9 +114,9 @@ func TestVectorsParity(t *testing.T) {
 			t.Errorf("%s is neither pos- nor neg-", name)
 		}
 	}
-	assert.Equal(t, 21, positives)
-	assert.Equal(t, 57, negatives)
-	assert.Equal(t, 14, sidecars)
+	assert.Equal(t, 22, positives)
+	assert.Equal(t, 62, negatives)
+	assert.Equal(t, 18, sidecars)
 	for name := range crossElementNegatives {
 		_, err := os.Stat(filepath.Join(vectorsDir, name+".json"))
 		assert.NoError(t, err, "cross-element negative %s has no vector", name)
@@ -164,6 +167,35 @@ func TestCloseClaimNeedsItsRecords(t *testing.T) {
 	require.ErrorAs(t, err, &refused)
 	assert.False(t, refused.Schema)
 	assert.Contains(t, err.Error(), "close_ref names no record")
+}
+
+// A calibration claim is never accepted unchecked either: without the
+// records it cites, their kinds cannot be read.
+func TestCalibrationClaimNeedsItsRecords(t *testing.T) {
+	doc, records := load(t, "pos-example-org-calibration-result")
+	claims, err := Check(doc, records)
+	require.NoError(t, err)
+	require.Len(t, claims, 3)
+	assert.Equal(t, TypeCalibration, claims[2].Type)
+	assert.Nil(t, claims[2].Close)
+	assert.Nil(t, claims[2].Reconcile)
+
+	_, err = Check(doc, nil)
+	var refused *Error
+	require.ErrorAs(t, err, &refused)
+	assert.False(t, refused.Schema)
+	assert.Contains(t, err.Error(), "names no record among the records supplied")
+}
+
+// Section 4.1: a digest a calibration claim cites twice is one citation, so
+// a summary cited twice is still exactly one summary.
+func TestCalibrationSummaryCitedTwiceIsOne(t *testing.T) {
+	doc, records := load(t, "pos-example-org-calibration-result")
+	claim := doc["claims"].([]interface{})[2].(map[string]interface{})
+	evidence := claim["evidence"].([]interface{})
+	claim["evidence"] = append(evidence, evidence[0])
+	_, err := Check(doc, records)
+	require.NoError(t, err)
 }
 
 // Section 4: claim ids are unique within a Result. The schema cannot say so.

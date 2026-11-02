@@ -217,7 +217,7 @@ events that pass checks 1 to 4 and then either pass checks 5 to 7 or are a reply
 the limit. Every reply above is in it, and nothing else is.
 
 An event that is not a reply is a transport condition [IP §9.2]: the request stays pending, then
-becomes an absence [IP §11.4.1 rule 6]. It is never a refusal. Events with the same `id` are one
+becomes an absence [IP §11.4.1 rule 6]. It is never a refusal. Events with the same claimed `id` are one
 event, however many times a relay delivers them. The `p` tag of a reply event is for the
 requester's own filtering, and is not checked.
 

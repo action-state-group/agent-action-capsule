@@ -99,9 +99,9 @@ class RecordDoc(TypedDict, total=False):
 
 
 class _ClaimTypedBodyDoc(TypedDict, total=False):
-    # PROPOSED (2026-09-25 ruling): absent `type` means `requirement`; the
-    # body key present must match `type` (schema's type<->body binding).
-    type: Literal["requirement", "reconcile", "close"]
+    # Absent `type` means `requirement`; the body key present must match
+    # `type` (schema's type<->body binding). A calibration claim has no body.
+    type: Literal["requirement", "reconcile", "close", "calibration"]
     reconcile: ReconcileClaimDoc
     close: CloseClaimDoc
     # Copied from the contract requirement (spec sections 4.2, 4.3).

@@ -41,6 +41,7 @@ const (
 	TypeRequirement = "requirement"
 	TypeReconcile   = "reconcile"
 	TypeClose       = "close"
+	TypeCalibration = "calibration"
 )
 
 // Schema returns the embedded schema's bytes.
@@ -198,9 +199,12 @@ type Reconcile struct {
 // applies_from; the coverage counts and not_yet_in_force recompute from the
 // claims; requirements_covered lists every claimed requirement and no more
 // unclaimed ones than excluded_not_applicable; a coverage_report's rows and
-// summary recompute; and every close claim's state is recomputed from the
-// inbound links of the records it cites. records are those record headers;
-// a close claim whose Close is not among them is refused, never skipped.
+// summary recompute; every close claim's state is recomputed from the
+// inbound links of the records it cites; and every calibration claim cites
+// exactly one calibration-summary/v1 record and otherwise only
+// human-rating/v1 records. records are the cited records, keyed by their
+// JSON digest; a close or calibration claim citing a record not among them
+// is refused, never skipped.
 func Check(doc map[string]interface{}, records []map[string]interface{}) ([]Claim, error) {
 	schema, err := compiledSchema()
 	if err != nil {
@@ -216,7 +220,15 @@ func Check(doc map[string]interface{}, records []map[string]interface{}) ([]Clai
 	claims, findings := readClaims(doc)
 	findings = append(findings, revisionFindings(doc, claims)...)
 	findings = append(findings, coverageFindings(doc)...)
-	findings = append(findings, closeFindings(doc, claims, records)...)
+	for _, claim := range claims {
+		if claim.Type == TypeClose || claim.Type == TypeCalibration {
+			index, digestFindings := indexRecords(records)
+			findings = append(findings, digestFindings...)
+			findings = append(findings, closeFindings(doc, claims, index)...)
+			findings = append(findings, calibrationFindings(claims, index)...)
+			break
+		}
+	}
 	if len(findings) > 0 {
 		return nil, &Error{Findings: findings}
 	}

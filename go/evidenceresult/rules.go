@@ -251,6 +251,32 @@ func coverageFindings(doc map[string]interface{}) []string {
 	return out
 }
 
+// recordIndex is the records a Result is checked against, keyed by their
+// JSON digest, with each digest once in the order first supplied.
+type recordIndex struct {
+	byDigest map[string]map[string]interface{}
+	order    []string
+}
+
+// indexRecords digests the records once for the close and calibration
+// rules; a record that cannot be digested is a finding, reported once.
+func indexRecords(records []map[string]interface{}) (recordIndex, []string) {
+	index := recordIndex{byDigest: map[string]map[string]interface{}{}}
+	var out []string
+	for i, record := range records {
+		digest, err := canonical.JSONDigest(record)
+		if err != nil {
+			out = append(out, fmt.Sprintf("records[%d] cannot be digested: %v", i, err))
+			continue
+		}
+		if _, seen := index.byDigest[digest]; !seen {
+			index.order = append(index.order, digest)
+		}
+		index.byDigest[digest] = record
+	}
+	return index, out
+}
+
 // The link types that make a Close's state (section 4.1).
 const (
 	linkAcknowledges = "acknowledges"
@@ -267,28 +293,12 @@ const counterpartyField = "book_id"
 // `acknowledges` link AGREED, else UNILATERAL. A link counts only from a
 // record whose book_id is present, differs from the Close's, and equals the
 // claim's named peer; a Close with no book_id accepts no linker.
-func closeFindings(doc map[string]interface{}, claims []Claim, records []map[string]interface{}) []string {
+func closeFindings(doc map[string]interface{}, claims []Claim, records recordIndex) []string {
 	var out []string
-	byDigest := map[string]map[string]interface{}{}
-	var order []string
-	digested := false
+	byDigest, order := records.byDigest, records.order
 	for _, claim := range claims {
 		if claim.Type != TypeClose {
 			continue
-		}
-		if !digested {
-			digested = true
-			for i, record := range records {
-				digest, err := canonical.JSONDigest(record)
-				if err != nil {
-					out = append(out, fmt.Sprintf("records[%d] cannot be digested: %v", i, err))
-					continue
-				}
-				if _, seen := byDigest[digest]; !seen {
-					order = append(order, digest)
-				}
-				byDigest[digest] = record
-			}
 		}
 		rawClaims, _ := doc["claims"].([]interface{})
 		object, _ := rawClaims[claim.Index].(map[string]interface{})
@@ -354,6 +364,50 @@ func closeFindings(doc map[string]interface{}, claims []Claim, records []map[str
 			if !linking[c.PeerRef][wanted] {
 				out = append(out, fmt.Sprintf("claims[%d].close.peer_close_ref is not the digest of a counterparty record carrying the `%s` link that makes this Close %s", claim.Index, wanted, derived))
 			}
+		}
+	}
+	return out
+}
+
+// The record versions a calibration claim cites (section 4.1).
+const (
+	calibrationSummary = "calibration-summary/v1"
+	humanRating        = "human-rating/v1"
+)
+
+// calibrationFindings is the Python reference's calibration_findings: every
+// calibration claim's evidence[] cites exactly one calibration-summary/v1
+// record and otherwise only human-rating/v1 records, each read by its
+// record_version. A digest cited twice is one citation. The records are the
+// judge records themselves (section 4.1: what a cited record discloses).
+func calibrationFindings(claims []Claim, records recordIndex) []string {
+	var out []string
+	for _, claim := range claims {
+		if claim.Type != TypeCalibration {
+			continue
+		}
+		seen := map[string]bool{}
+		summaries := 0
+		for _, digest := range claim.Evidence {
+			if seen[digest] {
+				continue
+			}
+			seen[digest] = true
+			record, ok := records.byDigest[digest]
+			if !ok {
+				out = append(out, fmt.Sprintf("claims[%d] cites %s..., which names no record among the records supplied; its kind cannot be read", claim.Index, prefix(digest)))
+				continue
+			}
+			switch kind := record["record_version"]; kind {
+			case calibrationSummary:
+				summaries++
+			case humanRating:
+			default:
+				out = append(out, fmt.Sprintf("claims[%d] cites %s..., a record of kind %v; a calibration claim cites only %s and %s records", claim.Index, prefix(digest), kind, calibrationSummary, humanRating))
+			}
+		}
+		if summaries != 1 {
+			out = append(out, fmt.Sprintf("claims[%d] cites %d %s record(s); a calibration claim cites exactly one", claim.Index, summaries, calibrationSummary))
 		}
 	}
 	return out
