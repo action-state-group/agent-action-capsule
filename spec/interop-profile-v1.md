@@ -2635,7 +2635,8 @@ Rules:
 - Over the HTTP binding the manifest is served at one fixed path, `/.well-known/evidence-manifest`,
   relative to the origin of the responder's HTTP binding [ER §10; P-69]. A requester that knows
   only that origin fetches it with `GET`. The response body is the JCS serialization of the
-  manifest and its media type is `application/json`, so its octets equal the JCS serialization
+  manifest and its media type is `application/json` (parameters such as `charset` do not change
+  the media type [RFC 9110 §8.3.1]), so its octets equal the JCS serialization
   of the A2A `params` value and of the `evidence_manifest` result. The resource is static and
   carries no envelope [ER §10]. A responder that serves the HTTP binding and publishes a manifest
   MUST serve it at this path. Authentication, caller and request headers do not change the body
@@ -3466,4 +3467,4 @@ it defers, P-68 the strict Ed25519 rule, and P-69 the HTTP manifest path.
 - Evidence Result v0, `spec/evidence-result-v0.md`.
 - Controller Binding v0, `spec/controller-binding-v0.md`.
 - Evidence Contract v0 schema, `evidence-contract-v0.json`.
-- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8259; RFC 8615; RFC 8785; RFC 8949; RFC 8392; RFC 9052; RFC 9162; RFC 9597; RFC 9942.
+- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8259; RFC 8615; RFC 8785; RFC 8949; RFC 8392; RFC 9052; RFC 9110; RFC 9162; RFC 9597; RFC 9942.
