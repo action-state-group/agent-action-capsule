@@ -108,3 +108,19 @@ func TestCLLCardTimes(t *testing.T) {
 	_, _, ok = cutOf(map[string]any{"checkpoint": uint64(1)})
 	assert.False(t, ok)
 }
+
+func TestProofSpansTheSignedSizes(t *testing.T) {
+	_, env := realEnv(t)
+	h := entries(env)
+	proof, err := hex.DecodeString(h[1].(map[string]any)["consistency_from_previous"].(string))
+	require.NoError(t, err)
+	_, from, _ := cutOf(h[0])
+	_, to, _ := cutOf(h[1])
+	a, _ := evidencerequest.UintValue(from)
+	b, _ := evidencerequest.UintValue(to)
+	assert.True(t, proofSpans(proof, a, b))
+	assert.False(t, proofSpans(proof, a+1, b))
+	assert.False(t, proofSpans(proof, a, b+1))
+	assert.False(t, proofSpans([]byte{0x00}, a, b))
+	assert.False(t, proofSpans([]byte{0x81, 0x01}, a, b))
+}
