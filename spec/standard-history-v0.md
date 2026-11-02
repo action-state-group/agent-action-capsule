@@ -489,10 +489,10 @@ its correlation identifier is the deal reference. Its payload has exactly these 
   complete a recipient cannot recompute them (§6). A valid signature never shows that the counts are right, only that
   the holder stated them.
 - **Handed material.** The Bundles of §6 "Handing the material" hold only records the holder's
-  own policy lets this recipient have, so they disclose nothing beyond it. Whether a handover is
-  partial or complete tells the recipient nothing the log sizes the anchor commits do not already
-  show. They are
-  per recipient and are not a `standard_history/1` answer.
+  own policy lets this recipient have, so they disclose nothing beyond it. With the anchor's log in
+  hand, whether a handover is partial or complete tells the recipient nothing the log sizes the
+  anchor commits do not already show. The Bundles are per recipient and are not a
+  `standard_history/1` answer.
 - **No grading.** As HF §4.6: this document defines no score, grade, ratio or ordering, and a
   verifier that follows it shows none. The outcome bar §6 allows draws the same three counts; it is
   not a ratio and never a rate.
@@ -510,4 +510,4 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-7 | Reading a dispute's `outcome` and `forum` (§5.4) from the resolving process's statement: IP §11.2.6's statuses (`open`, `upheld`, `dismissed`, `conflicting`) do not say for whom a resolution found, and IP names no forum. |
 | SH-8 | Carrying `counterparty_class` in SR's terms leg, whose `settlement` member is closed in -00. Until a revision lists it, it is carried in another record of the deal (§7). |
 | SH-9 | Handing a recipient the policy, or the two members of it the card reads (§5.1), so that `window_from_policy` can run. Until a carriage is defined, a recipient's verifier reports it `NOT_CHECKED`, and the window is the holder's statement. |
-| SH-10 | A disclosed, checkable form of the set of logs an anchor commits, for an anchor that commits them through a salted or sparse tree (a `parent-log-witness/v1` batching tree, a cadence tree). Without it, coverage (b) of §6 "Handing the material" cannot be shown for such an anchor, and `counts_recompute` stays `NOT_CHECKED`. |
+| SH-10 | A disclosed, checkable form of the set of logs an anchor commits, for an anchor that commits them through a salted or sparse tree, such as a batching tree whose root is a parent log's entry. Without it, coverage (b) of §6 "Handing the material" cannot be shown for such an anchor, and `counts_recompute` stays `NOT_CHECKED`. |
