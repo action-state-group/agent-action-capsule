@@ -14,7 +14,7 @@ Go-, TypeScript- and Rust-sealed capsules in every implementation.
 | `envelope` | Producer Envelope (COSE_Sign1 over the Capsule ID), a record's producer signature | `go/envelope` |
 | `bundle` (feature `bundle`) | Evidence Bundle v2 codec and verifier; `verify_bundle_strict` and the producer `build_evidence_bundle` with feature `strict` | `go/bundle` |
 | `witness` (feature `strict`) | witness receipts (`cll`, `rekor`, `scrapi`) in `checkpoint.witnesses` | Python `witness` |
-| `inference_history` (feature `inference-history`) | the Standard level of inference-service history: `period_counts`, the artifact, and the checks over one (`spec/inference-service-history-profile-v0.md`) | `go/inferencehistory` |
+| `inference_history` (feature `inference-history`) | the Standard level of inference-service history: `period_counts`, the artifact, and the checks over one (`spec/inference-service-history-profile-v0.md`) | none yet |
 | `settlement` (feature `settlement`) | two-party settlement records (`draft-mih-agent-settlement-records-00`) | Python `settlement` |
 
 ```rust

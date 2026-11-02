@@ -8,7 +8,7 @@
 //! this module is the Standard level. `period_fixed` over a pair is evaluated
 //! here from two checked [`Counts`], as the module leaves it to its caller.
 
-use agent_action_capsule::inference_history::{Counts, Definition};
+use agent_action_capsule::inference_history::{Counts, Cut, Definition};
 use base64::Engine;
 use serde_json::{json, Map, Value};
 
@@ -63,22 +63,18 @@ fn check_history(definition: &Value, reply: &Value) -> Result<Counts, String> {
     let def = Definition::from_document(definition)?;
     let art = artifact(reply);
     let history = art["history_card"]["history"].as_array().unwrap();
-    let times: Vec<&str> = history
+    let chain: Vec<Cut> = history
         .iter()
-        .map(|h| h["checkpoint"]["timestamp"].as_str().unwrap())
+        .map(|h| Cut {
+            timestamp: h["checkpoint"]["timestamp"].as_str().unwrap(),
+            leaves: h["checkpoint"]["log_size"].as_u64().unwrap(),
+        })
         .collect();
-    let log_size = history.last().unwrap()["checkpoint"]["log_size"]
-        .as_u64()
-        .unwrap();
-    assert_eq!(
-        art["derivation"],
-        json!(def.digest()),
-        "a reply names its definition by digest"
-    );
+    let log_size = chain.last().unwrap().leaves;
     agent_action_capsule::inference_history::check_artifact(
         &def,
         &art,
-        &times,
+        &chain,
         art["anchor"].as_str().unwrap(),
         art["evidence_stream"].as_str().unwrap(),
         log_size,
@@ -255,6 +251,34 @@ fn a_definition_that_is_not_the_profiles_is_refused() {
         bad["period_policy"][member] = value;
         let why = Definition::from_document(&bad).unwrap_err();
         assert!(why.starts_with("definition_form:"), "{member}: {why}");
+    }
+    // The members are the two this module derives, the counts declaring
+    // their one unit.
+    for change in [
+        |d: &mut Value| {
+            d["members"]
+                .as_array_mut()
+                .unwrap()
+                .retain(|m| m["name"] != json!("period_counts"));
+            d["reads"] = json!(d["members"][0]["reads"].clone());
+        },
+        |d: &mut Value| {
+            let m = d["members"].as_array_mut().unwrap();
+            m.iter_mut()
+                .find(|m| m["name"] == json!("period_counts"))
+                .unwrap()["units"] = json!([]);
+        },
+        |d: &mut Value| {
+            let m = d["members"].as_array_mut().unwrap();
+            m.iter_mut()
+                .find(|m| m["name"] == json!("period_counts"))
+                .unwrap()["required"] = json!(false);
+        },
+    ] {
+        let mut bad = good.clone();
+        change(&mut bad);
+        let why = Definition::from_document(&bad).unwrap_err();
+        assert!(why.starts_with("definition_form:"), "{why}");
     }
     let mut missing = good;
     missing["period_policy"]

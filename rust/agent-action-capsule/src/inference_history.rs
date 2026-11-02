@@ -118,20 +118,15 @@ impl Policy {
         (t - self.epoch).div_euclid(self.length_s)
     }
 
-    /// The start of period `k`.
-    pub fn start_of(&self, k: i64) -> i64 {
-        self.epoch + k * self.length_s
+    /// The start of period `k`, or `None` past what a Unix time holds.
+    pub fn start_of(&self, k: i64) -> Option<i64> {
+        k.checked_mul(self.length_s)
+            .and_then(|n| n.checked_add(self.epoch))
     }
 
     /// Whether the Unix time `t` is a period boundary.
     pub fn on_boundary(&self, t: i64) -> bool {
         (t - self.epoch).rem_euclid(self.length_s) == 0
-    }
-
-    /// The period the stream's first checkpoint, at the Unix time `t`,
-    /// commits into: the one it ends when `t` is a boundary.
-    pub fn first_period(&self, t: i64) -> i64 {
-        self.period_of(t) - i64::from(self.on_boundary(t))
     }
 
     /// Whether the checkpoint time `timestamp` is a period boundary: a whole
@@ -245,6 +240,22 @@ impl Definition {
                 }
             }
         }
+        // This module derives and checks the form with exactly these two
+        // members (the counts members' shapes are the host's, ISH §4.3), the
+        // counts declaring their one unit.
+        let mut sorted = names.clone();
+        sorted.sort_unstable();
+        let counts_unit = json!([{"where": "periods[].cells[]", "unit": UNIT}]);
+        if sorted != ["history_card", COUNTS]
+            || members
+                .iter()
+                .find(|m| m["name"] == json!(COUNTS))
+                .is_none_or(|m| m["units"] != counts_unit || m["required"] != json!(true))
+        {
+            return Err(bad(
+                "members are not a required history_card and a required period_counts counting exchanges_served",
+            ));
+        }
         let history_card = members.iter().find(|m| m["name"] == json!("history_card"));
         if !history_card.is_some_and(|m| {
             m["required"] == json!(true) && m["derivation"] == json!(DERIVATION_HISTORY_CARD)
@@ -289,8 +300,9 @@ impl Definition {
         &self.policy
     }
 
-    /// The first period boundary strictly after the Unix time `t`.
-    pub fn next_boundary_after(&self, t: i64) -> i64 {
+    /// The first period boundary strictly after the Unix time `t`, or `None`
+    /// past what a Unix time holds.
+    pub fn next_boundary_after(&self, t: i64) -> Option<i64> {
         self.policy.start_of(self.policy.period_of(t) + 1)
     }
 }
@@ -366,11 +378,13 @@ pub fn period_counts(
     if !policy.is_boundary(anchor.timestamp) {
         return Err(Refusal::PolicyDeclined);
     }
-    let first = unix_time(chain[0].timestamp).ok_or(Refusal::CapacityExceeded)?;
     let anchor_period =
         policy.period_of(unix_time(anchor.timestamp).ok_or(Refusal::CapacityExceeded)?);
     let last_counted = anchor_period - 1;
-    let first_period = policy.first_period(first);
+    let commits = commit_periods(policy, chain).ok_or(Refusal::CapacityExceeded)?;
+    // The first period is the one that holds the stream's first record, and
+    // none is listed when no checkpoint commits one (ISH §6.1 item 3).
+    let first_period = first_record_period(chain, &commits).unwrap_or(last_counted + 1);
     if last_counted - first_period >= MAX_PERIODS {
         return Err(Refusal::CapacityExceeded);
     }
@@ -378,17 +392,8 @@ pub fn period_counts(
     let periods = (first_period..=last_counted).count();
     let mut counted: Vec<std::collections::BTreeMap<String, u64>> =
         vec![Default::default(); periods];
-    let (mut committed_at, mut from_leaf, mut closed) = (i64::MIN, 0u64, i64::MIN);
-    for cut in chain {
-        // A checkpoint's time is never taken as earlier than the one before.
-        committed_at = committed_at.max(unix_time(cut.timestamp).ok_or(Refusal::CapacityExceeded)?);
-        let mut k = policy.period_of(committed_at);
-        // The first checkpoint at a boundary commits into the period it
-        // closes; every period before its time is closed from then on.
-        if policy.on_boundary(committed_at) && k - 1 > closed {
-            k -= 1;
-        }
-        closed = closed.max(policy.period_of(committed_at) - 1);
+    let mut from_leaf = 0u64;
+    for (cut, &k) in chain.iter().zip(&commits) {
         for leaf in from_leaf..cut.leaves {
             if k > last_counted {
                 break;
@@ -402,16 +407,47 @@ pub fn period_counts(
     let mut list = Vec::with_capacity(periods);
     for (i, by_model) in counted.iter().enumerate() {
         let k = first_period + i as i64;
-        let (from, to) = (
-            profile_time(policy.start_of(k)),
-            profile_time(policy.start_of(k + 1)),
-        );
-        let (Some(from), Some(to)) = (from, to) else {
+        let (Some(from), Some(to)) = (period_time(policy, k), period_time(policy, k + 1)) else {
             return Err(Refusal::CapacityExceeded);
         };
         list.push(json!({"from": from, "to": to, "cells": cells(by_model, policy.floor)}));
     }
     Ok(json!({"policy": def.policy_digest, "periods": list}))
+}
+
+/// The start of period `k` in the profile's time form.
+fn period_time(policy: &Policy, k: i64) -> Option<String> {
+    policy.start_of(k).and_then(profile_time)
+}
+
+/// The period each checkpoint of `chain` commits its records into, or `None`
+/// when a time does not parse. A checkpoint commits into the period holding
+/// its time, taken as never earlier than the one before; the first
+/// checkpoint at a boundary commits into the period it closes, and every
+/// period before its time is closed from then on (ISH §6.1 item 2).
+fn commit_periods(policy: &Policy, chain: &[Cut<'_>]) -> Option<Vec<i64>> {
+    let (mut committed_at, mut closed) = (i64::MIN, i64::MIN);
+    let mut periods = Vec::with_capacity(chain.len());
+    for cut in chain {
+        committed_at = committed_at.max(unix_time(cut.timestamp)?);
+        let mut k = policy.period_of(committed_at);
+        if policy.on_boundary(committed_at) && k - 1 > closed {
+            k -= 1;
+        }
+        closed = closed.max(policy.period_of(committed_at) - 1);
+        periods.push(k);
+    }
+    Some(periods)
+}
+
+/// The period holding the stream's first record: the one the first
+/// checkpoint that commits a record commits into.
+fn first_record_period(chain: &[Cut<'_>], commits: &[i64]) -> Option<i64> {
+    chain
+        .iter()
+        .zip(commits)
+        .find(|(cut, _)| cut.leaves > 0)
+        .map(|(_, &k)| k)
 }
 
 /// One period's cells: one per model, by name, then the total, each
@@ -455,7 +491,7 @@ fn cells(by_model: &std::collections::BTreeMap<String, u64>, floor: u64) -> Vec<
 
 /// The artifact's octets: `card` is the direct `history_card/1` artifact's
 /// octets at `anchor`, `counts` the `period_counts` member, and `log_size`
-/// the records the anchor covers. `policy_declined` when the card's octets
+/// the records the anchor covers. `capacity_exceeded` when the card's octets
 /// are not its own canonical form, so the embedded card could not be the
 /// direct one.
 pub fn artifact(
@@ -529,18 +565,20 @@ pub struct Counts {
     pub periods: Vec<Period>,
 }
 
-/// Check a Service History artifact `art` (already checked to name this
-/// subject and derivation) against its embedded card, already checked: its
-/// checkpoint times `times`, the stream's first to the anchor, the anchor
-/// digest and stream, and the records the anchor covers. Every rule a
-/// verifier can check from one History: the members, the card's digest and
-/// subject, the coverage declaration (ISH §4.2), and `period_alignment`,
-/// `period_anchor` and `period_floor` (ISH §6.3), with every closed period
-/// from the stream's first listed and no cell twice.
+/// Check a Service History artifact `art` against its embedded card, already
+/// checked by the caller (checkpoint signatures, consistency proofs, witness
+/// receipts): its checkpoints `chain`, the stream's first to the anchor, each
+/// with its time and the records it covers; the anchor digest and stream; and
+/// the records the anchor covers. Every rule a verifier can check from one
+/// History: that it names `def` and the `full_history` subject, the members,
+/// the card's digest and subject, the coverage declaration (ISH §4.2), and
+/// `period_alignment`, `period_anchor` and `period_floor` (ISH §6.3), with
+/// every closed period from the one holding the stream's first record listed
+/// and no cell twice.
 pub fn check_artifact(
     def: &Definition,
     art: &Map<String, Value>,
-    times: &[&str],
+    chain: &[Cut<'_>],
     anchor: &str,
     stream: &str,
     log_size: u64,
@@ -549,6 +587,12 @@ pub fn check_artifact(
     keys.sort_unstable();
     if keys != KEYS || art.get("declared") != Some(&json!(DECLARED)) {
         return Err("the artifact's members are not the ones the definition declares".into());
+    }
+    if art.get("derivation") != Some(&json!(def.digest)) {
+        return Err("definition_binding: the artifact names another derivation".into());
+    }
+    if art.get("subject") != Some(&json!({"full_history": null})) {
+        return Err("artifact_form: the subject is not full_history".into());
     }
     let card = &art["history_card"];
     let text = jcs_text(card).map_err(|_| "the card is malformed".to_string())?;
@@ -567,15 +611,18 @@ pub fn check_artifact(
     if art.get("coverage_declaration") != Some(&coverage_declaration(anchor, stream, log_size)) {
         return Err("the coverage declaration is not the Standard one at this anchor".into());
     }
-    let anchor_time = *times.last().ok_or("the card lists no checkpoint")?;
+    let anchor_time = chain
+        .last()
+        .ok_or("the card lists no checkpoint")?
+        .timestamp;
     if !def.policy.is_boundary(anchor_time) {
         return Err("period_anchor: the anchor's time is not a period boundary".into());
     }
-    check_counts(def, &art[COUNTS], times)
+    check_counts(def, &art[COUNTS], chain)
 }
 
 /// `period_alignment` and `period_floor` over the counts member.
-fn check_counts(def: &Definition, counts: &Value, times: &[&str]) -> Result<Counts, String> {
+fn check_counts(def: &Definition, counts: &Value, chain: &[Cut<'_>]) -> Result<Counts, String> {
     let policy = &def.policy;
     let malformed = |why: &str| format!("the period counts are malformed: {why}");
     let counts = counts
@@ -592,20 +639,21 @@ fn check_counts(def: &Definition, counts: &Value, times: &[&str]) -> Result<Coun
     let listed = counts["periods"]
         .as_array()
         .ok_or_else(|| malformed("periods is not a list"))?;
-    // Every closed period, from the one holding the first checkpoint to the
-    // one the anchor closes, each once, in order.
-    let first = unix_time(times[0]).ok_or_else(|| malformed("a checkpoint time"))?;
-    let anchor = unix_time(times[times.len() - 1]).ok_or_else(|| malformed("the anchor time"))?;
-    let expected = policy.first_period(first)..policy.period_of(anchor);
+    // Every closed period, from the one holding the stream's first record to
+    // the one the anchor closes, each once, in order; none where no
+    // checkpoint commits a record (ISH §6.1 item 3).
+    let commits = commit_periods(policy, chain).ok_or_else(|| malformed("a checkpoint time"))?;
+    let anchor =
+        unix_time(chain[chain.len() - 1].timestamp).ok_or_else(|| malformed("the anchor time"))?;
+    let end = policy.period_of(anchor);
+    let start = first_record_period(chain, &commits).unwrap_or(end).min(end);
+    let expected = start..end;
     if listed.len() as i64 != expected.end - expected.start {
         return Err("period_alignment: the closed periods are not each listed once".into());
     }
     let mut out = Vec::with_capacity(listed.len());
     for (period, k) in listed.iter().zip(expected) {
-        let (from, to) = (
-            profile_time(policy.start_of(k)),
-            profile_time(policy.start_of(k + 1)),
-        );
+        let (from, to) = (period_time(policy, k), period_time(policy, k + 1));
         if period.get("from").and_then(Value::as_str) != from.as_deref()
             || period.get("to").and_then(Value::as_str) != to.as_deref()
             || period.as_object().map(Map::len) != Some(3)

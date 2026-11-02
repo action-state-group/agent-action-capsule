@@ -18,21 +18,26 @@ const STREAM: &str = "stream-a";
 
 /// A Standard definition from the vectors' example, under a weekly policy.
 fn definition() -> Definition {
+    let mut document = definition_document();
+    document["period_policy"] = json!({"epoch": "2026-01-05T00:00:00Z", "length_s": 604800,
+        "min_length_s": 86400, "floor": 5, "suppression": "complementary"});
+    Definition::from_document(&document).unwrap()
+}
+
+/// The vectors' Standard definition.
+fn definition_document() -> Value {
     let path = format!(
         "{}/../../vectors/inference-service-history-v0/vectors.json",
         env!("CARGO_MANIFEST_DIR")
     );
     let corpus: Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
-    let mut document = corpus["cases"]
+    corpus["cases"]
         .as_array()
         .unwrap()
         .iter()
         .find(|c| c["inputs"]["definition"]["level"] == json!("standard"))
         .unwrap()["inputs"]["definition"]
-        .clone();
-    document["period_policy"] = json!({"epoch": "2026-01-05T00:00:00Z", "length_s": 604800,
-        "min_length_s": 86400, "floor": 5, "suppression": "complementary"});
-    Definition::from_document(&document).unwrap()
+        .clone()
 }
 
 fn digest_of(v: &Value) -> String {
@@ -54,7 +59,7 @@ fn the_digests_are_those_of_the_definition_document() {
         def.next_boundary_after(
             agent_action_capsule::inference_history::unix_time(WEEK_1).unwrap()
         ),
-        agent_action_capsule::inference_history::unix_time(WEEK_2).unwrap()
+        agent_action_capsule::inference_history::unix_time(WEEK_2)
     );
 }
 
@@ -256,7 +261,7 @@ fn ledger_models() -> Vec<Option<&'static str>> {
 }
 
 /// The built artifact, its parts a checker is handed, and the anchor.
-fn built() -> (Map<String, Value>, Vec<&'static str>, String) {
+fn built() -> (Map<String, Value>, Vec<Cut<'static>>, String) {
     let def = definition();
     let anchor = "ab".repeat(32);
     let card = json!({
@@ -276,17 +281,16 @@ fn built() -> (Map<String, Value>, Vec<&'static str>, String) {
     // The octets are RFC 8785 of the object.
     let art: Value = serde_json::from_slice(&octets).unwrap();
     assert_eq!(jcs(&art).unwrap(), octets);
-    let times = CHECKPOINTS.iter().map(|c| c.0).collect();
-    (art.as_object().unwrap().clone(), times, anchor)
+    (art.as_object().unwrap().clone(), chain, anchor)
 }
 
-fn check(art: &Map<String, Value>, times: &[&str], anchor: &str) -> Result<Counts, String> {
-    check_artifact(&definition(), art, times, anchor, STREAM, 30)
+fn check(art: &Map<String, Value>, chain: &[Cut<'_>], anchor: &str) -> Result<Counts, String> {
+    check_artifact(&definition(), art, chain, anchor, STREAM, 30)
 }
 
 #[test]
 fn the_built_artifact_checks_and_names_its_parts() {
-    let (art, times, anchor) = built();
+    let (art, chain, anchor) = built();
     let def = definition();
     assert_eq!(art["derivation"], json!(def.digest()));
     assert_eq!(art["declared"], json!(["history_card", "period_counts"]));
@@ -295,7 +299,7 @@ fn the_built_artifact_checks_and_names_its_parts() {
         art["history_card_digest"],
         json!(digest_of(&art["history_card"]))
     );
-    let counts = check(&art, &times, &anchor).unwrap();
+    let counts = check(&art, &chain, &anchor).unwrap();
     assert_eq!(counts.periods.len(), 2);
     assert_eq!(
         counts.periods[0].cells[0].value,
@@ -334,7 +338,7 @@ type Tamper = Box<dyn Fn(&mut Map<String, Value>)>;
 
 #[test]
 fn a_tampered_history_does_not_check() {
-    let (art, times, anchor) = built();
+    let (art, chain, anchor) = built();
     let cases: Vec<(&str, Tamper)> = vec![
         (
             "a closed period dropped",
@@ -452,6 +456,19 @@ fn a_tampered_history_does_not_check() {
             }),
         ),
         (
+            "another derivation",
+            Box::new(|a| {
+                a.insert("derivation".into(), json!("00".repeat(32)));
+            }),
+        ),
+        (
+            "another subject",
+            Box::new(|a| {
+                a.get_mut("history_card").unwrap()["subject"] = json!({"checkpoints": null});
+                a.insert("subject".into(), json!({"checkpoints": null}));
+            }),
+        ),
+        (
             "a member dropped",
             Box::new(|a| {
                 a.remove("period_counts");
@@ -467,36 +484,77 @@ fn a_tampered_history_does_not_check() {
             "history_card_digest".into(),
             json!(digest_of(&tampered["history_card"])),
         );
-        assert!(check(&tampered, &times, &anchor).is_err(), "{name}");
+        assert!(check(&tampered, &chain, &anchor).is_err(), "{name}");
     }
 }
 
 #[test]
 fn an_anchor_off_a_boundary_does_not_check() {
-    let (art, mut times, anchor) = built();
-    *times.last_mut().unwrap() = "2026-01-19T00:01:00Z";
-    let why = check(&art, &times, &anchor).unwrap_err();
+    let (art, mut chain, anchor) = built();
+    chain.last_mut().unwrap().timestamp = "2026-01-19T00:01:00Z";
+    let why = check(&art, &chain, &anchor).unwrap_err();
     assert!(why.starts_with("period_anchor"), "{why}");
 }
 
 #[test]
 fn a_card_digest_that_is_not_the_card_does_not_check() {
-    let (mut art, times, anchor) = built();
+    let (mut art, chain, anchor) = built();
     art.insert("history_card_digest".into(), json!("00".repeat(32)));
-    assert!(check(&art, &times, &anchor).is_err());
+    assert!(check(&art, &chain, &anchor).is_err());
 }
 
 /// Two models withheld and one published above the total: not the
 /// complementary rule, the sum.
 #[test]
 fn a_published_model_above_the_total_does_not_check() {
-    let (mut art, times, anchor) = built();
+    let (mut art, chain, anchor) = built();
     periods(&mut art)[1]["cells"] = json!([
         cell(Some("a"), Err("below_floor")),
         cell(Some("b"), Err("below_floor")),
         cell(Some("c"), Ok(20)),
         cell(None, Ok(12)),
     ]);
-    let why = check(&art, &times, &anchor).unwrap_err();
+    let why = check(&art, &chain, &anchor).unwrap_err();
     assert!(why.contains("do not add up"), "{why}");
+}
+
+/// The first period is the one that holds the stream's first record, and a
+/// stream with no record lists none (ISH §6.1 item 3, §6.3).
+#[test]
+fn periods_start_at_the_first_record_and_an_empty_stream_lists_none() {
+    let def = definition();
+    let list = vec![Some("a"); 6];
+    // Two empty checkpoints, then the first record in week 1.
+    let chain = cuts(&[
+        ("2026-01-06T00:00:00Z", 0),
+        ("2026-01-07T00:00:00Z", 0),
+        ("2026-01-13T00:00:00Z", 6),
+        (WEEK_2, 6),
+    ]);
+    let counts = period_counts(&def, &chain, &models(&list)).unwrap();
+    assert_eq!(counts["periods"].as_array().unwrap().len(), 1);
+    assert_eq!(counts["periods"][0]["from"], json!(WEEK_1));
+    let empty = cuts(&[("2026-01-06T00:00:00Z", 0), (WEEK_2, 0)]);
+    let none = period_counts(&def, &empty, &models(&[])).unwrap();
+    assert_eq!(none["periods"], json!([]));
+    // A checker holds the same expectation.
+    let pin = "ab".repeat(32);
+    let card = json!({"anchor": pin, "derivation": "history_card/1",
+        "evidence_stream": STREAM, "subject": {"full_history": null}, "history": []});
+    let octets = artifact(&def, &jcs(&card).unwrap(), none, &pin, STREAM, 0).unwrap();
+    let art = serde_json::from_slice::<Value>(&octets).unwrap();
+    let art = art.as_object().unwrap();
+    let checked = check_artifact(&def, art, &empty, &pin, STREAM, 0).unwrap();
+    assert!(checked.periods.is_empty());
+    let full = cuts(&[("2026-01-06T00:00:00Z", 1), (WEEK_2, 1)]);
+    assert!(check_artifact(&def, art, &full, &pin, STREAM, 0).is_err());
+}
+
+/// A period index no Unix time can hold gives no start, not a wrap or a
+/// panic (`jcs` already refuses a `length_s` past 2^53).
+#[test]
+fn a_period_past_a_unix_time_has_no_start() {
+    let def = definition();
+    assert_eq!(def.policy().start_of(i64::MAX / 2), None);
+    assert!(def.policy().start_of(-1).is_some());
 }

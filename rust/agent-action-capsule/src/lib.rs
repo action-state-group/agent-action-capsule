@@ -12,7 +12,7 @@
 //! | [`envelope`] | Producer Envelope | `go/envelope` |
 //! | `bundle` (feature `bundle`) | Evidence Bundle v2; strict verification with feature `strict` | `go/bundle` |
 //! | `witness` (feature `strict`) | witness receipts in `checkpoint.witnesses` | (Python `witness`) |
-//! | `inference_history` (feature `inference-history`) | inference-service history, Standard level (`spec/inference-service-history-profile-v0.md`) | `go/inferencehistory` |
+//! | `inference_history` (feature `inference-history`) | inference-service history, Standard level (`spec/inference-service-history-profile-v0.md`) | none yet |
 //! | `settlement` (feature `settlement`) | two-party settlement records (`draft-mih-agent-settlement-records-00`) | (Python `settlement`) |
 //!
 //! Decode capsules with [`verify::decode_capsule_json`], not `serde_json`'s
