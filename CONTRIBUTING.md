@@ -60,6 +60,12 @@ No CLA is required — the DCO is the whole agreement.
    the draft disagree, fix the implementation or open an erratum against the
    draft — never let the two silently diverge.
 
+## Changelog
+
+Do not edit `CHANGELOG.md` in a pull request. Add a fragment `changelog.d/<short-name>.md`
+holding the entry for `## Unreleased`; start it with `<!-- changelog: rust/<crate>/CHANGELOG.md -->`
+for a Rust crate's changelog. See [changelog.d/README.md](changelog.d/README.md).
+
 ## Building the draft
 
 See `spec/Makefile` and the README. The committed `.xml` must be RFCXML v3

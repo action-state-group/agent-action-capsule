@@ -55,6 +55,9 @@ scripts/cross-language-interlock.sh                 # Python, Go, TypeScript and
   Rust layout.
 - Keep the repository standard-only: no product, tenant or internal content.
   The leak and neutrality lints enforce this in CI.
+- A user-visible change adds a fragment `changelog.d/<short-name>.md`, not an edit to a
+  CHANGELOG, so parallel pull requests never conflict there; see
+  [changelog.d/README.md](changelog.d/README.md).
 - Commits use conventional commit messages and a DCO sign-off
   (`git commit -s`). Do not add AI attribution trailers; the `dco` check
   rejects them.
