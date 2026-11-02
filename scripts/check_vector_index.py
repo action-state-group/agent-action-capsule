@@ -93,6 +93,7 @@ COUNTERS = {
     "vectors/bundle/non-record-leaves/": lambda: cases("vectors/bundle/non-record-leaves/vectors.json"),
     "vectors/bundle/certificate-mode/": lambda: cases("vectors/bundle/certificate-mode/vectors.json"),
     "vectors/bundle/category-coverage/": lambda: cases("vectors/bundle/category-coverage/vectors.json"),
+    "vectors/bundle/parent-log-witness/": lambda: cases("vectors/bundle/parent-log-witness/vectors.json"),
     "vectors/bundle/producer-key/": lambda: cases("vectors/bundle/producer-key/vectors.json"),
     "vectors/bundle/report-single-record.json": lambda: cases("vectors/bundle/report-single-record.json"),
     "vectors/bundle/strict/": strict_count,

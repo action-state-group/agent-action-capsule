@@ -91,6 +91,11 @@ same-commit files in CI.
   (`certificate_mode_unsupported`, never a failure), and the
   `category_coverage` member's five properties;
   `python/scripts/generate_bundle_02_vectors.py` regenerates them.
+- `bundle/parent-log-witness/`: Evidence Bundle -03's `parent-log-witness/v1`
+  extension under strict verification: a checkpoint witnessed through a parent
+  log, whole or up to an earlier checkpoint, the extent the verifier computes,
+  and one failing case per broken link;
+  `python/scripts/generate_bundle_parent_witness_vectors.py` regenerates them.
 - `bundle/composed-controller-binding/`: the `controller_binding` join basis
   of Evidence Bundle -02's `composed/v1`: a linked join (redundant, never
   corroborating), unjoined joins (revoked, one key signing for both, other

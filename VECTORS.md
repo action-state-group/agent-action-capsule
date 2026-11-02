@@ -90,6 +90,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/bundle/non-record-leaves/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Non-Record Leaves) | verify | 26 |
 | `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 9 |
 | `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 34 |
+| `vectors/bundle/parent-log-witness/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`parent-log-witness/v1`) | verify | 36 |
 | `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`) | pack, verify | 8 |
 | `vectors/bundle/report-single-record.json` | `draft-mih-zhang-agent-disclosure-bundle-00` (report of one record) | report | 3 |
 | `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 108 |

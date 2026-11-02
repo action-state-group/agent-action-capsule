@@ -190,6 +190,11 @@ class BundleVerificationResult:
     """The signed checkpoint's own fields (from ``checkpoint.cose``) plus the
     Bundle's ``witnesses`` list, when it verified; else empty."""
     signer_matches_checkpoint: bool | None = None
+    parent_witness: Any = None
+    """Strict mode: the ``parent-log-witness/v1`` result
+    (:class:`agent_action_capsule.parent_witness.ParentWitnessResult`) when
+    the Bundle carries that extension, else ``None``. Like ``witnesses`` it
+    is reported beside the claims, and only a failure gates."""
     category_coverage: dict[str, str] | None = None
     """The ``category_coverage`` member's five properties, in report order
     (:mod:`agent_action_capsule.category_coverage`), or ``None`` when the
@@ -230,6 +235,7 @@ class BundleVerificationResult:
             self.kind_ok
             and all(claim.status != "fail" for _, claim in self.claims)
             and (self.witnesses is None or self.witnesses.status != "fail")
+            and (self.parent_witness is None or self.parent_witness.status != "fail")
             and not any((self.category_coverage or {}).get(name) == "FAIL" for name in GATING)
         )
 
@@ -356,7 +362,11 @@ def verify_bundle(
     * the ``disclosures`` overlay as one claim, when the Bundle carries one;
     * the witness receipts in ``checkpoint.witnesses`` under the keys of
       ``witness_directory`` (:mod:`agent_action_capsule.witness`); ``None``
-      trusts no witness.
+      trusts no witness;
+    * a ``parent-log-witness/v1`` extension (draft -03): the chain to a
+      parent log's checkpoint and the receipts over it, under the same
+      directory (:mod:`agent_action_capsule.parent_witness`), reported as
+      ``parent_witness`` and as that extension's status.
 
     ``completeness_certificate`` uses the portable CLL-shaped form below.  The
     ``range_proof`` is checked with CLL #13's ``verify_range``, which binds
@@ -453,6 +463,7 @@ def _verify_bundle(
 
 
 def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], require_signature: bool, directory: Any) -> None:
+    from .parent_witness import PARENT_LOG_WITNESS_KIND, verify_parent_log_witness
     from .producer_envelope import INVALID, UNCLAIMED, verify_record_signature
     from .witness import verify_witness_receipts
 
@@ -543,6 +554,15 @@ def _apply_strict(result: BundleVerificationResult, bundle: Mapping[str, Any], r
     )
     result.witnesses = ClaimResult(status, findings)
     result.witness_receipts = receipts
+    extensions = bundle.get("extensions")
+    if isinstance(extensions, Mapping) and PARENT_LOG_WITNESS_KIND in extensions:
+        result.parent_witness = verify_parent_log_witness(
+            extensions[PARENT_LOG_WITNESS_KIND], signed if authenticated else None, cose if authenticated else None, directory
+        )
+        result.extensions = [
+            ExtensionResult(e.kind, result.parent_witness.status) if e.kind == PARENT_LOG_WITNESS_KIND else e
+            for e in result.extensions
+        ]
     if authenticated:
         result.signed_checkpoint = {**signed, "witnesses": stated.get("witnesses") if isinstance(stated.get("witnesses"), list) else []}
         checkpoint_key = signed.get("key_id")
