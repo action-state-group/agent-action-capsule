@@ -139,7 +139,7 @@ its 9 `record_signatures`.
 | `vectors/deal-reconcile-v0/` | `spec/deal-reconcile-contract-v0.md` (`ec:deal-reconcile@1`) | evaluate | 14 |
 | `vectors/judge/` | `spec/judge-record-family-v1.md` | record, evaluate | 18 |
 | `vectors/profiles/` | host-principal and Evidence Contract profiles (illustrative) | record, evaluate | 10 |
-| `vectors/viewer-core-text/` | `spec/verification-display-v0.md` §6.1, §6.2 | report | 21 |
+| `vectors/viewer-core-text/` | `spec/verification-display-v0.md` §6.1, §6.2 | report | 22 |
 | `vectors/adapters/x402/` | `spec/adapters/x402-v0.md` | verify | 2 |
 | `vectors/adapters/ucp/` | `spec/adapters/ucp-v0.md` §3 | verify | 2 |
 | `vectors/adapters/nostr-mailbox/` | `spec/bindings/nostr-mailbox-v0.md` §9 (experimental) | verify | 15 |

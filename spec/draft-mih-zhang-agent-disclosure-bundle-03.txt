@@ -116,12 +116,12 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
    13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  42
    14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  43
-   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  43
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  44
      15.1.  Normative References . . . . . . . . . . . . . . . . . .  44
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  45
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  46
    Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  46
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  48
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  48
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  49
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  49
 
 1.  Introduction
 
@@ -2305,12 +2305,16 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    the covered checkpoint: the parent checkpoint commits to the entry,
    the entry is the tree's root, and the root commits to the covered
    checkpoint's COSE octets.  A producer cannot later present another
-   checkpoint as covered without a SHA-256 collision.  Separating leaves
-   from interior nodes stops an interior node from being presented as a
-   leaf.  Requiring the parent checkpoint, and an earlier checkpoint, to
-   be signed by the key of the Bundle's checkpoint ties the chain to
-   that producer: a Receipt over another party's log does not cover this
-   one.
+   checkpoint as covered without a SHA-256 collision.  The chain does
+   not show that the covered checkpoint is the only checkpoint of its
+   log at that size: a producer can place two checkpoints of forked
+   histories in one tree, and the salt keeps the witness from seeing
+   either.  A relying party that needs to detect a fork needs Receipts
+   over the log's own checkpoints.  Separating leaves from interior
+   nodes stops an interior node from being presented as a leaf.
+   Requiring the parent checkpoint, and an earlier checkpoint, to be
+   signed by the key of the Bundle's checkpoint ties the chain to that
+   producer: a Receipt over another party's log does not cover this one.
 
    When earlier is present, only the entries up to the covered
    checkpoint were witnessed.  The consistency proof shows that the
@@ -2342,10 +2346,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    reveal a checkpoint even to a party that holds it.  A producer SHOULD
    use a salt of at least 256 bits from a cryptographically secure
    random source, a fresh one per leaf, and the same length of path for
-   every tree, so that neither the entry nor a Bundle's path reveals how
-   many logs share a tree.  A Bundle that carries the block reveals its
-   own checkpoint's position in the tree and the sibling hashes on its
-   path, and nothing else about the other leaves.
 
 
 
@@ -2353,6 +2353,11 @@ Mih & Zhang                Expires 6 May 2027                  [Page 42]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   every tree, so that neither the entry nor a Bundle's path reveals how
+   many logs share a tree.  A Bundle that carries the block reveals its
+   own checkpoint's position in the tree and the sibling hashes on its
+   path, and nothing else about the other leaves.
 
    For the composed/v1 extension (Section 8.2):
 
@@ -2396,12 +2401,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
        source of the categories by version.  Identifiers beginning x-
        are private and are not registered.
 
-   Until IANA registry creation, the interim registry of record is
-   REGISTRY.md in the source repository of
-   [I-D.mih-scitt-agent-action-capsule].  It records the same values and
-   policy.
 
-15.  References
 
 
 
@@ -2409,6 +2409,13 @@ Mih & Zhang                Expires 6 May 2027                  [Page 43]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   Until IANA registry creation, the interim registry of record is
+   REGISTRY.md in the source repository of
+   [I-D.mih-scitt-agent-action-capsule].  It records the same values and
+   policy.
+
+15.  References
 
 15.1.  Normative References
 
@@ -2448,14 +2455,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
               <https://www.rfc-editor.org/rfc/rfc3339>.
 
-   [RFC3986]  Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
-              Resource Identifier (URI): Generic Syntax", STD 66,
-              RFC 3986, DOI 10.17487/RFC3986, January 2005,
-              <https://www.rfc-editor.org/rfc/rfc3986>.
 
-   [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
-              Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
-              <https://www.rfc-editor.org/rfc/rfc4648>.
 
 
 
@@ -2465,6 +2465,15 @@ Mih & Zhang                Expires 6 May 2027                  [Page 44]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   [RFC3986]  Berners-Lee, T., Fielding, R., and L. Masinter, "Uniform
+              Resource Identifier (URI): Generic Syntax", STD 66,
+              RFC 3986, DOI 10.17487/RFC3986, January 2005,
+              <https://www.rfc-editor.org/rfc/rfc3986>.
+
+   [RFC4648]  Josefsson, S., "The Base16, Base32, and Base64 Data
+              Encodings", RFC 4648, DOI 10.17487/RFC4648, October 2006,
+              <https://www.rfc-editor.org/rfc/rfc4648>.
 
    [RFC6901]  Bryan, P., Ed., Zyp, K., and M. Nottingham, Ed.,
               "JavaScript Object Notation (JSON) Pointer", RFC 6901,
@@ -2506,6 +2515,13 @@ Internet-Draft             AAC Evidence Bundle             November 2026
               Receipts", RFC 9942, DOI 10.17487/RFC9942, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9942>.
 
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 45]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
               Transparent Digital Supply Chains", RFC 9943,
@@ -2513,14 +2529,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
               <https://www.rfc-editor.org/rfc/rfc9943>.
 
 15.2.  Informative References
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 45]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
    [I-D.mih-agent-evidence-layer]
               Mih, S., "Evidence Layer", Work in Progress, Internet-
@@ -2562,14 +2570,6 @@ Change Log
 
    Since -01:
 
-   *  Certificate modes (Section 6.1): completeness.selection names the
-      mode of completeness_certificate; a verifier reports a mode it
-      does not implement as not established
-      (certificate_mode_unsupported), never as failed or invalid.
-
-
-
-
 
 
 
@@ -2577,6 +2577,11 @@ Mih & Zhang                Expires 6 May 2027                  [Page 46]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   *  Certificate modes (Section 6.1): completeness.selection names the
+      mode of completeness_certificate; a verifier reports a mode it
+      does not implement as not established
+      (certificate_mode_unsupported), never as failed or invalid.
 
    *  Defined the producer-selected certificate (Section 6.2), in the
       shape producers already emit: selection producer-selected, no
@@ -2619,13 +2624,8 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       defines the ed25519 key type, and a record under any other is
       treated as under a method a verifier does not implement.
 
-   *  Empty-history Bundles (Section 3.1): a Bundle with no records and
-      no root shows that a stream has no history to disclose, whether it
-      was never started or its history was cleared (a new stream, with a
-      new log_id).  It is well formed and reported as no history, never
-      as failed and never as an absence.  In composed/v1 it is an
-      artifact member, and a join with it derives one_sided; a
-      controller_binding join derives from the key that signed its
+
+
 
 
 
@@ -2634,6 +2634,13 @@ Mih & Zhang                Expires 6 May 2027                  [Page 47]
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
+   *  Empty-history Bundles (Section 3.1): a Bundle with no records and
+      no root shows that a stream has no history to disclose, whether it
+      was never started or its history was cleared (a new stream, with a
+      new log_id).  It is well formed and reported as no history, never
+      as failed and never as an absence.  In composed/v1 it is an
+      artifact member, and a join with it derives one_sided; a
+      controller_binding join derives from the key that signed its
       checkpoint, and is not_derivable without one.  Security
       Considerations: no history.  Privacy Considerations: a cleared
       history's checkpoint is signed by the cleared stream's key.
@@ -2674,13 +2681,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       disclosure-policy-decisions/v1, held for ratification in the
       interim registry and not defined by this document.
 
-Acknowledgments
-
-   The authors thank the SCITT working group and the Action State Group
-   architecture review for the evidence-bundle starting shape.
-
-Authors' Addresses
-
 
 
 
@@ -2690,6 +2690,13 @@ Mih & Zhang                Expires 6 May 2027                  [Page 48]
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
+Acknowledgments
+
+   The authors thank the SCITT working group and the Action State Group
+   architecture review for the evidence-bundle starting shape.
+
+Authors' Addresses
+
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
@@ -2698,13 +2705,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    Yiqun Zhang
    Independent
    Email: zhangyiqun9164@gmail.com
-
-
-
-
-
-
-
 
 
 

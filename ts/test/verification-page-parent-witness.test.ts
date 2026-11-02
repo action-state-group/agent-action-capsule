@@ -1,9 +1,14 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { decodeFragment, verifyBundle } from "../src/bundle.js";
+import {
+  buildVerifiedBundleContext,
+  decodeFragment,
+  verifyBundle,
+} from "../src/bundle.js";
 import {
   buildVerificationPageModel,
+  verificationBanner,
   verificationCheckLists,
 } from "../src/verification-page.js";
 
@@ -89,5 +94,37 @@ describe("verification page: parent-log witness", () => {
     expect([...lists.page, ...lists.failed, ...lists.notChecked]).not.toContain(
       "parent-log-witness",
     );
+  });
+});
+
+describe("verification banner: parent-log witness", () => {
+  const bundleOf = (id: string) =>
+    structuredClone(vectors.cases.find((c) => c.id === id)!.bundle) as {
+      extensions: Record<string, { parent: { witnesses: unknown[] } }>;
+    };
+
+  it("names a broken link as the chain not holding", async () => {
+    const banner = verificationBanner(
+      await buildVerifiedBundleContext(bundleOf("neg-path-edited")),
+      [],
+    );
+    expect(banner.state).toBe("failed");
+    expect(banner.detail).toContain(
+      "the chain to the parent log's witnessed checkpoint does not hold (parent_witness_entry_not_included)",
+    );
+  });
+
+  it("names a bad receipt as the receipt, not the chain", async () => {
+    const bundle = bundleOf("pos-witnessed-whole");
+    bundle.extensions["parent-log-witness/v1"]!.parent.witnesses = [{}];
+    const banner = verificationBanner(
+      await buildVerifiedBundleContext(bundle),
+      [],
+    );
+    expect(banner.state).toBe("failed");
+    expect(banner.detail).toContain(
+      "the witness receipt over the parent log's checkpoint is malformed or does not verify (witness_receipt_malformed)",
+    );
+    expect(banner.detail).not.toContain("does not hold");
   });
 });

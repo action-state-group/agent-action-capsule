@@ -705,10 +705,18 @@ function bannerWords(
           );
       }
       const parent = strict.parentWitness;
-      if (parent?.status === "fail")
-        named.push(
-          `the chain to the parent log's witnessed checkpoint does not hold (${findingNames(parent.findings).join(", ")})`,
+      // A broken link, or a receipt over the parent checkpoint that is
+      // malformed or does not verify: the two read differently.
+      if (parent?.status === "fail") {
+        const links = parent.findings.filter((f) =>
+          f.startsWith("parent_witness_"),
         );
+        named.push(
+          links.length > 0
+            ? `the chain to the parent log's witnessed checkpoint does not hold (${findingNames(links).join(", ")})`
+            : `the witness receipt over the parent log's checkpoint is malformed or does not verify (${findingNames(parent.findings).join(", ")})`,
+        );
+      }
       sentences.push(
         unboundOnly ? uncheckpointed : `What failed: ${named.join("; ")}.`,
       );
