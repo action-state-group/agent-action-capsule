@@ -19,8 +19,9 @@ import (
 )
 
 // The exchange cases of vectors/interop-profile-v0 and
-// vectors/interop-profile-v0-requirement-facts, and of the v1 sets
-// vectors/interop-profile-v1 and vectors/interop-profile-v1-requirement-facts,
+// vectors/interop-profile-v0-requirement-facts, and of the v1 and v2 sets
+// vectors/interop-profile-v1, vectors/interop-profile-v1-requirement-facts,
+// vectors/interop-profile-v2 and vectors/interop-profile-v2-requirement-facts,
 // each set with its own contract, run through the Verifier
 // from their inputs alone, and the result is compared with each case's
 // whole expected block, as python/tests/test_interop_profile_verifier.py
@@ -141,7 +142,8 @@ func normalize(t *testing.T, v any) any {
 func TestInteropProfileExchangeVectors(t *testing.T) {
 	// Each set and the number of its exchange cases.
 	for set, want := range map[string]int{"interop-profile-v0": 26, "interop-profile-v0-requirement-facts": 2,
-		"interop-profile-v1": 33, "interop-profile-v1-requirement-facts": 2} {
+		"interop-profile-v1": 33, "interop-profile-v1-requirement-facts": 2,
+		"interop-profile-v2": 43, "interop-profile-v2-requirement-facts": 2} {
 		t.Run(set, func(t *testing.T) { runExchangeVectors(t, set, want) })
 	}
 }

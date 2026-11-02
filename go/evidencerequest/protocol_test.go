@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -67,7 +68,7 @@ func TestParseRequestReasons(t *testing.T) {
 		})
 	}
 	unknown := er.ParseRequest(er.Message{Octets: []byte(`{` + subject + `,` + coverage + `,"profile":"evidence-interop/9"}`), MediaType: er.MediaTypeJSON})
-	assert.Equal(t, "profiles supported: evidence-interop/0, evidence-interop/1", unknown.Detail,
+	assert.Equal(t, "profiles supported: evidence-interop/0, evidence-interop/1, evidence-interop/2", unknown.Detail,
 		"an unknown profile's refusal lists the ones supported")
 	plain := er.ParseRequest(er.Message{Octets: []byte(`{` + subject + `,` + coverage + `}`), MediaType: er.MediaTypeJSON})
 	assert.Equal(t, er.ProfileID, plain.Request.Profile, "a request without a profile asks for evidence-interop/0 (v1 §3.3 step 2)")
@@ -276,6 +277,114 @@ func TestRefusalSignatureCoversReasonAndTime(t *testing.T) {
 		check := er.CheckRefusal(reply.Message)
 		assert.Equal(t, er.RefusalCheck{SignatureValid: true, ReasonRegistered: true, Conformant: true}, check)
 	}
+}
+
+// Under evidence-interop/2 a refusal's policy_digest is signed when present
+// (v2 §6.3, P-69); under /0 and /1 the signing input stays the three ERV A7
+// members, so a policy_digest there binds nothing. Which rule applies is the
+// identifier the request asked for.
+func TestRefusalPolicyDigestIsSignedUnderV2(t *testing.T) {
+	ctx := context.Background()
+	s, keyID := signer(t, 1)
+	req, policy := digestOf("req"), digestOf("policy")
+	base := er.Refusal{RequestDigest: req, Reason: er.ReasonPolicyDeclined, IssuedAt: "2026-10-12T00:00:11Z", KeyID: keyID}
+
+	withPolicy := base
+	withPolicy.PolicyDigest = policy
+	signed, err := withPolicy.SignUnder(ctx, s, er.ProfileIDv2)
+	require.NoError(t, err)
+	body, err := signed.SigningBodyUnder(er.ProfileIDv2)
+	require.NoError(t, err)
+	assert.Equal(t, `{"issued_at":"2026-10-12T00:00:11Z","policy_digest":"`+policy+`","reason":"policy_declined","request_digest":"`+req+`"}`, string(body))
+	assert.NoError(t, signed.VerifyForProfile(er.ProfileIDv2, keyID, req), "signed")
+	assert.True(t, signed.ConformingUnder(er.ProfileIDv2))
+
+	absent, err := base.SignUnder(ctx, s, er.ProfileIDv2)
+	require.NoError(t, err)
+	v1Body, err := absent.SigningBody()
+	require.NoError(t, err)
+	v2Body, err := absent.SigningBodyUnder(er.ProfileIDv2)
+	require.NoError(t, err)
+	assert.Equal(t, v1Body, v2Body, "without policy_digest the v2 signing input is the A7 bytes")
+	assert.NoError(t, absent.VerifyForProfile(er.ProfileIDv2, keyID, req), "absent")
+	assert.NoError(t, absent.VerifyForProfile(er.ProfileIDv1, keyID, req), "and the same object under /1")
+
+	tampered := signed
+	tampered.PolicyDigest = digestOf("other policy")
+	assert.Error(t, tampered.VerifyUnder(er.ProfileIDv2), "tampered")
+	stripped := signed
+	stripped.PolicyDigest = ""
+	assert.Error(t, stripped.VerifyUnder(er.ProfileIDv2), "stripped")
+	unsigned := absent
+	unsigned.PolicyDigest = policy
+	assert.Error(t, unsigned.VerifyUnder(er.ProfileIDv2), "added outside the signature")
+
+	// Signed over a policy_digest that is not a digest: the signature
+	// verifies over the bytes, and is still FAIL, the signed member being
+	// malformed (§5.2).
+	malformed := base
+	malformed.PolicyDigest = strings.ToUpper(policy)
+	malformedSig, err := er.EncodeJCS(map[string]any{"issued_at": base.IssuedAt, "policy_digest": malformed.PolicyDigest, "reason": base.Reason, "request_digest": req})
+	require.NoError(t, err)
+	malformed.Sig = hex.EncodeToString(ed25519.Sign(s.key, malformedSig))
+	assert.Error(t, malformed.VerifyUnder(er.ProfileIDv2), "not a digest")
+	assert.False(t, malformed.ConformingUnder(er.ProfileIDv2))
+	_, err = malformed.SignUnder(ctx, s, er.ProfileIDv2)
+	assert.ErrorIs(t, err, er.ErrInvalid, "a responder never signs a malformed policy_digest")
+
+	// Under /1: the A7 refusal verifies, with or without a policy_digest
+	// outside the signature, and the v2 signing input fails.
+	v1 := absent
+	assert.NoError(t, v1.VerifyForProfile(er.ProfileIDv1, keyID, req), "a /1 refusal still verifies")
+	assert.NoError(t, unsigned.VerifyForProfile(er.ProfileIDv1, keyID, req), "a /1 refusal with an unbound policy_digest")
+	assert.True(t, unsigned.ConformingUnder(er.ProfileIDv1))
+	assert.NoError(t, unsigned.Verify(), "Verify reads the A7 members, as before")
+	assert.Error(t, signed.VerifyForProfile(er.ProfileIDv1, keyID, req), "the v2 signing input answering a /1 request")
+	assert.Error(t, signed.Verify())
+	// An identifier this package does not implement: any implemented
+	// identifier's signing input will do.
+	assert.NoError(t, signed.VerifyUnder("evidence-interop/9"))
+	assert.NoError(t, unsigned.VerifyUnder("evidence-interop/9"))
+	assert.Error(t, tampered.VerifyUnder("evidence-interop/9"))
+
+	// policy_digest is signed only under /2: Sign and SignUnder another
+	// identifier refuse to build a refusal whose policy_digest binds nothing.
+	_, err = withPolicy.Sign(ctx, s)
+	assert.ErrorIs(t, err, er.ErrInvalid)
+	_, err = withPolicy.SignUnder(ctx, s, er.ProfileIDv1)
+	assert.ErrorIs(t, err, er.ErrInvalid)
+
+	// ParseReply keeps policy_digest as carried, and CheckRefusalUnder reads
+	// the object under the identifier the request asked for.
+	for _, mediaType := range []string{er.MediaTypeJSON, er.MediaTypeCBOR} {
+		reply, err := er.EncodeReply(mediaType, nil, &signed)
+		require.NoError(t, err)
+		parsed, err := er.ParseReply(reply.Message)
+		require.NoError(t, err)
+		require.NotNil(t, parsed.Refusal)
+		assert.Equal(t, signed, *parsed.Refusal)
+		all := er.RefusalCheck{SignatureValid: true, ReasonRegistered: true, Conformant: true}
+		assert.Equal(t, all, er.CheckRefusalUnder(reply.Message, er.ProfileIDv2))
+		assert.Equal(t, er.RefusalCheck{ReasonRegistered: true}, er.CheckRefusalUnder(reply.Message, er.ProfileIDv1))
+		assert.Equal(t, er.RefusalCheck{ReasonRegistered: true}, er.CheckRefusal(reply.Message))
+
+		reply, err = er.EncodeReply(mediaType, nil, &unsigned)
+		require.NoError(t, err)
+		assert.Equal(t, all, er.CheckRefusal(reply.Message), "unbound under ER alone")
+		assert.Equal(t, er.RefusalCheck{ReasonRegistered: true}, er.CheckRefusalUnder(reply.Message, er.ProfileIDv2))
+
+		reply, err = er.EncodeReply(mediaType, nil, &malformed)
+		require.NoError(t, err)
+		assert.Equal(t, er.RefusalCheck{SignatureValid: true, ReasonRegistered: true}, er.CheckRefusalUnder(reply.Message, er.ProfileIDv2))
+	}
+	notText, err := er.Encode(er.MediaTypeJSON, map[string]any{"request_digest": req, "reason": base.Reason, "issued_at": base.IssuedAt,
+		"key_id": keyID, "sig": absent.Sig, "policy_digest": uint64(7)})
+	require.NoError(t, err)
+	_, err = er.ParseReply(er.Message{Octets: notText, MediaType: er.MediaTypeJSON})
+	assert.ErrorIs(t, err, er.ErrInvalid, "a policy_digest that is not text has no Refusal form")
+	assert.Equal(t, er.RefusalCheck{SignatureValid: true, ReasonRegistered: true, Conformant: true},
+		er.CheckRefusalUnder(er.Message{Octets: notText, MediaType: er.MediaTypeJSON}, er.ProfileIDv1), "outside the signature under /1")
+	assert.False(t, er.CheckRefusalUnder(er.Message{Octets: notText, MediaType: er.MediaTypeJSON}, er.ProfileIDv2).Conformant)
 }
 
 // An envelope round-trips through either encoding and verifies; a changed

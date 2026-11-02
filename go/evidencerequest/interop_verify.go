@@ -48,10 +48,59 @@ var profileRefusalReasons = []string{
 }
 
 // refusalReasonsByProfile are the §9.1 tokens of each revision: v1 pins ER
-// -02 and lists all ten.
+// -02 and lists all ten, and v2 keeps v1's.
 var refusalReasonsByProfile = map[string][]string{
 	ProfileID:   profileRefusalReasons,
 	ProfileIDv1: RefusalReasons,
+	ProfileIDv2: RefusalReasons,
+}
+
+// refusalSigned are the members every revision's refusal signature covers
+// (ERV A7). refusalSignedWhenPresent are those a revision adds, each signed
+// when the refusal carries it: v0 and v1 sign the three whatever else the
+// refusal carries, and v2 also signs policy_digest (v2 §6.3, P-69).
+var (
+	refusalSigned            = []string{"issued_at", "reason", "request_digest"}
+	refusalSignedWhenPresent = map[string][]string{ProfileID: nil, ProfileIDv1: nil, ProfileIDv2: {"policy_digest"}}
+)
+
+// refusalSigningInputs is v2 §6.3: the refusal's signed members under the
+// identifier its request asks for, keyed by that identifier; when
+// implemented does not hold it, under each identifier implemented does, so
+// the signature passes when any of them verifies. Each value is the object
+// JCS is taken of.
+func refusalSigningInputs(ref map[string]any, asked any, implemented []string) map[string]map[string]any {
+	var known []string
+	for _, p := range implemented {
+		if _, ok := refusalSignedWhenPresent[p]; ok && !slices.Contains(known, p) {
+			known = append(known, p)
+		}
+	}
+	rules := known
+	if s, ok := asked.(string); ok && slices.Contains(known, s) {
+		rules = []string{s}
+	} else if len(rules) == 0 {
+		rules = []string{ProfileID}
+	}
+	out := make(map[string]map[string]any, len(rules))
+	for _, p := range rules {
+		members := map[string]any{}
+		for _, k := range append(slices.Clone(refusalSigned), refusalSignedWhenPresent[p]...) {
+			if x, ok := ref[k]; ok {
+				members[k] = x
+			}
+		}
+		out[p] = members
+	}
+	return out
+}
+
+// refusalPolicyDigestMalformed is v2 §6.3: under evidence-interop/2, when
+// implemented holds it, a policy_digest the refusal carries is signed, and
+// one that is not a digest (§5.2) makes the signed member malformed.
+func refusalPolicyDigestMalformed(ref map[string]any, asked any, implemented []string) bool {
+	x, carried := ref["policy_digest"]
+	return asked == ProfileIDv2 && slices.Contains(implemented, ProfileIDv2) && carried && !isDigestValue(x)
 }
 
 // refusalReasonsFor is v1 §6.3: a refusal carries no profile, so its reason
@@ -84,7 +133,7 @@ var rowStatus = map[string]string{
 	"refusal-coverage_unsatisfiable": "UNKNOWN", "refusal-withheld": "WITHHELD",
 	"refusal-deadline_or_malformed": "UNKNOWN", "refusal-failed": "UNKNOWN", "received-and-failed": "UNKNOWN",
 	"absence": "UNKNOWN",
-	// v1 only: the reasons ER -02 adds are registered under evidence-interop/1 alone (§9.1).
+	// v1 and v2 only: the reasons ER -02 adds are not registered under evidence-interop/0 (§9.1).
 	"refusal-capacity_exceeded": "UNKNOWN", "refusal-request_unauthenticated": "UNKNOWN",
 }
 
@@ -242,7 +291,7 @@ type VerifyOptions struct {
 	Content ContentEvaluator
 }
 
-// Verifier checks evidence-interop/0 and evidence-interop/1 exchanges, each
+// Verifier checks evidence-interop/0, /1 and /2 exchanges, each
 // under the identifier it names, (profile §7.3) and maps them
 // to Evidence Result claims (§8). It mirrors the profile's Python reference
 // verifier (agent_action_capsule.interop_profile.InteropVerifier), and the
@@ -559,7 +608,22 @@ func required(env map[string]any, props map[string]PropertyReport) map[string]st
 func (v *Verifier) refusalProperties(ref map[string]any, received receivedValue, requestOctets []byte, request map[string]any) map[string]PropertyReport {
 	props := map[string]PropertyReport{}
 	keyID, issuedAt := ref["key_id"], ref["issued_at"]
-	method := "Ed25519 over JCS of {issued_at, reason, request_digest} (§6.3, ERV A7)"
+	asked := any(ProfileID)
+	if present(request, "profile") {
+		asked = request["profile"]
+	}
+	var implemented []string
+	for _, p := range v.Policy.ProfilesImplemented {
+		if slices.Contains(Profiles, p) {
+			implemented = append(implemented, p)
+		}
+	}
+	askedImplemented := false
+	if s, ok := asked.(string); ok {
+		askedImplemented = slices.Contains(implemented, s)
+	}
+	method := "Ed25519 over JCS of {issued_at, reason, request_digest}, and policy_digest when present " +
+		"under evidence-interop/2 (§6.3, ERV A7, P-69)"
 	switch {
 	case !present(ref, "sig") || !present(ref, "key_id"):
 		props["refusal_signature"] = report("refusal_signature", StatusNotPresent, method, "sig or key_id is absent")
@@ -567,9 +631,20 @@ func (v *Verifier) refusalProperties(ref map[string]any, received receivedValue,
 		props["refusal_signature"] = report("refusal_signature", StatusFail, method, "not well-formed (§5.2): "+received.why)
 	case !present(ref, "issued_at") || !present(ref, "reason") || !present(ref, "request_digest"):
 		props["refusal_signature"] = report("refusal_signature", StatusFail, method, "a signed member is absent")
+	case refusalPolicyDigestMalformed(ref, asked, implemented):
+		props["refusal_signature"] = report("refusal_signature", StatusFail, method, "policy_digest is not a digest (§5.2)")
 	default:
-		body := jcsOrNil(map[string]any{"issued_at": ref["issued_at"], "reason": ref["reason"], "request_digest": ref["request_digest"]})
-		props["refusal_signature"] = report("refusal_signature", passIf(body != nil && verifyHexSignature(keyID, ref["sig"], body)), method, "")
+		signed := false
+		for _, members := range refusalSigningInputs(ref, asked, implemented) {
+			if body := jcsOrNil(members); body != nil && verifyHexSignature(keyID, ref["sig"], body) {
+				signed = true
+			}
+		}
+		detail := ""
+		if !askedImplemented {
+			detail = fmt.Sprintf("the request asks for %v; checked under every identifier implemented", asked)
+		}
+		props["refusal_signature"] = report("refusal_signature", passIf(signed), method, detail)
 	}
 	method = "trust policy: responder keys, as of the refusal's issued_at"
 	if !present(ref, "key_id") {
@@ -585,19 +660,9 @@ func (v *Verifier) refusalProperties(ref map[string]any, received receivedValue,
 		props["request_binding"] = report("request_binding", passIf(ref["request_digest"] == Digest(requestOctets)), method, "")
 	}
 	reason, _ := ref["reason"].(string)
-	asked := any(ProfileID)
-	if present(request, "profile") {
-		asked = request["profile"]
-	}
-	var implemented []string
-	for _, p := range v.Policy.ProfilesImplemented {
-		if slices.Contains(Profiles, p) {
-			implemented = append(implemented, p)
-		}
-	}
 	reasons := refusalReasonsFor(asked, implemented)
 	detail := ""
-	if s, ok := asked.(string); !ok || !slices.Contains(implemented, s) {
+	if !askedImplemented {
 		detail = fmt.Sprintf("the request asks for %v; checked against every identifier implemented", asked)
 	}
 	props["reason_registered"] = report("reason_registered", passIf(isText(ref["reason"]) && slices.Contains(reasons, reason)),
