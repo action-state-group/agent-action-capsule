@@ -379,6 +379,16 @@ def build_cases() -> list[dict]:
           "commitments": [verified(twin, "conflicting"), verified(CUR, "conflicting")]},
          uris=served(**{URI_CUR: twin}))
 
+    third = octets_of(commitment("2026-10-03T12:08:00Z", [("book-a", LATER)]))
+    case("later-commitment-resolves-conflict",
+         "two conflicting commitments and a third with a later issued_at: the third is current, both others superseded",
+         ["§6 V4"],
+         [directory(URI_CUR, sha_tag(twin)), {"carrier": "nostr", "event": ev_cur}, a2a(URI_OLD, sha_tag(third))],
+         {"carriers": [carrier_result("directory", twin), carrier_result("nostr", CUR, attribution="announced"),
+                       carrier_result("a2a", third)],
+          "commitments": [verified(twin, "superseded"), verified(CUR, "superseded"), verified(third, "current")]},
+         uris=served(**{URI_CUR: twin, URI_OLD: third}))
+
     future = octets_of(commitment("2099-01-01T00:00:00Z", [("book-a", LATER)]))
     case("future-dated-issued-at",
          "a valid commitment dated past the verifier's time and skew, beside the current one: future_dated",

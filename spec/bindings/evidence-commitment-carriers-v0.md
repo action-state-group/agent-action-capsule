@@ -304,6 +304,7 @@ every step and, once V5 binds the commitment, the cards V6 hands on.
 | `answer-key-mismatch` | a valid commitment under another key, and an answer signed by the responder: `key_mismatch` | §6 V5 |
 | `older-beside-newer` | two valid commitments under one key from two carriers: the later `issued_at` is current, the other superseded | §6 V4 |
 | `same-issued-at-conflict` | two valid commitments with one `issued_at` and different octets: conflicting, none current | §6 V4 |
+| `later-commitment-resolves-conflict` | two conflicting commitments and a third with a later `issued_at`: the third is current, both others superseded | §6 V4 |
 | `future-dated-issued-at` | a valid commitment dated past the verifier's time and clock skew, beside the current one: `future_dated` | §6 V4 |
 | `directory-entry-with-size` | a directory entry with a `size` member: `directory_entry`, not read | §5.1, §6 V0 |
 | `a2a-entry-required` | a commitment extension entry with `required` set: `a2a_entry`, not read | §5.2, §6 V0 |
