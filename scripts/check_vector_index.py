@@ -116,6 +116,8 @@ COUNTERS = {
     "vectors/interop-profile-v0-requirement-facts/": lambda: cases("vectors/interop-profile-v0-requirement-facts/vectors.json"),
     "vectors/interop-profile-v1/": lambda: cases("vectors/interop-profile-v1/vectors.json"),
     "vectors/interop-profile-v1-requirement-facts/": lambda: cases("vectors/interop-profile-v1-requirement-facts/vectors.json"),
+    "vectors/interop-profile-v2/": lambda: cases("vectors/interop-profile-v2/vectors.json"),
+    "vectors/interop-profile-v2-requirement-facts/": lambda: cases("vectors/interop-profile-v2-requirement-facts/vectors.json"),
     "vectors/personal-history-basic-v0/": lambda: cases("vectors/personal-history-basic-v0/vectors.json"),
     "vectors/personal-history-outcome-v0/": lambda: cases("vectors/personal-history-outcome-v0/vectors.json"),
     "vectors/coverage-declaration-v0/": lambda: cases("vectors/coverage-declaration-v0/vectors.json"),

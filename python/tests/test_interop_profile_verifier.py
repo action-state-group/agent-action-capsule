@@ -597,6 +597,36 @@ def test_v1_worked_examples_verify_under_evidence_interop_1():
     assert V1_TEXT.count(digest_b) >= 4  # §10, §11.4.4 and §11.4.5 name request B's v1 digest
 
 
+V2_TEXT = (ROOT / "spec" / "interop-profile-v2.md").read_text(encoding="utf-8")
+
+
+def test_v2_worked_refusal_signs_its_policy_digest():
+    """The §10 refusal of spec/interop-profile-v2.md: its printed signing input and sig verify
+    under evidence-interop/2, and changing or removing policy_digest, or reading the request as
+    evidence-interop/1, makes refusal_signature FAIL (§6.3, P-69)."""
+    block = lambda marker: _block_after(marker, text=V2_TEXT)  # noqa: E731
+    request_c = block("**Request C, JSON binding**").encode("utf-8")
+    at = V2_TEXT.index("**Refusal with a policy digest.**")
+    sig = re.search(r"`sig` = `([0-9a-f]{128})`", V2_TEXT[at:]).group(1)
+    body = json.loads(block("**Refusal with a policy digest.**"))
+    assert body["request_digest"] == sha(request_c) and set(body) == {
+        "issued_at", "policy_digest", "reason", "request_digest"}
+    assert body["policy_digest"] == sha(b"evidence-interop/2 vectors: responder policy file")
+    refusal = dict(body, key_id=RESPONDER, sig=sig)
+    verifier = InteropVerifier(SECTION_10_TRUST, VerificationPolicy(), "2026-10-12T01:00:00Z", contract=CONTRACT)
+
+    def signature(ref: dict, request: bytes = request_c) -> str:
+        out = verifier.verify([Exchange(Message(request, "application/json"),
+                                        [Message(jcs(ref), "application/json")])], requirements=["r-record"])
+        return out.exchanges[0].replies[0].status("refusal_signature")
+
+    assert signature(refusal) == "PASS"
+    assert signature(dict(refusal, policy_digest="0" * 64)) == "FAIL"
+    assert signature({k: v for k, v in refusal.items() if k != "policy_digest"}) == "FAIL"
+    as_v1 = request_c.replace(b"evidence-interop/2", b"evidence-interop/1")
+    assert signature(dict(refusal, request_digest=sha(as_v1)), as_v1) == "FAIL"
+
+
 # ---------------------------------------------------------------------------
 # Offline, no clock, as of the event and as of evaluation (NFR-7, FR-31)
 # ---------------------------------------------------------------------------

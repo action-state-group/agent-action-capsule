@@ -119,6 +119,11 @@ same-commit files in CI.
   `spec/interop-profile-v1.md` (`evidence-interop/1`, ER -02), plus the two -02 refusal reasons
   and `capacity_exceeded` answering a request for `evidence-interop/0`;
   `python/scripts/generate_interop_profile_v0_vectors.py --profile 1` regenerates them.
+- `interop-profile-v2/` and `interop-profile-v2-requirement-facts/`: the same cases for
+  `spec/interop-profile-v2.md` (`evidence-interop/2`), plus the refusal's signed `policy_digest`
+  present, absent, tampered, stripped, unsigned and malformed, and a `evidence-interop/1` refusal
+  that still verifies; `python/scripts/generate_interop_profile_v0_vectors.py --profile 2`
+  regenerates them.
 - `personal-history-basic-v0/`: the acceptance run of
   `spec/personal-agent-history-profile-v0.md` §6.4 (Basic level): one History answered by an
   IP responder at a pinned commit (`responder-run.json`, reproduced by `producer/main.go`), the

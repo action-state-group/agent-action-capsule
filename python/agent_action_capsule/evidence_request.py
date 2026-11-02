@@ -129,6 +129,7 @@ __all__ = [
     "OUTCOMES",
     "REQUEST_STATES",
     "SIGNED_MEMBERS",
+    "refusal_signed_members",
     "RequestError",
     "Decline",
     "Subject",
@@ -141,6 +142,7 @@ __all__ = [
     "Artifact",
     "PROFILE",
     "PROFILES",
+    "PROFILE_V2",
     "Envelope",
     "sign_envelope",
     "VerificationError",
@@ -189,11 +191,16 @@ SUBPROTOCOL = "evidence-request/1"
 #: response carries but fixes no wire members (§4.1); the profile does.
 PROFILE = "evidence-interop/0"
 
+#: The interoperability profile revision whose refusal also signs
+#: ``policy_digest`` when present (``spec/interop-profile-v2.md`` §6.3, P-69).
+PROFILE_V2 = "evidence-interop/2"
+
 #: Every profile identifier whose envelope :class:`Envelope` reads:
-#: ``evidence-interop/0`` and ``evidence-interop/1``
-#: (``spec/interop-profile-v1.md``), which share the envelope and differ in
-#: the refusal reasons they register.
-PROFILES = frozenset({"evidence-interop/0", "evidence-interop/1"})
+#: ``evidence-interop/0``, ``evidence-interop/1``
+#: (``spec/interop-profile-v1.md``) and ``evidence-interop/2``
+#: (``spec/interop-profile-v2.md``), which share the envelope and differ in
+#: the refusal reasons they register and the refusal members they sign.
+PROFILES = frozenset({"evidence-interop/0", "evidence-interop/1", PROFILE_V2})
 
 #: The one derivation -00 registers (§8.1, §13).
 DERIVATION_HISTORY_CARD = "history_card/1"
@@ -240,8 +247,19 @@ REFUSAL_REASONS = frozenset(
 OUTCOMES = ("artifact", "refusal", "recorded_absence")
 REQUEST_STATES = ("pending",)
 
-#: The refusal members the signature covers (A7).
+#: The refusal members the signature covers (A7). Under
+#: ``evidence-interop/2`` the signature also covers ``policy_digest`` when the
+#: refusal carries it (:func:`refusal_signed_members`).
 SIGNED_MEMBERS = ("issued_at", "reason", "request_digest")
+
+
+def refusal_signed_members(profile: str | None = None) -> tuple[str, ...]:
+    """The members a refusal's signature covers when its request asked for
+    ``profile`` (``None`` for ER alone, read as A7): :data:`SIGNED_MEMBERS`,
+    plus ``policy_digest`` under :data:`PROFILE_V2` (v2 §6.3). Each is signed
+    when present. Under every other identifier a ``policy_digest`` the
+    refusal carries is outside the signature and binds nothing."""
+    return SIGNED_MEMBERS + (("policy_digest",) if profile == PROFILE_V2 else ())
 
 _MAX_UINT = (1 << 53) - 1
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
@@ -1092,7 +1110,9 @@ def parse_reply(octets: bytes, binding: str = "json") -> Envelope | Refusal:
         raise VerificationError("reply carries both artifact_digest and reason")
     if is_refusal:
         text = _text_members(fields, ("request_digest", "reason", "issued_at", "key_id", "sig"), ("detail",))
-        return Refusal(**text)
+        # Read as carried: whether policy_digest is signed, and so must be a digest, depends on the
+        # request (v2 §6.3), so check_refusal and verify_refusal_offline judge it, not parsing.
+        return Refusal(**text, policy_digest=fields.get("policy_digest"))
     if is_envelope:
         return _read_envelope(fields, binding)
     raise VerificationError("reply is neither an envelope nor a refusal; a transport condition")
@@ -1233,8 +1253,8 @@ def answer(
 # --- the signed refusal -----------------------------------------------------------
 
 
-def _signing_body(members: Mapping[str, Any]) -> bytes:
-    return jcs({k: members[k] for k in SIGNED_MEMBERS if k in members})
+def _signing_body(members: Mapping[str, Any], profile: str | None = None) -> bytes:
+    return jcs({k: members[k] for k in refusal_signed_members(profile) if k in members})
 
 
 @dataclass(frozen=True)
@@ -1242,7 +1262,11 @@ class Refusal:
     """A signed refusal (§4.2) in the vectors' profile (A7). ``detail`` is
     optional human-readable text outside the signature (profile P-6): it is
     not authenticated, and the token, not the prose, is the answer. ``None``
-    and ``""`` are both absent on the wire."""
+    and ``""`` are both absent on the wire. ``policy_digest`` is the SHA-256
+    of the responder's signed disclosure policy, signed only when the request
+    asked for :data:`PROFILE_V2` (v2 §6.3); ``None`` is absent. A refusal
+    carries no profile member, so which members are signed is a property of
+    the request it answers, and every method that needs it takes ``profile``."""
 
     request_digest: str
     reason: str
@@ -1250,13 +1274,15 @@ class Refusal:
     key_id: str
     sig: str
     detail: str | None = None
+    policy_digest: Any = None
 
-    def signing_body(self) -> bytes:
+    def signing_body(self, profile: str | None = None) -> bytes:
         """The bytes the signature covers: RFC 8785 of ``issued_at``,
-        ``reason`` and ``request_digest``. For text members that are ASCII, as
-        every conforming refusal's are, this is the same bytes as sorted,
-        compact JSON."""
-        return _signing_body(self.to_dict())
+        ``reason`` and ``request_digest``, and of ``policy_digest`` when
+        present and ``profile`` is :data:`PROFILE_V2`. For text members that
+        are ASCII, as every conforming refusal's are, this is the same bytes
+        as sorted, compact JSON."""
+        return _signing_body(self.to_dict(), profile)
 
     def to_dict(self) -> dict:
         """The refusal object in the JSON binding."""
@@ -1269,6 +1295,8 @@ class Refusal:
         }
         if self.detail:
             out["detail"] = self.detail
+        if self.policy_digest is not None:
+            out["policy_digest"] = self.policy_digest
         return out
 
     def to_cbor(self) -> bytes:
@@ -1284,24 +1312,37 @@ class Refusal:
 
 
 def sign_refusal(
-    request_digest: str, reason: str, *, signer: Signer, issued_at: str, detail: str | None = None
+    request_digest: str, reason: str, *, signer: Signer, issued_at: str, detail: str | None = None,
+    policy_digest: str | None = None, profile: str | None = None,
 ) -> Refusal:
     """Build and sign one :class:`Refusal`. Raises :class:`ValueError` unless
     ``reason`` is a registered token, ``request_digest`` a digest and
     ``issued_at`` an RFC 3339 UTC time: a responder never signs a
     non-conforming refusal. ``detail`` rides outside the signed members: the
-    signature is the same with or without it."""
+    signature is the same with or without it.
+
+    ``profile`` is the identifier the refused request asked for. A
+    ``policy_digest`` is signed with the rest, so it needs ``profile``
+    :data:`PROFILE_V2` (v2 §6.3) and must be a digest; under any other
+    identifier it would ride unsigned, so this raises :class:`ValueError`
+    instead of building that refusal."""
     if reason not in REFUSAL_REASONS:
         raise ValueError(f"{reason!r} is not a registered refusal reason")
     if not is_digest(request_digest):
         raise ValueError("request_digest must be 64 lowercase hex")
     if parse_utc(issued_at) is None:
         raise ValueError("issued_at must be an RFC 3339 UTC time")
-    stub = Refusal(request_digest=request_digest, reason=reason, issued_at=issued_at, key_id="", sig="")
-    sig, key_id = signer.sign(stub.signing_body())
+    if policy_digest is not None:
+        if profile != PROFILE_V2:
+            raise ValueError(f"policy_digest is signed only under {PROFILE_V2}; the request asked for {profile!r}")
+        if not is_digest(policy_digest):
+            raise ValueError("policy_digest must be 64 lowercase hex")
+    stub = Refusal(request_digest=request_digest, reason=reason, issued_at=issued_at, key_id="", sig="",
+                   policy_digest=policy_digest)
+    sig, key_id = signer.sign(stub.signing_body(profile))
     return Refusal(
         request_digest=request_digest, reason=reason, issued_at=issued_at, key_id=key_id, sig=sig,
-        detail=detail or None,
+        detail=detail or None, policy_digest=policy_digest,
     )
 
 
@@ -1313,10 +1354,12 @@ def _ed25519_verifies(key_hex: Any, sig_hex: Any, body: bytes) -> bool:
     return verify_strict(bytes.fromhex(key_hex), body, bytes.fromhex(sig_hex))
 
 
-def verify_refusal_offline(refusal: Refusal) -> bool:
+def verify_refusal_offline(refusal: Refusal, *, profile: str | None = None) -> bool:
     """True when ``refusal.sig`` is an Ed25519 signature by the key whose raw
-    public bytes are ``refusal.key_id`` over the refusal's signing body.
-    Malformed input is a verification failure, never an exception.
+    public bytes are ``refusal.key_id`` over the refusal's signing body under
+    ``profile``, the identifier the refused request asked for
+    (:meth:`Refusal.signing_body`). Malformed input is a verification
+    failure, never an exception.
 
     This is the signature alone, under the key the refusal names. To accept a
     refusal as a responder's answer to your request, also require that
@@ -1326,7 +1369,7 @@ def verify_refusal_offline(refusal: Refusal) -> bool:
     :class:`ImportError` rather than report a refusal as unsigned.
     """
     try:
-        return _ed25519_verifies(refusal.key_id, refusal.sig, refusal.signing_body())
+        return _ed25519_verifies(refusal.key_id, refusal.sig, refusal.signing_body(profile))
     except (TypeError, ValueError, RecursionError):  # members that have no RFC 8785 form
         return False
 
@@ -1345,28 +1388,33 @@ class RefusalCheck:
     conformant: bool
 
 
-def check_refusal(obj: Any) -> RefusalCheck:
+def check_refusal(obj: Any, *, profile: str | None = None) -> RefusalCheck:
     """Check a refusal object in the JSON binding (a decoded map): its shape
-    and self-consistency, not who signed it (see :func:`verify_refusal_offline`)."""
+    and self-consistency, not who signed it (see :func:`verify_refusal_offline`).
+    ``profile`` is the identifier the refused request asked for: under
+    :data:`PROFILE_V2` a ``policy_digest`` the refusal carries is signed and
+    must be a digest (v2 §6.3); under any other it is outside the signature."""
     if not isinstance(obj, Mapping):
         return RefusalCheck(False, False, False)
     try:
-        signature_valid = _ed25519_verifies(obj.get("key_id"), obj.get("sig"), _signing_body(obj))
+        signature_valid = _ed25519_verifies(obj.get("key_id"), obj.get("sig"), _signing_body(obj, profile))
     except (TypeError, ValueError, RecursionError):
         signature_valid = False
     reason = obj.get("reason")
     reason_registered = isinstance(reason, str) and reason in REFUSAL_REASONS
     well_formed = is_digest(obj.get("request_digest")) and parse_utc(obj.get("issued_at")) is not None
+    if profile == PROFILE_V2 and "policy_digest" in obj:
+        well_formed = well_formed and is_digest(obj["policy_digest"])
     return RefusalCheck(signature_valid, reason_registered, signature_valid and reason_registered and well_formed)
 
 
-def check_refusal_cbor(frame: bytes) -> RefusalCheck:
+def check_refusal_cbor(frame: bytes, *, profile: str | None = None) -> RefusalCheck:
     """:func:`check_refusal` for a refusal frame in the CBOR binding."""
     try:
         obj = _decode_cbor(frame, request=False)
     except RequestError:
         return RefusalCheck(False, False, False)
-    return check_refusal(obj)
+    return check_refusal(obj, profile=profile)
 
 
 # --- outcomes, invariance, retention -------------------------------------------------

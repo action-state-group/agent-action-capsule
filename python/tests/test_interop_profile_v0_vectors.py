@@ -2,9 +2,9 @@
 """The evidence-interop/0 conformance vectors (``vectors/interop-profile-v0/`` and
 ``vectors/interop-profile-v0-requirement-facts/``), checked from their inputs alone.
 
-``test_interop_profile_v1_vectors.py`` runs this module again with ``_PROFILE_VERSION`` 1, for the
-evidence-interop/1 corpora and ``spec/interop-profile-v1.md``; every version-dependent name below
-derives from that one value.
+``test_interop_profile_v1_vectors.py`` and ``test_interop_profile_v2_vectors.py`` run this module
+again with ``_PROFILE_VERSION`` 1 and 2, for the evidence-interop/1 and /2 corpora and their
+profile texts; every version-dependent name below derives from that one value.
 
 Nothing here imports the generator. Every digest, signature and encoding is recomputed from the
 octets each case carries: JSON through this library's RFC 8785 ``jcs``, CBOR through a strict
@@ -42,6 +42,8 @@ VERSION = globals().get("_PROFILE_VERSION", 0)
 V = f"v{VERSION}"
 VECTORS = ROOT / "vectors" / f"interop-profile-{V}"
 SPEC = ROOT / "spec" / f"interop-profile-{V}.md"
+# v2 is v1 with one change (v2 P-69), so v1's text holds the pins and the §10.1 bytes it keeps.
+BASE_SPEC = ROOT / "spec" / "interop-profile-v1.md" if VERSION == 2 else SPEC
 # Each set the generator writes, by its --set name: its directory and its root manifest key.
 SETS = {"interop-profile-v0": (VECTORS, f"interop_profile_{V}"),
         "requirement-facts": (ROOT / "vectors" / f"interop-profile-{V}-requirement-facts",
@@ -60,7 +62,11 @@ REASONS = {"not_authorized", "no_such_subject", "coverage_unsatisfiable", "deriv
            "policy_declined", "deadline_unmet", "request_malformed", "retention_expired"}
 # §9.1 of each revision: v0 pins ER -01's eight tokens, v1 ER -02's ten.
 REASONS_BY_PROFILE = {"evidence-interop/0": frozenset(REASONS),
-                      "evidence-interop/1": frozenset(REASONS | {"capacity_exceeded", "request_unauthenticated"})}
+                      "evidence-interop/1": frozenset(REASONS | {"capacity_exceeded", "request_unauthenticated"}),
+                      "evidence-interop/2": frozenset(REASONS | {"capacity_exceeded", "request_unauthenticated"})}
+# §6.3 of each revision: the refusal signs the three ERV A7 members; v2 also policy_digest when present.
+REFUSAL_THREE = ("issued_at", "reason", "request_digest")
+SIGNS_POLICY_DIGEST = frozenset({"evidence-interop/2"})
 KINDS = ("cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof")
 # The Evidence Contract projection [EC contractResult] and §8.1.
 PROJECTION = {"SATISFIED": "SATISFIED", "NOT_FOUND": "GAP", "NOT_COMMITTED": "GAP", "WITHHELD": "GAP",
@@ -453,11 +459,30 @@ class Verifier:
             return REASONS_BY_PROFILE[asked]
         return frozenset().union(*(REASONS_BY_PROFILE[p] for p in implemented))
 
+    def refusal_signature(self, ref: dict, req: dict) -> bool:
+        """§6.3: the signing input is that of the identifier the request asks for; when the verifier
+        does not implement that one, the signature passes under any identifier it does implement.
+        Under v2 a policy_digest present is signed and has the §5.2 digest form."""
+        implemented = [p for p in self.vpolicy["profiles_implemented"] if p in REASONS_BY_PROFILE]
+        asked = req.get("profile", DEFAULT_PROFILE)
+        rules = [asked] if asked in implemented else implemented
+        if self.m == "policy-digest-signed-under-any":
+            rules = ["evidence-interop/2"]
+        has_policy = "policy_digest" in ref
+        if asked in implemented and asked in SIGNS_POLICY_DIGEST and has_policy \
+                and not HEX64.match(ref["policy_digest"]) and self.m != "policy-digest-form-unchecked":
+            return False
+        for rule in rules:
+            signs = rule in SIGNS_POLICY_DIGEST and has_policy and self.m != "policy-digest-never-signed"
+            members = REFUSAL_THREE + (("policy_digest",) if signs else ())
+            if verifies(ref["key_id"], ref["sig"], jcs({k: ref[k] for k in members})):
+                return True
+        return False
+
     def refusal_props(self, ref: dict, req_octets: bytes, req: dict) -> dict:
         st = lambda ok: "PASS" if ok else "FAIL"  # noqa: E731
-        body = {k: ref[k] for k in ("issued_at", "reason", "request_digest")}
         return {
-            "refusal_signature": st(verifies(ref["key_id"], ref["sig"], jcs(body))),
+            "refusal_signature": st(self.refusal_signature(ref, req)),
             "responder_trust": st(ref["key_id"] in self.policy["responder_keys"] or self.m == "refusal-trust-skipped"),
             "responder_key_current": "NOT_CHECKED",
             "request_binding": st(ref["request_digest"] == shx(req_octets)),
@@ -958,6 +983,11 @@ MUTANTS = {
 if VERSION >= 1:
     MUTANTS["reasons-of-the-latest"] = ("checks every refusal against the newest identifier's tokens, whatever "
                                         "its request asks for (§6.3, §9.1)")
+if VERSION >= 2:
+    MUTANTS["policy-digest-never-signed"] = "leaves policy_digest out of every signing input (§6.3, P-69)"
+    MUTANTS["policy-digest-signed-under-any"] = ("signs policy_digest whatever identifier the request asks for "
+                                                 "(§6.3, P-69)")
+    MUTANTS["policy-digest-form-unchecked"] = "accepts a signed policy_digest that is not a digest (§5.2, §6.3)"
 
 
 @pytest.mark.parametrize("mutant", sorted(MUTANTS))
@@ -1091,7 +1121,7 @@ def test_contract_pin_shape():
     assert shx(c["document_jcs"].encode()) == c["contract_digest"]
     assert c["contract_ref"] == f"{c['document']['id']}@{c['document']['version']}"
     assert HEX64.match(c["schema"]["sha256"]) and c["schema"]["name"] == "evidence-contract-v0.json"
-    ec_row = next(line for line in SPEC.read_text(encoding="utf-8")
+    ec_row = next(line for line in BASE_SPEC.read_text(encoding="utf-8")
                   .splitlines() if line.startswith("| EC |"))
     assert c["schema"]["sha256"] in ec_row, "the recorded schema is the one the profile pins as EC"
     for r in c["document"]["requirements"]:
@@ -1114,13 +1144,14 @@ def test_every_case_pins_policy_contract_time_and_cites(case):
 
 
 def test_section_10_1_bytes_are_reused():
-    profile = SPEC.read_text(encoding="utf-8")
+    profile, base = SPEC.read_text(encoding="utf-8"), BASE_SPEC.read_text(encoding="utf-8")
     valid = next(c for c in CASES if c["id"] == "valid-exchange")
     assert valid["inputs"]["request"]["octets_text"] in profile
     env = strict_json(valid["inputs"]["replies"][0]["octets_text"])
     assert env["sig"] in profile
-    assert all(t in profile for t in env["verification_content"])
-    assert DATA["logs"]["log-1"]["checkpoint_hex"] in profile
+    # The log material names no identifier, so v2 keeps v1's printed bytes for it.
+    assert all(t in base for t in env["verification_content"])
+    assert DATA["logs"]["log-1"]["checkpoint_hex"] in base
 
 
 def test_invariance_case_shape():

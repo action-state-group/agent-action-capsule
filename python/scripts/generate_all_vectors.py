@@ -84,6 +84,7 @@ GENERATORS = (
     "generate_profile_vectors.py",
     "generate_interop_profile_v0_vectors.py",
     ("generate_interop_profile_v0_vectors.py", "--profile", "1"),
+    ("generate_interop_profile_v0_vectors.py", "--profile", "2"),
     "generate_personal_history_basic_v0_vectors.py",
     "generate_coverage_declaration_v0_vectors.py",
     "generate_controller_binding_v0_vectors.py",

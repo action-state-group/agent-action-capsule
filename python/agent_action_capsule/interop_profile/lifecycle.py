@@ -203,7 +203,7 @@ def _form_problems(s: Mapping[str, Any]) -> list[str]:
     link = s.get("link")
     token = link.get("type") if isinstance(link, dict) else None
     if not member_of(s.get("profile"), PROFILE_IDS):
-        out.append("profile is not evidence-interop/0 or evidence-interop/1")
+        out.append("profile is not evidence-interop/0, /1 or /2")
     if not is_key_id(s.get("issuer")):
         out.append("issuer is not a key identifier")
     if not (isinstance(link, dict) and set(link) == {"type", "target"}):
