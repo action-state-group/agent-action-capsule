@@ -103,6 +103,26 @@ func refusalPolicyDigestMalformed(ref map[string]any, asked any, implemented []s
 	return asked == ProfileIDv2 && slices.Contains(implemented, ProfileIDv2) && carried && !isDigestValue(x)
 }
 
+// refusalSignatureHolds is v2 §6.3 over the signing inputs of
+// refusalSigningInputs: verified when sig verifies over any of them, and
+// wellFormed when it verifies over one whose identifier's rules the refusal
+// meets, so a policy_digest that input signs is a digest. The second is what
+// refusal_signature reports, under every identifier asked for.
+func refusalSignatureHolds(ref map[string]any, asked any, implemented []string, verifies func(body []byte) bool) (verified, wellFormed bool) {
+	x, carried := ref["policy_digest"]
+	for p, members := range refusalSigningInputs(ref, asked, implemented) {
+		body := jcsOrNil(members)
+		if body == nil || !verifies(body) {
+			continue
+		}
+		verified = true
+		if !carried || !slices.Contains(refusalSignedWhenPresent[p], "policy_digest") || isDigestValue(x) {
+			wellFormed = true
+		}
+	}
+	return verified, wellFormed
+}
+
 // refusalReasonsFor is v1 §6.3: a refusal carries no profile, so its reason
 // is checked against the tokens of the identifier its request asks for, or,
 // when the verifier does not implement that one, against every token of
@@ -634,12 +654,9 @@ func (v *Verifier) refusalProperties(ref map[string]any, received receivedValue,
 	case refusalPolicyDigestMalformed(ref, asked, implemented):
 		props["refusal_signature"] = report("refusal_signature", StatusFail, method, "policy_digest is not a digest (§5.2)")
 	default:
-		signed := false
-		for _, members := range refusalSigningInputs(ref, asked, implemented) {
-			if body := jcsOrNil(members); body != nil && verifyHexSignature(keyID, ref["sig"], body) {
-				signed = true
-			}
-		}
+		_, signed := refusalSignatureHolds(ref, asked, implemented, func(body []byte) bool {
+			return verifyHexSignature(keyID, ref["sig"], body)
+		})
 		detail := ""
 		if !askedImplemented {
 			detail = fmt.Sprintf("the request asks for %v; checked under every identifier implemented", asked)

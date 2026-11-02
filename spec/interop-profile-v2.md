@@ -93,11 +93,17 @@ its request asks for (§3.3 step 2), as for its `reason` [P-65; P-69]:
   `refusal_signature` `FAIL`: the signed member is malformed.
 - Under `evidence-interop/0` and `evidence-interop/1`, the signing input is the three ERV A7
   members, whatever else the refusal carries. A `policy_digest` beside them is outside the
-  signature: it binds nothing, and a verifier MUST NOT report it as the responder's statement
-  [P-69]. A refusal signed with the `evidence-interop/2` signing input answering such a request
+  signature [P-69]. A refusal signed with the `evidence-interop/2` signing input answering such a request
   has `refusal_signature` `FAIL`.
 - When the request asks for an identifier the verifier does not implement, `refusal_signature` is
-  `PASS` when `sig` verifies over the signing input of any identifier the verifier implements.
+  `PASS` when `sig` verifies over the signing input of an identifier the verifier implements and
+  the refusal meets that identifier's rules: a signature that verifies only over the
+  `evidence-interop/2` input brings its rule that a signed `policy_digest` is a digest.
+
+Whatever the identifier, a `policy_digest` binds the responder only when the signing input that
+`sig` verified over includes it. When `sig` verified over an input that excludes it, as the three
+ERV A7 members do, the member binds nothing, and a verifier MUST NOT report it as the
+responder's statement [P-69].
 
 So a responder answers each request under the identifier it asks for, and a requester that needs
 the responder's policy digest bound to the refusal asks for `evidence-interop/2`. A requester or
@@ -163,6 +169,7 @@ lifecycle statement and manifest naming `evidence-interop/2`, the version cases 
 | `refusal-policy-digest-signed`, `refusal-policy-digest-absent` | a conforming refusal with a signed `policy_digest`, and one with none; every property `PASS` | §6.3, P-69 |
 | `refusal-policy-digest-tampered`, `refusal-policy-digest-stripped`, `refusal-policy-digest-unsigned`, `refusal-policy-digest-not-a-digest` | a `policy_digest` replaced or removed after signing, one added outside the signature, and one signed but not a digest; `refusal_signature` `FAIL` | §5.2, §6.3, §8.1, P-69 |
 | `refusal-under-v1-still-verifies`, `refusal-under-v1-policy-digest-unbound` | a request for `evidence-interop/1` and its ERV A7 refusal, without and with a `policy_digest` outside the signature, checked by a verifier implementing both identifiers; every property `PASS` | §3.3, §6.3, P-69 |
+| `refusal-unimplemented-identifier-policy-digest-unbound`, `-signed`, `-not-a-digest` | a request for an identifier the verifier does not implement, answered by an ERV A7 refusal with a `policy_digest` outside the signature (every property `PASS`, and the member binds nothing), by the v2 signing input (`PASS`), and by the v2 signing input over a `policy_digest` that is not a digest (`refusal_signature` `FAIL`) | §5.2, §6.3, P-69 |
 | `refusal-under-v1-policy-digest-signed`, `refusal-policy-digest-checked-by-v1-verifier` | the v2 signing input answering a request for `evidence-interop/1`, and a signed `policy_digest` checked by a verifier implementing only `evidence-interop/1`; `refusal_signature` `FAIL` | §3.3, §6.3, P-69 |
 
 A second set, `vectors/interop-profile-v2-requirement-facts/`, is the v2 regeneration of the v1
@@ -188,7 +195,11 @@ second change to take a new identifier under P-1.
   - the signing input chosen by the identifier the request asks for, as the reasons are (P-65):
     under `evidence-interop/0` and `evidence-interop/1` a `policy_digest` stays outside the
     signature and binds nothing, and under an identifier the verifier does not implement the
-    signature passes over the signing input of any identifier it implements;
+    signature passes over the signing input of any identifier it implements whose rules the
+    refusal meets;
+  - a `policy_digest` binds the responder only when the signing input that verified includes it,
+    under every identifier, so one beside a signature over the A7 members is never reported as
+    the responder's;
   - a `policy_digest` not of the digest form makes `refusal_signature` `FAIL`.
 
   It takes a new identifier because it changes a signing input (P-1). A new identifier, not a

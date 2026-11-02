@@ -50,6 +50,7 @@ from ._common import (
     parse_json,
     parse_time,
     refusal_reasons_for,
+    refusal_rules_met,
     refusal_signing_inputs,
     sha256_hex,
     unsigned_jcs,
@@ -587,7 +588,8 @@ class InteropVerifier:
         else:
             inputs = refusal_signing_inputs(ref, asked, implemented)
             signed = [p for p, members in inputs.items()
-                      if (body := jcs_or_none(members)) is not None and ed25519_verify_hex(key_id, ref["sig"], body)]
+                      if (body := jcs_or_none(members)) is not None and ed25519_verify_hex(key_id, ref["sig"], body)
+                      and refusal_rules_met(p, members)]
             detail = None if member_of(asked, implemented) else \
                 f"the request asks for {asked!r}; checked under every identifier implemented"
             props["refusal_signature"] = PropertyReport("refusal_signature", PASS if signed else FAIL, method,

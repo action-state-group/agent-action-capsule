@@ -475,7 +475,10 @@ class Verifier:
         for rule in rules:
             signs = rule in SIGNS_POLICY_DIGEST and has_policy and self.m != "policy-digest-never-signed"
             members = REFUSAL_THREE + (("policy_digest",) if signs else ())
-            if verifies(ref["key_id"], ref["sig"], jcs({k: ref[k] for k in members})):
+            # The rules of the identifier whose input verified apply: v2's makes a signed
+            # policy_digest a digest.
+            meets = not signs or HEX64.match(ref["policy_digest"]) or self.m == "policy-digest-form-unchecked"
+            if verifies(ref["key_id"], ref["sig"], jcs({k: ref[k] for k in members})) and meets:
                 return True
         return False
 

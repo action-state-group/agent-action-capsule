@@ -31,6 +31,7 @@ __all__ = [
     "refusal_reasons_for",
     "REFUSAL_SIGNED",
     "refusal_signing_inputs",
+    "refusal_rules_met",
     "PASS",
     "FAIL",
     "NOT_PRESENT",
@@ -83,6 +84,13 @@ REFUSAL_REASONS_BY_PROFILE = {
 # ERV A7 whatever else the refusal carries; v2 also signs ``policy_digest`` when present (P-69).
 REFUSAL_SIGNED = ("issued_at", "reason", "request_digest")
 _REFUSAL_SIGNED_WHEN_PRESENT = {PROFILE_ID: (), PROFILE_V1: (), PROFILE_V2: ("policy_digest",)}
+
+
+def refusal_rules_met(profile: str, members: Mapping[str, Any]) -> bool:
+    """v2 §6.3: the refusal meets ``profile``'s rules for the members it signs, so a signed
+    ``policy_digest`` is a digest."""
+    return "policy_digest" not in _REFUSAL_SIGNED_WHEN_PRESENT.get(profile, ()) or \
+        "policy_digest" not in members or is_digest(members["policy_digest"])
 
 
 def refusal_reasons_for(asked: Any, implemented: Iterable[str]) -> frozenset:

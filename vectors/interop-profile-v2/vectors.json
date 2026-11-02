@@ -138,7 +138,7 @@
     "producer_record": "members claim, issued_at, producer, sig; sig is Ed25519 by producer over UTF-8 of JCS of the other members; the producer is its issuer (§11.2.3)",
     "record_digest": "SHA-256 over UTF-8 of JCS of the whole object, sig included"
   },
-  "count": 72,
+  "count": 75,
   "cases": [
     {
       "id": "valid-exchange",
@@ -3140,6 +3140,291 @@
                 {
                   "digest_alg": "SHA-256",
                   "digest": "610d7c35d9cf5d5516f4d045b33aa66a089107b3ca3b1a7e7c880103be3e18d8"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "refusal-unimplemented-identifier-policy-digest-unbound",
+      "description": "A request for evidence-interop/9, which no verifier implements, answered by an ERV A7 refusal that carries a policy_digest outside its signature, checked by a verifier implementing evidence-interop/1 and evidence-interop/2. The signature verifies over the A7 members, the input of evidence-interop/1: refusal_signature PASS, every property PASS and NOT_FOUND. That input excludes policy_digest, so the member binds nothing: a verifier never reports it as the responder's.",
+      "cites": [
+        "§3.3 step 2",
+        "§6.3",
+        "§8.1 no_such_subject",
+        "P-69"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1",
+            "evidence-interop/2"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:56Z/p9\",\"profile\":\"evidence-interop/9\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [
+          {
+            "carriage": "http",
+            "media_type": "application/json",
+            "octets_text": "{\"issued_at\":\"2026-10-12T00:00:11Z\",\"key_id\":\"e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117\",\"policy_digest\":\"ff551899dc992d7c3e34b239eb3ed1067ef0bb5dbaf219bb1539021c6cedee63\",\"reason\":\"no_such_subject\",\"request_digest\":\"321bd5094d94a7fdbb27a5f69ef8499533bdf5a2d4d7bf96569abddb99898619\",\"sig\":\"9488bc35bb7109fa0feeb965d106cf617b248a02fa297e4e8319b90f8320b4d411928d1ac84e825b29642825d82cf6f87940ab786183f42c4ce38ef9fe182e09\"}"
+          }
+        ]
+      },
+      "expected": {
+        "request_digest": "321bd5094d94a7fdbb27a5f69ef8499533bdf5a2d4d7bf96569abddb99898619",
+        "replies": [
+          {
+            "message_type": "refusal",
+            "properties": {
+              "refusal_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "request_binding": "PASS",
+              "reason_registered": "PASS",
+              "issued_at_form": "PASS"
+            },
+            "requirements": {
+              "r-record": {
+                "row": "refusal-no_such_subject",
+                "status": "NOT_FOUND",
+                "sufficiency": "GAP",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "8774c9cc6fdff32c72b171c6821c48e2446a6f300a0e4f757fc0195d85390208"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "refusal-unimplemented-identifier-policy-digest-signed",
+      "description": "A request for evidence-interop/9 answered by a refusal signed with the evidence-interop/2 input over a policy_digest, checked by a verifier implementing evidence-interop/1 and evidence-interop/2. The signature verifies over the input of evidence-interop/2, whose rules the refusal meets: every property PASS; NOT_FOUND.",
+      "cites": [
+        "§3.3 step 2",
+        "§6.3",
+        "§8.1 no_such_subject",
+        "P-69"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1",
+            "evidence-interop/2"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:56Z/p9\",\"profile\":\"evidence-interop/9\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [
+          {
+            "carriage": "http",
+            "media_type": "application/json",
+            "octets_text": "{\"issued_at\":\"2026-10-12T00:00:11Z\",\"key_id\":\"e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117\",\"policy_digest\":\"ff551899dc992d7c3e34b239eb3ed1067ef0bb5dbaf219bb1539021c6cedee63\",\"reason\":\"no_such_subject\",\"request_digest\":\"321bd5094d94a7fdbb27a5f69ef8499533bdf5a2d4d7bf96569abddb99898619\",\"sig\":\"394691cdcbf258b147c875aaf2b5743a0b483591ee3c8aaeb6e1518741f0bef84ff9773d8ee165f0517f102e3491d4d451b573da0a7972c8ac34b711437ee008\"}"
+          }
+        ]
+      },
+      "expected": {
+        "request_digest": "321bd5094d94a7fdbb27a5f69ef8499533bdf5a2d4d7bf96569abddb99898619",
+        "replies": [
+          {
+            "message_type": "refusal",
+            "properties": {
+              "refusal_signature": "PASS",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "request_binding": "PASS",
+              "reason_registered": "PASS",
+              "issued_at_form": "PASS"
+            },
+            "requirements": {
+              "r-record": {
+                "row": "refusal-no_such_subject",
+                "status": "NOT_FOUND",
+                "sufficiency": "GAP",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "3393156c5d988c387671135c827744cd8763437cef6fe74caa44d53e3f5240c4"
+                }
+              ],
+              "proofs": []
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "refusal-unimplemented-identifier-policy-digest-not-a-digest",
+      "description": "The same, signed over an uppercase policy_digest. The signature verifies only over the input of evidence-interop/2, which brings its rule that a signed policy_digest is a digest (§5.2): refusal_signature FAIL; UNKNOWN.",
+      "cites": [
+        "§3.3 step 2",
+        "§5.2",
+        "§6.3",
+        "§7.2 refusal_signature",
+        "§8.1 refusal not PASS",
+        "P-21",
+        "P-69"
+      ],
+      "pins": {
+        "trust_policy": {
+          "responder_keys": [
+            "e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117"
+          ],
+          "log_keys": [
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-1",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            },
+            {
+              "iss": "https://producer.example",
+              "sub": "evidence-stream-2",
+              "kid": "c82acf66ef2bdc106017544b91873dfbdc92f0963b099d49b0f621bedf76e2af"
+            }
+          ],
+          "foreign_keys": [],
+          "parties": {},
+          "successions": [],
+          "require_action_time_from_other_party": false
+        },
+        "verification_policy": {
+          "online": false,
+          "profiles_implemented": [
+            "evidence-interop/1",
+            "evidence-interop/2"
+          ],
+          "kinds_implemented": [
+            "cll-checkpoint",
+            "cll-inclusion-proof",
+            "cll-consistency-proof"
+          ]
+        },
+        "contract_ref": "C@1",
+        "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
+        "evaluation_time": "2026-10-12T01:00:00Z"
+      },
+      "inputs": {
+        "request": {
+          "media_type": "application/json",
+          "octets_text": "{\"coverage\":{\"expected_pin\":\"16f15dd5475d5e8ec1fb7a84470391e11d7663232365c1749c60ca7489cffe99\"},\"nonce\":\"2026-10-12T00:00:56Z/p9\",\"profile\":\"evidence-interop/9\",\"subject\":{\"record\":\"2fbdb95bdeba62f949bcb6026061fcd66c021523a39e58fc2de1cd44ff631244\"}}"
+        },
+        "replies": [
+          {
+            "carriage": "http",
+            "media_type": "application/json",
+            "octets_text": "{\"issued_at\":\"2026-10-12T00:00:11Z\",\"key_id\":\"e84fed8190a6116016bf68ef2fc1780a919e9ed2d9f88efb895a954ffd7f0117\",\"policy_digest\":\"FF551899DC992D7C3E34B239EB3ED1067EF0BB5DBAF219BB1539021C6CEDEE63\",\"reason\":\"no_such_subject\",\"request_digest\":\"321bd5094d94a7fdbb27a5f69ef8499533bdf5a2d4d7bf96569abddb99898619\",\"sig\":\"58ec53c476cb80538a14240d74ad4c7ee39400c1d4214bb24a922e6a59ac3c8ccf1123ac33400253e2c9efb45255762ed62ee5a6030d4ad6628e9a0abc18d406\"}"
+          }
+        ]
+      },
+      "expected": {
+        "request_digest": "321bd5094d94a7fdbb27a5f69ef8499533bdf5a2d4d7bf96569abddb99898619",
+        "replies": [
+          {
+            "message_type": "refusal",
+            "properties": {
+              "refusal_signature": "FAIL",
+              "responder_trust": "PASS",
+              "responder_key_current": "NOT_CHECKED",
+              "request_binding": "PASS",
+              "reason_registered": "PASS",
+              "issued_at_form": "PASS"
+            },
+            "requirements": {
+              "r-record": {
+                "row": "refusal-failed",
+                "status": "UNKNOWN",
+                "sufficiency": "UNKNOWN",
+                "verdict": "not_evaluable"
+              }
+            },
+            "claim": {
+              "evidence": [
+                {
+                  "digest_alg": "SHA-256",
+                  "digest": "1c1bcb037e88e6a3e5c7c328d55a7bb45deefe36084385d8c824e418a8a35e16"
                 }
               ],
               "proofs": []

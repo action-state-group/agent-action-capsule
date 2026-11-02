@@ -93,6 +93,14 @@ def test_a_policy_digest_is_signed_only_under_evidence_interop_2():
     bad["sig"] = PRIMARY.sign(stub.signing_body(v2))[0]
     check = check_refusal(bad, profile=v2)
     assert check.signature_valid and not check.conformant
+    assert not verify_refusal_offline(Refusal(**bad), profile=v2)
+    # Under an identifier not implemented, the v2 input that verified brings the v2 digest rule.
+    check = check_refusal(bad, profile="evidence-interop/9")
+    assert check.signature_valid and not check.conformant
+    # A policy_digest that is not text has no Refusal form, in either binding.
+    for value in (7, None):
+        with pytest.raises(er.VerificationError):
+            er.parse_reply(json.dumps({**signed.to_dict(), "policy_digest": value}).encode(), "json")
     # An identifier not implemented: either signing input verifies (v2 §6.3).
     assert check_refusal(signed.to_dict(), profile="evidence-interop/9").signature_valid
     assert verify_refusal_offline(plain, profile="evidence-interop/9")

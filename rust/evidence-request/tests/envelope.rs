@@ -469,7 +469,10 @@ fn v2_refusal_signatures_match_the_corpus() {
     let mut checked = 0;
     for case in corpus["cases"].as_array().unwrap() {
         let id = case["id"].as_str().unwrap();
-        if !(id.starts_with("refusal-policy-digest-") || id.starts_with("refusal-under-v1-")) {
+        if !(id.starts_with("refusal-policy-digest-")
+            || id.starts_with("refusal-under-v1-")
+            || id.starts_with("refusal-unimplemented-identifier-"))
+        {
             continue;
         }
         let request = case["inputs"]["request"]["octets_text"].as_str().unwrap();
@@ -529,5 +532,5 @@ fn v2_refusal_signatures_match_the_corpus() {
             checked += 1;
         }
     }
-    assert_eq!(checked, 10, "the corpus has ten v2 refusal cases");
+    assert_eq!(checked, 13, "the corpus has thirteen v2 refusal cases");
 }

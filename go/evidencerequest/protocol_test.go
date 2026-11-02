@@ -344,6 +344,22 @@ func TestRefusalPolicyDigestIsSignedUnderV2(t *testing.T) {
 	// An identifier this package does not implement: any implemented
 	// identifier's signing input will do.
 	assert.NoError(t, signed.VerifyUnder("evidence-interop/9"))
+	// ... provided the refusal meets that identifier's rules: a signature
+	// that verifies only over the v2 input brings the v2 rule that a signed
+	// policy_digest is a digest (v2 §6.3).
+	assert.Error(t, malformed.VerifyUnder("evidence-interop/9"), "malformed under an unimplemented identifier")
+	malformedJSON, err := json.Marshal(malformed.Value())
+	require.NoError(t, err)
+	check := er.CheckRefusalUnder(er.Message{MediaType: er.MediaTypeJSON, Octets: malformedJSON}, "evidence-interop/9")
+	assert.True(t, check.SignatureValid)
+	assert.False(t, check.Conformant)
+	// An empty policy_digest is not the absent one: added after signing, it
+	// would vanish from the typed Refusal and verify.
+	emptyAdded, err := json.Marshal(map[string]any{"request_digest": req, "reason": base.Reason, "issued_at": base.IssuedAt,
+		"key_id": keyID, "sig": absent.Sig, "policy_digest": ""})
+	require.NoError(t, err)
+	_, err = er.ParseReply(er.Message{MediaType: er.MediaTypeJSON, Octets: emptyAdded})
+	assert.ErrorIs(t, err, er.ErrInvalid)
 	assert.NoError(t, unsigned.VerifyUnder("evidence-interop/9"))
 	assert.Error(t, tampered.VerifyUnder("evidence-interop/9"))
 

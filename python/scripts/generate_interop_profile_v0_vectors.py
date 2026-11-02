@@ -561,6 +561,7 @@ def policy_digest_cases(refusal_case: Callable[..., dict], req_c: bytes) -> list
     both = verification_policy(profiles_implemented=sorted([PROFILE, OTHER_PROFILE]))
     v1_only = verification_policy(profiles_implemented=[OTHER_PROFILE])
     req_v1 = encode(J, request("2026-10-12T00:00:55Z/p1", ART, ANCHOR1, profile=OTHER_PROFILE))
+    req_v9 = encode(J, request("2026-10-12T00:00:56Z/p9", ART, ANCHOR1, profile="evidence-interop/9"))
     at = "2026-10-12T00:00:11Z"
     out = [
         refusal_case(
@@ -632,6 +633,33 @@ def policy_digest_cases(refusal_case: Callable[..., dict], req_c: bytes) -> list
             ["§3.3 step 2", "§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-69"],
             refusal(req_v1, "no_such_subject", at, signed_policy=POLICY_DIGEST),
             ref_props(refusal_signature="FAIL"), "refusal-failed", req=req_v1, vpolicy=both),
+        refusal_case(
+            "refusal-unimplemented-identifier-policy-digest-unbound",
+            f"A request for evidence-interop/9, which no verifier implements, answered by an ERV A7 refusal "
+            f"that carries a policy_digest outside its signature, checked by a verifier implementing "
+            f"{OTHER_PROFILE} and {PROFILE}. The signature verifies over the A7 members, the input of "
+            f"{OTHER_PROFILE}: refusal_signature PASS, every property PASS and NOT_FOUND. That input "
+            "excludes policy_digest, so the member binds nothing: a verifier never reports it as the "
+            "responder's.",
+            ["§3.3 step 2", "§6.3", "§8.1 no_such_subject", "P-69"],
+            refusal(req_v9, "no_such_subject", at, carried_policy=POLICY_DIGEST), ref_props(),
+            "refusal-no_such_subject", req=req_v9, vpolicy=both),
+        refusal_case(
+            "refusal-unimplemented-identifier-policy-digest-signed",
+            f"A request for evidence-interop/9 answered by a refusal signed with the {PROFILE} input over a "
+            f"policy_digest, checked by a verifier implementing {OTHER_PROFILE} and {PROFILE}. The signature "
+            f"verifies over the input of {PROFILE}, whose rules the refusal meets: every property PASS; NOT_FOUND.",
+            ["§3.3 step 2", "§6.3", "§8.1 no_such_subject", "P-69"],
+            refusal(req_v9, "no_such_subject", at, signed_policy=POLICY_DIGEST), ref_props(),
+            "refusal-no_such_subject", req=req_v9, vpolicy=both),
+        refusal_case(
+            "refusal-unimplemented-identifier-policy-digest-not-a-digest",
+            f"The same, signed over an uppercase policy_digest. The signature verifies only over the input of "
+            f"{PROFILE}, which brings its rule that a signed policy_digest is a digest (§5.2): "
+            "refusal_signature FAIL; UNKNOWN.",
+            ["§3.3 step 2", "§5.2", "§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-69"],
+            refusal(req_v9, "no_such_subject", at, signed_policy=POLICY_DIGEST.upper()),
+            ref_props(refusal_signature="FAIL"), "refusal-failed", req=req_v9, vpolicy=both),
         refusal_case(
             "refusal-policy-digest-checked-by-v1-verifier",
             f"The signed refusal of refusal-policy-digest-signed, checked by a verifier that implements "

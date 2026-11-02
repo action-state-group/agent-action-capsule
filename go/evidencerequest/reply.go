@@ -128,17 +128,16 @@ func (r Refusal) VerifyUnder(profile string) error {
 	if refusalPolicyDigestMalformed(value, profile, Profiles) {
 		return fmt.Errorf("%w: policy_digest is signed under %s and is not a digest", ErrInvalid, ProfileIDv2)
 	}
-	err = fmt.Errorf("%w: signature does not verify", ErrInvalid)
-	for _, members := range refusalSigningInputs(value, profile, Profiles) {
-		body, encErr := EncodeJCS(members)
-		if encErr != nil {
-			return encErr
-		}
-		if err = VerifySignature(r.KeyID, body, sig); err == nil {
-			return nil
-		}
+	verified, wellFormed := refusalSignatureHolds(value, profile, Profiles, func(body []byte) bool {
+		return VerifySignature(r.KeyID, body, sig) == nil
+	})
+	switch {
+	case !verified:
+		return fmt.Errorf("%w: signature does not verify", ErrInvalid)
+	case !wellFormed:
+		return fmt.Errorf("%w: policy_digest is signed and is not a digest", ErrInvalid)
 	}
-	return err
+	return nil
 }
 
 // VerifyFor authenticates the refusal as the answer of the responder whose
@@ -444,6 +443,11 @@ func readRefusal(fields map[string]any) (Refusal, error) {
 	if err != nil {
 		return Refusal{}, err
 	}
+	// "" is the field's absent value, so an empty policy_digest would vanish
+	// from Value and a member added after signing would verify.
+	if p, present := fields["policy_digest"]; present && p == "" {
+		return Refusal{}, fmt.Errorf("%w: policy_digest is empty", ErrInvalid)
+	}
 	return Refusal{RequestDigest: text["request_digest"], Reason: text["reason"], IssuedAt: text["issued_at"], KeyID: text["key_id"], Sig: text["sig"],
 		Detail: text["detail"], PolicyDigest: text["policy_digest"]}, nil
 }
@@ -565,19 +569,17 @@ func CheckRefusalUnder(m Message, profile string) RefusalCheck {
 	keyID, keyOK := text("key_id")
 	sigText, sigOK := text("sig")
 	sig, sigErr := hex.DecodeString(sigText)
+	wellFormed := false
 	if keyOK && sigOK && sigErr == nil && len(sig) == ed25519.SignatureSize && hex.EncodeToString(sig) == sigText {
-		for _, signed := range refusalSigningInputs(fields, profile, Profiles) {
-			if body, err := EncodeJCS(signed); err == nil && VerifySignature(keyID, body, sig) == nil {
-				check.SignatureValid = true
-			}
-		}
+		check.SignatureValid, wellFormed = refusalSignatureHolds(fields, profile, Profiles, func(body []byte) bool {
+			return VerifySignature(keyID, body, sig) == nil
+		})
 	}
 	reason, _ := text("reason")
 	check.ReasonRegistered = slices.Contains(RefusalReasons, reason)
 	digest, _ := text("request_digest")
 	issuedAt, _ := text("issued_at")
 	_, timeOK := ParseRequestTime(issuedAt)
-	check.Conformant = check.SignatureValid && check.ReasonRegistered && IsDigest(digest) && timeOK &&
-		!refusalPolicyDigestMalformed(fields, profile, Profiles)
+	check.Conformant = wellFormed && check.ReasonRegistered && IsDigest(digest) && timeOK
 	return check
 }

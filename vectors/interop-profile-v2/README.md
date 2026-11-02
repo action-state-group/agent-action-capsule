@@ -26,7 +26,7 @@ here unchanged.
   `evidence-interop/1`, and `unsupported-version-unimplemented` sends `evidence-interop/1` to a
   verifier implementing only `evidence-interop/2`. `capacity-exceeded-under-v0` is checked by a
   verifier that implements `evidence-interop/0` as well.
-- Ten cases are new, on the refusal's `policy_digest` (§6.3, P-69). The policy digests are
+- Thirteen cases are new, on the refusal's `policy_digest` (§6.3, P-69). The policy digests are
   `SHA-256("evidence-interop/2 vectors: responder policy file")` and
   `SHA-256("evidence-interop/2 vectors: another policy file")`.
   - `refusal-policy-digest-signed`: present and signed, every property `PASS`;
@@ -42,6 +42,12 @@ here unchanged.
     `PASS`;
   - `refusal-under-v1-policy-digest-unbound`: the same with a `policy_digest` outside the
     signature, every property `PASS`; the member binds nothing;
+  - `refusal-unimplemented-identifier-policy-digest-unbound`: a request for `evidence-interop/9`
+    answered by an A7 refusal with a `policy_digest` outside the signature, every property `PASS`;
+    the signature verified over an input that excludes the member, so it binds nothing;
+  - `refusal-unimplemented-identifier-policy-digest-signed` and `-not-a-digest`: the same request
+    answered with the v2 signing input over a digest (`PASS`) and over uppercase hex
+    (`refusal_signature` `FAIL`, the v2 rule applying to the input that verified);
   - `refusal-under-v1-policy-digest-signed`: a request for `evidence-interop/1` answered with the
     v2 signing input, `refusal_signature` `FAIL`;
   - `refusal-policy-digest-checked-by-v1-verifier`: the signed refusal checked by a verifier that

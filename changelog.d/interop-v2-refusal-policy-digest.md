@@ -4,10 +4,11 @@
   signature covers it when present (§6.3, P-69). Without one the signing input is the ERV A7
   bytes. A refusal is checked under the identifier its request asks for, so `evidence-interop/0`
   and `/1` refusals, and every `/1` verifier, are unchanged: a `policy_digest` beside an A7 refusal
-  binds nothing. 72 vectors in `vectors/interop-profile-v2/` (ten new: signed, absent, tampered,
+  binds nothing. 75 vectors in `vectors/interop-profile-v2/` (thirteen new: signed, absent, tampered,
   stripped, unsigned and malformed `policy_digest`, a `/1` refusal that still verifies, with and
   without an unsigned `policy_digest`, the v2 signing input answering a `/1` request, and a signed
-  `policy_digest` checked by a `/1`-only verifier) and 2 in
+  `policy_digest` checked by a `/1`-only verifier, and, under an identifier the verifier does not
+  implement, an unbound, a signed and a malformed signed `policy_digest`) and 2 in
   `vectors/interop-profile-v2-requirement-facts/`.
 - Python: the interop verifier implements `evidence-interop/2` (`PROFILE_V2`); `sign_refusal` takes
   `policy_digest` and `profile`, and `check_refusal`, `check_refusal_cbor`,

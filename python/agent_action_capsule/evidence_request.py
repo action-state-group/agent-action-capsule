@@ -1109,10 +1109,11 @@ def parse_reply(octets: bytes, binding: str = "json") -> Envelope | Refusal:
     if is_envelope and is_refusal:
         raise VerificationError("reply carries both artifact_digest and reason")
     if is_refusal:
-        text = _text_members(fields, ("request_digest", "reason", "issued_at", "key_id", "sig"), ("detail",))
-        # Read as carried: whether policy_digest is signed, and so must be a digest, depends on the
-        # request (v2 §6.3), so check_refusal and verify_refusal_offline judge it, not parsing.
-        return Refusal(**text, policy_digest=fields.get("policy_digest"))
+        # policy_digest is read as carried text: whether it is signed, and so must be a digest,
+        # depends on the request (v2 §6.3), so check_refusal and verify_refusal_offline judge it.
+        text = _text_members(fields, ("request_digest", "reason", "issued_at", "key_id", "sig"),
+                             ("detail", "policy_digest"))
+        return Refusal(**text)
     if is_envelope:
         return _read_envelope(fields, binding)
     raise VerificationError("reply is neither an envelope nor a refusal; a transport condition")
@@ -1257,12 +1258,18 @@ def _signing_body(members: Mapping[str, Any], profile: str | None = None) -> byt
     return jcs({k: members[k] for k in refusal_signed_members(profile) if k in members})
 
 
-def _signature_verifies(members: Mapping[str, Any], profile: str | None) -> bool:
-    """v2 §6.3: the signing input of ``profile``; for an identifier not in :data:`PROFILES`, that
-    of any identifier implemented, so the signature passes when either input verifies."""
+def _signature_holds(members: Mapping[str, Any], profile: str | None) -> tuple[bool, bool]:
+    """v2 §6.3: whether the signature verifies over the signing input of ``profile`` (for an
+    identifier not in :data:`PROFILES`, of any identifier implemented), and whether it verifies
+    over one whose rules the refusal meets, so a ``policy_digest`` that input signs is a digest."""
     rules = [profile] if profile is None or profile in PROFILES else [None, PROFILE_V2]
-    return any(_ed25519_verifies(members.get("key_id"), members.get("sig"), _signing_body(members, p))
-               for p in rules)
+    verified = well_formed = False
+    for p in rules:
+        if _ed25519_verifies(members.get("key_id"), members.get("sig"), _signing_body(members, p)):
+            verified = True
+            well_formed = well_formed or "policy_digest" not in refusal_signed_members(p) \
+                or "policy_digest" not in members or is_digest(members["policy_digest"])
+    return verified, well_formed
 
 
 @dataclass(frozen=True)
@@ -1282,7 +1289,7 @@ class Refusal:
     key_id: str
     sig: str
     detail: str | None = None
-    policy_digest: Any = None
+    policy_digest: str | None = None
 
     def signing_body(self, profile: str | None = None) -> bytes:
         """The bytes the signature covers: RFC 8785 of ``issued_at``,
@@ -1377,7 +1384,7 @@ def verify_refusal_offline(refusal: Refusal, *, profile: str | None = None) -> b
     :class:`ImportError` rather than report a refusal as unsigned.
     """
     try:
-        return _signature_verifies(refusal.to_dict(), profile)
+        return _signature_holds(refusal.to_dict(), profile)[1]
     except (TypeError, ValueError, RecursionError):  # members that have no RFC 8785 form
         return False
 
@@ -1407,15 +1414,13 @@ def check_refusal(obj: Any, *, profile: str | None = None) -> RefusalCheck:
     if not isinstance(obj, Mapping):
         return RefusalCheck(False, False, False)
     try:
-        signature_valid = _signature_verifies(obj, profile)
+        signature_valid, signed_well_formed = _signature_holds(obj, profile)
     except (TypeError, ValueError, RecursionError):
-        signature_valid = False
+        signature_valid = signed_well_formed = False
     reason = obj.get("reason")
     reason_registered = isinstance(reason, str) and reason in REFUSAL_REASONS
     well_formed = is_digest(obj.get("request_digest")) and parse_utc(obj.get("issued_at")) is not None
-    if profile == PROFILE_V2 and "policy_digest" in obj:
-        well_formed = well_formed and is_digest(obj["policy_digest"])
-    return RefusalCheck(signature_valid, reason_registered, signature_valid and reason_registered and well_formed)
+    return RefusalCheck(signature_valid, reason_registered, signed_well_formed and reason_registered and well_formed)
 
 
 def check_refusal_cbor(frame: bytes, *, profile: str | None = None) -> RefusalCheck:
