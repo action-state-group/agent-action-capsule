@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New `inference-history` feature and `inference_history` module (action-state-group/agent-action-capsule#558): derives and checks the Standard level of `inference-service-history/0` (`spec/inference-service-history-profile-v0.md`) under any Standard definition: `Definition::from_document` (ISH §8.3 `definition_form`), `period_counts`, `artifact` and `check_artifact` (`period_alignment`, `period_anchor`, `period_floor`, the coverage declaration, `history_card_digest`). Passes the Standard cases of `vectors/inference-service-history-v0` and `-interop-v1`. No wire or normative change; additive.
+
 ## 0.8.0 — 2026-10-31
 
 Tag `crates/agent-action-capsule-v0.8.0`.
