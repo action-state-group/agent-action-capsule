@@ -250,7 +250,7 @@ key `ask.nostr.mailbox_key`, as
 [`evidence-commitment-carriers-v0.md`](evidence-commitment-carriers-v0.md) §3 names them. A
 requester reads both only from a commitment that passes its V0 to V4 under a responder key the
 requester's trust policy accepts for the responder it means to ask (its §3, "Which route to use"),
-and from no other source (N-4).
+or from another source it trusts to speak for the responder's route (§3) (N-4).
 
 A relay URL in an example (`wss://relay.example`) is an example of an entry in that list. It is
 not a relay this binding names.

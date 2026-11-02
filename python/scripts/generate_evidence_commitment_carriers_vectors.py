@@ -39,7 +39,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "adapters" / "evidence-commitment-carriers"
 SET = "aac-evidence-commitment-carriers-v0"
 BINDING = "spec/bindings/evidence-commitment-carriers-v0.md"
-STATUS = ("EXPERIMENTAL. Vectors for a carrier binding that is not part of evidence-interop/0 and "
+STATUS = ("EXPERIMENTAL. Vectors for a carrier binding that is not part of evidence-interop/1 and "
           "names no binding token. Every key is a test key derived from a public label; never use one "
           "for anything else.")
 
@@ -53,6 +53,7 @@ def _load(name: str):
 
 ip = _load("generate_interop_profile_v0_vectors")
 nm = _load("generate_nostr_mailbox_vectors")
+ip.use_profile(1)  # the binding pins evidence-interop/1 (binding Status)
 
 # §5.3: a placeholder in NIP-01's addressable range, absent from the kind list at the pinned commit (C-1).
 ANNOUNCE_KIND = 34700
@@ -188,7 +189,7 @@ def a2a(uri: str, digest: str, *, pointer_in_discovery_object: bool = False) -> 
     """§5.2: the evidence-request entry of IP §11.4.4 and, apart from it, the commitment entry."""
     params = {"commitment_digest": digest, "commitment_uri": uri}
     er_params = dict(ip.manifest(), **params) if pointer_in_discovery_object else ip.manifest()
-    er = {"description": "Answers evidence requests under evidence-interop/0", "params": er_params,
+    er = {"description": "Answers evidence requests under evidence-interop/1", "params": er_params,
           "required": False, "uri": ip.EXT_URI}
     ce = {"description": "Points to this agent's signed evidence commitment; verify the commitment, not this entry",
           "params": params, "required": False, "uri": COMMITMENT_EXT_URI}
@@ -387,6 +388,51 @@ def build_cases() -> list[dict]:
           "commitments": [verified(future, "future_dated"), verified(CUR, "current")]},
          uris=served(**{URI_CUR: future}))
 
+    with_size = directory(URI_CUR, sha_tag(CUR))
+    with_size["record"]["trustManifest"]["attestations"][0]["size"] = len(CUR)
+    case("directory-entry-with-size",
+         "a directory entry with a size member, which §5.1 forbids as a count: directory_entry, not read",
+         ["§5.1", "§6 V0"],
+         [with_size],
+         {"carriers": [carrier_result("directory", None, check="directory_entry")], "commitments": []},
+         uris=served(**{URI_CUR: CUR}))
+
+    required_entry = a2a(URI_CUR, sha_tag(CUR))
+    required_entry["card"]["capabilities"]["extensions"][1]["required"] = True
+    case("a2a-entry-required",
+         "a commitment extension entry with required set: a2a_entry, not read",
+         ["§5.2", "§6 V0"],
+         [required_entry],
+         {"carriers": [carrier_result("a2a", None, check="a2a_entry")], "commitments": []},
+         uris=served(**{URI_CUR: CUR}))
+
+    other_profile = octets_of(dict(C_CURRENT, profile="evidence-commitment/9"))
+    case("unknown-commitment-profile",
+         "octets whose profile is not one of §3's: commitment_form, refused before any signature check",
+         ["§3", "§6 V2"],
+         [directory(URI_CUR, sha_tag(other_profile))],
+         {"carriers": [carrier_result("directory", other_profile)],
+          "commitments": [refused(other_profile, "commitment_form")]},
+         uris=served(**{URI_CUR: other_profile}))
+
+    at_limit = octets_of(commitment("2026-10-03T12:11:00Z", [("book-a", LATER)]))
+    case("issued-at-at-skew-limit",
+         "a valid commitment dated exactly at the verifier's read time plus skew, beside an older one: not future_dated, current",
+         ["§6 V4"],
+         [directory(URI_CUR, sha_tag(at_limit)), {"carrier": "nostr", "event": ev_cur}],
+         {"carriers": [carrier_result("directory", at_limit), carrier_result("nostr", CUR, attribution="announced")],
+          "commitments": [verified(at_limit, "current"), verified(CUR, "superseded")]},
+         uris=served(**{URI_CUR: at_limit}))
+
+    past_limit = octets_of(commitment("2026-10-03T12:11:01Z", [("book-a", LATER)]))
+    case("issued-at-past-skew-limit",
+         "a valid commitment dated one second past the read time plus skew, beside an older one: future_dated",
+         ["§6 V4"],
+         [directory(URI_CUR, sha_tag(past_limit)), {"carrier": "nostr", "event": ev_cur}],
+         {"carriers": [carrier_result("directory", past_limit), carrier_result("nostr", CUR, attribution="announced")],
+          "commitments": [verified(past_limit, "future_dated"), verified(CUR, "current")]},
+         uris=served(**{URI_CUR: past_limit}))
+
     case("a2a-commitment-in-discovery-object",
          "the commitment pointer in the evidence-request entry's params: discovery_object, not read",
          ["§5.2", "§6 V0"],
@@ -429,7 +475,7 @@ def build() -> dict[str, bytes]:
                      "read_at": SENT, "clock_skew": "PT5M"},
         "test_keys": {
             "note": "TEST-ONLY. Ed25519 secret keys are SHA-256(label); responder and impostor are the "
-                    "interop-profile-v0 corpus's keys. Nostr secret keys are SHA-256(label) as a big-endian "
+                    "interop-profile-v1 corpus's keys. Nostr secret keys are SHA-256(label) as a big-endian "
                     "integer, reduced mod (n-1), plus 1; aux_rand is 32 zero bytes.",
             "ed25519": {n: ED_PUB[n] for n in sorted(ED_PUB)},
             "nostr": {n: {"label": NOSTR_LABELS[n], "public": NOSTR_PUB[n]} for n in NOSTR_LABELS},

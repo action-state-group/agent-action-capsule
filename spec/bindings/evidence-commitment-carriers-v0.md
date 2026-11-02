@@ -2,8 +2,8 @@
 
 **Status.** EXPERIMENTAL. Informational carrier binding, kept in this repository. It is not an
 Internet-Draft, it is not part of any Internet-Draft revision, and it changes no posted draft. It
-is not part of the Minimum Evidence Interoperability Profile `evidence-interop/0`
-([`interop-profile-v0.md`](../interop-profile-v0.md), cited here as IP) and defines no binding
+is not part of the Minimum Evidence Interoperability Profile `evidence-interop/1`
+([`interop-profile-v1.md`](../interop-profile-v1.md), cited here as IP) and defines no binding
 token. It builds on the experimental Nostr mailbox carriage
 ([`nostr-mailbox-v0.md`](nostr-mailbox-v0.md), cited here as NMB). Its vectors are in
 `vectors/adapters/evidence-commitment-carriers/` (§10).
@@ -11,16 +11,17 @@ token. It builds on the experimental Nostr mailbox carriage
 **Answer in one paragraph.** A responder that answers evidence requests can say so to strangers
 by publishing one signed **evidence commitment**: how to ask it, what it answers, its signed
 disclosure-policy digest, how long an asker should wait, its latest checkpoint and one stapled
-history card per evidence stream. It carries no counts. This document puts the same commitment
-octets on three carriers: an attestation entry in a directory record (an ARD file, a NANDA Index
-or AI Catalog record), an extension entry in an A2A Agent Card, and an addressable Nostr event.
+history card per evidence stream. It carries no counts of its own: the only numbers in it are the
+`log_size` of a log inside the checkpoint and cards it staples, signed artifacts carried whole. This document puts the same commitment
+octets on three carriers: an attestation entry in a directory record (an ARD file or a NANDA Index
+record), an extension entry in an A2A Agent Card, and an addressable Nostr event.
 The carriers differ only in how a stranger finds them. A verifier ignores everything a carrier
 says except where the octets are. It verifies the commitment's own signature, its staples and its
 `issued_at`, relies on it for a responder only when that responder's signed answers are under the
 commitment's key, and hands the stapled history cards to the asker's admission pack, which judges
 them as it judges any history. Finding a commitment confers no trust.
 
-ER is `draft-mih-agent-evidence-request-00` (`spec/draft-mih-agent-evidence-request-00.md`).
+ER is `draft-mih-agent-evidence-request-02` (`spec/draft-mih-agent-evidence-request-02.md`).
 Section numbers are those of its rendered `.txt`.
 
 ## 1. What this is, and what it is not
@@ -115,7 +116,7 @@ fact, never a reason to reject octets that verify (V1).
 
 ### 5.1 Directory record: the attestation entry
 
-An ARD entry (in `/.well-known/ard.json`) or a NANDA Index or AI Catalog record carries one entry
+An ARD entry (in `/.well-known/ard.json`) or or a NANDA Index record carries one entry
 in `trustManifest.attestations[]` (`trust_manifest.attestations[]` in an index record):
 
 | Member | Value |
@@ -212,8 +213,9 @@ that fails names the result.
 - **V3, staples.** `checkpoint.sha256` and every card's `sha256` are the SHA-256 of their decoded
   `bytes`. Failure: `staple_digest`. This document reads the top-level `checkpoint` for nothing
   else.
-- **V4, newest wins.** A commitment whose `issued_at` is later than the verifier's time plus the
-  clock skew it configures is **future_dated** and takes no part in this step, so a commitment
+- **V4, newest wins.** A commitment whose `issued_at` is later than the time at which the verifier
+  read the carriers plus the clock skew it configures is **future_dated** (one dated exactly at that
+  time plus skew is not) and takes no part in this step, so a commitment
   signed with a wrong clock cannot supersede every later one. Among the other commitments that
   pass V2 and V3 with the same `key_id` and `node_id`, the one with the latest `issued_at` is
   **current**; the others are **superseded**. Two with the same `issued_at` and different octets
@@ -303,6 +305,11 @@ every step and, once V5 binds the commitment, the cards V6 hands on.
 | `older-beside-newer` | two valid commitments under one key from two carriers: the later `issued_at` is current, the other superseded | §6 V4 |
 | `same-issued-at-conflict` | two valid commitments with one `issued_at` and different octets: conflicting, none current | §6 V4 |
 | `future-dated-issued-at` | a valid commitment dated past the verifier's time and clock skew, beside the current one: `future_dated` | §6 V4 |
+| `directory-entry-with-size` | a directory entry with a `size` member: `directory_entry`, not read | §5.1, §6 V0 |
+| `a2a-entry-required` | a commitment extension entry with `required` set: `a2a_entry`, not read | §5.2, §6 V0 |
+| `unknown-commitment-profile` | octets whose `profile` is not one of §3's: `commitment_form`, refused | §3, §6 V2 |
+| `issued-at-at-skew-limit` | a valid commitment dated exactly at the read time plus skew: not `future_dated`, current | §6 V4 |
+| `issued-at-past-skew-limit` | a valid commitment dated one second past the read time plus skew: `future_dated` | §6 V4 |
 | `a2a-commitment-in-discovery-object` | the commitment pointer in the evidence-request entry's `params`: `discovery_object`, not read | §5.2, §6 V0 |
 | `nostr-event-bad-signature` | an announce event whose signature does not verify: `nostr_event`, not read | §6 V0 |
 
@@ -321,7 +328,10 @@ only hands the cards on, so it has no result of its own to test.
   request for the responder's current commitment over the mailbox or A2A is not defined:
   re-reading the carriers serves the size fallback except for C-2.
 - **C-4. The extension URI.** The A2A entry's URI names this document. If the text moves into an
-  Internet-Draft, the URI moves with it, as IP's extension URI names its draft [IP §11.4.4].
+  Internet-Draft, the URI moves with it, as IP's extension URI names its draft [IP §11.4.4]. An
+  Agent Card that still lists the old URI is not read as a commitment entry, so a responder
+  re-publishes its card with the new URI when the URI moves. No stable identifier is proposed:
+  this URI names the text, and a name that outlived the text would be a registry (C-5).
 - **C-5. A directory type URI.** The directory entry's `type` is the profile string. A URL type is
   not proposed; no registry is.
 
@@ -332,8 +342,8 @@ only hands the cards on, so it has no result of its own to test.
 
 ## References
 
-- ER: `draft-mih-agent-evidence-request-00`, `spec/draft-mih-agent-evidence-request-00.md`.
-- IP: Minimum Evidence Interoperability Profile v0, `spec/interop-profile-v0.md`.
+- ER: `draft-mih-agent-evidence-request-02`, `spec/draft-mih-agent-evidence-request-02.md`.
+- IP: Minimum Evidence Interoperability Profile v1, `evidence-interop/1`, `spec/interop-profile-v1.md`.
 - NMB: Nostr Mailbox Carriage v0, `spec/bindings/nostr-mailbox-v0.md`.
 - ARD v0.91, NANDA Index v2, A2A v1.0.1, NIP-01, NIP-19, NIP-21, NIP-24, NIP-65, NIP-94, BIP-340
   (informative): §2.

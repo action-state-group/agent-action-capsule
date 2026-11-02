@@ -81,7 +81,7 @@ _SHA_TAG = re.compile(r"sha256:[0-9a-f]{64}")
 # Every check a mutant test may switch off.
 ALL_CHECKS = frozenset({"discovery_object", "nostr_event", "key_id_spki", "commitment_signature",
                         "staple_digest", "future", "newest", "conflict", "key_binding",
-                        "handoff_gate"})
+                        "handoff_gate", "directory_entry", "a2a_entry", "commitment_form"})
 
 # ---------------------------------------------------------------------------
 # V0 and V1: carrier forms, and where the octets are
@@ -141,7 +141,8 @@ def read_carrier(entry: dict, case: dict, checks: frozenset) -> dict:
     kind = entry["carrier"]
     if kind == "directory":
         (att,) = entry["record"]["trustManifest"]["attestations"]
-        if (set(att) != {"type", "uri", "mediaType", "digest", "description"} or att["type"] not in PROFILES
+        if "directory_entry" in checks and (
+                set(att) != {"type", "uri", "mediaType", "digest", "description"} or att["type"] not in PROFILES
                 or att["mediaType"] != "application/json" or not _SHA_TAG.fullmatch(att["digest"])):
             return {"carrier": kind, "check": "directory_entry"}
         data, ev = fetch(att["uri"], case, checks)
@@ -152,7 +153,8 @@ def read_carrier(entry: dict, case: dict, checks: frozenset) -> dict:
         if "discovery_object" in checks and any({"commitment_uri", "commitment_digest"} & set(e["params"]) for e in er):
             return {"carrier": kind, "check": "discovery_object"}
         ce = [e for e in exts if e["uri"] == EXT_URI]
-        if (len(ce) != 1 or ce[0]["required"] is not False
+        if "a2a_entry" in checks and (
+                len(ce) != 1 or ce[0]["required"] is not False
                 or set(ce[0]["params"]) != {"commitment_uri", "commitment_digest"}
                 or not _SHA_TAG.fullmatch(ce[0]["params"]["commitment_digest"])):
             return {"carrier": kind, "check": "a2a_entry"}
@@ -179,7 +181,8 @@ def verify_commitment(data: bytes, checks: frozenset) -> tuple[str, dict | None]
         c = json.loads(data)
     except ValueError:
         return "commitment_form", None
-    if not isinstance(c, dict) or c.get("profile") not in PROFILES or not isinstance(c.get("sig"), dict):
+    if "commitment_form" in checks and (
+            not isinstance(c, dict) or c.get("profile") not in PROFILES or not isinstance(c.get("sig"), dict)):
         return "commitment_form", None
     key = load_der_public_key(base64.b64decode(c["spki"]))
     if not isinstance(key, Ed25519PublicKey):
@@ -409,11 +412,15 @@ def test_commitments_carry_no_count():
     ("key_binding", "answer-key-mismatch"),
     ("handoff_gate", "answer-key-mismatch"),
     ("future", "future-dated-issued-at"),
+    ("future", "issued-at-past-skew-limit"),
+    ("directory_entry", "directory-entry-with-size"),
+    ("a2a_entry", "a2a-entry-required"),
+    ("commitment_form", "unknown-commitment-profile"),
 ])
 def test_mutant_check_removed(check, case_id):
     (case,) = [c for c in CASES if c["id"] == case_id]
     try:
         disagrees = run_case(case, ALL_CHECKS - {check}) != case["expected"]
-    except AssertionError:
+    except (AssertionError, KeyError, TypeError):
         disagrees = True
     assert disagrees, f"removing {check} leaves {case_id} unchanged"

@@ -48,7 +48,7 @@ has not yet.
   depth, which it used to accept. New vectors `vectors/cbor-request-model/` (18 cases).
 - Spec, experimental: `spec/bindings/evidence-commitment-carriers-v0.md`, one signed evidence
   commitment over three carriers: an attestation entry in a directory record's trust manifest (ARD,
-  NANDA Index, AI Catalog), an A2A Agent Card extension entry, and an addressable Nostr announce
+  NANDA Index), an A2A Agent Card extension entry, and an addressable Nostr announce
   event (placeholder kind 34700). The verifier trusts only the commitment's own signature, staples
   and `issued_at`, binds it to a responder only through that responder's signed answers, and hands
   the stapled history cards to the asker's admission pack, which judges them; the binding adds no
