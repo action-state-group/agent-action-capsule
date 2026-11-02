@@ -588,6 +588,7 @@ pub fn check_artifact(
     if keys != KEYS || art.get("declared") != Some(&json!(DECLARED)) {
         return Err("the artifact's members are not the ones the definition declares".into());
     }
+    let anchor_cut = chain.last().ok_or("the card lists no checkpoint")?;
     if art.get("derivation") != Some(&json!(def.digest)) {
         return Err("definition_binding: the artifact names another derivation".into());
     }
@@ -609,19 +610,11 @@ pub fn check_artifact(
         return Err("the card is not for this History's subject, stream and anchor".into());
     }
     if art.get("coverage_declaration")
-        != Some(&coverage_declaration(
-            anchor,
-            stream,
-            chain[chain.len() - 1].leaves,
-        ))
+        != Some(&coverage_declaration(anchor, stream, anchor_cut.leaves))
     {
         return Err("the coverage declaration is not the Standard one at this anchor".into());
     }
-    let anchor_time = chain
-        .last()
-        .ok_or("the card lists no checkpoint")?
-        .timestamp;
-    if !def.policy.is_boundary(anchor_time) {
+    if !def.policy.is_boundary(anchor_cut.timestamp) {
         return Err("period_anchor: the anchor's time is not a period boundary".into());
     }
     check_counts(def, &art[COUNTS], chain)
