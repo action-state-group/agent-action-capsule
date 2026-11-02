@@ -299,7 +299,7 @@ func historyProperties(pins Pins, d any, env map[string]any) map[string]string {
 	form := definitionForm(d)
 	props := map[string]string{
 		"definition_form":    status(form),
-		"definition_binding": status(equal(env["derivation"], digest(d))),
+		"definition_binding": status(digestIs(env["derivation"], d)),
 	}
 	if !form {
 		return props
@@ -484,7 +484,7 @@ func artifactForm(d any, env map[string]any) bool {
 func cardContent(pins Pins, env map[string]any) bool {
 	a, _ := env["artifact"].(map[string]any)
 	c, ok := a["history_card"].(map[string]any)
-	if !ok || !equal(a["history_card_digest"], digest(c)) || !equal(c["anchor"], a["anchor"]) || c["derivation"] != "history_card/1" {
+	if !ok || !digestIs(a["history_card_digest"], c) || !equal(c["anchor"], a["anchor"]) || c["derivation"] != "history_card/1" {
 		return false
 	}
 	history, ok := c["history"].([]any)
@@ -516,14 +516,14 @@ func cardContent(pins Pins, env map[string]any) bool {
 		}
 		for _, rr := range receipts {
 			r, ok := rr.(map[string]any)
-			if !ok || !equal(r["checkpoint"], digest(cp)) || !signedOK(r, "witness") {
+			if !ok || !digestIs(r["checkpoint"], cp) || !signedOK(r, "witness") {
 				return false
 			}
 		}
 		prev = cp
 	}
 	last, _ := history[len(history)-1].(map[string]any)
-	return equal(digest(last["checkpoint"]), a["anchor"])
+	return digestIs(a["anchor"], last["checkpoint"])
 }
 
 func witnessShown(pins Pins, env map[string]any) WitnessShown {
@@ -675,7 +675,7 @@ func labelsOK(pins Pins, env map[string]any) bool {
 func periodsOK(d any, env map[string]any) bool {
 	p := get(d, "period_policy")
 	pc, ok := get(env["artifact"], "period_counts").(map[string]any)
-	if !ok || !equal(pc["policy"], digest(p)) {
+	if !ok || !digestIs(pc["policy"], p) {
 		return false
 	}
 	epoch, ok1 := when(get(p, "epoch"))
@@ -963,16 +963,11 @@ func jcs(v any) []byte {
 	return out
 }
 
-// unencodable is the digest of a value JCS cannot encode: never a SHA-256
-// hex, so no member equals it.
-const unencodable = "unencodable"
-
-func digest(v any) string {
+// digestIs is whether x is the digest of v. A value JCS cannot encode has no
+// digest, so nothing is its digest.
+func digestIs(x, v any) bool {
 	body := jcs(v)
-	if body == nil {
-		return unencodable
-	}
-	return evidencerequest.Digest(body)
+	return body != nil && equal(x, evidencerequest.Digest(body))
 }
 
 func equal(a, b any) bool {

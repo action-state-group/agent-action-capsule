@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func dig(v any) string { return evidencerequest.Digest(jcs(v)) }
+
 func envWith(pc any, history ...any) map[string]any {
 	return map[string]any{"artifact": map[string]any{"period_counts": pc,
 		"history_card": map[string]any{"history": history}}}
@@ -38,7 +40,7 @@ func TestMalformedPeriodCountsFailClosed(t *testing.T) {
 		"cells not list":  {map[string]any{"from": "2026-10-01T00:00:00Z", "to": "2026-10-02T00:00:00Z", "cells": uint64(7)}},
 		"cell not object": {period("2026-10-01T00:00:00Z", "2026-10-02T00:00:00Z", "x")},
 	} {
-		env := envWith(map[string]any{"policy": digest(policy()), "periods": periods},
+		env := envWith(map[string]any{"policy": dig(policy()), "periods": periods},
 			checkpoint("2026-10-02T00:00:00Z", 3))
 		_, wellFormed := cells(env)
 		assert.False(t, wellFormed, name)
@@ -51,7 +53,7 @@ func TestMalformedPeriodCountsFailClosed(t *testing.T) {
 func TestPeriodStartAtABoundaryAndEmptyStream(t *testing.T) {
 	d := map[string]any{"period_policy": policy()}
 	pc := func(periods ...any) any {
-		return map[string]any{"policy": digest(policy()), "periods": append([]any{}, periods...)}
+		return map[string]any{"policy": dig(policy()), "periods": append([]any{}, periods...)}
 	}
 	// An empty stream (no checkpoint commits a record) has no periods.
 	assert.True(t, periodsOK(d, envWith(pc(), checkpoint("2026-10-02T00:00:00Z", 0))))
@@ -71,7 +73,7 @@ func TestPeriodStartAtABoundaryAndEmptyStream(t *testing.T) {
 func TestPeriodLengthOverflowFailsClosed(t *testing.T) {
 	p := map[string]any{"epoch": "2026-10-01T00:00:00Z", "length_s": uint64(1 << 40), "floor": uint64(1)}
 	d := map[string]any{"period_policy": p}
-	env := envWith(map[string]any{"policy": digest(p), "periods": []any{}}, checkpoint("2026-10-02T00:00:00Z", 0))
+	env := envWith(map[string]any{"policy": dig(p), "periods": []any{}}, checkpoint("2026-10-02T00:00:00Z", 0))
 	assert.False(t, periodsOK(d, env))
 	assert.False(t, anchorOK(d, env))
 }
@@ -90,7 +92,12 @@ func TestPeriodFixedAtOneAnchor(t *testing.T) {
 	assert.Equal(t, evidencerequest.StatusFail, periodFixed([]map[string]any{a, dropped}))
 }
 
-func TestUnencodableDefinitionIsNotBound(t *testing.T) {
-	// A float has no JCS form, so its digest is never a SHA-256 hex.
-	assert.Equal(t, unencodable, digest(map[string]any{"x": 0.5}))
+func TestUnencodableValueHasNoDigest(t *testing.T) {
+	// A float has no JCS form: nothing, not even a producer-chosen
+	// "unencodable" or an empty string, is its digest.
+	v := map[string]any{"x": 0.5}
+	for _, x := range []any{"unencodable", "", evidencerequest.Digest(nil)} {
+		assert.False(t, digestIs(x, v), x)
+	}
+	assert.True(t, digestIs(dig(policy()), policy()))
 }
