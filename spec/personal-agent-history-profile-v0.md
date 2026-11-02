@@ -518,8 +518,8 @@ does for any checkpoint.
 **The tick path check.** For each tick path, a verifier that runs the check reports one IP §7.1
 status. Steps run in order, and the first that yields a status decides:
 
-1. If SHA-256 of `anchor_tick` differs from the anchor every envelope names, or the path's
-   `evidence_stream` is not the `evidence_stream` of an Artifact of an envelope §6.1 accepted:
+1. If SHA-256 of `anchor_tick` differs from the one anchor every envelope §6.1 accepted names, or
+   the path's `evidence_stream` is not the `evidence_stream` of an Artifact of such an envelope:
    `FAIL`.
 2. Apply IP §6.2.1 steps 7 to 10 to the earlier tick, then to the anchor tick, with their
    statuses: the form, the algorithm, the relying party's policy for (`iss`, `sub`, `kid`), and
