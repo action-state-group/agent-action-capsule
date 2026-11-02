@@ -2639,7 +2639,9 @@ Rules:
   of the A2A `params` value and of the `evidence_manifest` result. The resource is static and
   carries no envelope [ER §10]. A responder that serves the HTTP binding and publishes a manifest
   MUST serve it at this path. Authentication, caller and request headers do not change the body
-  (previous rule). The path adds no member, token or outcome word to the manifest.
+  (previous rule). The path adds no member, token or outcome word to the manifest. The path belongs
+  to an origin [RFC 8615], so a responder serves it only when it is the one responder of the HTTP
+  binding at that origin; responders that share an origin do not use it.
 - `refusal_policy` `uniform` declares that the responder answers `policy_declined` wherever a more
   specific token would disclose what its policy protects [ER §4.2, §12]. `specific` declares
   that it does not. Under either value, load shedding is `capacity_exceeded` (§6.3). The
@@ -2917,7 +2919,10 @@ Two properties apply to manifests (§7.2). Neither enters the mapping of §8 [P-
 
 - `manifest_form`: the manifest has every member §11.4.2 marks as required, every value of the form
   given there, every array sorted with no duplicates, and `derivations` lists no identifier the
-  verifier knows is recipient-specific. A number, boolean or map anywhere in it is `FAIL`. A
+  verifier knows is recipient-specific. A number, boolean or map anywhere in it is `FAIL`. For the copy fetched over HTTP (§11.4.2) it is
+  also `FAIL` when the media type is not `application/json`, when the body does not parse as JSON
+  without duplicate member names, or when the body octets are not exactly the JCS serialization of
+  the value they parse to [P-45; P-69]. A
   member or token outside §11.4.2 is `FAIL` when the verifier implements every identifier in
   `profiles`, and `NOT_CHECKED` otherwise, since a later profile may define it [P-45].
 - `manifest_consistency`: two or more manifests from one responder, obtained over different
@@ -2961,6 +2966,7 @@ Each negative half changes one thing:
 | the MCP result has `isError` true and a valid `structuredContent.reply` | the reply, verified as in the positive case |
 | one A2A task carries two reply Artifacts, with distinct `artifactId`s, whose envelopes sign different artifact octets | each verified on its own; `caller_invariance` `FAIL`; §8.1 row 1 |
 | the A2A extension `params` adds a count member | `manifest_form` `FAIL`; `manifest_consistency` `FAIL` against the `evidence_manifest` result |
+| the body at `/.well-known/evidence-manifest` is the same manifest, pretty-printed instead of in JCS | `manifest_form` `FAIL` for that copy and `PASS` for the others; `manifest_consistency` `PASS`, since the values are equal |
 | the body at `/.well-known/evidence-manifest` is a different manifest (here another `subject_forms`) from the A2A `params` and the `evidence_manifest` result | `manifest_form` `PASS` for each copy; `manifest_consistency` `FAIL` |
 
 #### 11.4.9 Not filled in this revision
@@ -3410,7 +3416,8 @@ it defers, P-68 the strict Ed25519 rule, and P-69 the HTTP manifest path.
 - **P-69** The HTTP location of the manifest (§11.4.2). ER's HTTP binding says a responder SHOULD
   publish a manifest and names no location, so a requester knowing only an origin had nothing to
   fetch. This profile fixes `/.well-known/evidence-manifest`, with a JCS body served as
-  `application/json`. It adds no manifest member and no outcome word, so it fills a placeholder
+  `application/json`, and makes the form of that response part of `manifest_form` (§11.4.7),
+  with a path that belongs to an origin, not to a responder. It adds no manifest member and no outcome word, so it fills a placeholder
   of §11.4.9 and keeps the identifier (P-1). Left open: registering `evidence-manifest` in the
   IANA "Well-Known URIs" registry [RFC 8615]. Until it is registered the name is this profile's
   own, and a later draft revision that adopts the path would carry the registration request.

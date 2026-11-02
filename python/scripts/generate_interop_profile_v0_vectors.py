@@ -1275,10 +1275,10 @@ def manifest() -> dict:
             "profiles": [PROFILE], "subject_forms": ["record"]}
 
 
-def http_manifest(m: dict) -> dict:
+def http_manifest(m: dict, body: bytes | None = None) -> dict:
     """A GET at the manifest path (§11.4.2): the body is the JCS serialization, served as JSON."""
-    return {"path": "/.well-known/evidence-manifest", "status": 200,
-            "body": octets("application/json", jcs(m).encode())}
+    return {"path": "/.well-known/evidence-manifest", "status": 200, "media_type": "application/json",
+            "body": octets("application/json", jcs(m).encode() if body is None else body)}
 
 
 def opaque_id(label: str) -> str:
@@ -1458,6 +1458,19 @@ def carriage_cases() -> list[dict]:
                                      "mcp_evidence_manifest": {"manifest_form": "PASS"},
                                      "http_well_known": {"manifest_form": "PASS"},
                                      "manifest_consistency": "FAIL"}}))
+        out.append(case(
+            "carriage-manifest-http-not-jcs",
+            "§11.4.8: the body at /.well-known/evidence-manifest is the same manifest, pretty-printed, not its "
+            "JCS serialization. manifest_form FAIL for that copy and PASS for the others; "
+            "manifest_consistency PASS, since the values are equal.",
+            carried(None, None, None, {"a2a_extension": card_entry, "mcp_evidence_manifest": mcp_manifest,
+                                       "http_well_known": http_manifest(
+                                           manifest(), json.dumps(manifest(), indent=1).encode())}),
+            {}, [], {"caller_invariance": "NOT_CHECKED"},
+            {"manifest_properties": {"a2a_extension": {"manifest_form": "PASS"},
+                                     "mcp_evidence_manifest": {"manifest_form": "PASS"},
+                                     "http_well_known": {"manifest_form": "FAIL"},
+                                     "manifest_consistency": "PASS"}}))
     return out
 
 

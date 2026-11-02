@@ -875,12 +875,13 @@ class Verifier:
                 "mcp_evidence_manifest": {"manifest_form": self.manifest_form(mcp_m)}}
             if "http_well_known" in ms:
                 h = ms["http_well_known"]
-                assert h["path"] == "/.well-known/evidence-manifest" and h["status"] == 200
                 body = self.octets(h["body"])
                 http_m = json.loads(body)
-                assert body == jcs(http_m), "the body is the JCS serialization"
                 copies.append(http_m)
-                out["manifest_properties"]["http_well_known"] = {"manifest_form": self.manifest_form(http_m)}
+                form = self.manifest_form(http_m)
+                if h["media_type"] != "application/json" or body != jcs(http_m):
+                    form = "FAIL"
+                out["manifest_properties"]["http_well_known"] = {"manifest_form": form}
             out["manifest_properties"]["manifest_consistency"] = (
                 "PASS" if len({jcs(m) for m in copies}) == 1 else "FAIL")
         return out

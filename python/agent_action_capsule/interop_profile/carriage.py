@@ -9,6 +9,7 @@ absent. The replies found are then verified like any other (``InteropVerifier``)
 """
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -35,6 +36,7 @@ __all__ = [
     "classify_mcp_result",
     "manifest_form",
     "manifest_consistency",
+    "manifest_from_http",
 ]
 
 EXTENSION_URI = "https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"
@@ -160,6 +162,28 @@ def classify_mcp_result(result: Any, media_type: str, input_required: bool = Fal
 
 def _sorted_unique(values: Sequence[str]) -> bool:
     return list(values) == sorted(set(values))
+
+
+def _no_duplicate_members(pairs: list) -> dict:
+    out: dict = {}
+    for k, v in pairs:
+        if k in out:
+            raise ValueError(f"duplicate member {k!r}")
+        out[k] = v
+    return out
+
+
+def manifest_from_http(body: bytes, media_type: str) -> tuple[Any, bool]:
+    """The manifest value of a ``GET`` at ``/.well-known/evidence-manifest`` and whether the
+    response has the form §11.4.2 fixes: media type ``application/json`` and a body that is
+    exactly the JCS serialization of the parsed value. The value is None when the body does not
+    parse as JSON without duplicate members, so ``manifest_form`` and ``manifest_consistency``
+    both ``FAIL`` on it."""
+    try:
+        value = json.loads(body.decode("utf-8"), object_pairs_hook=_no_duplicate_members)
+    except ValueError:
+        return None, False
+    return value, media_type == MEDIA_JSON and jcs_or_none(value) == body
 
 
 def manifest_form(manifest: Any, profiles_implemented: frozenset,
