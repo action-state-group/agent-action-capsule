@@ -37,7 +37,7 @@ the deal entry and the counting rules (§5), the card and its members (§4), the
 | EL | `draft-mih-agent-evidence-layer` -00 | the record header, its `record_type` and its correlation identifier, the epistemic types |
 | SR | `draft-mih-agent-settlement-records` -00 | the amount triple (`value`, `assetCode`, `assetScale`) ("Amounts"), the counterparty half citation ("Citations Between Legs") |
 | RES | `spec/evidence-result-v0.md` | the claim verdict `met`, `not_met`, `not_evaluable`, `out_of_scope` (§4) and the grade `self-attested` (§1) |
-| EB | `spec/draft-mih-zhang-agent-disclosure-bundle-02.md` (`evidence-bundle/v2`) | only the Bundle, its `records`, and the interval coverage and per-record membership claims ("Completeness Claims and Log Membership"), as the carriage of the material `counts_recompute` needs (§6 "Handing the material") |
+| EB | `spec/draft-mih-zhang-agent-disclosure-bundle-02.md` (`evidence-bundle/v2`) | only the Bundle, its `records`, its `completeness` members (`missing`), the disclosure overlay ("Bundle-Level Disclosures"), the padding leaf ("Non-Record Leaves") and the interval coverage and per-record membership claims ("Completeness Claims and Log Membership"), as the carriage of the material `counts_recompute` needs (§6 "Handing the material") |
 | HF | `spec/history-frame-v0.md` | the History frame: its rules (§4), its parameters (§3), and this derivation's counting table and wording pack (§5, §6.1) |
 
 **Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
@@ -117,9 +117,9 @@ The holder key signs every card (the envelope, IP §6.2). That is the holder's s
 counts. A recipient checks the card's form and its denominators without any further evidence
 (§6). It checks the window only against the policy (SH-9), and recomputes the counts only from
 deal entries, which it holds, shown complete, only when the holder hands it the records they are
-read from (§6 "Handing the material"). Without them the window and the counts are the holder's
-statement, and a verifier shows them as such, as the normal case and not as a warning: the holder
-signed the counts, and recomputing them needs the whole stream.
+read from (§6 "Handing the material"). Without them the counts are the holder's statement, and
+without the policy so is the window; a verifier shows them as such, as the normal case and not as
+a warning: the holder signed the counts, and recomputing them needs the whole stream.
 
 ## 3. The derivation
 
@@ -343,10 +343,12 @@ The recipient's verifier forms the deal entries (§5.2) by the host profile's ma
 which mapping it applied; with none for the card's host, `counts_recompute` is `NOT_CHECKED`. It
 passes the deal entries to the check only when it has shown **coverage**:
 
-- **(a)** the anchor's own log: every leaf from `seq` 1 to the anchor is a supplied record or a
-  non-record leaf the Bundle accounts for [EB "Non-Record Leaves"], none listed in
-  `completeness.missing`, with the interval coverage claim verified against the anchor [EB
-  "Completeness Claims and Log Membership"] (no `checkpoint_unverified`);
+- **(a)** the anchor's own log: every leaf from `seq` 1 to the anchor is a supplied record with
+  its per-record membership established, or a `padding` leaf [EB "Non-Record Leaves"], none listed
+  in `completeness.missing`, and the interval coverage claim established against the anchor [EB
+  "Completeness Claims and Log Membership"], neither claim labelled `checkpoint_unverified`. A
+  non-record leaf of any type but `padding` is not accepted: EB checks nothing further about it, so
+  it could hide a deal record;
 - **(b)** every other log the anchor commits, none excluded: the same, from `seq` 1 to the extent
   the anchor commits for it. A recipient cannot tell a log the mapping reads from one it does not
   unless it holds it. The set of committed logs must be in a form the recipient can check against
@@ -488,7 +490,8 @@ its correlation identifier is the deal reference. Its payload has exactly these 
   the holder stated them.
 - **Handed material.** The Bundles of §6 "Handing the material" hold only records the holder's
   own policy lets this recipient have, so they disclose nothing beyond it. Whether a handover is
-  partial or complete tells the recipient nothing the card's `in_window.of` does not. They are
+  partial or complete tells the recipient nothing the log sizes the anchor commits do not already
+  show. They are
   per recipient and are not a `standard_history/1` answer.
 - **No grading.** As HF §4.6: this document defines no score, grade, ratio or ordering, and a
   verifier that follows it shows none. The outcome bar §6 allows draws the same three counts; it is

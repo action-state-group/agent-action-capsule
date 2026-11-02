@@ -784,8 +784,9 @@ func numbers(v any) any {
 // Check reports the six card properties of SH §6 for the card's JSON octets.
 // policy, asOf and deals are each optional (nil); a property that needs a
 // missing one is NOT_CHECKED. deals is every deal entry the stream holds at
-// the anchor, passed only when the verifier has shown coverage (SH §6
-// "Handing the material"); the counts are recomputed over the card's own
+// the anchor, passed only when the verifier has shown coverage and no
+// payload member the mapping reads is withheld (SH §6 "Handing the
+// material"); the counts are recomputed over the card's own
 // window, so counts_recompute does not need the policy. It returns an error for a malformed input,
 // never for a malformed card: a card that is not JSON at all fails every
 // property that reads it.

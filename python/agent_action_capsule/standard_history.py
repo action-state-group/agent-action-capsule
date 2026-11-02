@@ -354,7 +354,8 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
 
     ``policy`` is ``{"digest", "window"}`` (SH §5.1); ``as_of`` is ``{"anchor", "anchor_time",
     "first_checkpoint_time"}``; ``deals`` is every deal entry the stream holds at the anchor, passed only when the verifier has
-    shown coverage (SH §6 "Handing the material"); the counts are recomputed over the card's own
+    shown coverage and no payload member the mapping reads is withheld (SH §6 "Handing the
+    material"); the counts are recomputed over the card's own
     window, so the policy is not needed for them. Each is optional; a property that needs a missing one is ``NOT_CHECKED``. Raises ``ValueError`` on a
     malformed input, never on a malformed card. A card nested deeper than the shared
     128-level limit reads as no card, as Go's ``Check`` reads one it cannot parse.

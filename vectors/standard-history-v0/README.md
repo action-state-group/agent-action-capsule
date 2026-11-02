@@ -15,7 +15,7 @@ a verifier may hold beside it:
 | `card` | the card, as a JSON value | every property |
 | `policy` | the policy's two members (SH §5.1): `digest` and `window` | `window_from_policy` |
 | `as_of` | the anchor's digest and time, and the stream's first checkpoint time | `as_of`, `counts_recompute` |
-| `deals` | every deal entry (SH §5.2) the stream holds at the anchor, given only when coverage is shown (SH §6 "Handing the material"; a vector cannot carry the proof, so `deals` stands for a complete handover) | `counts_recompute` |
+| `deals` | every deal entry (SH §5.2) the stream holds at the anchor, given only when coverage is shown and no payload member the mapping reads is withheld (SH §6 "Handing the material"; a vector cannot carry the proof, so `deals` stands for a complete handover) | `counts_recompute` |
 
 `counts_recompute` recomputes over the card's own `window`, so it needs the anchor and the deal entries but not the policy. A case without an input expects `NOT_CHECKED` for each property that needs it. `expected` gives
 all six properties, whether the card is a standard card (SH §6), and the properties that `FAIL`.
