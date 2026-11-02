@@ -27,7 +27,7 @@ fn request_and_reply_readers_share_the_limit() {
         let request = parse_cbor(&octets);
         let reply = parse_reply(&octets, Binding::Cbor);
         if case["tag"].as_bool().unwrap() {
-            // This crate refuses a tag at any depth.
+            // A request holds no tag at any depth (vectors/cbor-request-model/).
             assert!(request.is_err(), "{id}");
             assert!(reply.is_err(), "{id}");
         } else if accept {

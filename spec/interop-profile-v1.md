@@ -321,6 +321,15 @@ levels are read. Each array, map or tag around an item is one more level, so `[]
 `[[]]` two. This is the JSON bound, so one request reads the same in its JSON and CBOR bindings.
 `vectors/cbor-nesting/` is its conformance set.
 
+A request received in the CBOR binding MUST likewise be rejected as not well-formed [P-12] unless
+it is in core deterministic encoding (RFC 8949 §4.2.1) and every item in it is `null`, `false`,
+`true`, a text string, an unsigned integer from 0 to 2^53 − 1, an array, or a map whose keys are
+text strings. This holds at every depth, inside members the responder ignores [ER §3] too: a tag,
+a float, a byte string, a negative integer, another simple value or an indefinite length anywhere
+in the request makes it `request_malformed`. So every responder reads one request alike, and the
+request has one encoding and one digest whoever encoded it. `vectors/cbor-request-model/` is its
+conformance set.
+
 A signature under this profile is verified with strict Ed25519 [P-68]: the public key and the
 signature's R must each be a canonical encoding and not of small order, S must be below the group
 order, and the cofactorless equation must hold, as the capsule draft defines in the Conventions
@@ -3071,7 +3080,8 @@ it defers, and P-68 the strict Ed25519 rule.
 - **P-10** The artifact digest is SHA-256 over the octets as carried (§5.1).
 - **P-11** The verifier MUST run a foreign object's native check before reporting on it (§5.1).
 - **P-12** Time form with seconds precision; unsigned integers no larger than 2^53 − 1 and no
-  floats; duplicate members rejected in JSON and CBOR (§5.2).
+  floats; duplicate members rejected in JSON and CBOR; a CBOR request read only in deterministic
+  encoding and only when every item, ignored members included, is in the data model (§5.2).
 - **P-13** Verification-material kinds cover only the Checkpointed Local Log: an artifact of a
   `record` subject with no derivation (§6.2.1), and a witness Receipt over the anchor itself,
   beside an answer (§6.2.2). Still without a kind:

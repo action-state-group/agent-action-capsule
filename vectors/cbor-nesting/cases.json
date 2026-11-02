@@ -52,7 +52,7 @@
     },
     {
       "id": "pos-tag-at-limit",
-      "description": "A request map whose member x nests tags so that the item is 128 levels deep: accepted.",
+      "description": "A request map whose member x nests tags so that the item is 128 levels deep: read by a generic decoder; a request reader refuses it, since a request holds no tag.",
       "depth": 128,
       "accept": true,
       "tag": true,

@@ -62,6 +62,10 @@ same-commit files in CI.
   array, a map or a tag around an item is one level) is read by every CBOR
   reader, 129 levels is refused as malformed (#504);
   `python/scripts/generate_cbor_nesting_vectors.py` regenerates them.
+- `cbor-request-model/`: a CBOR request is read only in deterministic encoding
+  with every item, inside ignored members too, in the request data model; a
+  tag, a float, a byte string or any other value outside it is malformed (#529);
+  `python/scripts/generate_cbor_request_model_vectors.py` regenerates them.
 - `minimum-necessary/`: provisional registry entries held for ratification
   (`spec/REGISTRY.md` §10, §14, §16): SD-JWT (RFC 9901) presentations as a
   revealed `agent_input`, the `disclosure-policy-decisions/v1` and

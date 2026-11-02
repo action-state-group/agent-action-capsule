@@ -14,8 +14,9 @@ Each case is the CBOR encoding of a minimal valid Evidence Request map whose
 open-world member ``x`` holds a chain of containers, so a request reader, which
 also refuses what it cannot read, and a generic deterministic-CBOR decoder
 decide it alike. ``depth`` counts the whole item. ``tag`` marks a case that
-holds tags: only the generic decoders are held to it, since request readers
-treat a tag in a member they ignore differently.
+holds tags: a generic decoder reads the one at the limit, but a request reader
+refuses both, since a request holds no tag at any depth
+(``vectors/cbor-request-model/``, #529).
 
 Output: ``cases.json``, ``manifest.json`` and ``SHA256SUMS`` in ``vectors/cbor-nesting/``
 (or ``--out DIR``). ``README.md`` is hand-written; when present it is included in
@@ -102,8 +103,10 @@ def cases() -> list[dict]:
     out = []
     for kind, noun, tags in (("array", "arrays", False), ("map", "maps", False),
                              ("mixed", "arrays and maps alternating", False), ("tag", "tags", True)):
+        read = ("read by a generic decoder; a request reader refuses it, since a request holds no tag"
+                if tags else "accepted")
         out.append(case(f"pos-{kind}-at-limit",
-                        f"A request map whose member x nests {noun} so that the item is {at} levels deep: accepted.",
+                        f"A request map whose member x nests {noun} so that the item is {at} levels deep: {read}.",
                         kind, at - 1, True, tags=tags))
         out.append(case(f"neg-{kind}-past-limit",
                         f"The same with one more level, {past} levels deep: refused as malformed.",

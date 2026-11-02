@@ -267,16 +267,25 @@ type RequestCheck struct {
 }
 
 // ParseRequest validates received request octets in the order of profile
-// §6.1 steps 1 to 5. Members it does not define are ignored (ER §3).
+// §6.1 steps 1 to 5. Members it does not define are ignored (ER §3), but
+// in CBOR they must still hold only the data model (decodeCBORRequest).
 // Member names match exactly: a case variant is an unknown member. A
 // malformed member wins over a coverage carrying both members (ERV A4).
 func ParseRequest(m Message) RequestCheck {
 	malformed := func(why string) RequestCheck {
 		return RequestCheck{Reason: ReasonRequestMalformed, Why: why}
 	}
-	root, err := Decode(m)
-	if err != nil {
-		return malformed("not a well-formed map")
+	var root any
+	if m.MediaType == MediaTypeCBOR {
+		var why string
+		if root, why = decodeCBORRequest(m.Octets); why != "" {
+			return malformed(why)
+		}
+	} else {
+		var err error
+		if root, err = Decode(m); err != nil {
+			return malformed("not a well-formed map")
+		}
 	}
 	fields, ok := root.(map[string]any)
 	if !ok {
@@ -377,4 +386,50 @@ func (r Request) floorTime() (time.Time, bool) {
 		return ParseRequestTime(f.Time)
 	}
 	return time.Time{}, false
+}
+
+// decodeCBORRequest decodes CBOR request octets (profile §5.2), or reports
+// why they are not read: a request is read only in core deterministic
+// encoding (RFC 8949 §4.2.1) with every item, at every depth and inside
+// members a responder ignores, null, a boolean, a text string, an unsigned
+// integer up to 2^53-1, an array or a map with text keys
+// (vectors/cbor-request-model/, #529). Python and Rust read it the same way.
+func decodeCBORRequest(data []byte) (any, string) {
+	decoded, err := decodeCBORItem(data)
+	switch {
+	case err != nil:
+		return nil, "not a well-formed map"
+	case decoded.duplicateKeys:
+		return nil, "a duplicate map key"
+	case !decoded.deterministic:
+		return nil, "not in core deterministic encoding"
+	case decoded.irregular || decoded.nonTextKeys || !cborInRequestModel(decoded.value):
+		return nil, "a value outside the request data model"
+	}
+	return decoded.value, ""
+}
+
+// cborInRequestModel reports whether a value decodeCBORItem returned holds
+// only the request data model: no byte string, tag, negative integer or
+// integer above 2^53-1 (floats and non-text keys are flagged by the decoder).
+func cborInRequestModel(v any) bool {
+	switch x := v.(type) {
+	case nil, bool, string, uint64:
+		return true
+	case []any:
+		for _, item := range x {
+			if !cborInRequestModel(item) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		for _, item := range x {
+			if !cborInRequestModel(item) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
