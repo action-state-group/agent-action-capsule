@@ -11,7 +11,8 @@ are those of the Minimum Evidence Interoperability Profile
 signed object, carried as transmitted) and §7 (property statuses and the `native_check` report).
 
 The declarations here are [`x402-v0.md`](x402-v0.md), [`ucp-v0.md`](ucp-v0.md),
-[`acp-v0.md`](acp-v0.md) and [`nostr-mailbox-v0.md`](nostr-mailbox-v0.md). A declaration may also live outside this repository, beside the code
+[`acp-v0.md`](acp-v0.md) and [`nostr-mailbox-v0.md`](nostr-mailbox-v0.md), which applies `evidence-interop/1`
+([`interop-profile-v1.md`](../interop-profile-v1.md)) instead. A declaration may also live outside this repository, beside the code
 that implements it. The Lightning declaration is `adapters/lightning-v0.md` in
 Mesh-LLM/capsules-plugin.
 
