@@ -196,11 +196,17 @@ def run_carriage_case(case: dict) -> dict:
     if "manifests" in inp:
         a2a_m = inp["manifests"]["a2a_extension"]["params"]
         mcp_m = inp["manifests"]["mcp_evidence_manifest"]["structuredContent"]
+        copies = [a2a_m, mcp_m]
         out["manifest_properties"] = {
             "a2a_extension": {"manifest_form": carriage_mod.manifest_form(a2a_m, vpolicy.profiles_implemented).status},
             "mcp_evidence_manifest": {
-                "manifest_form": carriage_mod.manifest_form(mcp_m, vpolicy.profiles_implemented).status},
-            "manifest_consistency": carriage_mod.manifest_consistency([a2a_m, mcp_m]).status}
+                "manifest_form": carriage_mod.manifest_form(mcp_m, vpolicy.profiles_implemented).status}}
+        if "http_well_known" in inp["manifests"]:
+            http_m = json.loads(octets(inp["manifests"]["http_well_known"]["body"]))
+            copies.append(http_m)
+            out["manifest_properties"]["http_well_known"] = {
+                "manifest_form": carriage_mod.manifest_form(http_m, vpolicy.profiles_implemented).status}
+        out["manifest_properties"]["manifest_consistency"] = carriage_mod.manifest_consistency(copies).status
     return out
 
 
@@ -296,12 +302,12 @@ def test_verifier_reproduces_the_requirement_facts_set(case):
 
 
 def test_v1_corpus_size_and_contract_pin():
-    assert DATA_V1["count"] == len(DATA_V1["cases"]) == 62
+    assert DATA_V1["count"] == len(DATA_V1["cases"]) == 63
     assert DATA_V1["contract"]["contract_digest"] == DATA["contract"]["contract_digest"]
     assert {c["id"] for c in DATA_V1["cases"]} - {c["id"] for c in CASES} == {
         "capacity-exceeded", "request-unauthenticated", "capacity-exceeded-under-v0",
         "envelope-small-order-key", "envelope-identity-r", "forged-refusal-small-order-key",
-        "forged-refusal-identity-r"}
+        "forged-refusal-identity-r", "carriage-manifest-http-differs"}
 
 
 @pytest.mark.parametrize("case", DATA_V1["cases"], ids=lambda c: c["id"])

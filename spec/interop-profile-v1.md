@@ -2554,7 +2554,7 @@ discovery properties (§11.4.7).
 | | Native stream [ER §10] | A2A (§11.4.4) | MCP (§11.4.5) |
 |---|---|---|---|
 | Advertised by | the subprotocol `evidence-request/1`, offered at connection time | an Agent Card extension entry | the tools `evidence_manifest` and `evidence_request` in `tools/list` |
-| Manifest (§11.4.2) | not carried; ER puts the manifest in the HTTP binding | the extension entry's `params` | the `evidence_manifest` tool result |
+| Manifest (§11.4.2) | not carried; the HTTP binding serves it at `/.well-known/evidence-manifest` | the extension entry's `params` | the `evidence_manifest` tool result |
 | Request | one request frame: the request octets | one `Message` with one `Part` whose `raw` is the request octets: base64 in A2A's JSON bindings, bytes in its gRPC binding | the `evidence_request` argument `request`: the request octets in base64url without padding |
 | Reply | one response frame: the reply octets | one A2A `Artifact` with one `Part` whose `raw` is the reply octets | the result's `structuredContent.reply`: the reply octets in base64url without padding |
 | Pending [ER §4.3] | stream open, no response frame yet | no reply Artifact, and the task not in a terminal state (§11.4.4) | no result yet, or an interim `input_required` result |
@@ -2623,7 +2623,7 @@ Rules:
   no nested map, so a count or a structure has no place to go. The sort order makes two honest
   manifests byte-equal under JCS.
 - A responder MUST serve one manifest, the same JSON value, wherever it serves one: the HTTP
-  binding, the A2A extension `params` and the `evidence_manifest` result [P-41]. It MUST serve
+  binding (next rule), the A2A extension `params` and the `evidence_manifest` result [P-41]. It MUST serve
   the same manifest to every requester, authenticated or not, including in an A2A extended Agent
   Card [P-41]. A manifest tailored to its caller is a per-audience statement, which is what caller
   invariance forbids for artifacts [ER §5]. Two manifests are the same when their JCS
@@ -2632,6 +2632,14 @@ Rules:
   it lists in `profiles` [P-41]. A requester forming a request ignores a member or token it does
   not know [P-41]. A verifier reports one through `manifest_form` (§11.4.7), because an unexpected
   member may be a disclosure.
+- Over the HTTP binding the manifest is served at one fixed path, `/.well-known/evidence-manifest`,
+  relative to the origin of the responder's HTTP binding [ER §10; P-69]. A requester that knows
+  only that origin fetches it with `GET`. The response body is the JCS serialization of the
+  manifest and its media type is `application/json`, so its octets equal the JCS serialization
+  of the A2A `params` value and of the `evidence_manifest` result. The resource is static and
+  carries no envelope [ER §10]. A responder that serves the HTTP binding and publishes a manifest
+  MUST serve it at this path. Authentication, caller and request headers do not change the body
+  (previous rule). The path adds no member, token or outcome word to the manifest.
 - `refusal_policy` `uniform` declares that the responder answers `policy_declined` wherever a more
   specific token would disclose what its policy protects [ER §4.2, §12]. `specific` declares
   that it does not. Under either value, load shedding is `capacity_exceeded` (§6.3). The
@@ -2934,12 +2942,13 @@ the following:
   sent three times: as a native stream frame, as the `raw` part of an A2A `Message` (§11.4.4),
   and as the `request` argument of `evidence_request` (§11.4.5). The responder answers each
   with an envelope, with three distinct `issued_at` values. One manifest, served as A2A `params`
-  and as the `evidence_manifest` result.
+  and as the `evidence_manifest` result, and fetched over HTTP as the body of a `GET` at
+  `/.well-known/evidence-manifest` (§11.4.2).
 - **Expected.** The three `request_digest` values are equal to SHA-256(R) and to each other. The
   three `artifact` octet strings are identical, and so are the three `artifact_digest` values.
   For each envelope every required property of §7.2 is `PASS`, and §8.1 row 7 applies.
-  `caller_invariance` is `PASS` over the three. The two manifests give `manifest_form` `PASS` and
-  `manifest_consistency` `PASS`.
+  `caller_invariance` is `PASS` over the three. The three manifests give `manifest_form` `PASS`
+  and `manifest_consistency` `PASS`.
 
 Each negative half changes one thing:
 
@@ -2952,12 +2961,12 @@ Each negative half changes one thing:
 | the MCP result has `isError` true and a valid `structuredContent.reply` | the reply, verified as in the positive case |
 | one A2A task carries two reply Artifacts, with distinct `artifactId`s, whose envelopes sign different artifact octets | each verified on its own; `caller_invariance` `FAIL`; §8.1 row 1 |
 | the A2A extension `params` adds a count member | `manifest_form` `FAIL`; `manifest_consistency` `FAIL` against the `evidence_manifest` result |
+| the body at `/.well-known/evidence-manifest` is a different manifest (here another `subject_forms`) from the A2A `params` and the `evidence_manifest` result | `manifest_form` `PASS` for each copy; `manifest_consistency` `FAIL` |
 
 #### 11.4.9 Not filled in this revision
 
 Still unspecified: the shape of a carried retention commitment (the envelope's `retention`,
-§6.2); verification-material kinds beyond §6.2.1 and §6.2.2 (P-13); where the HTTP binding serves the
-manifest; stream addressing (P-23); and MCP's tasks extension. Filling any of them only adds
+§6.2); verification-material kinds beyond §6.2.1 and §6.2.2 (P-13); stream addressing (P-23); and MCP's tasks extension. Filling any of them only adds
 objects, rows and properties, so it keeps the identifier (§3.1) [P-1].
 
 ### 11.5 Conformance vectors
@@ -3042,7 +3051,7 @@ a later draft revision.
 
 P-1 to P-64 are carried over from `evidence-interop/0`. Where one records how that revision came
 to be, as P-8, P-31 and P-64 do, it is kept as written. P-65 lists what v1 changes, P-66 what
-it defers, and P-68 the strict Ed25519 rule.
+it defers, P-68 the strict Ed25519 rule, and P-69 the HTTP manifest path.
 
 - **P-1** The profile identifier names one exact revision. Before first publication, filling a §11
   placeholder that only adds objects, rows and properties keeps it. Any byte-level change requires a new
@@ -3398,6 +3407,13 @@ it defers, and P-68 the strict Ed25519 rule.
   foreign object, which that object's own check decides, including the execution and producer records
   of §11.1 and §11.2, checked by their own format's method, and so the Producer Envelope of a Capsule,
   which the capsule draft does not yet make strict (#322).
+- **P-69** The HTTP location of the manifest (§11.4.2). ER's HTTP binding says a responder SHOULD
+  publish a manifest and names no location, so a requester knowing only an origin had nothing to
+  fetch. This profile fixes `/.well-known/evidence-manifest`, with a JCS body served as
+  `application/json`. It adds no manifest member and no outcome word, so it fills a placeholder
+  of §11.4.9 and keeps the identifier (P-1). Left open: registering `evidence-manifest` in the
+  IANA "Well-Known URIs" registry [RFC 8615]. Until it is registered the name is this profile's
+  own, and a later draft revision that adopts the path would carry the registration request.
 
 ## References
 
@@ -3443,4 +3459,4 @@ it defers, and P-68 the strict Ed25519 rule.
 - Evidence Result v0, `spec/evidence-result-v0.md`.
 - Controller Binding v0, `spec/controller-binding-v0.md`.
 - Evidence Contract v0 schema, `evidence-contract-v0.json`.
-- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8259; RFC 8785; RFC 8949; RFC 8392; RFC 9052; RFC 9162; RFC 9597; RFC 9942.
+- RFC 2119, RFC 8174 (BCP 14); RFC 3339; RFC 4648; RFC 8032; RFC 8259; RFC 8615; RFC 8785; RFC 8949; RFC 8392; RFC 9052; RFC 9162; RFC 9597; RFC 9942.

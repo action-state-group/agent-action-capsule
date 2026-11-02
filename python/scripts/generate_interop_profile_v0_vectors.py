@@ -1275,6 +1275,12 @@ def manifest() -> dict:
             "profiles": [PROFILE], "subject_forms": ["record"]}
 
 
+def http_manifest(m: dict) -> dict:
+    """A GET at the manifest path (§11.4.2): the body is the JCS serialization, served as JSON."""
+    return {"path": "/.well-known/evidence-manifest", "status": 200,
+            "body": octets("application/json", jcs(m).encode())}
+
+
 def opaque_id(label: str) -> str:
     """An unpredictable-looking carriage identifier that encodes no count or time (§11.4.3)."""
     return shx(f"evidence-interop/0 conformance vectors: carriage id {label}".encode())[:32]
@@ -1364,6 +1370,8 @@ def carriage_cases() -> list[dict]:
                                                "opened": "2026-10-12T00:00:10Z"}}).encode()
 
     manifests_ok = {"a2a_extension": card_entry, "mcp_evidence_manifest": mcp_manifest}
+    if VERSION >= 1:
+        manifests_ok["http_well_known"] = http_manifest(manifest())
     out = [
         case("carriage-invariance",
              "Request C as deterministic CBOR, sent once over each carriage; three envelopes with distinct "
@@ -1373,7 +1381,8 @@ def carriage_cases() -> list[dict]:
              {"caller_invariance": "PASS"},
              {"manifest_properties": {"a2a_extension": {"manifest_form": "PASS"},
                                       "mcp_evidence_manifest": {"manifest_form": "PASS"},
-                                      "manifest_consistency": "PASS"}}),
+                                      "manifest_consistency": "PASS"}
+                                     | ({"http_well_known": {"manifest_form": "PASS"}} if VERSION >= 1 else {})}),
         case("carriage-mcp-rehashes-json",
              "§11.4.8: the MCP adapter hashes a JSON re-encoding of R instead of the octets received. That "
              "envelope's request_binding FAILs: row 2.",
@@ -1435,6 +1444,20 @@ def carriage_cases() -> list[dict]:
                                       "mcp_evidence_manifest": {"manifest_form": "PASS"},
                                       "manifest_consistency": "FAIL"}}),
     ]
+    if VERSION >= 1:
+        other = dict(manifest(), subject_forms=["range", "record"])
+        out.append(case(
+            "carriage-manifest-http-differs",
+            "§11.4.8: the body at /.well-known/evidence-manifest is a different manifest (another "
+            "subject_forms) from the A2A params and the evidence_manifest result. Each copy passes "
+            "manifest_form; manifest_consistency FAIL.",
+            carried(None, None, None, {"a2a_extension": card_entry, "mcp_evidence_manifest": mcp_manifest,
+                                       "http_well_known": http_manifest(other)}),
+            {}, [], {"caller_invariance": "NOT_CHECKED"},
+            {"manifest_properties": {"a2a_extension": {"manifest_form": "PASS"},
+                                     "mcp_evidence_manifest": {"manifest_form": "PASS"},
+                                     "http_well_known": {"manifest_form": "PASS"},
+                                     "manifest_consistency": "FAIL"}}))
     return out
 
 
