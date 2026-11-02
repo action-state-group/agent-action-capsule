@@ -26,7 +26,10 @@ Python releases up to 0.7.0 were tagged bare `v<version>` (`v0.0.3` to
    pushes `release/<package>-v<version>`.
 2. **Review.** Open the pull request from the link in the run summary. Open it
    yourself: a pull request opened by the workflow would not start CI. Add the
-   CHANGELOG entry for the release on the same branch if it is not in yet: move
+   CHANGELOG entry for the release on the same branch if it is not in yet: first run
+   `python3 .github/changelog_fragments.py fold`, which appends the pending
+   `changelog.d/` fragments to their changelogs' Unreleased sections and deletes
+   them, then move
    the package's entries from Unreleased under a `## <package> <version> — <date>`
    heading (Go, Python and TypeScript in `CHANGELOG.md`; each Rust crate in its
    own file).
