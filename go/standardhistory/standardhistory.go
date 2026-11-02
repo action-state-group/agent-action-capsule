@@ -783,7 +783,10 @@ func numbers(v any) any {
 
 // Check reports the six card properties of SH §6 for the card's JSON octets.
 // policy, asOf and deals are each optional (nil); a property that needs a
-// missing one is NOT_CHECKED. It returns an error for a malformed input,
+// missing one is NOT_CHECKED. deals is every deal entry the stream holds at
+// the anchor, passed only when the verifier has shown coverage (SH §6
+// "Handing the material"); the counts are recomputed over the card's own
+// window, so counts_recompute does not need the policy. It returns an error for a malformed input,
 // never for a malformed card: a card that is not JSON at all fails every
 // property that reads it.
 func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]string, error) {
@@ -818,7 +821,7 @@ func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]st
 		}
 		p["as_of"] = status(m != nil && m["anchor"] == asOf.Anchor && m["since"] == asOf.FirstCheckpointTime[:7])
 	}
-	ready := deals != nil && policy != nil && asOf != nil &&
+	ready := deals != nil && asOf != nil &&
 		p["card_form"] == Pass && p["counts_integral"] == Pass && p["denominator"] == Pass
 	if !ready {
 		p["counts_recompute"] = NotChecked
@@ -828,7 +831,8 @@ func Check(card []byte, policy *Policy, asOf *AsOf, deals []Deal) (map[string]st
 	if err != nil {
 		return nil, err
 	}
-	derived, err := counts(deals, policy.Window, anchor)
+	window, _ := windowOf(m["window"]) // card_form is Pass, so the window is well-formed
+	derived, err := counts(deals, window, anchor)
 	if err != nil {
 		return nil, err
 	}

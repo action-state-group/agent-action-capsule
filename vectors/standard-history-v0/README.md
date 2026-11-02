@@ -13,11 +13,11 @@ a verifier may hold beside it:
 | Input | What it is | Needed by |
 |---|---|---|
 | `card` | the card, as a JSON value | every property |
-| `policy` | the policy's two members (SH §5.1): `digest` and `window` | `window_from_policy`, `counts_recompute` |
+| `policy` | the policy's two members (SH §5.1): `digest` and `window` | `window_from_policy` |
 | `as_of` | the anchor's digest and time, and the stream's first checkpoint time | `as_of`, `counts_recompute` |
-| `deals` | every deal entry (SH §5.2) the stream holds at the anchor | `counts_recompute` |
+| `deals` | every deal entry (SH §5.2) the stream holds at the anchor, given only when coverage is shown (SH §6 "Handing the material"; a vector cannot carry the proof, so `deals` stands for a complete handover) | `counts_recompute` |
 
-A case without an input expects `NOT_CHECKED` for each property that needs it. `expected` gives
+`counts_recompute` recomputes over the card's own `window`, so it needs the anchor and the deal entries but not the policy. A case without an input expects `NOT_CHECKED` for each property that needs it. `expected` gives
 all six properties, whether the card is a standard card (SH §6), and the properties that `FAIL`.
 
 The deal entries are abstract (SH §5.2): no record format is fixed here. Every digest is a label
@@ -26,14 +26,14 @@ digest, SHA-256 of a text string, for these vectors only.
 ## The cases
 
 Positive: a person's card with a 3-month window, checked with every input, with the deal entries
-left out, and with nothing beside it; a node's card with window everything over the same deals;
-the month-end clamp of SH §5.1; a window with no deal in it; and a window across a year end with
+left out, without the policy (the counts still recompute), and with nothing beside it; a node's card with window everything over the same deals;
+the month-end clamp of SH §5.1; a window with no deal in it (`of` 0 recomputes `PASS` over complete coverage); and a window across a year end with
 a sub-unit deal (a negative decade) and a zero amount (the band whose decade is null); and the decade of 1 msat, 1 sat, 250 sat and 1 BTC over Lightning and of
 1 cent of USDC; and a window that starts before year 1.
 
 Negative, each failing the properties its `expected.fails` lists: `percentage-fraction`,
 `percentage-member`, `count-without-denominator`, `tallies-disagree`, `counted-shop-purchase`,
-`window-not-in-policy`, `counterparty-member`, `since-day`, `since-non-ascii-digits`,
+`window-not-in-policy` (the counts differ over the card's own window too), `window-not-in-policy-counts-match` (only `window_from_policy` fails), `counterparty-member`, `since-day`, `since-non-ascii-digits`,
 `bands-unsorted`, `band-duplicate`, `band-empty`, `currency-free-text`, `node-person-class`,
 `node-class-free-text`, `window-all-false`,
 `class-missing-over`, `dispute-forum-total` and `other-anchor`.

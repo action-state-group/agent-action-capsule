@@ -277,6 +277,10 @@ def cases() -> list:
              policy=POLICY_3M, as_of=AS_OF),
         case("person-3-months-card-only", "The same card, checked with nothing beside it",
              ["§6"], PERSON_3M, props(window_from_policy=NC, as_of=NC, counts_recompute=NC)),
+        case("person-3-months-without-policy", "The same card, checked with the anchor and every deal entry "
+             "but without the policy: the counts recompute over the card's own window, and the window is the "
+             "holder's statement", ["§6"], PERSON_3M, props(window_from_policy=NC),
+             as_of=AS_OF, deals=DEALS),
         case("node-all", "A node's card over the same stream, window everything: the deal outside 3 months "
              "now counts", ["§4", "§5.1", "§5.3"], NODE_ALL, props(),
              policy=POLICY_ALL, as_of=AS_OF, deals=DEALS),
@@ -311,9 +315,14 @@ def cases() -> list:
              props(denominator="FAIL", counts_recompute=NC), **FULL),
         case("counted-shop-purchase", "A shop purchase paid up front counted, every tally consistent",
              ["§5.3", "§7", "§6"], SHOP_COUNTED, props(counts_recompute="FAIL"), **FULL),
-        case("window-not-in-policy", "The card states a 12-month window; the policy sets 3 months",
+        case("window-not-in-policy", "The card states a 12-month window and the 3-month window's counts; the "
+             "policy sets 3 months. The counts are recomputed over the card's own window, so they differ too",
              ["§5.1", "§6"], mutate(PERSON_3M, lambda c: c.update(window={"months": 12})),
-             props(window_from_policy="FAIL"), **FULL),
+             props(window_from_policy="FAIL", counts_recompute="FAIL"), **FULL),
+        case("window-not-in-policy-counts-match", "A card over window everything, checked against a policy "
+             "that sets 3 months: the counts are right for the card's own window, which is not the policy's",
+             ["§5.1", "§6"], NODE_ALL, props(window_from_policy="FAIL"),
+             policy=POLICY_3M, as_of=AS_OF, deals=DEALS),
         case("counterparty-member", "A member naming counterparties", ["§4", "§6"],
              mutate(PERSON_3M, lambda c: c.update(counterparties=["an example shop"])),
              props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL),
