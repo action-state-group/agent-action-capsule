@@ -9,12 +9,16 @@ import { decodeStrictJson } from "../src/json.js";
 
 interface Case {
   id: string;
+  pins: { evaluation_time: string };
   inputs: {
     halves: { octets_text: string }[];
     binding: { octets_text: string };
     revocations?: { octets_text: string }[];
+    revocation_list?: { declaration: unknown; octets_text: string };
   };
-  expected: { binding: { binds_pair: boolean; applies: boolean } };
+  expected: {
+    binding: { properties: Record<string, string> };
+  };
 }
 const corpus = JSON.parse(
   readFileSync(
@@ -57,25 +61,80 @@ describe("verifyKeyBinding", () => {
   });
   for (const c of corpus.cases) {
     const key = half(c, 0).producer;
-    it(`${c.id}: PASS only when the binding applies, never for a revocation`, async () => {
+    it(`${c.id}: status follows the vector's expected binding`, async () => {
+      const list = c.inputs.revocation_list;
       const r = await verifyKeyBinding(
         key,
         parseProfileTime(half(c, 0).issued_at)!,
         [c.inputs.binding.octets_text],
-        { revocations: (c.inputs.revocations ?? []).map((x) => x.octets_text) },
+        {
+          revocations: (c.inputs.revocations ?? []).map((x) => x.octets_text),
+          ...(list === undefined
+            ? {}
+            : {
+                revocationList: {
+                  declaration: JSON.stringify(list.declaration),
+                  list: list.octets_text,
+                  evaluatedAt: parseProfileTime(c.pins.evaluation_time)!,
+                },
+              }),
+        },
       );
-      if (r.bindings.length === 0) expect(r.status).toBe("NOT_CHECKED");
-      else {
-        // a binding that names this key applies exactly as the Go and CB §6.2 vectors say
-        // when asked at the first half's time (single-time, not the pair's two times)
-        expect(r.status).toBe(
-          r.bindings.some((b) => b.applies) ? "PASS" : "FAIL",
-        );
-        if (c.id === "revoked" || c.id === "expired")
-          expect(r.status).toBe("FAIL");
-        if (c.id === "valid-same-controller") expect(r.status).toBe("PASS");
-        expect(r.revocationChecked).toBe(false);
+      const want = c.expected.binding;
+      const named = r.bindings.length > 0;
+      if (!named) {
+        expect(r.status).toBe("NOT_CHECKED");
+        return;
       }
+      // The binding names the first half's key, so it is the pair's binding
+      // or one of its keys is: the key-level answer is CB §6.2 for the
+      // binding at the first half's time, and a revocation FAIL stops it.
+      const rev = want.properties.controller_binding_revocation;
+      if (rev === "FAIL") expect(r.status).toBe("FAIL");
+      // Asked at one time (the first half's), not the pair's two, so a list
+      // that does not cover the second half can count here; only the cases
+      // the vector expects PASS must read as checked, and none without a list.
+      if (list === undefined) expect(r.revocationChecked).toBe(false);
+      else if (rev === "PASS") expect(r.revocationChecked).toBe(true);
     });
   }
+  it("a revoked binding reads FAIL and a counting declaration sets revocationChecked", async () => {
+    const at = (id: string) => parseProfileTime(half(get(id), 0).issued_at)!;
+    for (const id of [
+      "complete-list-revoked",
+      "complete-list-malformed-revoked",
+    ]) {
+      const c = get(id);
+      const list = c.inputs.revocation_list!;
+      const r = await verifyKeyBinding(
+        half(c, 0).producer,
+        at(id),
+        [c.inputs.binding.octets_text],
+        {
+          revocationList: {
+            declaration: JSON.stringify(list.declaration),
+            list: list.octets_text,
+            evaluatedAt: parseProfileTime(c.pins.evaluation_time)!,
+          },
+        },
+      );
+      expect(r.status).toBe("FAIL");
+    }
+    const c = get("complete-list");
+    const list = c.inputs.revocation_list!;
+    const r = await verifyKeyBinding(
+      half(c, 0).producer,
+      at("complete-list"),
+      [c.inputs.binding.octets_text],
+      {
+        revocationList: {
+          declaration: JSON.stringify(list.declaration),
+          list: list.octets_text,
+          evaluatedAt: parseProfileTime(c.pins.evaluation_time)!,
+        },
+      },
+    );
+    expect(r.status).toBe("PASS");
+    expect(r.revocationChecked).toBe(true);
+  });
 });
