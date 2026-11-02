@@ -10,8 +10,9 @@ are those of the Minimum Evidence Interoperability Profile
 ([`interop-profile-v0.md`](../interop-profile-v0.md), cited here as IP), above all §5.1 (a foreign
 signed object, carried as transmitted) and §7 (property statuses and the `native_check` report).
 
-The declarations here are [`x402-v0.md`](x402-v0.md), [`ucp-v0.md`](ucp-v0.md) and
-[`acp-v0.md`](acp-v0.md). A declaration may also live outside this repository, beside the code
+The declarations here are [`x402-v0.md`](x402-v0.md), [`ucp-v0.md`](ucp-v0.md),
+[`acp-v0.md`](acp-v0.md) and [`nostr-mailbox-v0.md`](nostr-mailbox-v0.md), which applies `evidence-interop/1`
+([`interop-profile-v1.md`](../interop-profile-v1.md)) instead. A declaration may also live outside this repository, beside the code
 that implements it. The Lightning declaration is `adapters/lightning-v0.md` in
 Mesh-LLM/capsules-plugin.
 
@@ -82,6 +83,7 @@ a digest from the committed bytes, for example
 |---|---|---|---|---|
 | x402 payments | `x402-v0` | this directory, [`x402-v0.md`](x402-v0.md) | `dbde399111f13ae880e388c7117fd5991c61456a` | `8b2d56701682cdeee33131dfa85eac4660e50de02b0a2b1038eb46e635b520fb` |
 | Lightning payments | `lightning-v0` | Mesh-LLM/capsules-plugin, `adapters/lightning-v0.md` | `f046e96e846beb91be5ed4ae32aa88f2dd934411` | `2df8f2c92d1679ac277693ef3a30550f7445afe06d83f45d17dfc61deeda71e4` |
+| Nostr mailbox carriage (experimental) | `nostr-mailbox-v0` | this directory, [`nostr-mailbox-v0.md`](nostr-mailbox-v0.md) | `a2182b582c60ffeb9991bece764d6f9d0af94e8b` | `7709b7ba0e4f09b80744d67b57868327ea050866ec21fec4abfdfa16d1b303de` |
 
 **x402.** A relying party that pins `{x402-v0, 8b2d5670…}` checks an x402 payment by that text.
 The text reads the payment payload, the settlement response and the receipt (a), names the payer,
