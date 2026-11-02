@@ -128,3 +128,25 @@ describe("verification banner: parent-log witness", () => {
     expect(banner.detail).not.toContain("does not hold");
   });
 });
+
+describe("verified bundle context: witness directory", () => {
+  const bundle = vectors.cases.find(
+    (c) => c.id === "pos-witnessed-whole",
+  )!.bundle;
+
+  it("checks the parent receipt under the directory it is given", async () => {
+    const context = await buildVerifiedBundleContext(bundle, {
+      witnessDirectory: vectors.witness_directory,
+    });
+    expect(context.strict?.parentWitness).toMatchObject({
+      status: "pass",
+      extent: { entries: 3, of: 3 },
+    });
+    expect(context.strict?.verdict).toBe("VALID");
+  });
+
+  it("trusts no witness without one", async () => {
+    const context = await buildVerifiedBundleContext(bundle);
+    expect(context.strict?.parentWitness?.status).toBe("withheld");
+  });
+});

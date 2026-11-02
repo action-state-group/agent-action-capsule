@@ -1732,6 +1732,13 @@ export interface VerifiedBundleContext {
 
 export interface VerifiedBundleContextOptions {
   readonly countersigners?: CountersignerSource;
+  /**
+   * The witness directory the strict check reads receipts under: those in
+   * `checkpoint.witnesses` and those over a parent log's checkpoint
+   * (`parent-log-witness/v1`). Without one no witness is trusted and every
+   * receipt is `withheld`, so a page never shows a checkpoint as witnessed.
+   */
+  readonly witnessDirectory?: unknown;
 }
 
 const contexts = new WeakSet<object>();
@@ -1967,6 +1974,9 @@ export async function buildVerifiedBundleContext(
   const ed25519 = await probeEd25519();
   const { plain, strict } = await verifyPlainAndStrict(owned, {
     strict: ed25519,
+    ...(options.witnessDirectory === undefined
+      ? {}
+      : { witnessDirectory: deepFreeze(ownedCopy(options.witnessDirectory)) }),
   });
   return contextFrom(
     owned,

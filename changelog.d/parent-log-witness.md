@@ -11,6 +11,8 @@
   only a failure changes the verdict, and the kind's extension result carries its status in strict mode.
 - TypeScript: the verification page model lists a checkpoint witnessed through a parent log with its extent, and no
   longer calls a checkpoint self-witnessed when a strict witness check passed.
+  `buildVerifiedBundleContext` takes a `witnessDirectory` option, passed to its strict check, so a page can show
+  a witnessed checkpoint at all; without one every receipt stays `withheld`, as before.
 - Bundles already issued with capsulectl's private `x-cadence-witness/v0` block are not read as
   `parent-log-witness/v1`: the core still shows their checkpoint as self-witnessed until capsulectl writes the
   registered kind (action-state-group/capsule-cli#356).
