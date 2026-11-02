@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: nothing after `go/v0.19.0`, `python/v0.15.0` and `ts/v0.13.0`. The Rust crates keep their own
+Not in any tag yet: nothing after `go/v0.19.0`, `python/v0.15.0` and `ts/v0.13.1`. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
@@ -46,6 +46,41 @@ has not yet.
   model; anything else is `request_malformed`. This is what Rust and Python already enforce. Go:
   `ParseRequest` now refuses a CBOR request outside deterministic encoding or the data model at any
   depth, which it used to accept. New vectors `vectors/cbor-request-model/` (18 cases).
+
+- `spec/adapters/README.md`: add the `nostr-mailbox-v0` declaration to the worked-examples table with its `{id, digest}` pair, and to the list of declarations in the directory.
+
+- Go: `inferencehistory` reads the checkpoints of a real `history_card/1` (action-state-group/agent-action-capsule#563): each history entry's checkpoint as a hex `cll-checkpoint` statement with its `consistency_from_previous` proof (ER §8.1), as an evidencebook Book or Mesh node answers it. `history_card_content` checks every statement's signature under a pinned log key, that the entries are in order and each extends the one before by its proof, and that the anchor is the digest of the last statement; `period_alignment` and `period_anchor` read the statements' `issued_at` and `log_size`. The vectors' JSON checkpoint form still works. `evidencerequest` gains `DecodeCLLCheckpoint` and `CLLCheckpoint.VerifySignature`. No wire or normative change; additive.
+
+- Go: new packages `personalhistoryoutcome` and `inferencehistory` (action-state-group/agent-action-capsule#555): readers for `personal_history_outcome/1` and `inference-service-history/0` (Standard and Detailed) at parity with the Python vector evaluators, each reporting its History properties as PASS, FAIL or NOT_CHECKED over `evidencerequest.Verifier`. `personalhistoryoutcome.Evaluate` also gives claim properties, requirement results and deal commitment openings; a native object's check is a caller-supplied `NativeChecker`, `NOT_CHECKED` without one. `inferencehistory.Evaluate` gives the coverage report, witness receipts and exchange labels shown, and `EvaluatePair` checks `period_fixed`. They pass `vectors/personal-history-outcome-v0`, `vectors/inference-service-history-v0` and `-interop-v1`. No wire or normative change; additive.
+
+## ts 0.13.1 — 2026-11-02
+
+Tag `ts/v0.13.1`.
+
+- Spec: Evidence Result v0's `ClaimType` gains `calibration` (`spec/evidence-result-v0.md` §4.1,
+  AAC#548), the claim the outcome-report reader's calibration reading (#488) reads. It keeps every
+  base field and carries no body; its `evidence[]` cites exactly one `calibration-summary/v1`
+  record and otherwise only `human-rating/v1` records, a rule the Python reference checker and Go
+  `evidenceresult.Check` enforce over the cited records. Additive: every Result that validated
+  before still validates. Six vectors in `vectors/evidence-result/`.
+- Spec, experimental: `spec/bindings/nostr-mailbox-v0.md`, a carriage of the `evidence-interop/0`
+  exchange through a Nostr relay for a responder with no inbound reachability, with its adapter
+  declaration `spec/adapters/nostr-mailbox-v0.md`, vectors in `vectors/adapters/nostr-mailbox/` and
+  the drift workflow `nostr-mailbox.yml`. Not part of the profile; it defines no binding token.
+  A reply that arrives after the requester has recorded an absence never rewrites that record: it
+  is kept beside it as its own later fact, citing the request by the digest it signs (§5.3, vector
+  `mailbox-late-reply-after-absence`). Event kinds 4700/4701 stay placeholders until a second,
+  independent implementation exists.
+- Spec, experimental: the Nostr mailbox binding and its adapter declaration re-pin to
+  `evidence-interop/1` and ER `draft-mih-agent-evidence-request-02`, and cite ER -02's own A2A, MCP
+  and carriage rules (ER §10.1 to §10.3). A requester SHOULD limit how many events not attributed to
+  the mailbox it verifies by content for one request; an event beyond the limit is not a reply
+  (§4.2, vector `mailbox-reply-by-content-limit`). The text also says that a failed request event
+  is never refused `request_unauthenticated` (§4.1), and how ER -02's unavailable-window statements
+  meet the mailbox's absence window (§5.3). `vectors/adapters/nostr-mailbox/` is regenerated
+  against the `evidence-interop/1` corpus (15 cases).
+- `spec/adapters/README.md`: add the `nostr-mailbox-v0` declaration to the worked-examples table with its `{id, digest}` pair, and to the list of declarations in the directory.
+- TypeScript: `buildResultRoot` now reads a `type: calibration` claim as recognized (spec/evidence-result-v0.md section 4.1, normative from 2026-11-01); it was labelled unrecognized because only requirement, close and reconcile were recognized (action-state-group/agent-action-capsule#573). The Go reader already handled it; Python and Rust do not read Result claim types. No wire change.
 
 ## go 0.19.0 — 2026-10-31
 
