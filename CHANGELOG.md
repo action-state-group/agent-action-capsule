@@ -47,6 +47,18 @@ has not yet.
   `ParseRequest` now refuses a CBOR request outside deterministic encoding or the data model at any
   depth, which it used to accept. New vectors `vectors/cbor-request-model/` (18 cases).
 
+- `spec/adapters/README.md`: add the `nostr-mailbox-v0` declaration to the worked-examples table with its `{id, digest}` pair, and to the list of declarations in the directory.
+
+- Go: `inferencehistory` reads the checkpoints of a real `history_card/1` (action-state-group/agent-action-capsule#563): each history entry's checkpoint as a hex `cll-checkpoint` statement with its `consistency_from_previous` proof (ER §8.1), as an evidencebook Book or Mesh node answers it. `history_card_content` checks every statement's signature under a pinned log key, that the entries are in order and each extends the one before by its proof, and that the anchor is the digest of the last statement; `period_alignment` and `period_anchor` read the statements' `issued_at` and `log_size`. The vectors' JSON checkpoint form still works. `evidencerequest` gains `DecodeCLLCheckpoint` and `CLLCheckpoint.VerifySignature`. No wire or normative change; additive.
+
+- Go: new packages `personalhistoryoutcome` and `inferencehistory` (action-state-group/agent-action-capsule#555): readers for `personal_history_outcome/1` and `inference-service-history/0` (Standard and Detailed) at parity with the Python vector evaluators, each reporting its History properties as PASS, FAIL or NOT_CHECKED over `evidencerequest.Verifier`. `personalhistoryoutcome.Evaluate` also gives claim properties, requirement results and deal commitment openings; a native object's check is a caller-supplied `NativeChecker`, `NOT_CHECKED` without one. `inferencehistory.Evaluate` gives the coverage report, witness receipts and exchange labels shown, and `EvaluatePair` checks `period_fixed`. They pass `vectors/personal-history-outcome-v0`, `vectors/inference-service-history-v0` and `-interop-v1`. No wire or normative change; additive.
+
+## ts 0.13.1 — 2026-11-02
+
+Tag `ts/v0.13.1`.
+
+- TypeScript: `buildResultRoot` now reads a `type: calibration` claim as recognized (spec/evidence-result-v0.md section 4.1, normative from 2026-11-01); it was labelled unrecognized because only requirement, close and reconcile were recognized (action-state-group/agent-action-capsule#573). The Go reader already handled it; Python and Rust do not read Result claim types. No wire change.
+
 ## go 0.19.0 — 2026-10-31
 
 Tag `go/v0.19.0`.
