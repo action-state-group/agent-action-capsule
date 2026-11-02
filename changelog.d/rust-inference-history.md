@@ -1,0 +1,3 @@
+<!-- changelog: rust/agent-action-capsule/CHANGELOG.md -->
+
+- New `inference-history` feature and `inference_history` module (action-state-group/agent-action-capsule#558): derives and checks the Standard level of `inference-service-history/0` (`spec/inference-service-history-profile-v0.md`) under any Standard definition: `Definition::from_document` (ISH §8.3 `definition_form`), `period_counts`, `artifact` and `check_artifact` (`definition_binding`, `period_alignment`, `period_anchor`, `period_floor`, the coverage declaration, `history_card_digest`). Passes the Standard cases of `vectors/inference-service-history-v0` and `-interop-v1`. No wire or normative change; additive.
