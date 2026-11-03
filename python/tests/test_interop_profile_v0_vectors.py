@@ -904,14 +904,21 @@ class Verifier:
             if "http_well_known" in ms:
                 h = ms["http_well_known"]
                 body = self.octets(h["body"])
-                http_m = json.loads(body)
+                http_m = json.loads(body, object_pairs_hook=self.no_duplicates)
                 copies.append(http_m)
                 form = self.manifest_form(http_m)
-                if h["media_type"] != "application/json" or body != jcs(http_m):
+                if h["media_type"].split(";", 1)[0].strip().lower() != "application/json" or body != jcs(http_m):
                     form = "FAIL"
                 out["manifest_properties"]["http_well_known"] = {"manifest_form": form}
             out["manifest_properties"]["manifest_consistency"] = (
                 "PASS" if len({jcs(m) for m in copies}) == 1 else "FAIL")
+        return out
+
+    @staticmethod
+    def no_duplicates(pairs):
+        out = dict(pairs)
+        if len(out) != len(pairs):
+            raise ValueError("duplicate member name")
         return out
 
     # ---- a whole case ----

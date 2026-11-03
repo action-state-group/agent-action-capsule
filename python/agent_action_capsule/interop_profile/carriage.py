@@ -181,7 +181,7 @@ def manifest_from_http(body: bytes, media_type: str) -> tuple[Any, bool]:
     both ``FAIL`` on it."""
     try:
         value = json.loads(body.decode("utf-8"), object_pairs_hook=_no_duplicate_members)
-    except ValueError:
+    except (ValueError, RecursionError):
         return None, False
     essence = media_type.split(";", 1)[0].strip().lower()  # RFC 9110: parameters are not the media type
     return value, essence == MEDIA_JSON and jcs_or_none(value) == body

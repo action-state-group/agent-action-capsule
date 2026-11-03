@@ -1521,7 +1521,8 @@ def carriage_cases() -> list[dict]:
     out = [
         case("carriage-invariance",
              "Request C as deterministic CBOR, sent once over each carriage; three envelopes with distinct "
-             "issued_at. One request digest, one artifact, caller_invariance PASS; one manifest served twice.",
+             "issued_at. One request digest, one artifact, caller_invariance PASS; one manifest served twice"
+             + (", and fetched over HTTP a third time." if VERSION >= 2 else "."),
              carried(e_native, a2a_task("TASK_STATE_COMPLETED", [("1", e_a2a)]), mcp_result(e_mcp), manifests_ok),
              {"native": "reply", "a2a": "reply", "mcp": "reply"}, [ok, ok, ok],
              {"caller_invariance": "PASS"},

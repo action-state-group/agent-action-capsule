@@ -6754,7 +6754,7 @@
     },
     {
       "id": "carriage-invariance",
-      "description": "Request C as deterministic CBOR, sent once over each carriage; three envelopes with distinct issued_at. One request digest, one artifact, caller_invariance PASS; one manifest served twice.",
+      "description": "Request C as deterministic CBOR, sent once over each carriage; three envelopes with distinct issued_at. One request digest, one artifact, caller_invariance PASS; one manifest served twice, and fetched over HTTP a third time.",
       "cites": [
         "§11.4.1",
         "§11.4.4",
