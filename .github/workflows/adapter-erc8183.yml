@@ -1,0 +1,56 @@
+name: ERC-8183 adapter profile vectors
+
+# The ERC-8183 adapter profile (spec/adapters/erc-8183-v0.md) keeps its
+# own drift check: a regeneration must reproduce the committed vectors, and the vectors must verify
+# offline. No chain is read.
+on:
+  push:
+    paths:
+      - "python/scripts/generate_adapter_erc8183_vectors.py"
+      - "python/tests/test_adapter_erc8183_vectors.py"
+      - "python/agent_action_capsule/canonical.py"
+      - "python/agent_action_capsule/producer_envelope.py"
+      - "schemas/judge/evaluation-report-v1.json"
+      - "spec/adapters/erc-8183-v0.md"
+      - "vectors/adapters/erc-8183/**"
+      - ".github/workflows/adapter-erc8183.yml"
+  pull_request:
+    paths:
+      - "python/scripts/generate_adapter_erc8183_vectors.py"
+      - "python/tests/test_adapter_erc8183_vectors.py"
+      - "python/agent_action_capsule/canonical.py"
+      - "python/agent_action_capsule/producer_envelope.py"
+      - "schemas/judge/evaluation-report-v1.json"
+      - "spec/adapters/erc-8183-v0.md"
+      - "vectors/adapters/erc-8183/**"
+      - ".github/workflows/adapter-erc8183.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with: { python-version: "3.12" }
+      - name: install
+        run: pip install -e "python[dev]" jsonschema
+      - name: regenerate
+        run: python python/scripts/generate_adapter_erc8183_vectors.py
+      - name: require an unchanged corpus
+        run: |
+          status=$(git status --porcelain -- vectors/adapters/erc-8183)
+          if [ -n "$status" ]; then
+            echo "$status"
+            git diff --stat -- vectors/adapters/erc-8183
+            echo "::error::generate_adapter_erc8183_vectors.py does not reproduce the committed vectors"
+            exit 1
+          fi
+      - name: checksums
+        working-directory: vectors/adapters/erc-8183
+        run: sha256sum --check SHA256SUMS
+      - name: verify offline
+        working-directory: python
+        run: pytest -q tests/test_adapter_erc8183_vectors.py

@@ -187,6 +187,13 @@ same-commit files in CI.
   checkout carrying `ap2.merchant_authorization`: a positive and a
   native-check-fails case, signed with the RFC 7515 Appendix A.3 example key;
   `python/scripts/generate_ucp_adapter_vectors.py` regenerates them.
+- `adapters/erc-8183/`: the ERC-8183 adapter profile `spec/adapters/erc-8183-v0.md`: jobs whose
+  evaluator's `reason` is the Capsule ID of a sealed `evaluation-report/v1`, with the job's recorded
+  lookups, the report capsule, its Producer Envelope and payload, and the expected status of each
+  of the profile's seven checks. Five passing jobs (`met`/`complete`, `not_met`/`reject` and the
+  `not_evaluable` and `out_of_scope` refunds) and twenty MUST-reject ones. Constructed, no chain read, signed with
+  test keys derived from public labels; `python/scripts/generate_adapter_erc8183_vectors.py`
+  regenerates them.
 - `adapters/nostr-mailbox/`: EXPERIMENTAL, not conformance vectors for any profile. The Nostr
   mailbox carriage of `spec/bindings/nostr-mailbox-v0.md`: request and reply events around the
   `interop-profile-v1` envelopes and refusal, with a positive exchange, a refusal, a redelivery,

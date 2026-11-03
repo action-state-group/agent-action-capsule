@@ -1,0 +1,8 @@
+{
+  "set": "aac-adapter-erc-8183-v0",
+  "profile": "spec/adapters/erc-8183-v0.md",
+  "status": "Vectors for an informational adapter profile. No chain was read: every lookup is a constructed recording. Every key is a test key derived from a public label; never use one for anything else.",
+  "files": {
+    "vectors.json": "f893f11f6a0cf6f247c54fb582654ad0113bedd74714ed42b07796e7c97bb002"
+  }
+}
