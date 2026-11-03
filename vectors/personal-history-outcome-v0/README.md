@@ -19,8 +19,8 @@ The two tick path cases (§11, PH §8.3) first move each deal to a stream of its
 the Basic level's anchor tick, which commits to the third deal's stream only through its earlier
 tick, as that level's `multi-stream-earlier-tick` case does. They carry that stream's tick path,
 with the Basic level's tick log keys in the trust policy. The two `not-a-history-*` cases change
-one of those files so that it is not a History at this level (§11); their `expected` is
-`{"not_a_history": true}`, and a verifier evaluates nothing in them.
+one of those files so that it is not a History at this level (§11); their `expected` holds
+only `"not_a_history": true` and an empty `fails`, and a verifier evaluates nothing in them.
 
 The added records' digests are label digests, not record identifiers. That changes nothing a
 verifier checks: `anchor_inclusion` is `NOT_CHECKED` at this level as at the Basic level.

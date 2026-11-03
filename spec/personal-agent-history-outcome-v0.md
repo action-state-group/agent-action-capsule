@@ -540,7 +540,7 @@ here would depend on bytes that revision changes.
 | `predicates-digest-altered`, `outcome-on-a-step-record`, `coverage-rule-not-all-records` | `predicate_binding`, `record_kinds` and `coverage_declaration_form` `FAIL`: the History is not accepted and no claim is evaluated |
 | `multi-stream-earlier-tick` | the holder's record of `completed`, with the three deals in three streams at an anchor tick that commits to the third deal's stream through an earlier tick, carrying that stream's tick path (PH §8.3): the tick path check `PASS`, and the claims and requirements as in `holder-record` |
 | `mutant-tick-path-consistency-changed` | the same, with one octet of the tick path's consistency proof changed: the tick path check `FAIL`, and the History still accepted with the same claims (§8.2) |
-| `not-a-history-other-member`, `not-a-history-tick-path-other-member` | a file with a member outside §11's table, and one whose tick path carries a member outside PH §8.3's: not a History at this level (§11). Their `expected` is `{"not_a_history": true}`: a verifier rejects the file and evaluates nothing |
+| `not-a-history-other-member`, `not-a-history-tick-path-other-member` | a file with a member outside §11's table, and one whose tick path carries a member outside PH §8.3's: not a History at this level (§11). Their `expected` holds only `"not_a_history": true` and an empty `fails`: a verifier rejects the file and evaluates nothing |
 
 The Basic level's vectors are unchanged.
 
