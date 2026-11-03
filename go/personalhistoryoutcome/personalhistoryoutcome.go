@@ -6,7 +6,8 @@
 // cited as PO): the acceptance of each answer under the Minimum Evidence
 // Interoperability Profile (PO §8.1), the level's History properties
 // (PO §8.2), the properties of each outcome claim (PO §5, §8.3), the
-// requirement results (PO §8.4) and the deal commitment openings (PO §7).
+// requirement results (PO §8.4), the deal commitment openings (PO §7) and
+// the tick paths a History carries (PO §11, PH §8.3).
 //
 // Each exchange is verified by evidencerequest.Verifier. Claims are
 // evaluated only over a History that is accepted. A native object's own
@@ -22,11 +23,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 
 	"github.com/action-state-group/agent-action-capsule/go/evidencerequest"
 	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
+	"github.com/action-state-group/agent-action-capsule/go/personalhistory"
 )
 
 // Name is the Outcome level's name: what people read, not what the wire
@@ -140,12 +143,95 @@ type Exchange struct {
 
 // Inputs are what is evaluated: the definition the recipient holds, the
 // exchanges, the evidence objects held (each by the digest of its
-// octets), and the deal commitment openings by deal.
+// octets), the deal commitment openings by deal, and the tick paths
+// (PO §11; nil unless the History relies on a commitment through an
+// earlier tick, PH §2), as personalhistory.ParseTickPaths reads them.
 type Inputs struct {
 	Definition any
 	Exchanges  []Exchange
 	Evidence   [][]byte
 	Openings   map[string]any
+	TickPaths  *personalhistory.TickPaths
+}
+
+// ErrInvalid reports a file that is not a History at this level (PO §11).
+var ErrInvalid = errors.New("personalhistoryoutcome: invalid")
+
+var carriedHex = regexp.MustCompile(`^(?:[0-9a-f]{2})*$`)
+
+// ParseFile reads a one-file History at this level (PO §11): exactly the
+// members history (this level's name), definition, exchanges, evidence
+// and openings, and tick_paths when present. The exchanges and the tick
+// paths take PH §8.2's and §8.3's forms, read by personalhistory.ParseFile;
+// each evidence object is {media_type, octets_text} or {media_type,
+// octets_hex}, and each opening {nonce, text}. Any other file is not a
+// History at this level, and nothing in it is evaluated.
+func ParseFile(data []byte) (Inputs, error) {
+	bad := func(why string) (Inputs, error) {
+		return Inputs{}, fmt.Errorf("%w: %s (PO §11)", ErrInvalid, why)
+	}
+	root, err := evidencerequest.DecodeJSON(data)
+	if err != nil {
+		return bad(err.Error())
+	}
+	obj, ok := root.(map[string]any)
+	members := []string{"definition", "evidence", "exchanges", "history", "openings"}
+	if !ok || (!hasKeys(obj, members) && !hasKeys(obj, append(members, "tick_paths"))) {
+		return bad("a History file holds exactly history, definition, exchanges, evidence and openings, and tick_paths when present")
+	}
+	if obj["history"] != Name {
+		return bad("history is not " + Name)
+	}
+	// The members PH §8.2 shares, read by the Basic level's parser.
+	basic := map[string]any{"history": personalhistory.Name, "definition": obj["definition"], "exchanges": obj["exchanges"]}
+	if tp, ok := obj["tick_paths"]; ok {
+		basic["tick_paths"] = tp
+	}
+	octets, err := evidencerequest.EncodeJCS(basic)
+	if err != nil {
+		return bad(err.Error())
+	}
+	f, err := personalhistory.ParseFile(octets)
+	if err != nil {
+		return bad(err.Error())
+	}
+	in := Inputs{Definition: f.Definition, TickPaths: f.TickPaths, Openings: map[string]any{}}
+	for _, x := range f.Exchanges {
+		in.Exchanges = append(in.Exchanges, Exchange{Request: x.Request, Reply: x.Reply})
+	}
+	evidence, ok := obj["evidence"].([]any)
+	if !ok {
+		return bad("evidence is not an array")
+	}
+	for i, raw := range evidence {
+		o, ok := raw.(map[string]any)
+		mediaType, _ := o["media_type"].(string)
+		text, isText := o["octets_text"].(string)
+		hexText, isHex := o["octets_hex"].(string)
+		switch {
+		case ok && mediaType != "" && isText && hasKeys(o, []string{"media_type", "octets_text"}):
+			in.Evidence = append(in.Evidence, []byte(text))
+		case ok && mediaType != "" && isHex && carriedHex.MatchString(hexText) && hasKeys(o, []string{"media_type", "octets_hex"}):
+			b, _ := hex.DecodeString(hexText)
+			in.Evidence = append(in.Evidence, b)
+		default:
+			return bad(fmt.Sprintf("evidence %d is not {media_type, octets_text} or {media_type, octets_hex}", i))
+		}
+	}
+	openings, ok := obj["openings"].(map[string]any)
+	if !ok {
+		return bad("openings is not an object")
+	}
+	for deal, raw := range openings {
+		o, ok := raw.(map[string]any)
+		_, nonce := o["nonce"].(string)
+		_, text := o["text"].(string)
+		if !ok || !nonce || !text || !hasKeys(o, []string{"nonce", "text"}) {
+			return bad("the opening of " + deal + " is not {nonce, text}")
+		}
+		in.Openings[deal] = o
+	}
+	return in, nil
 }
 
 // ExchangeResult is one exchange: the verifier's reply result, the
@@ -180,7 +266,10 @@ type RequirementResult struct {
 
 // Result is a History evaluated. Claims, Requirements are nil unless the
 // History is accepted; Requirements maps a requirement id to each deal's
-// result; Openings maps a deal that commits to its opening's check.
+// result; Openings maps a deal that commits to its opening's check;
+// TickPaths is each tick path's check (PH §8.3), nil when the History
+// carries none. A tick path's result is not a History property and never
+// changes Accepted or a claim (PO §8.2).
 type Result struct {
 	Exchanges    []ExchangeResult
 	Properties   map[string]string
@@ -188,6 +277,7 @@ type Result struct {
 	Claims       []Claim
 	Requirements map[string]map[string]RequirementResult
 	Openings     map[string]string
+	TickPaths    []personalhistory.TickPathResult
 }
 
 // Evaluate verifies each exchange with v and applies PO §8.1 to each
@@ -260,6 +350,18 @@ func Evaluate(v *evidencerequest.Verifier, cfg Config, in Inputs, requirements [
 		out.Requirements = requirementResults(cfg, deals, out.Claims)
 	}
 	out.Openings = openingResults(envs, jsonModelMap(in.Openings))
+	if in.TickPaths != nil {
+		ph := personalhistory.Result{Exchanges: make([]personalhistory.ExchangeResult, len(out.Exchanges))}
+		for i, x := range out.Exchanges {
+			var artifact any
+			if x.env != nil {
+				artifact = x.env["artifact"]
+			}
+			ph.Exchanges[i] = personalhistory.ExchangeResult{Reply: x.Reply, Subject: x.Subject, Accepted: x.Accepted,
+				Artifact: artifact}
+		}
+		out.TickPaths = personalhistory.CheckTickPaths(v.Trust, ph, *in.TickPaths)
+	}
 	return out, nil
 }
 

@@ -389,6 +389,9 @@ Each is reported in the IP §7.1 vocabulary [PO-3]:
 | `artifact_form` | as PH §6.2, with this level's `reads` |
 | `record_kinds` | every record's kind is in §4's list, `outcome` and `consent` are on exactly the records §4 names, and a deal carries at most one deal commitment, with both of its members |
 
+The tick path check (PH §8.3) is not a History property at this level either, as PH §6.2 says.
+Its result never changes whether a History is accepted or whether a claim counts.
+
 ### 8.3 Claim properties
 
 For each `outcome_recorded` record of an accepted History, the verifier reports:
@@ -445,11 +448,13 @@ A verifier showing an accepted History at this level shows, in this order:
 3. per deal, one row per outcome claim: its predicate, its source label, whether it counts, its
    deal binding, and its properties that are not `PASS`. For a half, `issuer_independence` and what
    it means (IP §6.7.4). For a judge, the judge, the question and the records cited;
-4. per deal, the deal commitment's state (§7) and any disputes held (§6.4);
+4. per deal, the deal commitment's state (§7), any disputes held (§6.4), and, for a deal whose
+   stream has a tick path, that path's status or that it was not checked, as PH §6.3 item 3 says;
 5. per requirement and deal, the result of §8.4. A predicate with no claim is "not established",
    never "failed";
-6. which checks ran and which did not, including `anchor_inclusion` `NOT_CHECKED`, and the limits
-   of PH §4.5, PH §9 and §13 here.
+6. which checks ran and which did not, including `anchor_inclusion` `NOT_CHECKED` and each tick
+   path's status (PH §8.3) or that it was not checked, and the limits of PH §4.5, PH §9 and §13
+   here.
 
 ## 10. Selection and requirement sets
 
@@ -476,10 +481,14 @@ As PH §8, with these changes to the one-file container (PH §8.2) [PO-7]:
 | `definition`, `exchanges` | as PH §8.2 |
 | `evidence` | the objects the claims cite: an array of `{"media_type", "octets_text"}` or `{"media_type", "octets_hex"}`, the octets exactly as held. A verifier finds each by its SHA-256 |
 | `openings` | an object whose members are deal references and whose values are `{"nonce", "text"}` (§7). A deal with no opening is left out |
+| `tick_paths` | as PH §8.2: present exactly when the History relies on a commitment through an earlier tick (PH §2), the PH §8.3 value |
 
-When a History is asked for (PH §8.1), the evidence and the openings reach the recipient by any
-channel beside the answers, or in an Evidence Bundle. They are never added to an envelope or an
-artifact.
+A file with any other member, or with a `tick_paths` value not of PH §8.3's form, is not a History
+at this level.
+
+When a History is asked for (PH §8.1), the evidence, the openings and the tick paths reach the
+recipient by any channel beside the answers, or in an Evidence Bundle. They are never added to an
+envelope or an artifact.
 
 ## 12. Vectors
 
@@ -529,6 +538,9 @@ here would depend on bytes that revision changes.
 | `native-object-not-held` | `outcome_evidence` `NOT_PRESENT`, `native_check` `NOT_CHECKED`: `r-paid` `INSUFFICIENT` |
 | `disputed-as-outcome-claim` | a claim of `disputed`: `outcome_form` `FAIL` (§6.4) |
 | `predicates-digest-altered`, `outcome-on-a-step-record`, `coverage-rule-not-all-records` | `predicate_binding`, `record_kinds` and `coverage_declaration_form` `FAIL`: the History is not accepted and no claim is evaluated |
+| `multi-stream-earlier-tick` | the holder's record of `completed`, with the three deals in three streams at an anchor tick that commits to the third deal's stream through an earlier tick, carrying that stream's tick path (PH §8.3): the tick path check `PASS`, and the claims and requirements as in `holder-record` |
+| `mutant-tick-path-consistency-changed` | the same, with one octet of the tick path's consistency proof changed: the tick path check `FAIL`, and the History still accepted with the same claims (§8.2) |
+| `not-a-history-other-member`, `not-a-history-tick-path-other-member` | a file with a member outside §11's table, and one whose tick path carries a member outside PH §8.3's: not a History at this level (§11). Their `expected` holds only `"not_a_history": true` and an empty `fails`: a verifier rejects the file and evaluates nothing |
 
 The Basic level's vectors are unchanged.
 

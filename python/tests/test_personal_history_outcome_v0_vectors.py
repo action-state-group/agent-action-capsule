@@ -7,6 +7,8 @@ Every case is run from its inputs alone:
   (``agent_action_capsule.interop_profile``), and the test applies the level's §8.1.
 - The level's History properties (§8.2), claim properties (§8.3), requirement results (§8.4) and
   deal commitment openings (§7) come from an evaluator written here from the level text.
+- The tick path check (PH §8.3) is the Basic level test's, reported beside the History as §11 and
+  §8.2 say.
 - A native object's ``native_check`` is taken from the x402 adapter corpus, not computed here: the
   evaluator finds the corpus case whose wrapped objects the claim cites, requires the case's
   recorded lookup to be the one the relying party observed, and reads the statuses that case states
@@ -39,6 +41,7 @@ pytest.importorskip("cryptography")
 
 from cryptography.exceptions import InvalidSignature  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey  # noqa: E402
+from test_personal_history_basic_v0_vectors import tick_path_status, tick_paths  # noqa: E402
 
 from agent_action_capsule.canonical import jcs  # noqa: E402
 from agent_action_capsule.interop_profile import (  # noqa: E402
@@ -56,7 +59,10 @@ X402 = ROOT / "vectors" / "adapters" / "x402"
 GENERATOR = ROOT / "python" / "scripts" / "generate_personal_history_outcome_v0_vectors.py"
 HAND_WRITTEN = ("README.md",)
 DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
-CASES = DATA["cases"]
+ALL_CASES = DATA["cases"]
+# §11: the files that are not a History at this level; every other case is a History.
+REJECTED = [c for c in ALL_CASES if c["expected"].get("not_a_history")]
+CASES = [c for c in ALL_CASES if c not in REJECTED]
 CONTRACT = DATA["contract"]["document"]
 SPEC_TEXT = (ROOT / DATA["spec"]).read_text(encoding="utf-8")
 
@@ -481,10 +487,64 @@ def opening_results(case: dict, envs: list[dict]) -> dict:
     return out
 
 
+# §11: the one-file History's members, and the tick_paths value's (PH §8.3).
+FILE_MEMBERS = {"history", "definition", "exchanges", "evidence", "openings"}
+LOWER_HEX = re.compile(r"(?:[0-9a-f]{2})+")
+CARRIED_HEX = re.compile(r"(?:[0-9a-f]{2})*")
+
+
+def carried_form(o: Any, *, json_only: bool) -> bool:
+    """{media_type, octets_text} or {media_type, octets_hex}; for an exchange (PH §8.2) the first is
+    JSON and the second CBOR."""
+    if not isinstance(o, dict) or not isinstance(o.get("media_type"), str) or not o["media_type"]:
+        return False
+    if set(o) == {"media_type", "octets_text"}:
+        return isinstance(o["octets_text"], str) and (not json_only or o["media_type"] == "application/json")
+    if set(o) == {"media_type", "octets_hex"}:
+        return (isinstance(o["octets_hex"], str) and CARRIED_HEX.fullmatch(o["octets_hex"]) is not None
+                and (not json_only or o["media_type"] == "application/cbor"))
+    return False
+
+
+def file_form(inputs: Any) -> bool:
+    """§11: exactly the file's members, each in its form, with tick_paths only in PH §8.3's form."""
+    if not isinstance(inputs, dict) or set(inputs) - {"tick_paths"} != FILE_MEMBERS or inputs["history"] != NAME:
+        return False
+    xs, ev, op = inputs["exchanges"], inputs["evidence"], inputs["openings"]
+    if not (isinstance(xs, list) and all(isinstance(x, dict) and set(x) == {"request", "reply"}
+                                         and all(carried_form(x[k], json_only=True) for k in x) for x in xs)):
+        return False
+    if not (isinstance(ev, list) and all(carried_form(o, json_only=False) for o in ev)):
+        return False
+    if not (isinstance(op, dict) and all(isinstance(o, dict) and set(o) == {"nonce", "text"}
+                                         and all(isinstance(v, str) for v in o.values()) for o in op.values())):
+        return False
+    if "tick_paths" not in inputs:
+        return True
+    tp = inputs["tick_paths"]
+    if not isinstance(tp, dict) or set(tp) != {"anchor_tick", "paths"}:
+        return False
+    paths = tp["paths"]
+    if not isinstance(tp["anchor_tick"], str) or not LOWER_HEX.fullmatch(tp["anchor_tick"]) \
+            or not isinstance(paths, list) or not paths:
+        return False
+    streams = []
+    for p in paths:
+        if not isinstance(p, dict) or set(p) != {"consistency", "evidence_stream", "tick"}:
+            return False
+        if not isinstance(p["evidence_stream"], str) or not p["evidence_stream"]:
+            return False
+        if not all(isinstance(p[k], str) and LOWER_HEX.fullmatch(p[k]) for k in ("consistency", "tick")):
+            return False
+        streams.append(p["evidence_stream"])
+    return streams == sorted(set(streams))
+
+
 def run_case(case: dict, evaluate: ClaimEvaluator = claim_properties, *,
              binding: Callable[[str], str] | None = None,
              requirements: Callable[[dict, list[str], list[dict]], dict] = requirement_results,
-             openings: Callable[[dict, list[dict]], dict] = opening_results) -> dict:
+             openings: Callable[[dict, list[dict]], dict] = opening_results,
+             tick_check: Callable[..., str] = tick_path_status) -> dict:
     exchanges = run_exchanges(case)
     envs = [x.pop("_env") for x in exchanges]
     accepted_envs = [e for e, x in zip(envs, exchanges) if x["accepted"]]
@@ -493,9 +553,13 @@ def run_case(case: dict, evaluate: ClaimEvaluator = claim_properties, *,
     accepted = all(x["accepted"] for x in exchanges) and all(v == "PASS" for v in hprops.values())
     claims = run_claims(case, definition, accepted_envs, evaluate, binding) if accepted else None
     deals = [e["subject"]["correlation"] for e in accepted_envs]
-    return {"exchanges": exchanges, "history_properties": hprops, "accepted": accepted, "claims": claims,
-            "requirements": requirements(case, deals, claims) if accepted else None,
-            "deal_commitment_opening": openings(case, accepted_envs)}
+    out = {"exchanges": exchanges, "history_properties": hprops, "accepted": accepted, "claims": claims,
+           "requirements": requirements(case, deals, claims) if accepted else None,
+           "deal_commitment_opening": openings(case, accepted_envs)}
+    paths = tick_paths(case, accepted_envs, tick_check)
+    if paths is not None:  # §8.2: reported beside the History properties, never among them
+        out["tick_paths"] = paths
+    return out
 
 
 def comparable(expected: dict) -> dict:
@@ -517,12 +581,12 @@ def failing(result: dict) -> set:
 
 
 def test_corpus_shape_and_pins():
-    assert DATA["count"] == len(CASES) == 25
+    assert DATA["count"] == len(ALL_CASES) == 29 and len(REJECTED) == 2
     assert DATA["history"] == NAME
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     run = ROOT / "vectors" / DATA["run"]["path"]
     assert sha(run.read_bytes()) == DATA["run"]["sha256"]
-    for case in CASES:
+    for case in ALL_CASES:
         assert case["pins"]["contract_digest"] == DATA["contract"]["contract_digest"]
         assert case["source"].startswith("derived: ")
 
@@ -612,7 +676,7 @@ def test_basic_vectors_unchanged():
 def test_spec_names_every_case():
     section = SPEC_TEXT.split("## 12.", 1)[1].split("\n## ", 1)[0]
     listed = set(re.findall(r"`([a-z0-9-]+)`", section))
-    assert {c["id"] for c in CASES} <= listed
+    assert {c["id"] for c in ALL_CASES} <= listed
 
 
 def test_test_keys_derive_from_their_labels():
@@ -661,7 +725,68 @@ DEFECTIVE: dict[str, dict] = {
     "payment answers delivery": {"requirements": _requirements_payment_answers_delivery},
     "opening not checked": {"openings": lambda case, envs: dict.fromkeys(
         (e["subject"]["correlation"] for e in envs), "PASS")},
+    "tick path consistency not checked": {"tick_check": lambda *a: tick_path_status(*a, consistency=False)},
 }
+
+
+def test_every_file_is_of_the_one_file_form():
+    """§11: every case's inputs are the one-file History, and tick_paths appears exactly in the
+    cases whose History relies on a commitment through an earlier tick."""
+    assert all(file_form(c["inputs"]) for c in CASES)
+    with_paths = {c["id"] for c in CASES if "tick_paths" in c["inputs"]}
+    assert with_paths == {"multi-stream-earlier-tick", "mutant-tick-path-consistency-changed"}
+
+
+@pytest.mark.parametrize("case", REJECTED, ids=[c["id"] for c in REJECTED])
+def test_not_a_history_case(case):
+    """§11: a verifier rejects the file, and the case expects nothing else."""
+    assert case["expected"] == {"not_a_history": True, "fails": []}
+    assert not file_form(case["inputs"])
+
+
+def test_file_with_other_member_or_malformed_tick_paths_is_not_a_history():
+    """§11: a file with any other member, or a tick_paths value not of PH §8.3's form, is not a
+    History at this level."""
+    (case,) = [c for c in CASES if c["id"] == "multi-stream-earlier-tick"]
+
+    def mutated(f: Callable[[dict], None]) -> dict:
+        inputs = copy.deepcopy(case["inputs"])
+        f(inputs)
+        return inputs
+
+    def set_path(member: str, value: Any) -> Callable[[dict], None]:
+        return lambda i: i["tick_paths"]["paths"][0].__setitem__(member, value)
+
+    bad = [
+        lambda i: i.__setitem__("witness", {}),
+        lambda i: i.__setitem__("history", "personal_history_basic/1"),
+        lambda i: i.pop("openings"),
+        lambda i: i.__setitem__("openings", {"d": {"nonce": "n"}}),
+        lambda i: i.__setitem__("evidence", [{"media_type": "application/json"}]),
+        lambda i: i["exchanges"][0]["request"].__setitem__("media_type", "application/cbor"),
+        lambda i: i.__setitem__("tick_paths", []),
+        lambda i: i["tick_paths"].__setitem__("witness", "00"),
+        lambda i: i["tick_paths"].__setitem__("paths", []),
+        lambda i: i["tick_paths"].__setitem__("anchor_tick", i["tick_paths"]["anchor_tick"].upper()),
+        lambda i: i["tick_paths"]["paths"].append(dict(i["tick_paths"]["paths"][0])),
+        set_path("evidence_stream", ""),
+        set_path("tick", "0"),
+        set_path("anchor", "00"),
+    ]
+    assert file_form(case["inputs"])
+    for f in bad:
+        assert not file_form(mutated(f))
+
+
+def test_tick_paths_never_change_acceptance_or_claims():
+    """§8.2: the positive and the mutant differ only in the tick path's status."""
+    by_id = {c["id"]: run_case(c) for c in CASES if "tick_paths" in c["inputs"]}
+    good, bent = by_id["multi-stream-earlier-tick"], by_id["mutant-tick-path-consistency-changed"]
+    assert [p["status"] for p in good["tick_paths"]] == ["PASS"]
+    assert [p["status"] for p in bent["tick_paths"]] == ["FAIL"]
+    assert good["accepted"] and bent["accepted"]
+    for k in ("history_properties", "claims", "requirements", "deal_commitment_opening"):
+        assert good[k] == bent[k], k
 
 
 def test_every_defective_evaluator_is_caught():
