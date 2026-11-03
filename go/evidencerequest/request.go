@@ -12,16 +12,21 @@ import (
 
 // ProfileID identifies the first revision of the Minimum Evidence
 // Interoperability Profile (spec/interop-profile-v0.md §3.1, frozen). A
-// request without a profile asks for it, under both revisions (§3.3 step 2).
+// request without a profile asks for it, under every revision (§3.3 step 2).
 const ProfileID = "evidence-interop/0"
 
 // ProfileIDv1 identifies the revision that pins ER -02 and registers its two
 // refusal reasons (spec/interop-profile-v1.md §3.1, P-65).
 const ProfileIDv1 = "evidence-interop/1"
 
+// ProfileIDv2 identifies the revision that is evidence-interop/1 with a
+// refusal whose signature also covers its policy_digest when present
+// (spec/interop-profile-v2.md §6.3, P-69).
+const ProfileIDv2 = "evidence-interop/2"
+
 // Profiles are the profile identifiers this package implements, each
 // checked under its own rules.
-var Profiles = []string{ProfileID, ProfileIDv1}
+var Profiles = []string{ProfileID, ProfileIDv1, ProfileIDv2}
 
 // RequestDraft is the Internet-Draft this package implements. Its request map
 // is also a valid -01 map, so a manifest's `drafts` (profile §11.4.2) may list

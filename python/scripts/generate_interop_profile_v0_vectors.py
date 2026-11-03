@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
-"""Generate the conformance vectors of the Minimum Evidence Interoperability Profile v0 and v1.
+"""Generate the conformance vectors of the Minimum Evidence Interoperability Profile v0, v1 and v2.
 
-The profile is ``spec/interop-profile-v0.md`` (identifier ``evidence-interop/0``), or with
-``--profile 1`` ``spec/interop-profile-v1.md`` (``evidence-interop/1``); its §11.5 describes this
-corpus. The v0 corpora are frozen with v0: ``--profile 0`` must reproduce them byte for byte. Every expected status below is written by hand from the profile text, and
+The profile is ``spec/interop-profile-v0.md`` (identifier ``evidence-interop/0``), with
+``--profile 1`` ``spec/interop-profile-v1.md`` (``evidence-interop/1``), or with ``--profile 2``
+``spec/interop-profile-v2.md`` (``evidence-interop/2``); its §11.5 describes this corpus. The v0
+and v1 corpora are frozen with their revisions: ``--profile 0`` and ``--profile 1`` must reproduce
+them byte for byte. Every expected status below is written by hand from the profile text, and
 each case cites the sections it comes from. Nothing here imports or runs a verifier: the script
 encodes literal inputs (JSON per RFC 8785, CBOR per RFC 8949 §4.2.1), builds two small
 Checkpointed Local Logs with the MMR algorithms the profile pins, hashes, and signs with fixed
@@ -15,9 +17,9 @@ every expected status with its own evaluator.
 Each case pins its trust policy (test keys only), its verification policy, the contract version
 (``contract_ref`` and ``contract_digest``), its evaluation time, and its inputs as octets.
 
-Output: ``vectors/interop-profile-v0/`` (``-v1/`` under ``--profile 1``, or ``--out DIR``).
+Output: ``vectors/interop-profile-v0/`` (``-vN/`` under ``--profile N``, or ``--out DIR``).
 ``--set requirement-facts`` writes the second set, ``vectors/interop-profile-v0-requirement-facts/``
-(``-v1-`` under ``--profile 1``): its own contract, whose requirements
+(``-vN-`` under ``--profile N``): its own contract, whose requirements
 carry the facts §8.3 copies into the claim, and its own pins and exchanges. Deterministic: no clock, no
 randomness. Every key is derived from a public seed and is for testing only. ``README.md`` is
 hand-written; when present in the output directory it is included in ``SHA256SUMS`` but never
@@ -31,7 +33,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -59,7 +61,8 @@ def _names(version: int) -> dict:
     v = f"v{version}"
     return {
         "PROFILE": f"evidence-interop/{version}",
-        "OTHER_PROFILE": f"evidence-interop/{1 - version}",
+        # v0 and v1 use each other; v2 uses v1, the identifier it follows.
+        "OTHER_PROFILE": f"evidence-interop/{1 if version != 1 else 0}",
         "VERSION": version,
         "DEFAULT_OUT": ROOT / "vectors" / f"interop-profile-{v}",
         "SET": f"aac-interop-profile-{v}",
@@ -431,10 +434,21 @@ def envelope(req_octets: bytes, record: str, anchor: str, artifact: bytes, mat: 
 
 
 def refusal(req_octets: bytes, reason: str, issued_at: str, *, key: str = "responder",
-            signer: str | None = None) -> bytes:
-    """A refusal (§6.3), JSON. ``signer`` differs from ``key`` only to forge one."""
+            signer: str | None = None, signed_policy: Any = None, carried_policy: Any = _PROFILE) -> bytes:
+    """A refusal (§6.3), JSON. ``signer`` differs from ``key`` only to forge one.
+
+    ``signed_policy`` is a ``policy_digest`` inside the signing input (v2 §6.3); ``carried_policy``
+    the ``policy_digest`` the object carries, by default the signed one, ``None`` for none. They
+    differ only to tamper with, strip or add one outside the signature."""
     body = {"issued_at": issued_at, "reason": reason, "request_digest": shx(req_octets)}
-    return jcs(dict(body, key_id=PUB[key], sig=sign(signer or key, jcs(body).encode()))).encode()
+    if signed_policy is not None:
+        body["policy_digest"] = signed_policy
+    full = dict(body, key_id=PUB[key], sig=sign(signer or key, jcs(body).encode()))
+    full.pop("policy_digest", None)
+    carried = signed_policy if carried_policy is _PROFILE else carried_policy
+    if carried is not None:
+        full["policy_digest"] = carried
+    return jcs(full).encode()
 
 
 def signed_record(body: dict, signer: str) -> dict:
@@ -529,7 +543,134 @@ SECTION_10_1_SIG = {
        "ab87f15e6f80792e1199e564a4f263dc35b2e8d015e65046bf2d095ec820800b",
     1: "311678d69795b9f2786276b5fe73810a6d016e1e92e12909e0580f4e201a76be"
        "8e56f2a1edc7f34f09836090cac4276766ebde40949aa12753d550b56bfe4205",
+    2: "2ef37b260b599807fcd4efd889f8b74db02e0f1b8587b47887b539d439869b95"
+       "ae4800c82942e8ef3fa2d5fe416a3b3c0378a9e091aa850e0e1f7cf28020f504",
 }
+
+
+# v2 §6.3 (P-69): the SHA-256 of a responder's signed policy file, as label digests.
+POLICY_DIGEST = shx(b"evidence-interop/2 vectors: responder policy file")
+OTHER_POLICY_DIGEST = shx(b"evidence-interop/2 vectors: another policy file")
+
+
+def policy_digest_cases(refusal_case: Callable[..., dict], req_c: bytes) -> list[dict]:
+    """v2 only: the refusal's policy_digest (§6.3, P-69). Under evidence-interop/2 it is signed when
+    present; a request for evidence-interop/1 gets the ERV A7 refusal, whose policy_digest, if any,
+    is outside the signature."""
+    J = "application/json"
+    both = verification_policy(profiles_implemented=sorted([PROFILE, OTHER_PROFILE]))
+    v1_only = verification_policy(profiles_implemented=[OTHER_PROFILE])
+    req_v1 = encode(J, request("2026-10-12T00:00:55Z/p1", ART, ANCHOR1, profile=OTHER_PROFILE))
+    req_v9 = encode(J, request("2026-10-12T00:00:56Z/p9", ART, ANCHOR1, profile="evidence-interop/9"))
+    at = "2026-10-12T00:00:11Z"
+    out = [
+        refusal_case(
+            "refusal-policy-digest-signed",
+            f"A conforming refusal under {PROFILE} that carries policy_digest, signed with the three "
+            "ERV A7 members. Every property PASS; NOT_FOUND. The signature binds the digest of the "
+            "responder's policy to this refusal.",
+            ["§6.3", "§7.2 refusal_signature", "§8.1 no_such_subject", "P-69"],
+            refusal(req_c, "no_such_subject", at, signed_policy=POLICY_DIGEST), ref_props(),
+            "refusal-no_such_subject"),
+        refusal_case(
+            "refusal-policy-digest-absent",
+            f"A conforming refusal under {PROFILE} with no policy_digest: the member is optional, and "
+            "the signing input is the three ERV A7 members. Every property PASS; NOT_FOUND.",
+            ["§6.3", "§7.2 refusal_signature", "§8.1 no_such_subject", "P-69"],
+            refusal(req_c, "no_such_subject", at), ref_props(), "refusal-no_such_subject"),
+        refusal_case(
+            "refusal-policy-digest-tampered",
+            "The signed refusal with its policy_digest replaced by another digest after signing. "
+            "refusal_signature FAIL: a response received and failed, UNKNOWN.",
+            ["§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-69"],
+            refusal(req_c, "no_such_subject", at, signed_policy=POLICY_DIGEST, carried_policy=OTHER_POLICY_DIGEST),
+            ref_props(refusal_signature="FAIL"), "refusal-failed"),
+        refusal_case(
+            "refusal-policy-digest-stripped",
+            "The signed refusal with its policy_digest removed after signing. The signing input is then "
+            "the three ERV A7 members, which the signature does not cover: refusal_signature FAIL; UNKNOWN.",
+            ["§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-69"],
+            refusal(req_c, "no_such_subject", at, signed_policy=POLICY_DIGEST, carried_policy=None),
+            ref_props(refusal_signature="FAIL"), "refusal-failed"),
+        refusal_case(
+            "refusal-policy-digest-unsigned",
+            f"A refusal answering a request for {PROFILE}, signed over the three ERV A7 members only, "
+            f"with a policy_digest added beside them. Under {PROFILE} a policy_digest present is signed: "
+            "refusal_signature FAIL; UNKNOWN.",
+            ["§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-69"],
+            refusal(req_c, "no_such_subject", at, carried_policy=POLICY_DIGEST),
+            ref_props(refusal_signature="FAIL"), "refusal-failed"),
+        refusal_case(
+            "refusal-policy-digest-not-a-digest",
+            "A refusal whose signed policy_digest is uppercase hexadecimal, not the §5.2 digest form. "
+            "The signature verifies, but a signed member is malformed: refusal_signature FAIL; UNKNOWN.",
+            ["§5.2", "§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-69"],
+            refusal(req_c, "no_such_subject", at, signed_policy=POLICY_DIGEST.upper()),
+            ref_props(refusal_signature="FAIL"), "refusal-failed"),
+        refusal_case(
+            "refusal-under-v1-still-verifies",
+            f"A request for {OTHER_PROFILE} and its ERV A7 refusal, as a responder implementing "
+            f"{OTHER_PROFILE} signs it, checked by a verifier implementing {OTHER_PROFILE} and {PROFILE}: "
+            "the refusal is checked under the identifier its request asks for. Every property PASS; NOT_FOUND.",
+            ["§3.3 step 2", "§6.3", "§8.1 no_such_subject", "P-69"],
+            refusal(req_v1, "no_such_subject", at), ref_props(), "refusal-no_such_subject",
+            req=req_v1, vpolicy=both),
+        refusal_case(
+            "refusal-under-v1-policy-digest-unbound",
+            f"A request for {OTHER_PROFILE} answered by an ERV A7 refusal that carries a policy_digest "
+            f"outside its signature. Under {OTHER_PROFILE} the signing input is the three members whatever "
+            "else the refusal carries, so every property PASS and NOT_FOUND, and the policy_digest binds "
+            "nothing: a verifier never reports it as the responder's.",
+            ["§3.3 step 2", "§6.3", "§8.1 no_such_subject", "P-69"],
+            refusal(req_v1, "no_such_subject", at, carried_policy=POLICY_DIGEST), ref_props(),
+            "refusal-no_such_subject", req=req_v1, vpolicy=both),
+        refusal_case(
+            "refusal-under-v1-policy-digest-signed",
+            f"A request for {OTHER_PROFILE} answered by a refusal signed under the {PROFILE} rule, its "
+            f"policy_digest inside the signature. Under {OTHER_PROFILE} the signing input is the three ERV "
+            "A7 members, which the signature does not cover: refusal_signature FAIL; UNKNOWN. A responder "
+            "answers each request under the identifier it asks for.",
+            ["§3.3 step 2", "§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-69"],
+            refusal(req_v1, "no_such_subject", at, signed_policy=POLICY_DIGEST),
+            ref_props(refusal_signature="FAIL"), "refusal-failed", req=req_v1, vpolicy=both),
+        refusal_case(
+            "refusal-unimplemented-identifier-policy-digest-unbound",
+            f"A request for evidence-interop/9, which no verifier implements, answered by an ERV A7 refusal "
+            f"that carries a policy_digest outside its signature, checked by a verifier implementing "
+            f"{OTHER_PROFILE} and {PROFILE}. The signature verifies over the A7 members, the input of "
+            f"{OTHER_PROFILE}: refusal_signature PASS, every property PASS and NOT_FOUND. That input "
+            "excludes policy_digest, so the member binds nothing: a verifier never reports it as the "
+            "responder's.",
+            ["§3.3 step 2", "§6.3", "§8.1 no_such_subject", "P-69"],
+            refusal(req_v9, "no_such_subject", at, carried_policy=POLICY_DIGEST), ref_props(),
+            "refusal-no_such_subject", req=req_v9, vpolicy=both),
+        refusal_case(
+            "refusal-unimplemented-identifier-policy-digest-signed",
+            f"A request for evidence-interop/9 answered by a refusal signed with the {PROFILE} input over a "
+            f"policy_digest, checked by a verifier implementing {OTHER_PROFILE} and {PROFILE}. The signature "
+            f"verifies over the input of {PROFILE}, whose rules the refusal meets: every property PASS; NOT_FOUND.",
+            ["§3.3 step 2", "§6.3", "§8.1 no_such_subject", "P-69"],
+            refusal(req_v9, "no_such_subject", at, signed_policy=POLICY_DIGEST), ref_props(),
+            "refusal-no_such_subject", req=req_v9, vpolicy=both),
+        refusal_case(
+            "refusal-unimplemented-identifier-policy-digest-not-a-digest",
+            f"The same, signed over an uppercase policy_digest. The signature verifies only over the input of "
+            f"{PROFILE}, which brings its rule that a signed policy_digest is a digest (§5.2): "
+            "refusal_signature FAIL; UNKNOWN.",
+            ["§3.3 step 2", "§5.2", "§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-69"],
+            refusal(req_v9, "no_such_subject", at, signed_policy=POLICY_DIGEST.upper()),
+            ref_props(refusal_signature="FAIL"), "refusal-failed", req=req_v9, vpolicy=both),
+        refusal_case(
+            "refusal-policy-digest-checked-by-v1-verifier",
+            f"The signed refusal of refusal-policy-digest-signed, checked by a verifier that implements "
+            f"{OTHER_PROFILE} only. It does not implement {PROFILE}, so it checks the signature under the "
+            "identifiers it does implement, none of which signs policy_digest: refusal_signature FAIL; "
+            f"UNKNOWN. A requester that wants policy_digest signed asks for {PROFILE}.",
+            ["§3.3 step 2", "§6.3", "§7.2 refusal_signature", "§8.1 refusal not PASS", "P-21", "P-69"],
+            refusal(req_c, "no_such_subject", at, signed_policy=POLICY_DIGEST),
+            ref_props(refusal_signature="FAIL"), "refusal-failed", vpolicy=v1_only),
+    ]
+    return out
 
 
 def exchange_cases() -> list[dict]:
@@ -679,13 +820,15 @@ def exchange_cases() -> list[dict]:
         env_props(anchor_inclusion="FAIL")))
 
     def refusal_case(case_id: str, description: str, cites: list, data: bytes, props: dict, row: str,
-                     extra: dict | None = None, policy: dict | None = None) -> dict:
+                     extra: dict | None = None, policy: dict | None = None, *, req: bytes | None = None,
+                     vpolicy: dict | None = None) -> dict:
+        req = req_c if req is None else req
         rep = {"message_type": "refusal", "properties": props, "requirements": {"r-record": mapped(row)},
                "claim": {"evidence": [ref(shx(data))], "proofs": []}}
         rep.update(extra or {})
-        return {"id": case_id, "description": description, "cites": cites, "pins": pins(EVAL, policy),
-                "inputs": {"request": octets(J, req_c), "replies": [reply("http", data, J)]},
-                "expected": {"request_digest": shx(req_c), "replies": [rep]}}
+        return {"id": case_id, "description": description, "cites": cites, "pins": pins(EVAL, policy, vpolicy),
+                "inputs": {"request": octets(J, req), "replies": [reply("http", data, J)]},
+                "expected": {"request_digest": shx(req), "replies": [rep]}}
 
     out.append(refusal_case(
         "forged-refusal-untrusted-key",
@@ -770,7 +913,8 @@ def exchange_cases() -> list[dict]:
                            "capacity_exceeded is unregistered: reason_registered FAIL, a response received and "
                            "failed, UNKNOWN.",
             "cites": ["§3.3 step 2", "§6.3", "§9.1", "§8.1 refusal not PASS", "P-21", "P-65"],
-            "pins": pins(EVAL, vpolicy=verification_policy(profiles_implemented=sorted([PROFILE, OTHER_PROFILE]))),
+            "pins": pins(EVAL, vpolicy=verification_policy(
+                profiles_implemented=sorted({PROFILE, OTHER_PROFILE, "evidence-interop/0"}))),
             "inputs": {"request": octets(J, req_v0), "replies": [reply("http", ref_v0, J)]},
             "expected": {
                 "request_digest": shx(req_v0),
@@ -779,6 +923,8 @@ def exchange_cases() -> list[dict]:
                              "claim": {"evidence": [ref(shx(ref_v0))], "proofs": []}}],
             },
         })
+    if VERSION >= 2:
+        out.extend(policy_digest_cases(refusal_case, req_c))
 
     absence_body = {"outcome": "recorded_absence", "recorded_at": "2026-10-12T00:01:10Z",
                     "request_digest": shx(req_c), "route": "peer:example-responder",
@@ -889,7 +1035,7 @@ def exchange_cases() -> list[dict]:
             "set_properties": {"caller_invariance": "NOT_CHECKED"},
         },
     })
-    other_nonce = f"2026-10-12T00:00:30Z/v{1 - VERSION}"
+    other_nonce = f"2026-10-12T00:00:30Z/v{OTHER_PROFILE[-1]}"
     req_v1 = encode(J, request(other_nonce, ART, ANCHOR1, profile=OTHER_PROFILE))
     env_v1b = envelope(req_v1, ART, ANCHOR1, ARTIFACT, MATERIAL1, "2026-10-12T00:00:31Z", J,
                        profile=OTHER_PROFILE)
@@ -1651,8 +1797,8 @@ def write(out: Path, set_name: str = "interop-profile-v0") -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--set", choices=sorted(sets()), default="interop-profile-v0")
-    parser.add_argument("--profile", type=int, choices=(0, 1), default=0,
-                        help="the profile revision: 0 (frozen) or 1")
+    parser.add_argument("--profile", type=int, choices=(0, 1, 2), default=0,
+                        help="the profile revision: 0 or 1 (both frozen), or 2")
     parser.add_argument("--out", type=Path, help="default: the set's directory under vectors/")
     args = parser.parse_args()
     use_profile(args.profile)

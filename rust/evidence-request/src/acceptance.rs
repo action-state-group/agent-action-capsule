@@ -49,8 +49,13 @@ use crate::time::{parse_rfc3339, UtcTime};
 pub const PROFILE_ID: &str = "evidence-interop/0";
 
 /// Every identifier whose records and receipts this module checks, each the
-/// same §11.1 (`spec/interop-profile-v1.md` changes nothing there).
-pub const PROFILE_IDS: [&str; 2] = [PROFILE_ID, crate::envelope::PROFILE_V1];
+/// same §11.1 (`spec/interop-profile-v1.md` and `-v2.md` change nothing
+/// there).
+pub const PROFILE_IDS: [&str; 3] = [
+    PROFILE_ID,
+    crate::envelope::PROFILE_V1,
+    crate::envelope::PROFILE_V2,
+];
 
 /// Whether a record or receipt naming `profile` is checked: an identifier
 /// this module implements that the caller's policy lists (§3.3 step 5).
@@ -969,7 +974,7 @@ fn form_problems(r: &Map<String, Value>) -> Vec<&'static str> {
     let state = text(r, "state");
     let digest_at = |k: &str| text(r, k).is_some_and(is_digest);
     if !text(r, "profile").is_some_and(|p| PROFILE_IDS.contains(&p)) {
-        out.push("profile is not evidence-interop/0 or evidence-interop/1");
+        out.push("profile is not evidence-interop/0, /1 or /2");
     }
     if !state.is_some_and(|s| STATES.contains(&s)) {
         out.push("state is not one of the four tokens, exact case");

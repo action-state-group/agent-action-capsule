@@ -24,10 +24,14 @@ from ._cbor import Tag
 __all__ = [
     "PROFILE_ID",
     "PROFILE_V1",
+    "PROFILE_V2",
     "PROFILE_IDS",
     "DEFAULT_REQUEST_PROFILE",
     "REFUSAL_REASONS_BY_PROFILE",
     "refusal_reasons_for",
+    "REFUSAL_SIGNED",
+    "refusal_signing_inputs",
+    "refusal_rules_met",
     "PASS",
     "FAIL",
     "NOT_PRESENT",
@@ -46,8 +50,10 @@ __all__ = [
 PROFILE_ID = "evidence-interop/0"
 #: ``spec/interop-profile-v1.md``: ER -02 and its two refusal reasons (P-65).
 PROFILE_V1 = "evidence-interop/1"
+#: ``spec/interop-profile-v2.md``: v1 with a refusal that signs its ``policy_digest`` (P-69).
+PROFILE_V2 = "evidence-interop/2"
 #: Every identifier this verifier implements, each checked under its own rules.
-PROFILE_IDS = frozenset({PROFILE_ID, PROFILE_V1})
+PROFILE_IDS = frozenset({PROFILE_ID, PROFILE_V1, PROFILE_V2})
 #: §3.3 step 2, both revisions: a request with no ``profile`` asks for evidence-interop/0.
 DEFAULT_REQUEST_PROFILE = PROFILE_ID
 
@@ -72,7 +78,19 @@ REFUSAL_REASONS = frozenset({
 REFUSAL_REASONS_BY_PROFILE = {
     PROFILE_ID: REFUSAL_REASONS,
     PROFILE_V1: REFUSAL_REASONS | {"capacity_exceeded", "request_unauthenticated"},
+    PROFILE_V2: REFUSAL_REASONS | {"capacity_exceeded", "request_unauthenticated"},
 }
+# §6.3 of each revision: the members a refusal's signature covers. v0 and v1 sign the three of
+# ERV A7 whatever else the refusal carries; v2 also signs ``policy_digest`` when present (P-69).
+REFUSAL_SIGNED = ("issued_at", "reason", "request_digest")
+_REFUSAL_SIGNED_WHEN_PRESENT = {PROFILE_ID: (), PROFILE_V1: (), PROFILE_V2: ("policy_digest",)}
+
+
+def refusal_rules_met(profile: str, members: Mapping[str, Any]) -> bool:
+    """v2 §6.3: the refusal meets ``profile``'s rules for the members it signs, so a signed
+    ``policy_digest`` is a digest."""
+    return "policy_digest" not in _REFUSAL_SIGNED_WHEN_PRESENT.get(profile, ()) or \
+        "policy_digest" not in members or is_digest(members["policy_digest"])
 
 
 def refusal_reasons_for(asked: Any, implemented: Iterable[str]) -> frozenset:
@@ -83,6 +101,17 @@ def refusal_reasons_for(asked: Any, implemented: Iterable[str]) -> frozenset:
     if asked in implemented:
         return REFUSAL_REASONS_BY_PROFILE[asked]
     return frozenset().union(*(REFUSAL_REASONS_BY_PROFILE[p] for p in implemented))
+
+
+def refusal_signing_inputs(ref: Mapping[str, Any], asked: Any, implemented: Iterable[str]) -> dict:
+    """v2 §6.3: the refusal's signed members under the identifier its request asks for, keyed by
+    that identifier; when the verifier does not implement it, under each identifier it does, so
+    the signature passes when any of them verifies. Each value is the object JCS is taken of."""
+    implemented = [p for p in implemented if p in _REFUSAL_SIGNED_WHEN_PRESENT]
+    rules = [asked] if asked in implemented else sorted(implemented) or [PROFILE_ID]
+    return {p: {k: ref[k] for k in REFUSAL_SIGNED + _REFUSAL_SIGNED_WHEN_PRESENT[p] if k in ref}
+            for p in rules}
+
 
 # §6.2.1: the three verification material kinds this revision registers.
 CLL_KINDS = ("cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof")

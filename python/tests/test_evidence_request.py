@@ -59,6 +59,60 @@ def _cases(name: str) -> list[dict]:
     return _load(f"{name}.json")["cases"]
 
 
+def test_a_policy_digest_is_signed_only_under_evidence_interop_2():
+    """v2 §6.3 (P-69): under evidence-interop/2 a policy_digest is inside the signing input, and a
+    refusal is checked under the identifier its request asked for."""
+    digest, policy, v2 = "a" * 64, "b" * 64, er.PROFILE_V2
+    signed = sign_refusal(digest, "no_such_subject", signer=PRIMARY, issued_at="2026-09-28T00:00:00Z",
+                          policy_digest=policy, profile=v2)
+    assert er.refusal_signed_members(v2) == (*er.SIGNED_MEMBERS, "policy_digest")
+    assert er.refusal_signed_members("evidence-interop/1") == er.SIGNED_MEMBERS
+    assert json.loads(signed.signing_body(v2))["policy_digest"] == policy
+    assert verify_refusal_offline(signed, profile=v2) and check_refusal(signed.to_dict(), profile=v2).conformant
+    assert check_refusal_cbor(signed.to_cbor(), profile=v2).conformant
+    # Read as evidence-interop/1, the signing input is the three A7 members: the signature does not cover them.
+    assert not verify_refusal_offline(signed) and not check_refusal(signed.to_dict()).signature_valid
+    tampered = {**signed.to_dict(), "policy_digest": "c" * 64}
+    assert not check_refusal(tampered, profile=v2).signature_valid
+    stripped = {k: v for k, v in signed.to_dict().items() if k != "policy_digest"}
+    assert not check_refusal(stripped, profile=v2).signature_valid
+    for binding, octets in (("json", json.dumps(signed.to_dict()).encode()), ("cbor", signed.to_cbor())):
+        assert er.parse_reply(octets, binding) == signed
+    # An A7 refusal with an unsigned policy_digest still verifies under evidence-interop/1, and fails under /2.
+    plain = sign_refusal(digest, "no_such_subject", signer=PRIMARY, issued_at="2026-09-28T00:00:00Z")
+    beside = {**plain.to_dict(), "policy_digest": policy}
+    assert check_refusal(beside, profile="evidence-interop/1").conformant
+    assert not check_refusal(beside, profile=v2).signature_valid
+    # Without policy_digest the two identifiers sign the same bytes.
+    assert plain.signing_body(v2) == plain.signing_body() and check_refusal(plain.to_dict(), profile=v2).conformant
+    # A signed policy_digest that is not a digest is not conforming.
+    upper = sign_refusal(digest, "no_such_subject", signer=PRIMARY, issued_at="2026-09-28T00:00:00Z",
+                         policy_digest=policy, profile=v2)
+    bad = {**upper.to_dict(), "policy_digest": "B" * 64}
+    stub = Refusal(**{**bad, "sig": "", "key_id": ""})
+    bad["sig"] = PRIMARY.sign(stub.signing_body(v2))[0]
+    check = check_refusal(bad, profile=v2)
+    assert check.signature_valid and not check.conformant
+    assert not verify_refusal_offline(Refusal(**bad), profile=v2)
+    # Under an identifier not implemented, the v2 input that verified brings the v2 digest rule.
+    check = check_refusal(bad, profile="evidence-interop/9")
+    assert check.signature_valid and not check.conformant
+    # A policy_digest that is not text has no Refusal form, in either binding.
+    for value in (7, None):
+        with pytest.raises(er.VerificationError):
+            er.parse_reply(json.dumps({**signed.to_dict(), "policy_digest": value}).encode(), "json")
+    # An identifier not implemented: either signing input verifies (v2 §6.3).
+    assert check_refusal(signed.to_dict(), profile="evidence-interop/9").signature_valid
+    assert verify_refusal_offline(plain, profile="evidence-interop/9")
+    assert not check_refusal(tampered, profile="evidence-interop/9").signature_valid
+    with pytest.raises(ValueError):
+        sign_refusal(digest, "no_such_subject", signer=PRIMARY, issued_at="2026-09-28T00:00:00Z",
+                     policy_digest=policy, profile="evidence-interop/1")
+    with pytest.raises(ValueError):
+        sign_refusal(digest, "no_such_subject", signer=PRIMARY, issued_at="2026-09-28T00:00:00Z",
+                     policy_digest="B" * 64, profile=v2)
+
+
 def _params(name: str):
     cases = _cases(name)
     return pytest.mark.parametrize("case", cases, ids=[c["id"] for c in cases])

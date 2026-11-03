@@ -55,6 +55,14 @@ fn anchor_inclusion_matches_the_v1_corpus() {
     ));
 }
 
+#[test]
+fn anchor_inclusion_matches_the_v2_corpus() {
+    anchor_inclusion_matches(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../vectors/interop-profile-v2/vectors.json"
+    ));
+}
+
 fn anchor_inclusion_matches(path: &str) {
     let corpus: Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
     let mut checked = 0;

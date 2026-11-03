@@ -147,7 +147,7 @@ def _form_problems(r: Mapping[str, Any]) -> list[str]:
     out = []
     state = r.get("state")
     if not member_of(r.get("profile"), PROFILE_IDS):
-        out.append("profile is not evidence-interop/0 or evidence-interop/1")
+        out.append("profile is not evidence-interop/0, /1 or /2")
     if state not in STATES:
         out.append("state is not one of the four tokens, exact case")
     for name in ("contract_ref",):

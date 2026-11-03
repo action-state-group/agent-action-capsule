@@ -119,6 +119,8 @@ its 9 `record_signatures`.
 | `vectors/interop-profile-v0-requirement-facts/` | `spec/interop-profile-v0.md` §8.3 | evaluate | 2 |
 | `vectors/interop-profile-v1/` | `spec/interop-profile-v1.md` (`evidence-interop/1`) | respond, verify | 62 |
 | `vectors/interop-profile-v1-requirement-facts/` | `spec/interop-profile-v1.md` §8.3 | evaluate | 2 |
+| `vectors/interop-profile-v2/` | `spec/interop-profile-v2.md` (`evidence-interop/2`) | respond, verify | 75 |
+| `vectors/interop-profile-v2-requirement-facts/` | `spec/interop-profile-v2.md` §8.3 | evaluate | 2 |
 | `vectors/cll-material/` | `spec/interop-profile-v0.md` §6.2.1 | respond, verify | 184 |
 | `vectors/anchor-witness-v1/` | `spec/interop-profile-v1.md` §6.2.2 | verify | 69 |
 | `vectors/coverage-declaration-v0/` | `spec/interop-profile-v0.md` §6.7 | evaluate, verify | 13 |

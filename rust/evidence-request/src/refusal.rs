@@ -26,16 +26,55 @@
 //! A correctly signed object with an unregistered reason is not a conforming
 //! refusal, and is still the responder's signed act (A13): see
 //! [`crate::outcome`].
+//!
+//! **`evidence-interop/2`** (`spec/interop-profile-v2.md` §6.3, P-69) adds an
+//! optional `policy_digest`, signed when present. A refusal carries no
+//! profile, so which members its signature covers is decided by the
+//! identifier its request asked for: [`sign_with_profile`],
+//! [`check_for_profile`] and [`verify_for_profile`] take it. [`sign`],
+//! [`check`] and [`verify_for`] keep the A7 signing input, which is that of
+//! `evidence-interop/0` and `/1`: a `policy_digest` beside it binds nothing.
 
+use crate::envelope::{PROFILE, PROFILE_V1, PROFILE_V2};
 use crate::registry::{is_digest, Reason};
 use crate::time::parse_utc;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use serde_json::{json, Map, Value};
 
-/// The members the signature covers.
+/// The members the signature covers (A7), under every identifier but
+/// `evidence-interop/2`.
 pub const SIGNED_MEMBERS: [&str; 3] = ["issued_at", "reason", "request_digest"];
 
-/// A refusal as sent: the three signed members plus `key_id`, `sig` and an
+/// The members the signature covers under `evidence-interop/2`, each when
+/// present: [`SIGNED_MEMBERS`] and `policy_digest` (v2 §6.3). Without a
+/// `policy_digest` the signing input is the A7 one, byte for byte.
+pub const SIGNED_MEMBERS_V2: [&str; 4] = ["issued_at", "policy_digest", "reason", "request_digest"];
+
+/// The members a refusal's signature covers when its request asked for
+/// `profile`: [`SIGNED_MEMBERS_V2`] under `evidence-interop/2`, else
+/// [`SIGNED_MEMBERS`].
+pub fn signed_members(profile: &str) -> &'static [&'static str] {
+    if profile == PROFILE_V2 {
+        &SIGNED_MEMBERS_V2
+    } else {
+        &SIGNED_MEMBERS
+    }
+}
+
+/// The signed-member sets a refusal answering a request for `profile` is
+/// checked under: that identifier's, or, for one this crate does not
+/// implement, each one it does, any of which may verify (v2 §6.3).
+fn signing_rules(profile: &str) -> &'static [&'static [&'static str]] {
+    const A7: &[&str] = &SIGNED_MEMBERS;
+    const V2: &[&str] = &SIGNED_MEMBERS_V2;
+    match profile {
+        PROFILE | PROFILE_V1 => &[A7],
+        PROFILE_V2 => &[V2],
+        _ => &[A7, V2],
+    }
+}
+
+/// A refusal as sent: the signed members plus `key_id`, `sig` and an
 /// optional `detail`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Refusal {
@@ -48,6 +87,11 @@ pub struct Refusal {
     /// signature, so it is not authenticated: the token is the answer, never
     /// the prose. `None` and the empty string are both absent on the wire.
     pub detail: Option<String>,
+    /// The SHA-256 of the policy the responder declares, 64 lowercase hex
+    /// (v2 §6.3, P-69). [`sign_with_profile`] sets it only under
+    /// `evidence-interop/2`, where the signature covers it. `None` is absent
+    /// on the wire.
+    pub policy_digest: Option<String>,
 }
 
 impl Refusal {
@@ -63,13 +107,17 @@ impl Refusal {
         if let Some(detail) = self.detail.as_deref().filter(|d| !d.is_empty()) {
             out["detail"] = json!(detail);
         }
+        if let Some(policy_digest) = &self.policy_digest {
+            out["policy_digest"] = json!(policy_digest);
+        }
         out
     }
 
     /// The refusal as a CBOR map (the CBOR binding), deterministically
     /// encoded (RFC 8949 §4.2.1, as §10 requires): the map's keys in the
     /// bytewise order of their encodings, so `sig`, `key_id`, `reason`,
-    /// `detail` (when present), `issued_at`, `request_digest`.
+    /// `detail` (when present), `issued_at`, `policy_digest` (when present),
+    /// `request_digest`.
     pub fn to_cbor(&self) -> Vec<u8> {
         use ciborium::Value as C;
         let text = |s: &str| C::Text(s.to_string());
@@ -88,15 +136,31 @@ impl Refusal {
         if let Some(detail) = self.detail.as_deref().filter(|d| !d.is_empty()) {
             entries.push((text("detail"), text(detail)));
         }
+        if let Some(policy_digest) = &self.policy_digest {
+            entries.push((text("policy_digest"), text(policy_digest)));
+        }
         entries.sort_by_cached_key(|(k, _)| encoded(k));
         encoded(&C::Map(entries))
     }
 }
 
-/// The bytes a refusal's signature covers: RFC 8785 of the signed members
-/// present in `object`.
+/// The bytes a refusal's signature covers under A7: RFC 8785 of the
+/// [`SIGNED_MEMBERS`] present in `object`.
 pub fn signing_body(object: &Map<String, Value>) -> Result<String, crate::jcs::JcsError> {
-    let body: Map<String, Value> = SIGNED_MEMBERS
+    body_of(object, &SIGNED_MEMBERS)
+}
+
+/// The bytes a refusal's signature covers when its request asked for
+/// `profile`: RFC 8785 of the [`signed_members`] present in `object`.
+pub fn signing_body_for_profile(
+    object: &Map<String, Value>,
+    profile: &str,
+) -> Result<String, crate::jcs::JcsError> {
+    body_of(object, signed_members(profile))
+}
+
+fn body_of(object: &Map<String, Value>, members: &[&str]) -> Result<String, crate::jcs::JcsError> {
+    let body: Map<String, Value> = members
         .iter()
         .filter_map(|k| object.get(*k).map(|v| ((*k).to_string(), v.clone())))
         .collect();
@@ -110,6 +174,12 @@ pub enum SignError {
     RequestDigest,
     #[error("issued_at must be an RFC 3339 UTC time")]
     IssuedAt,
+    /// A `policy_digest` is signed only under `evidence-interop/2`; under
+    /// any other identifier it would ride outside the signature (v2 §6.3).
+    #[error("policy_digest is signed only under evidence-interop/2")]
+    PolicyDigestProfile,
+    #[error("policy_digest must be 64 lowercase hex")]
+    PolicyDigest,
 }
 
 /// Sign a refusal of the request whose digest is `request_digest`.
@@ -131,17 +201,54 @@ pub fn sign_with_detail(
     detail: Option<&str>,
     signing_key: &SigningKey,
 ) -> Result<Refusal, SignError> {
+    sign_with_profile(
+        PROFILE,
+        request_digest,
+        reason,
+        issued_at,
+        detail,
+        None,
+        signing_key,
+    )
+}
+
+/// [`sign_with_detail`] answering a request that asked for `profile`, with
+/// an optional `policy_digest`. Under `evidence-interop/2` a `policy_digest`
+/// is signed with the A7 members (v2 §6.3); under any other identifier it
+/// would ride unsigned and bind nothing, so this refuses it
+/// ([`SignError::PolicyDigestProfile`]) instead of building that refusal.
+/// Without one, the refusal is the A7 refusal under every identifier.
+pub fn sign_with_profile(
+    profile: &str,
+    request_digest: &str,
+    reason: Reason,
+    issued_at: &str,
+    detail: Option<&str>,
+    policy_digest: Option<&str>,
+    signing_key: &SigningKey,
+) -> Result<Refusal, SignError> {
     if !is_digest(request_digest) {
         return Err(SignError::RequestDigest);
     }
     if parse_utc(issued_at).is_none() {
         return Err(SignError::IssuedAt);
     }
+    if let Some(p) = policy_digest {
+        if profile != PROFILE_V2 {
+            return Err(SignError::PolicyDigestProfile);
+        }
+        if !is_digest(p) {
+            return Err(SignError::PolicyDigest);
+        }
+    }
     let mut body = Map::new();
     body.insert("issued_at".into(), json!(issued_at));
     body.insert("reason".into(), json!(reason.token()));
     body.insert("request_digest".into(), json!(request_digest));
-    let message = signing_body(&body).expect("text members always serialize");
+    if let Some(p) = policy_digest {
+        body.insert("policy_digest".into(), json!(p));
+    }
+    let message = signing_body_for_profile(&body, profile).expect("text members always serialize");
     let sig = signing_key.sign(message.as_bytes());
     Ok(Refusal {
         request_digest: request_digest.to_string(),
@@ -150,6 +257,7 @@ pub fn sign_with_detail(
         key_id: hex::encode(signing_key.verifying_key().to_bytes()),
         sig: hex::encode(sig.to_bytes()),
         detail: detail.filter(|d| !d.is_empty()).map(str::to_string),
+        policy_digest: policy_digest.map(str::to_string),
     })
 }
 
@@ -166,7 +274,22 @@ pub struct RefusalCheck {
 /// `key_id`, which anyone can choose, and the request it names is not
 /// compared with anything. To accept a refusal as the responder's answer to
 /// a request, use [`verify_for`].
+///
+/// The signing input is A7's, that of `evidence-interop/0` and `/1`: a
+/// `policy_digest` the refusal carries is outside it. For a refusal
+/// answering a request for `evidence-interop/2`, use [`check_for_profile`].
 pub fn check(object: &Value) -> RefusalCheck {
+    check_for_profile(object, PROFILE)
+}
+
+/// [`check`] for a refusal answering a request that asked for `profile`
+/// (v2 §6.3): the signature is checked over that identifier's
+/// [`signed_members`], and under `evidence-interop/2` a `policy_digest`
+/// present must also be a digest for the refusal to be conformant. For an
+/// identifier this crate does not implement, the signature is checked under
+/// each one it does, and passes when any verifies. Shape and
+/// self-consistency only; NOT authentication (see [`verify_for_profile`]).
+pub fn check_for_profile(object: &Value, profile: &str) -> RefusalCheck {
     let Some(map) = object.as_object() else {
         return RefusalCheck {
             signature_valid: false,
@@ -175,12 +298,24 @@ pub fn check(object: &Value) -> RefusalCheck {
         };
     };
     let text = |k: &str| map.get(k).and_then(Value::as_str);
-    let signature_valid = signature_verifies(map);
+    let key = own_key(map);
+    let verifying: Vec<&[&str]> = signing_rules(profile)
+        .iter()
+        .copied()
+        .filter(|members| {
+            key.as_ref()
+                .is_some_and(|k| signature_verifies_under(map, k, members))
+        })
+        .collect();
+    let signature_valid = !verifying.is_empty();
     let reason_registered = text("reason").and_then(Reason::from_token).is_some();
     let members_well_formed = text("request_digest").is_some_and(is_digest)
         && text("issued_at").is_some_and(|t| parse_utc(t).is_some())
         && text("key_id").is_some_and(|k| is_hex_of_len(k, 32))
-        && text("sig").is_some_and(|s| is_hex_of_len(s, 64));
+        && text("sig").is_some_and(|s| is_hex_of_len(s, 64))
+        && verifying
+            .iter()
+            .any(|members| signed_policy_digest_well_formed(map, members));
     RefusalCheck {
         signature_valid,
         reason_registered,
@@ -191,14 +326,28 @@ pub fn check(object: &Value) -> RefusalCheck {
 /// [`check`] for the CBOR binding: shape and self-consistency only; NOT
 /// authentication (see [`verify_for_cbor`]).
 pub fn check_cbor(frame: &[u8]) -> RefusalCheck {
+    check_cbor_for_profile(frame, PROFILE)
+}
+
+/// [`check_for_profile`] for the CBOR binding.
+pub fn check_cbor_for_profile(frame: &[u8], profile: &str) -> RefusalCheck {
     match decode_cbor_object(frame) {
-        Some(object) => check(&object),
+        Some(object) => check_for_profile(&object, profile),
         None => RefusalCheck {
             signature_valid: false,
             reason_registered: false,
             conformant: false,
         },
     }
+}
+
+/// A signed `policy_digest` is a digest (v2 §6.3, §5.2): one that is not is
+/// a malformed signed member. Outside the signature its form does not matter.
+fn signed_policy_digest_well_formed(map: &Map<String, Value>, members: &[&str]) -> bool {
+    !members.contains(&"policy_digest")
+        || map
+            .get("policy_digest")
+            .is_none_or(|p| p.as_str().is_some_and(is_digest))
 }
 
 fn decode_cbor_object(frame: &[u8]) -> Option<Value> {
@@ -232,20 +381,41 @@ pub enum VerifyError {
 /// `key_id` must be `responder_key`, its signature must verify under that key
 /// (`verify_strict`: no small-order keys, canonical signatures only), and its
 /// `request_digest` must be the one given. Returns the refusal's reason.
+///
+/// The signing input is A7's, as in [`check`]; for a request that asked for
+/// `evidence-interop/2`, use [`verify_for_profile`].
 pub fn verify_for(
     object: &Value,
     responder_key: &VerifyingKey,
     request_digest: &str,
 ) -> Result<Reason, VerifyError> {
+    verify_for_profile(object, PROFILE, responder_key, request_digest)
+}
+
+/// [`verify_for`] for a refusal answering a request that asked for
+/// `profile`, checked as [`check_for_profile`] checks it (v2 §6.3). Under
+/// `evidence-interop/2` a `policy_digest` the refusal carries is the
+/// responder's signed statement once this returns `Ok`; under any other
+/// identifier it binds nothing, and must not be reported as the
+/// responder's (P-69).
+pub fn verify_for_profile(
+    object: &Value,
+    profile: &str,
+    responder_key: &VerifyingKey,
+    request_digest: &str,
+) -> Result<Reason, VerifyError> {
     let map = object.as_object().ok_or(VerifyError::NotConformant)?;
-    if !check(object).conformant {
+    if !check_for_profile(object, profile).conformant {
         return Err(VerifyError::NotConformant);
     }
     let text = |k: &str| map.get(k).and_then(Value::as_str);
     if text("key_id") != Some(hex::encode(responder_key.to_bytes()).as_str()) {
         return Err(VerifyError::WrongKey);
     }
-    if !signature_verifies_under(map, responder_key) {
+    if !signing_rules(profile).iter().any(|members| {
+        signature_verifies_under(map, responder_key, members)
+            && signed_policy_digest_well_formed(map, members)
+    }) {
         return Err(VerifyError::WrongKey);
     }
     if text("request_digest") != Some(request_digest) {
@@ -262,8 +432,18 @@ pub fn verify_for_cbor(
     responder_key: &VerifyingKey,
     request_digest: &str,
 ) -> Result<Reason, VerifyError> {
+    verify_for_profile_cbor(frame, PROFILE, responder_key, request_digest)
+}
+
+/// [`verify_for_profile`] for the CBOR binding.
+pub fn verify_for_profile_cbor(
+    frame: &[u8],
+    profile: &str,
+    responder_key: &VerifyingKey,
+    request_digest: &str,
+) -> Result<Reason, VerifyError> {
     let object = decode_cbor_object(frame).ok_or(VerifyError::NotConformant)?;
-    verify_for(&object, responder_key, request_digest)
+    verify_for_profile(&object, profile, responder_key, request_digest)
 }
 
 fn cbor_to_json(value: &ciborium::Value) -> Option<Value> {
@@ -301,23 +481,27 @@ fn is_hex_of_len(s: &str, bytes: usize) -> bool {
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-fn signature_verifies(map: &Map<String, Value>) -> bool {
+/// The key the refusal names in `key_id`.
+fn own_key(map: &Map<String, Value>) -> Option<VerifyingKey> {
     map.get("key_id")
         .and_then(Value::as_str)
         .and_then(|k| hex::decode(k).ok())
         .and_then(|b| <[u8; 32]>::try_from(b).ok())
         .and_then(|b| VerifyingKey::from_bytes(&b).ok())
-        .is_some_and(|key| signature_verifies_under(map, &key))
 }
 
-fn signature_verifies_under(map: &Map<String, Value>, key: &VerifyingKey) -> bool {
+fn signature_verifies_under(
+    map: &Map<String, Value>,
+    key: &VerifyingKey,
+    members: &[&str],
+) -> bool {
     let sig = map
         .get("sig")
         .and_then(Value::as_str)
         .and_then(|s| hex::decode(s).ok())
         .and_then(|b| <[u8; 64]>::try_from(b).ok())
         .map(|b| Signature::from_bytes(&b));
-    let (Some(sig), Ok(body)) = (sig, signing_body(map)) else {
+    let (Some(sig), Ok(body)) = (sig, body_of(map, members)) else {
         return false;
     };
     key.verify_strict(body.as_bytes(), &sig).is_ok()
@@ -570,6 +754,234 @@ mod tests {
             sign(&"a".repeat(64), Reason::NoSuchSubject, "now", &key()),
             Err(SignError::IssuedAt)
         );
+    }
+
+    const POLICY: &str = "ff551899dc992d7c3e34b239eb3ed1067ef0bb5dbaf219bb1539021c6cedee63";
+    const AT: &str = "2026-10-12T00:00:11Z";
+
+    fn v2_with_policy() -> Refusal {
+        sign_with_profile(
+            PROFILE_V2,
+            &"a".repeat(64),
+            Reason::NoSuchSubject,
+            AT,
+            None,
+            Some(POLICY),
+            &key(),
+        )
+        .unwrap()
+    }
+
+    /// v2 §6.3: a `policy_digest` present is signed, in both bindings.
+    #[test]
+    fn a_policy_digest_is_signed_under_v2() {
+        let r = v2_with_policy();
+        assert_eq!(r.policy_digest.as_deref(), Some(POLICY));
+        assert_eq!(r.to_json()["policy_digest"], json!(POLICY));
+        let ok = RefusalCheck {
+            signature_valid: true,
+            reason_registered: true,
+            conformant: true,
+        };
+        assert_eq!(check_for_profile(&r.to_json(), PROFILE_V2), ok);
+        assert_eq!(check_cbor_for_profile(&r.to_cbor(), PROFILE_V2), ok);
+        let digest = "a".repeat(64);
+        let responder = key().verifying_key();
+        assert_eq!(
+            verify_for_profile(&r.to_json(), PROFILE_V2, &responder, &digest),
+            Ok(Reason::NoSuchSubject)
+        );
+        assert_eq!(
+            verify_for_profile_cbor(&r.to_cbor(), PROFILE_V2, &responder, &digest),
+            Ok(Reason::NoSuchSubject)
+        );
+        // The signature covers the four members.
+        let mut body = r.to_json().as_object().unwrap().clone();
+        body.retain(|k, _| SIGNED_MEMBERS_V2.contains(&k.as_str()));
+        let message = signing_body_for_profile(&body, PROFILE_V2).unwrap();
+        assert!(message.contains("\"policy_digest\""));
+        let sig = Signature::from_bytes(&hex::decode(&r.sig).unwrap().try_into().unwrap());
+        assert!(responder.verify_strict(message.as_bytes(), &sig).is_ok());
+    }
+
+    /// Without a `policy_digest`, the v2 refusal is the A7 refusal, byte for
+    /// byte, under every identifier.
+    #[test]
+    fn without_a_policy_digest_v2_is_the_a7_refusal() {
+        let digest = "a".repeat(64);
+        let a7 = sign(&digest, Reason::NoSuchSubject, AT, &key()).unwrap();
+        for profile in [PROFILE, PROFILE_V1, PROFILE_V2, "evidence-interop/9"] {
+            let r = sign_with_profile(
+                profile,
+                &digest,
+                Reason::NoSuchSubject,
+                AT,
+                None,
+                None,
+                &key(),
+            )
+            .unwrap();
+            assert_eq!(r, a7, "{profile}");
+            assert!(
+                check_for_profile(&r.to_json(), profile).conformant,
+                "{profile}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_policy_digest_replaced_removed_or_added_fails_under_v2() {
+        let r = v2_with_policy();
+        let mut tampered = r.to_json();
+        tampered["policy_digest"] = json!("b".repeat(64));
+        let mut stripped = r.to_json();
+        stripped.as_object_mut().unwrap().remove("policy_digest");
+        let mut unsigned = sign(&"a".repeat(64), Reason::NoSuchSubject, AT, &key())
+            .unwrap()
+            .to_json();
+        unsigned["policy_digest"] = json!(POLICY);
+        for v in [&tampered, &stripped, &unsigned] {
+            let c = check_for_profile(v, PROFILE_V2);
+            assert!(!c.signature_valid && c.reason_registered && !c.conformant);
+            assert_eq!(
+                verify_for_profile(v, PROFILE_V2, &key().verifying_key(), &"a".repeat(64)),
+                Err(VerifyError::NotConformant)
+            );
+        }
+    }
+
+    /// A signed `policy_digest` that is not a digest: the signature verifies,
+    /// and the refusal is still not conformant (v2 §6.3).
+    #[test]
+    fn a_signed_policy_digest_that_is_not_a_digest_is_not_conformant() {
+        let mut body = Map::new();
+        body.insert("issued_at".into(), json!(AT));
+        body.insert("policy_digest".into(), json!(POLICY.to_uppercase()));
+        body.insert("reason".into(), json!("no_such_subject"));
+        body.insert("request_digest".into(), json!("a".repeat(64)));
+        let message = signing_body_for_profile(&body, PROFILE_V2).unwrap();
+        body.insert(
+            "key_id".into(),
+            json!(hex::encode(key().verifying_key().to_bytes())),
+        );
+        body.insert(
+            "sig".into(),
+            json!(hex::encode(key().sign(message.as_bytes()).to_bytes())),
+        );
+        let v = Value::Object(body);
+        let c = check_for_profile(&v, PROFILE_V2);
+        assert!(c.signature_valid && c.reason_registered && !c.conformant);
+        assert_eq!(
+            verify_for_profile(&v, PROFILE_V2, &key().verifying_key(), &"a".repeat(64)),
+            Err(VerifyError::NotConformant)
+        );
+        // And this crate does not sign one.
+        assert_eq!(
+            sign_with_profile(
+                PROFILE_V2,
+                &"a".repeat(64),
+                Reason::NoSuchSubject,
+                AT,
+                None,
+                Some(&POLICY.to_uppercase()),
+                &key(),
+            ),
+            Err(SignError::PolicyDigest)
+        );
+    }
+
+    /// v2 §6.3: under /0 and /1 the signing input is the three A7 members,
+    /// whatever else the refusal carries.
+    #[test]
+    fn under_v1_a_policy_digest_is_outside_the_signature() {
+        let digest = "a".repeat(64);
+        let a7 = sign(&digest, Reason::NoSuchSubject, AT, &key()).unwrap();
+        let responder = key().verifying_key();
+        // An A7 refusal still verifies under /1, with or without an unsigned
+        // policy_digest beside it, and so through the A7 entry points.
+        let mut unbound = a7.to_json();
+        unbound["policy_digest"] = json!(POLICY);
+        for v in [&a7.to_json(), &unbound] {
+            for profile in [PROFILE, PROFILE_V1] {
+                assert!(check_for_profile(v, profile).conformant);
+                assert_eq!(
+                    verify_for_profile(v, profile, &responder, &digest),
+                    Ok(Reason::NoSuchSubject)
+                );
+            }
+            assert!(check(v).conformant);
+            assert_eq!(
+                verify_for(v, &responder, &digest),
+                Ok(Reason::NoSuchSubject)
+            );
+        }
+        // Its form does not matter there: it is not signed.
+        unbound["policy_digest"] = json!("not a digest");
+        assert!(check_for_profile(&unbound, PROFILE_V1).conformant);
+        // A refusal signed with the v2 input fails when its request asked
+        // for /1 (or /0).
+        let v2 = v2_with_policy().to_json();
+        for profile in [PROFILE, PROFILE_V1] {
+            assert!(!check_for_profile(&v2, profile).signature_valid);
+            assert_eq!(
+                verify_for_profile(&v2, profile, &responder, &digest),
+                Err(VerifyError::NotConformant)
+            );
+        }
+        assert!(!check(&v2).signature_valid);
+    }
+
+    #[test]
+    fn a_policy_digest_is_signed_only_under_v2() {
+        for profile in [PROFILE, PROFILE_V1, "evidence-interop/9"] {
+            assert_eq!(
+                sign_with_profile(
+                    profile,
+                    &"a".repeat(64),
+                    Reason::NoSuchSubject,
+                    AT,
+                    None,
+                    Some(POLICY),
+                    &key(),
+                ),
+                Err(SignError::PolicyDigestProfile),
+                "{profile}"
+            );
+        }
+    }
+
+    /// v2 §6.3: for an identifier the verifier does not implement, the
+    /// signature passes over the signing input of any it does.
+    #[test]
+    fn an_unknown_identifier_accepts_either_signing_input() {
+        let digest = "a".repeat(64);
+        let responder = key().verifying_key();
+        let a7 = sign(&digest, Reason::NoSuchSubject, AT, &key()).unwrap();
+        for v in [a7.to_json(), v2_with_policy().to_json()] {
+            assert!(check_for_profile(&v, "evidence-interop/9").conformant);
+            assert_eq!(
+                verify_for_profile(&v, "evidence-interop/9", &responder, &digest),
+                Ok(Reason::NoSuchSubject)
+            );
+        }
+    }
+
+    #[test]
+    fn the_cbor_binding_orders_policy_digest_before_request_digest() {
+        let r = v2_with_policy();
+        let mut expected = vec![0xa6];
+        for (k, v) in [
+            ("sig", r.sig.as_str()),
+            ("key_id", r.key_id.as_str()),
+            ("reason", r.reason.token()),
+            ("issued_at", r.issued_at.as_str()),
+            ("policy_digest", POLICY),
+            ("request_digest", r.request_digest.as_str()),
+        ] {
+            expected.extend(cbor_text(k));
+            expected.extend(cbor_text(v));
+        }
+        assert_eq!(hex::encode(r.to_cbor()), hex::encode(expected));
     }
 
     #[test]

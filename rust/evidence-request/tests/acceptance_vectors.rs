@@ -111,6 +111,14 @@ fn every_v1_corpus_acceptance_case_gives_the_expected_report() {
     ));
 }
 
+#[test]
+fn every_v2_corpus_acceptance_case_gives_the_expected_report() {
+    every_acceptance_case(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../vectors/interop-profile-v2/vectors.json"
+    ));
+}
+
 fn every_acceptance_case(path: &str) {
     let corpus = load(path);
     let contract = &corpus["contract"]["document"];

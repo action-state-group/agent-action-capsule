@@ -25,10 +25,14 @@ type Signer interface {
 }
 
 // Refusal is a signed answer declining one request (ER §4.2, profile §6.3).
-// The signature covers exactly the JCS of request_digest, reason and
-// issued_at (ERV A7); key_id, sig and detail are outside it. A refusal
-// carries no profile member, so it is the same object under the request
-// draft alone and under the profile.
+// The signature covers the JCS of request_digest, reason and issued_at
+// (ERV A7), and under evidence-interop/2 also policy_digest when present
+// (v2 §6.3, P-69); key_id, sig and detail are outside it. A refusal carries
+// no profile member, so which members are signed is a property of the
+// request it answers, and every method that depends on it has an Under or
+// ForProfile form taking the identifier that request asked for. The forms
+// without one read the refusal as evidence-interop/0 does, which is also
+// how ER alone and evidence-interop/1 sign it.
 type Refusal struct {
 	RequestDigest string `json:"request_digest"`
 	Reason        string `json:"reason"`
@@ -38,17 +42,57 @@ type Refusal struct {
 	// Detail is optional human-readable text. The token, not the prose, is
 	// the answer (ER §4.2, P-6).
 	Detail string `json:"detail,omitempty"`
+	// PolicyDigest is the SHA-256 of the policy document the responder
+	// declares (v2 §6.3), "" when absent. It is signed only under
+	// evidence-interop/2; under /0 and /1 one beside the signed members binds
+	// nothing.
+	PolicyDigest string `json:"policy_digest,omitempty"`
 }
 
-// SigningBody is the exact bytes a refusal signature covers.
+// SigningBody is the exact bytes a refusal signature covers under ER alone,
+// evidence-interop/0 and evidence-interop/1: the three ERV A7 members,
+// whatever else the refusal carries.
 func (r Refusal) SigningBody() ([]byte, error) {
-	return EncodeJCS(map[string]any{"request_digest": r.RequestDigest, "reason": r.Reason, "issued_at": r.IssuedAt})
+	return r.SigningBodyUnder(ProfileID)
+}
+
+// SigningBodyUnder is the signing input of a refusal answering a request
+// that asks for profile (v2 §6.3): JCS of issued_at, reason and
+// request_digest, and of policy_digest when present and profile is
+// ProfileIDv2. Any other identifier signs the three ERV A7 members.
+func (r Refusal) SigningBodyUnder(profile string) ([]byte, error) {
+	value, signed := r.Value(), map[string]any{}
+	for _, k := range append(slices.Clone(refusalSigned), refusalSignedWhenPresent[profile]...) {
+		if x, ok := value[k]; ok {
+			signed[k] = x
+		}
+	}
+	return EncodeJCS(signed)
 }
 
 // Sign returns r with Sig set to signer's signature over SigningBody. KeyID
-// must already name signer's public key.
+// must already name signer's public key. A refusal with a PolicyDigest is
+// refused: under evidence-interop/0 and /1 it would ride unsigned; SignUnder
+// with ProfileIDv2 signs it.
 func (r Refusal) Sign(ctx context.Context, signer Signer) (Refusal, error) {
-	body, err := r.SigningBody()
+	return r.SignUnder(ctx, signer, ProfileID)
+}
+
+// SignUnder is Sign for a refusal answering a request that asks for
+// profile, over SigningBodyUnder. A PolicyDigest is signed with the rest, so
+// it needs profile ProfileIDv2 and must be a digest (v2 §6.3); otherwise
+// SignUnder returns ErrInvalid instead of building a refusal whose
+// policy_digest binds nothing or is malformed.
+func (r Refusal) SignUnder(ctx context.Context, signer Signer, profile string) (Refusal, error) {
+	if r.PolicyDigest != "" {
+		if profile != ProfileIDv2 {
+			return Refusal{}, fmt.Errorf("%w: policy_digest is signed only under %s; the request asked for %q", ErrInvalid, ProfileIDv2, profile)
+		}
+		if !IsDigest(r.PolicyDigest) {
+			return Refusal{}, fmt.Errorf("%w: policy_digest is not 64 lowercase hex characters", ErrInvalid)
+		}
+	}
+	body, err := r.SigningBodyUnder(profile)
 	if err != nil {
 		return Refusal{}, err
 	}
@@ -60,20 +104,40 @@ func (r Refusal) Sign(ctx context.Context, signer Signer) (Refusal, error) {
 	return r, nil
 }
 
-// Verify checks the refusal signature offline against its own key_id. It
-// does not check that the reason is registered: a valid signature over an
-// unregistered token is still the responder's signed act (ERV A13). It is
-// not authentication: anyone can name their own key. VerifyFor is.
+// Verify checks the refusal signature offline against its own key_id, over
+// SigningBody. It does not check that the reason is registered: a valid
+// signature over an unregistered token is still the responder's signed act
+// (ERV A13). It is not authentication: anyone can name their own key.
+// VerifyFor is.
 func (r Refusal) Verify() error {
-	body, err := r.SigningBody()
-	if err != nil {
-		return err
-	}
+	return r.VerifyUnder(ProfileID)
+}
+
+// VerifyUnder is Verify for a refusal answering a request that asks for
+// profile (v2 §6.3). Under ProfileIDv2 the signature covers PolicyDigest
+// when present, and a PolicyDigest that is not a digest fails it: the signed
+// member is malformed. For an identifier this package does not implement,
+// the signature verifies when it does over the signing input of any
+// identifier the package implements.
+func (r Refusal) VerifyUnder(profile string) error {
 	sig, err := hex.DecodeString(r.Sig)
 	if err != nil || len(sig) != ed25519.SignatureSize || hex.EncodeToString(sig) != r.Sig {
 		return fmt.Errorf("%w: refusal signature is not 128 lowercase hex characters", ErrInvalid)
 	}
-	return VerifySignature(r.KeyID, body, sig)
+	value := r.Value()
+	if refusalPolicyDigestMalformed(value, profile, Profiles) {
+		return fmt.Errorf("%w: policy_digest is signed under %s and is not a digest", ErrInvalid, ProfileIDv2)
+	}
+	verified, wellFormed := refusalSignatureHolds(value, profile, Profiles, func(body []byte) bool {
+		return VerifySignature(r.KeyID, body, sig) == nil
+	})
+	switch {
+	case !verified:
+		return fmt.Errorf("%w: signature does not verify", ErrInvalid)
+	case !wellFormed:
+		return fmt.Errorf("%w: policy_digest is signed and is not a digest", ErrInvalid)
+	}
+	return nil
 }
 
 // VerifyFor authenticates the refusal as the answer of the responder whose
@@ -88,13 +152,15 @@ func (r Refusal) VerifyFor(responderKey, requestDigest string) error {
 }
 
 // VerifyForProfile is VerifyFor for a refusal answering a request that asks
-// for profile: it must conform under that identifier (ConformingUnder), so
-// capacity_exceeded is accepted for an evidence-interop/1 request.
+// for profile: its signature is checked under that identifier (VerifyUnder),
+// so an evidence-interop/2 request's refusal signs its policy_digest, and it
+// must conform under it (ConformingUnder), so capacity_exceeded is accepted
+// for an evidence-interop/1 or /2 request.
 func (r Refusal) VerifyForProfile(profile, responderKey, requestDigest string) error {
 	if r.KeyID != responderKey || r.RequestDigest != requestDigest {
 		return fmt.Errorf("%w: refusal is not for this request under the pinned responder key", ErrInvalid)
 	}
-	if err := r.Verify(); err != nil {
+	if err := r.VerifyUnder(profile); err != nil {
 		return err
 	}
 	if !r.ConformingUnder(profile) {
@@ -117,10 +183,12 @@ func (r Refusal) Conforming() bool {
 // ConformingUnder is Conforming for a refusal answering a request that asks
 // for profile (v1 §6.3): its reason is checked against that identifier's
 // §9.1 tokens, or, for an identifier this package does not implement,
-// against every token of those it does.
+// against every token of those it does. Under ProfileIDv2 a PolicyDigest,
+// being signed, must also be a digest (v2 §6.3).
 func (r Refusal) ConformingUnder(profile string) bool {
 	_, timeOK := ParseProfileTime(r.IssuedAt)
-	return slices.Contains(refusalReasonsFor(profile, Profiles), r.Reason) && timeOK && IsDigest(r.RequestDigest)
+	return slices.Contains(refusalReasonsFor(profile, Profiles), r.Reason) && timeOK && IsDigest(r.RequestDigest) &&
+		!refusalPolicyDigestMalformed(r.Value(), profile, Profiles)
 }
 
 // Value is the refusal's wire value.
@@ -128,6 +196,9 @@ func (r Refusal) Value() map[string]any {
 	out := map[string]any{"request_digest": r.RequestDigest, "reason": r.Reason, "issued_at": r.IssuedAt, "key_id": r.KeyID, "sig": r.Sig}
 	if r.Detail != "" {
 		out["detail"] = r.Detail
+	}
+	if r.PolicyDigest != "" {
+		out["policy_digest"] = r.PolicyDigest
 	}
 	return out
 }
@@ -364,11 +435,21 @@ func textMembers(fields map[string]any, required []string, optional []string) (m
 }
 
 func readRefusal(fields map[string]any) (Refusal, error) {
-	text, err := textMembers(fields, []string{"request_digest", "reason", "issued_at", "key_id", "sig"}, []string{"detail"})
+	// policy_digest is read as carried: whether it is signed, and so must be
+	// a digest, depends on the request (v2 §6.3), so VerifyUnder and
+	// ConformingUnder judge it. One that is not text has no Refusal form;
+	// CheckRefusalUnder reads such an object.
+	text, err := textMembers(fields, []string{"request_digest", "reason", "issued_at", "key_id", "sig"}, []string{"detail", "policy_digest"})
 	if err != nil {
 		return Refusal{}, err
 	}
-	return Refusal{RequestDigest: text["request_digest"], Reason: text["reason"], IssuedAt: text["issued_at"], KeyID: text["key_id"], Sig: text["sig"], Detail: text["detail"]}, nil
+	// "" is the field's absent value, so an empty policy_digest would vanish
+	// from Value and a member added after signing would verify.
+	if p, present := fields["policy_digest"]; present && p == "" {
+		return Refusal{}, fmt.Errorf("%w: policy_digest is empty", ErrInvalid)
+	}
+	return Refusal{RequestDigest: text["request_digest"], Reason: text["reason"], IssuedAt: text["issued_at"], KeyID: text["key_id"], Sig: text["sig"],
+		Detail: text["detail"], PolicyDigest: text["policy_digest"]}, nil
 }
 
 func readEnvelope(fields map[string]any, mediaType string) (Envelope, error) {
@@ -461,8 +542,20 @@ type RefusalCheck struct {
 // CheckRefusal reads a refusal object received as m and answers the three
 // questions of RefusalCheck. It checks shape and self-consistency only: the
 // signature is checked under the key the object itself names. It is NOT
-// authentication; Refusal.VerifyFor is.
+// authentication; Refusal.VerifyFor is. It reads the refusal as ER alone
+// does, over the three ERV A7 members; CheckRefusalUnder reads one answering
+// a request under a named identifier.
 func CheckRefusal(m Message) RefusalCheck {
+	return CheckRefusalUnder(m, ProfileID)
+}
+
+// CheckRefusalUnder is CheckRefusal for a refusal answering a request that
+// asks for profile (v2 §6.3): under ProfileIDv2 a policy_digest the refusal
+// carries is signed, and one that is not a digest makes it not Conformant;
+// under any other identifier it is outside the signature. For an identifier
+// this package does not implement, SignatureValid holds when the signature
+// verifies over the signing input of any identifier it implements.
+func CheckRefusalUnder(m Message, profile string) RefusalCheck {
 	root, err := Decode(m)
 	fields, ok := root.(map[string]any)
 	if err != nil || !ok {
@@ -473,23 +566,20 @@ func CheckRefusal(m Message) RefusalCheck {
 		return s, ok
 	}
 	var check RefusalCheck
-	signed := map[string]any{}
-	for _, name := range []string{"issued_at", "reason", "request_digest"} {
-		if v, present := fields[name]; present {
-			signed[name] = v
-		}
-	}
 	keyID, keyOK := text("key_id")
 	sigText, sigOK := text("sig")
 	sig, sigErr := hex.DecodeString(sigText)
-	if body, err := EncodeJCS(signed); err == nil && keyOK && sigOK && sigErr == nil && len(sig) == ed25519.SignatureSize && hex.EncodeToString(sig) == sigText {
-		check.SignatureValid = VerifySignature(keyID, body, sig) == nil
+	wellFormed := false
+	if keyOK && sigOK && sigErr == nil && len(sig) == ed25519.SignatureSize && hex.EncodeToString(sig) == sigText {
+		check.SignatureValid, wellFormed = refusalSignatureHolds(fields, profile, Profiles, func(body []byte) bool {
+			return VerifySignature(keyID, body, sig) == nil
+		})
 	}
 	reason, _ := text("reason")
 	check.ReasonRegistered = slices.Contains(RefusalReasons, reason)
 	digest, _ := text("request_digest")
 	issuedAt, _ := text("issued_at")
 	_, timeOK := ParseRequestTime(issuedAt)
-	check.Conformant = check.SignatureValid && check.ReasonRegistered && IsDigest(digest) && timeOK
+	check.Conformant = wellFormed && check.ReasonRegistered && IsDigest(digest) && timeOK
 	return check
 }

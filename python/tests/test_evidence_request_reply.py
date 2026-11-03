@@ -197,7 +197,7 @@ def test_verify_for_binds_profile_responder_and_request():
     with pytest.raises(er.VerificationError, match="profile"):
         env.verify_for(REQUEST, SIGNER.key_id, profile="evidence-interop/1")
     with pytest.raises(ValueError, match="profile"):
-        env.verify_for(REQUEST, SIGNER.key_id, profile="evidence-interop/2")
+        env.verify_for(REQUEST, SIGNER.key_id, profile="evidence-interop/9")
 
 
 # --- parse_reply refusals ---------------------------------------------------------------

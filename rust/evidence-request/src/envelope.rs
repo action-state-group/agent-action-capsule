@@ -49,11 +49,16 @@ pub const PROFILE: &str = "evidence-interop/0";
 /// refusal reasons. Its envelope is the same.
 pub const PROFILE_V1: &str = "evidence-interop/1";
 
+/// `evidence-interop/2` (`spec/interop-profile-v2.md`): `/1` with a refusal
+/// whose signature also covers its `policy_digest` (v2 §6.3, P-69; see
+/// [`crate::refusal::sign_with_profile`]). Its envelope is the same.
+pub const PROFILE_V2: &str = "evidence-interop/2";
+
 /// Every identifier whose envelope this module reads.
-pub const PROFILES: [&str; 2] = [PROFILE, PROFILE_V1];
+pub const PROFILES: [&str; 3] = [PROFILE, PROFILE_V1, PROFILE_V2];
 
 /// The refusal reasons registered under `profile` (each revision's §9.1):
-/// /0 pins ER -01 and its eight, /1 pins ER -02 and its ten. A refusal
+/// /0 pins ER -01 and its eight, /1 and /2 pin ER -02 and its ten. A refusal
 /// carries no profile, so read it under the identifier its request asked
 /// for (v1 §6.3). For an identifier this crate does not implement, every
 /// token of those it does: the ten.
@@ -300,7 +305,7 @@ pub enum EnvelopeError {
     VerificationCount,
     #[error("verification item {0} does not hash to its signed digest")]
     VerificationDigest(usize),
-    #[error("the envelope does not name the profile requested, or that profile is not evidence-interop/0 or /1")]
+    #[error("the envelope does not name the profile requested, or that profile is not evidence-interop/0, /1 or /2")]
     Profile,
     #[error("the envelope is signed by another key than the responder's")]
     WrongKey,
@@ -386,7 +391,7 @@ pub enum SignError {
     Kind,
     #[error("the signer signed under a key other than its key_id")]
     SignerKey,
-    #[error("the profile is not evidence-interop/0 or evidence-interop/1")]
+    #[error("the profile is not evidence-interop/0, /1 or /2")]
     Profile,
     #[error("the signer failed: {0}")]
     Signer(String),
@@ -552,16 +557,19 @@ pub fn parse_reply(octets: &[u8], binding: Binding) -> Result<Reply, ReplyError>
     }
 }
 
-/// The members a refusal's verification reads (-00 §4.2; A7). They are
-/// text, so a byte string there is refused, never read as its base64url
-/// text; other members are ignored by verification and pass through.
-const REFUSAL_MEMBERS: [&str; 6] = [
+/// The members a refusal's verification reads (-00 §4.2; A7), and
+/// `policy_digest`, which it reads under `evidence-interop/2` (v2 §6.3).
+/// They are text, so a byte string there is refused, never read as its
+/// base64url text; other members are ignored by verification and pass
+/// through.
+const REFUSAL_MEMBERS: [&str; 7] = [
     "request_digest",
     "reason",
     "issued_at",
     "key_id",
     "sig",
     "detail",
+    "policy_digest",
 ];
 
 fn read_refusal(members: Vec<(String, Item)>) -> Result<Reply, ReplyError> {

@@ -63,7 +63,7 @@ def test_default_profile_and_unknown_profile(gen):
                             issued_at=ISSUED_AT).profile == er.PROFILE == "evidence-interop/0"
     with pytest.raises(ValueError, match="profile"):
         er.sign_envelope(REQUEST, er.Subject("record", RECORD), ANCHOR, ARTIFACT, signer=signer,
-                         issued_at=ISSUED_AT, profile="evidence-interop/2")
+                         issued_at=ISSUED_AT, profile="evidence-interop/9")
 
 
 def test_signature_covers_the_jcs_of_the_signed_members(gen):

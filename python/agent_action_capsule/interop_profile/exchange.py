@@ -31,6 +31,8 @@ from ._common import (
     NOT_PRESENT,
     PASS,
     PROFILE_IDS,
+    PROFILE_V2,
+    REFUSAL_SIGNED,
     PropertyReport,
     TrustPolicy,
     VerificationPolicy,
@@ -48,6 +50,8 @@ from ._common import (
     parse_json,
     parse_time,
     refusal_reasons_for,
+    refusal_rules_met,
+    refusal_signing_inputs,
     sha256_hex,
     unsigned_jcs,
 )
@@ -97,7 +101,7 @@ _ROW_STATUS = {
     "refusal-coverage_unsatisfiable": "UNKNOWN", "refusal-withheld": "WITHHELD",
     "refusal-deadline_or_malformed": "UNKNOWN", "refusal-failed": "UNKNOWN", "received-and-failed": "UNKNOWN",
     "absence": "UNKNOWN",
-    # v1 only: the reasons ER -02 adds are registered under evidence-interop/1 alone (§9.1).
+    # v1 and v2 only: the reasons ER -02 adds are not registered under evidence-interop/0 (§9.1).
     "refusal-capacity_exceeded": "UNKNOWN", "refusal-request_unauthenticated": "UNKNOWN",
 }
 # §8: the rows a contract's uncertainty.on_missing applies to.
@@ -352,7 +356,7 @@ def _apply_uncertainty(req: Mapping[str, Any] | None, row: str, status: str) -> 
 
 
 class InteropVerifier:
-    """A verifier for ``evidence-interop/0`` and ``evidence-interop/1`` exchanges, each checked
+    """A verifier for ``evidence-interop/0``, ``/1`` and ``/2`` exchanges, each checked
     under the rules of the identifier it names (§3.3).
 
     ``evaluation_time`` is required and is the only "now" the verifier knows. ``contract`` is the
@@ -422,7 +426,7 @@ class InteropVerifier:
                              request_octets: bytes, request: dict) -> tuple[dict, list | None]:
         props: dict[str, PropertyReport] = {}
         asked = request.get("profile", DEFAULT_REQUEST_PROFILE)
-        # §3.3 step 5. This verifier implements the rules of evidence-interop/0 and /1 only,
+        # §3.3 step 5. This verifier implements the rules of evidence-interop/0, /1 and /2 only,
         # whatever else the policy lists.
         implemented = self.policy.profiles_implemented & PROFILE_IDS
         method = "§3.3 step 5: the envelope's profile against the identifier requested"
@@ -564,20 +568,32 @@ class InteropVerifier:
                             request: dict) -> dict:
         props: dict[str, PropertyReport] = {}
         key_id, issued_at = ref.get("key_id"), ref.get("issued_at")
-        method = "Ed25519 over JCS of {issued_at, reason, request_digest} (§6.3, ERV A7)"
+        asked = request.get("profile", DEFAULT_REQUEST_PROFILE)
+        implemented = self.policy.profiles_implemented & PROFILE_IDS
+        method = ("Ed25519 over JCS of {issued_at, reason, request_digest}, and policy_digest when present "
+                  "under evidence-interop/2 (§6.3, ERV A7, P-69)")
         if "sig" not in ref or "key_id" not in ref:
             props["refusal_signature"] = PropertyReport("refusal_signature", NOT_PRESENT, method,
                                                         "sig or key_id is absent")
         elif not well_formed:
             props["refusal_signature"] = PropertyReport("refusal_signature", FAIL, method,
                                                         f"not well-formed (§5.2): {why}")
-        elif not all(k in ref for k in ("issued_at", "reason", "request_digest")):
+        elif not all(k in ref for k in REFUSAL_SIGNED):
             props["refusal_signature"] = PropertyReport("refusal_signature", FAIL, method,
                                                         "a signed member is absent")
+        elif asked == PROFILE_V2 and asked in implemented and "policy_digest" in ref \
+                and not is_digest(ref["policy_digest"]):
+            props["refusal_signature"] = PropertyReport("refusal_signature", FAIL, method,
+                                                        "policy_digest is not a digest (§5.2)")
         else:
-            body = jcs_or_none({k: ref[k] for k in ("issued_at", "reason", "request_digest")})
-            ok = body is not None and ed25519_verify_hex(key_id, ref["sig"], body)
-            props["refusal_signature"] = PropertyReport("refusal_signature", PASS if ok else FAIL, method)
+            inputs = refusal_signing_inputs(ref, asked, implemented)
+            signed = [p for p, members in inputs.items()
+                      if (body := jcs_or_none(members)) is not None and ed25519_verify_hex(key_id, ref["sig"], body)
+                      and refusal_rules_met(p, members)]
+            detail = None if member_of(asked, implemented) else \
+                f"the request asks for {asked!r}; checked under every identifier implemented"
+            props["refusal_signature"] = PropertyReport("refusal_signature", PASS if signed else FAIL, method,
+                                                        detail)
         method = "trust policy: responder keys, as of the refusal's issued_at"
         if "key_id" not in ref:
             props["responder_trust"] = PropertyReport("responder_trust", NOT_PRESENT, method)
@@ -592,8 +608,7 @@ class InteropVerifier:
             ok = ref["request_digest"] == sha256_hex(request_octets)
             props["request_binding"] = PropertyReport("request_binding", PASS if ok else FAIL, method)
         reason = ref.get("reason")
-        asked = request.get("profile", DEFAULT_REQUEST_PROFILE)
-        reasons = refusal_reasons_for(asked, self.policy.profiles_implemented & PROFILE_IDS)
+        reasons = refusal_reasons_for(asked, implemented)
         props["reason_registered"] = PropertyReport(
             "reason_registered", PASS if isinstance(reason, str) and reason in reasons else FAIL,
             "exactly one token of the ER §13 registry the requested identifier pins, exact case "
