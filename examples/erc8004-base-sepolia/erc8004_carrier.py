@@ -35,7 +35,7 @@ import urllib.request
 from pathlib import Path
 
 import rfc8785
-from cryptography.exceptions import InvalidSignature
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_der_public_key
 from web3 import Web3
@@ -168,7 +168,7 @@ def cmd_resolve(args: argparse.Namespace) -> None:
         if (not isinstance(key, Ed25519PublicKey)
                 or key.public_bytes(Encoding.Raw, PublicFormat.Raw).hex() != c["key_id"]):
             raise ValueError
-    except (ValueError, KeyError, TypeError):
+    except (ValueError, KeyError, TypeError, UnsupportedAlgorithm):
         sys.exit("V2 key_id_spki")
     try:
         sig = c["sig"]["value"]
