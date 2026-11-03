@@ -46,6 +46,16 @@ has not yet.
   model; anything else is `request_malformed`. This is what Rust and Python already enforce. Go:
   `ParseRequest` now refuses a CBOR request outside deterministic encoding or the data model at any
   depth, which it used to accept. New vectors `vectors/cbor-request-model/` (18 cases).
+- Spec, experimental: `spec/bindings/evidence-commitment-carriers-v0.md`, one signed evidence
+  commitment over three carriers: an attestation entry in a directory record's trust manifest (ARD,
+  NANDA Index), an A2A Agent Card extension entry, and an addressable Nostr announce
+  event (placeholder kind 34700). The verifier trusts only the commitment's own signature, staples
+  and `issued_at`, binds it to a responder only through that responder's signed answers, and hands
+  the stapled history cards to the asker's admission pack, which judges them; the binding adds no
+  witness label or first-use pin of its own. Names the commitment's Nostr route
+  `ask.nostr` (`mailbox_key`, `relays`), which settles the mailbox carriage's open points N-4 and
+  N-5. Vectors in `vectors/adapters/evidence-commitment-carriers/` and the drift workflow
+  `evidence-commitment-carriers.yml`. Not part of the profile; it defines no binding token.
 
 - `spec/adapters/README.md`: add the `nostr-mailbox-v0` declaration to the worked-examples table with its `{id, digest}` pair, and to the list of declarations in the directory.
 
