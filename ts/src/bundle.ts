@@ -3,10 +3,7 @@ import {
   leafCount,
   MmrTree,
   rangeProof,
-  rootFromPeaks,
-  verifyHexInclusion,
   verifyRange,
-  type MmrInclusionProof,
   type MmrRangeProof,
 } from "@action-state-group/cll";
 import {
@@ -23,6 +20,19 @@ import {
   type ParsedJson,
 } from "./json.js";
 import { MAX_NESTING_DEPTH, nestedTooDeep } from "./nesting.js";
+import {
+  base64UrlDecode,
+  decodeCose,
+  encodeBase64Url,
+  hex,
+  integer,
+  loadCheckpointMetadata,
+  object,
+  parseProof,
+  signedCheckpointFields,
+  verifyProof,
+  type CheckpointMetadata,
+} from "./cll-checkpoint.js";
 import {
   DISCLOSURE_INELIGIBLE_FIELD,
   DISCLOSURE_MATCH,
@@ -50,6 +60,11 @@ import {
   type CategoryCoverageInputs,
   type CategoryCoverageResult,
 } from "./category-coverage.js";
+import {
+  PARENT_LOG_WITNESS_KIND,
+  verifyParentLogWitness,
+  type ParentWitnessResult,
+} from "./parent-witness.js";
 import { disclosureEligibleFields } from "./registries.js";
 import { verifyClass1, type VerificationResult } from "./verify.js";
 import {
@@ -93,6 +108,11 @@ export interface DisclosureResult {
  * the Go reference does, go/bundle/bundle.go `extensions`): `composed`
  * carries that verification. `status` says only whether a viewer module
  * applies the block's meaning; a malformed block is `uninterpreted`.
+ *
+ * In strict mode a `parent-log-witness/v1` block's entry carries that
+ * block's strict result status (`pass`, `withheld` or `fail`,
+ * {@link StrictBundleResult.parentWitness}); plain mode leaves it
+ * `uninterpreted`.
  */
 export type ExtensionResult =
   | {
@@ -109,6 +129,12 @@ export type ExtensionResult =
       readonly integrityCovered: boolean;
       /** composed/v1 only: the block's verification (`composed.ts`). */
       readonly composed?: ComposedResult;
+    }
+  | {
+      readonly kind: typeof PARENT_LOG_WITNESS_KIND;
+      readonly status: ParentWitnessResult["status"];
+      readonly integrityCovered: boolean;
+      readonly composed?: never;
     };
 export type { ExtensionInterpreterId } from "./extension-interpreters.js";
 export type {
@@ -228,7 +254,8 @@ export interface StrictWitnessesResult extends ClaimResult {
 export interface StrictBundleResult {
   /**
    * `VALID` when every claim passed, `INVALID` when one failed, the
-   * witnesses failed or a gating `category_coverage` property failed,
+   * witnesses or the parent-log witness failed or a gating
+   * `category_coverage` property failed,
    * `INCOMPLETE` otherwise.
    */
   readonly verdict: "VALID" | "INCOMPLETE" | "INVALID";
@@ -255,6 +282,13 @@ export interface StrictBundleResult {
    * the checkpoint authenticated and there is a record. Reported, never gates.
    */
   readonly signerMatchesCheckpoint: boolean | null;
+  /**
+   * The `parent-log-witness/v1` result when the Bundle carries that
+   * extension, else null (also for a Bundle refused by its kind). Like
+   * `witnesses` it is reported beside the claims: only a `fail` changes the
+   * verdict.
+   */
+  readonly parentWitness: ParentWitnessResult | null;
 }
 export type StrictBundleVerificationResult = BundleVerificationResult & {
   readonly strict: StrictBundleResult;
@@ -271,45 +305,16 @@ export class Ed25519UnavailableError extends Error {
   }
 }
 type Bundle = Record<string, unknown>;
-type Proof = MmrInclusionProof;
 const pass = (): ClaimResult => ({ status: "pass", findings: [] });
 const fail = (...findings: string[]): ClaimResult => ({
   status: "fail",
   findings,
 });
-// A JsonNumber (a decoded number kept with its spelling) is a value, not a
-// Bundle object.
-const object = (value: unknown): value is Bundle =>
-  value !== null &&
-  typeof value === "object" &&
-  !Array.isArray(value) &&
-  !(value instanceof JsonNumber);
-const integer = (value: unknown): value is number =>
-  typeof value === "number" && Number.isSafeInteger(value);
-const hex = (value: string): Uint8Array =>
-  Uint8Array.from(value.match(/../gu)!, (byte) => Number.parseInt(byte, 16));
 
 /** Encode a Bundle as unpadded RFC 4648 base64url over UTF-8 JCS bytes. */
 export function encodeFragment(bundle: unknown): string {
   return encodeBase64Url(jcs(bundle));
 }
-/**
- * Decode unpadded base64url, refusing non-zero trailing bits so each byte
- * string has one spelling, as the Go (strict), Python and Rust decoders do.
- */
-function base64UrlDecode(value: string): Uint8Array {
-  const padded = `${value}${"=".repeat((4 - (value.length % 4)) % 4)}`;
-  const binary = atob(padded.replaceAll("-", "+").replaceAll("_", "/"));
-  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  if (encodeBase64Url(bytes) !== value)
-    throw new TypeError("non-canonical base64url");
-  return bytes;
-}
-const encodeBase64Url = (bytes: Uint8Array): string =>
-  btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""))
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replace(/=+$/u, "");
 /**
  * Decode an unpadded Evidence Bundle URL fragment without verifying its claims.
  *
@@ -426,6 +431,7 @@ async function verifyPlainAndStrict(
               records: [],
               checkpointAuthenticated: false,
               signerMatchesCheckpoint: null,
+              parentWitness: null,
             },
           },
         }
@@ -568,6 +574,7 @@ async function strict(
         records: [],
         checkpointAuthenticated: false,
         signerMatchesCheckpoint: null,
+        parentWitness: null,
       },
     };
   const seqs = membershipSeqs(bundle);
@@ -689,13 +696,38 @@ async function strict(
     checkpoint.cose,
     options.witnessDirectory,
   );
+  const parentWitness =
+    object(bundle.extensions) &&
+    Object.hasOwn(bundle.extensions, PARENT_LOG_WITNESS_KIND)
+      ? await verifyParentLogWitness(
+          bundle.extensions[PARENT_LOG_WITNESS_KIND],
+          checkpoint.signed,
+          checkpoint.cose,
+          options.witnessDirectory,
+        )
+      : null;
   const checkpointKey = checkpoint.signed?.key_id;
   const failed =
     claims.some((claim) => claim.status === "fail") ||
     witnesses.status === "fail" ||
+    parentWitness?.status === "fail" ||
     categoryCoverageFails(plain.categoryCoverage);
   return {
     ...plain,
+    ...(parentWitness === null
+      ? {}
+      : {
+          extensions: plain.extensions.map(
+            (extension): ExtensionResult =>
+              extension.kind === PARENT_LOG_WITNESS_KIND
+                ? {
+                    kind: PARENT_LOG_WITNESS_KIND,
+                    status: parentWitness.status,
+                    integrityCovered: extension.integrityCovered,
+                  }
+                : extension,
+          ),
+        }),
     intervalCoverage,
     perRecordMembership,
     strict: {
@@ -727,6 +759,7 @@ async function strict(
         checkpointKey && records.length
           ? records.every((r) => r.keyId === checkpointKey)
           : null,
+      parentWitness,
     },
   };
 }
@@ -820,31 +853,12 @@ async function strictCheckpoint(
         findings: ["checkpoint_verifier_unavailable"],
       },
     };
-  let cose: Uint8Array;
-  try {
-    if (typeof encoded !== "string" || !/^[A-Za-z0-9_-]*$/u.test(encoded))
-      throw new TypeError("checkpoint.cose is not unpadded base64url");
-    cose = base64UrlDecode(encoded);
-  } catch {
+  const cose = decodeCose(encoded);
+  if (cose === undefined)
     return { claim: fail("checkpoint_signature_malformed") };
-  }
-  let metadata: Awaited<ReturnType<CheckpointMetadata>>;
-  try {
-    metadata = await checkpointMetadata(cose);
-  } catch {
-    metadata = undefined;
-  }
-  if (metadata === undefined)
+  const signed = await signedCheckpointFields(cose, checkpointMetadata);
+  if (signed === undefined)
     return { claim: fail("checkpoint_signature_invalid") };
-  const signed: SignedCheckpointFields = {
-    log_id: metadata.logId,
-    mmr_size: Number(metadata.size),
-    root: metadata.root,
-    key_id: metadata.keyId,
-    timestamp: metadata.timestamp,
-    prev_size: Number(metadata.previousSize),
-    prev_root: metadata.previousRoot,
-  };
   const findings = [
     ...SIGNED_CHECKPOINT_FIELDS.filter(
       (name) =>
@@ -1173,35 +1187,6 @@ async function plainSelected(
       ? pass()
       : { status: "pass", findings: ["checkpoint_unverified"] },
   ];
-}
-// Load cll's COSE checkpoint authenticator through a dynamic import, so that a
-// cll without it resolves to undefined instead of failing to load. The pinned
-// cll exports it from both its Node and its browser entry.
-type CheckpointMetadata = (cose: Uint8Array) => Promise<
-  | {
-      logId: string;
-      size: bigint;
-      root: string;
-      keyId: string;
-      timestamp: string;
-      previousSize: bigint;
-      previousRoot: string;
-    }
-  | undefined
->;
-async function loadCheckpointMetadata(): Promise<
-  CheckpointMetadata | undefined
-> {
-  try {
-    const module = (await import("@action-state-group/cll")) as {
-      checkpointMetadata?: CheckpointMetadata;
-    };
-    return typeof module.checkpointMetadata === "function"
-      ? module.checkpointMetadata
-      : undefined;
-  } catch {
-    return undefined;
-  }
 }
 async function authenticateCheckpoint(
   checkpoint: Bundle,
@@ -1560,52 +1545,6 @@ async function paddingLeaf(content: Bundle): Promise<string> {
     ),
   );
 }
-function parseProof(raw: unknown): Proof | undefined {
-  if (
-    !object(raw) ||
-    raw.v !== 1 ||
-    raw.kind !== "inclusion" ||
-    !integer(raw.size) ||
-    !integer(raw.leaf_index) ||
-    raw.size < 0 ||
-    raw.leaf_index < 0
-  )
-    return undefined;
-  const hashes = (value: unknown): string[] | undefined =>
-    Array.isArray(value) && value.every(isHex64) ? value : undefined;
-  const witness = hashes(raw.witness),
-    left = hashes(raw.peaks_left),
-    right = hashes(raw.peaks_right);
-  return witness && left && right
-    ? {
-        v: 1,
-        kind: "inclusion",
-        size: raw.size,
-        leaf_index: raw.leaf_index,
-        witness,
-        peaks_left: left,
-        peaks_right: right,
-      }
-    : undefined;
-}
-async function verifyProof(
-  root: Uint8Array,
-  identity: string,
-  proof: Proof,
-  leafIndex = proof.leaf_index,
-): Promise<boolean> {
-  const flattened = proof.witness.map(hex);
-  if (proof.peaks_right.length)
-    flattened.push(await rootFromPeaks(proof.peaks_right.map(hex)));
-  flattened.push(...proof.peaks_left.map(hex).toReversed());
-  return verifyHexInclusion(
-    root,
-    BigInt(proof.size),
-    BigInt(leafIndex),
-    identity,
-    flattened,
-  );
-}
 async function disclosures(
   raw: unknown,
   records: Map<string, Bundle>,
@@ -1793,6 +1732,13 @@ export interface VerifiedBundleContext {
 
 export interface VerifiedBundleContextOptions {
   readonly countersigners?: CountersignerSource;
+  /**
+   * The witness directory the strict check reads receipts under: those in
+   * `checkpoint.witnesses` and those over a parent log's checkpoint
+   * (`parent-log-witness/v1`). Without one no witness is trusted and every
+   * receipt is `withheld`, so a page never shows a checkpoint as witnessed.
+   */
+  readonly witnessDirectory?: unknown;
 }
 
 const contexts = new WeakSet<object>();
@@ -2028,6 +1974,9 @@ export async function buildVerifiedBundleContext(
   const ed25519 = await probeEd25519();
   const { plain, strict } = await verifyPlainAndStrict(owned, {
     strict: ed25519,
+    ...(options.witnessDirectory === undefined
+      ? {}
+      : { witnessDirectory: deepFreeze(ownedCopy(options.witnessDirectory)) }),
   });
   return contextFrom(
     owned,

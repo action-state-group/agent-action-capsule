@@ -90,6 +90,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/bundle/non-record-leaves/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Non-Record Leaves) | verify | 26 |
 | `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 9 |
 | `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 34 |
+| `vectors/bundle/parent-log-witness/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`parent-log-witness/v1`) | verify | 36 |
 | `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`) | pack, verify | 8 |
 | `vectors/bundle/report-single-record.json` | `draft-mih-zhang-agent-disclosure-bundle-00` (report of one record) | report | 3 |
 | `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 108 |
@@ -138,7 +139,7 @@ its 9 `record_signatures`.
 | `vectors/deal-reconcile-v0/` | `spec/deal-reconcile-contract-v0.md` (`ec:deal-reconcile@1`) | evaluate | 14 |
 | `vectors/judge/` | `spec/judge-record-family-v1.md` | record, evaluate | 18 |
 | `vectors/profiles/` | host-principal and Evidence Contract profiles (illustrative) | record, evaluate | 10 |
-| `vectors/viewer-core-text/` | `spec/verification-display-v0.md` §6.1, §6.2 | report | 21 |
+| `vectors/viewer-core-text/` | `spec/verification-display-v0.md` §6.1, §6.2 | report | 22 |
 | `vectors/adapters/x402/` | `spec/adapters/x402-v0.md` | verify | 2 |
 | `vectors/adapters/ucp/` | `spec/adapters/ucp-v0.md` §3 | verify | 2 |
 | `vectors/adapters/nostr-mailbox/` | `spec/bindings/nostr-mailbox-v0.md` §9 (experimental) | verify | 15 |

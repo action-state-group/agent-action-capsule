@@ -67,6 +67,10 @@ name = "bundle_strict_vectors"
 required-features = ["strict"]
 
 [[test]]
+name = "bundle_parent_witness_vectors"
+required-features = ["strict"]
+
+[[test]]
 name = "anchor_witness_vectors"
 required-features = ["strict"]
 

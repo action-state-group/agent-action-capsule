@@ -31,6 +31,9 @@ GOWORK=off go run ./cmd/vector_runner/
 
 `bundle.VerifyBundle` checks a Bundle's claims and `bundle.VerifyStrict` gives
 the strict verdict (`VALID`, `INCOMPLETE` or `INVALID`).
+In strict mode a `parent-log-witness/v1` extension (Bundle -03) is checked by
+`bundle.VerifyParentLogWitness` and reported as `StrictResult.ParentWitness`
+and as that extension's status; a `fail` makes the verdict `INVALID`.
 `bundle.VerifyBundleForPage` reads a Bundle as the TypeScript page context
 does (`bundle.VerifyBundle`, with a producer selection the strict checks do not
 reject read through `bundle.VerifyStrict`, and one they call INVALID refused),

@@ -4,6 +4,9 @@
 //! `vectors/bundle/strict/README.md` is the normative description.
 
 use super::category_coverage::category_coverage_fails;
+use super::parent_witness::{
+    verify_parent_log_witness, ParentWitnessResult, PARENT_LOG_WITNESS_KIND,
+};
 use super::{as_bundle_int, is_str, selected_membership, verify_bundle_with};
 use super::{CategoryInputs, ClaimResult, VerificationResult, SELECTION_PRODUCER_SELECTED};
 use crate::disclosure;
@@ -48,7 +51,9 @@ pub struct RecordResult {
 /// The result of [`verify_bundle_strict`].
 #[derive(Debug, Clone)]
 pub struct StrictVerificationResult {
-    /// The plain verifier's result ([`verify_bundle`]), unchanged.
+    /// The plain verifier's result ([`verify_bundle`]), unchanged except
+    /// that the `parent-log-witness/v1` entry of `extensions` carries
+    /// [`Self::parent_witness`]'s status instead of `uninterpreted`.
     pub base: VerificationResult,
     /// The Bundle is a JSON object of kind `evidence-bundle/v2`, version
     /// `"2"`. When it is not, `records` is the only claim. It is also false
@@ -73,6 +78,11 @@ pub struct StrictVerificationResult {
     /// when the checkpoint is authenticated and there is a record. Reported,
     /// never gating.
     pub signer_matches_checkpoint: Option<bool>,
+    /// The `parent-log-witness/v1` result when the Bundle carries that
+    /// extension, else `None`. Like `witnesses` it is reported beside the
+    /// claims, and only a failure gates. That kind's entry in
+    /// `base.extensions` carries its status.
+    pub parent_witness: Option<ParentWitnessResult>,
 }
 
 impl StrictVerificationResult {
@@ -90,6 +100,10 @@ impl StrictVerificationResult {
         self.kind_ok
             && self.claims.iter().all(|(_, c)| c.status != "fail")
             && self.witnesses.as_ref().is_none_or(|w| w.status != "fail")
+            && self
+                .parent_witness
+                .as_ref()
+                .is_none_or(|p| p.status != "fail")
             && !category_coverage_fails(self.base.category_coverage.as_ref())
     }
 
@@ -132,6 +146,7 @@ fn not_v2(base: VerificationResult) -> StrictVerificationResult {
         records: Vec::new(),
         signed_checkpoint: None,
         signer_matches_checkpoint: None,
+        parent_witness: None,
     }
 }
 
@@ -157,6 +172,7 @@ fn too_deep(base: VerificationResult) -> StrictVerificationResult {
         records: Vec::new(),
         signed_checkpoint: None,
         signer_matches_checkpoint: None,
+        parent_witness: None,
     }
 }
 
@@ -347,6 +363,24 @@ pub fn verify_bundle_strict(value: &Value, options: &StrictOptions) -> StrictVer
         signed.as_ref().map(|(_, cose)| cose.as_slice()),
         options.witness_directory,
     );
+    let mut base = base;
+    let parent_witness = bundle
+        .get("extensions")
+        .and_then(Value::as_object)
+        .and_then(|e| e.get(PARENT_LOG_WITNESS_KIND))
+        .map(|block| {
+            let result = verify_parent_log_witness(
+                block,
+                signed.as_ref().map(|(s, cose)| (s, cose.as_slice())),
+                options.witness_directory,
+            );
+            for extension in &mut base.extensions {
+                if extension.kind == PARENT_LOG_WITNESS_KIND {
+                    extension.status.clone_from(&result.status);
+                }
+            }
+            result
+        });
     let signer_matches_checkpoint = match &signed {
         Some((s, _)) if !s.key_id.is_empty() && !records.is_empty() => Some(
             records
@@ -368,6 +402,7 @@ pub fn verify_bundle_strict(value: &Value, options: &StrictOptions) -> StrictVer
         records,
         signed_checkpoint: signed.map(|(s, _)| s),
         signer_matches_checkpoint,
+        parent_witness,
     }
 }
 

@@ -58,6 +58,7 @@ describe("input nested beyond the stack", () => {
       records: [],
       checkpointAuthenticated: false,
       signerMatchesCheckpoint: null,
+      parentWitness: null,
     });
   });
 
