@@ -195,10 +195,11 @@ same-commit files in CI.
   `python/scripts/generate_nostr_mailbox_vectors.py` regenerates them.
 - `adapters/evidence-commitment-carriers/`: EXPERIMENTAL, not conformance vectors for any profile.
   The carriers of `spec/bindings/evidence-commitment-carriers-v0.md`: one signed evidence
-  commitment through a directory attestation entry, an A2A extension entry and a Nostr announce
-  event, with a forged entry, a forged key id, a bad staple, a stale digest, a key mismatch, an
+  commitment through a directory attestation entry, an A2A extension entry, a Nostr announce
+  event and an ERC-8004 registration file's service entry, with a forged entry, a forged key id, a bad staple, a stale digest, a key mismatch, an
   older commitment beside a newer one, a tie, a future-dated commitment, the cards handed to
-  the admission pack, and two carrier entries that are not read;
+  the admission pack, carrier entries that are not read, and ERC-8004 registration files whose
+  `registrations[]` do not match the agent;
   `python/scripts/generate_evidence_commitment_carriers_vectors.py` regenerates them.
 
 Reference-derived corpora and checksum manifests can be regenerated with:

@@ -13,8 +13,9 @@ by publishing one signed **evidence commitment**: how to ask it, what it answers
 disclosure-policy digest, how long an asker should wait, its latest checkpoint and one stapled
 history card per evidence stream. It carries no counts of its own: the only numbers in it are the
 `log_size` of a log inside the checkpoint and cards it staples, signed artifacts carried whole. This document puts the same commitment
-octets on three carriers: an attestation entry in a directory record (an ARD file or a NANDA Index
-record), an extension entry in an A2A Agent Card, and an addressable Nostr event.
+octets on four carriers: an attestation entry in a directory record (an ARD file or a NANDA Index
+record), an extension entry in an A2A Agent Card, an addressable Nostr event, and a service entry
+in an ERC-8004 agent registration file.
 The carriers differ only in how a stranger finds them. A verifier ignores everything a carrier
 says except where the octets are. It verifies the commitment's own signature, its staples and its
 `issued_at`, relies on it for a responder only when that responder's signed answers are under the
@@ -39,6 +40,8 @@ The commitment is a separate, opt-in disclosure. It carries a checkpoint, histor
 
 This document names no registry, no relay, no directory operator and no NIP. It defines no new
 cryptography: the commitment is signed with Ed25519 [IP §6.2], and the Nostr event as NIP-01 fixes.
+From ERC-8004 it reads only an agent's registration file. It uses neither the Reputation Registry
+nor the Validation Registry, and nothing a carrier says becomes a score or feedback.
 
 ## 2. What was read
 
@@ -54,6 +57,8 @@ cryptography: the commitment is signed with Ed25519 [IP §6.2], and the Nostr ev
 | NIP-94 | same commit, as NMB §2 pins it | the `x` tag ("the SHA-256 hexencoded string of the file") |
 | NIPs README | same commit, `README.md`, SHA-256 `4f79971a6dbdb5be713ea523fd94d2fabe7a94c0c31230410938e247003b7269` | the kind list (only to avoid a listed kind, §5.3) |
 | BIP-340 | as NMB §2 pins it | Verify |
+| ERC-8004 Trustless Agents | Draft, `ethereum/ERCs` commit `503591a6e80e6e1affdd6403341e25269141f046`, `ERCS/erc-8004.md`, SHA-256 `249dc3d96ad7bbe4afd25cacd14be942eb87751abcf1608bab19a610f3c3f8a9` | Identity Registry (*agentRegistry* `{namespace}:{chainId}:{identityRegistry}`, *agentId*, *agentURI*); Agent URI and Agent Registration File (`services[]` entries `name`, `endpoint`, `version` "a SHOULD, not a MUST", custom fields as the OASF entry's `skills`; `registrations[]` of `agentId` and `agentRegistry`; `supportedTrust`, "If absent or empty, this ERC is used only for discovery, not for trust"); Endpoint Domain Verification (`/.well-known/agent-registration.json`) |
+| EIP-55 | <https://eips.ethereum.org/EIPS/eip-55> | mixed-case checksum addresses: the case carries a checksum, not the address |
 
 All are informative references. The sources were read only. Nothing was posted to them.
 
@@ -105,8 +110,8 @@ responder [NMB §3].
 ## 4. Digests
 
 A **commitment digest** is SHA-256 over the commitment octets exactly as served, never over a
-re-serialization. A directory entry and an A2A entry write it `sha256:` followed by 64 lowercase
-hex. The Nostr `x` tag writes the 64 lowercase hex alone, as NIP-94 does.
+re-serialization. A directory entry, an A2A entry and an ERC-8004 entry write it `sha256:`
+followed by 64 lowercase hex. The Nostr `x` tag writes the 64 lowercase hex alone, as NIP-94 does.
 
 The commitment embeds the latest checkpoint, so its octets change at every checkpoint. A digest in
 a carrier names one version and goes stale. A digest that does not match the octets is a carrier
@@ -193,17 +198,68 @@ this carrier (C-2).
 responder. Any other event carrying the same octets is **relayed**. Either way the octets are the
 same, and they are what is verified. The author is never compared with `key_id` (V5).
 
+### 5.4 ERC-8004: the registration file's service entry
+
+An agent registered in an ERC-8004 Identity Registry carries the commitment pointer in one entry
+of its registration file's `services[]`, the file its *agentURI* resolves to [ERC-8004, Agent URI
+and Agent Registration File]:
+
+| Member | Value |
+|---|---|
+| `name` | exactly `evidence-commitment` |
+| `endpoint` | where the commitment octets are served: an `https:` URI, or the `nostr:` `naddr` of the responder's announce event (§5.3) |
+| `version` | the commitment's `profile`, `evidence-commitment/1` or `evidence-commitment/0` |
+| `digest` | the commitment digest, `sha256:<hex>` (§4) |
+
+The entry has exactly these four members, so it carries no size and no count (§5.1). A
+registration file carries at most one entry named `evidence-commitment`. A file with none, such as
+a `/.well-known/agent-registration.json` that holds only `registrations`, carries no commitment on
+this carrier: it is not a carrier entry, and it has no result. ERC-8004 makes `version`
+optional and allows other members in an entry; this entry requires the first and allows none of
+the second. `digest` is a member of this entry only, so a stale pointer shows on this carrier as on
+the others (V1).
+
+**Registrations.** A verifier that reached the file from an agent, an *agentRegistry* and an
+*agentId* on that registry, reads the entry only when the file's `registrations[]` has an element
+whose `agentId` is that *agentId* and whose `agentRegistry` names the same registry. Any element
+may match, since an agent can be registered on several registries. `agentId` is a JSON integer
+compared by value. It is a uint256, so it is compared exactly, without loss of precision, never as a
+floating-point number past 2^53. An `agentId` of any other type, a string of digits included, does
+not match.
+The registries are the same when the namespace and chain id are the same and the address is the
+same with letter case ignored (EIP-55 case is a checksum). Without one, the file is not that agent's file, and the entry is not read for that
+agent. The same rule applies to a file read at `/.well-known/agent-registration.json`. A verifier
+that reached the file with no agent in hand, by a link, has no *agentId* to compare and skips this
+check. A match proves what ERC-8004's own domain check proves and nothing more: it binds no key
+(V5).
+
+**What is not read.** This document defines no `supportedTrust` value, and a verifier does not
+read the list. Absent or empty, ERC-8004 calls itself discovery only, which is V7. A file may
+still list values for other purposes. A verifier also reads nothing else in the file or the
+registry: the token's owner, `agentWallet`, on-chain metadata, `active`, the other `services[]`
+entries and the registry's events. The commitment digest is not put in on-chain metadata: it names
+one version and goes stale at every checkpoint (§4).
+
+The registration file is found as ERC-8004 says: *agentURI* resolves it whatever its scheme
+(`https:`, `ipfs:` or a `data:` URI), and an agent's domain may also serve it at
+`/.well-known/agent-registration.json`. The same domain can serve that file beside
+`/.well-known/ard.json` (§5.1) and an A2A card (§5.2), each pointing to the same commitment.
+
 ## 6. Verify (every carrier)
 
 A verifier applies these steps to every commitment it obtains, from any carrier. The first step
 that fails names the result.
 
-- **V0, carrier form.** The entry has the form its carrier section gives (§5.1, §5.2 or §5.3), and
-  for A2A the evidence-request entry carries no commitment member. A failure names the carrier
-  check (`directory_entry`, `a2a_entry`, `discovery_object`, `nostr_event`). For a Nostr event the
-  form includes its NIP-01 `id` and BIP-340 signature. The entry is then not read.
+- **V0, carrier form.** The entry has the form its carrier section gives (§5.1, §5.2, §5.3 or
+  §5.4), and for A2A the evidence-request entry carries no commitment member. A failure names the
+  carrier check (`directory_entry`, `a2a_entry`, `discovery_object`, `nostr_event`,
+  `erc8004_entry`). For a Nostr event the form includes its NIP-01 `id` and BIP-340 signature. For
+  an ERC-8004 file reached from an agent, the registrations check of §5.4 comes first, and its
+  failure is `erc8004_registration`; the entry's form is checked after it. The entry is then not
+  read.
 - **V1, octets.** Take the octets: from `content` when it is not empty, otherwise from the `uri`,
-  `commitment_uri` or `r` tag. A carrier digest that does not match the octets is reported as
+  `commitment_uri`, `endpoint` or `r` tag. A `nostr:` `naddr` there resolves to its announce event
+  first (§5.3), and the octets are that event's. A carrier digest that does not match the octets is reported as
   `digest_mismatch` and changes nothing else: for a URI it means the pointer is stale. The octets
   are verified on their own, below.
 - **V2, signature.** The octets parse as a JSON object with a `profile` of §3; `key_id` is the raw
@@ -263,6 +319,7 @@ The vectors fix a card format for testing only, the one of
 | alter the octets | a signature that fails | refused, `commitment_signature` (V2) |
 | keep a digest that does not match | `digest_mismatch` | the octets are verified on their own (V1) |
 | re-post a commitment under another Nostr key | an author that is not the mailbox key | relayed, the same verified octets (§5.3) |
+| serve another agent's registration file for an *agentId* | `registrations[]` naming another agent | `erc8004_registration`, not read (§5.4) |
 | take over a domain and replace card and commitment | a commitment under a new `key_id` | a different responder (V5) |
 | hide or drop the entry | nothing | other carriers still work |
 
@@ -288,7 +345,7 @@ deterministically, and `python/tests/test_evidence_commitment_carriers_vectors.p
 offline with its own code: Ed25519 for commitments, NIP-01 `id` and
 BIP-340 for events (NMB's checks), and bech32 for `naddr`. Answers for V5 are envelopes of the IP
 corpus, verified by IP's reference verifier. Each case carries the carrier entries, the octets each
-URI serves, the verifier's time and, where it applies, the answer, with the expected result of
+URI serves, for an ERC-8004 entry the agent the verifier resolved the file from (no chain is read), the verifier's time and, where it applies, the answer, with the expected result of
 every step and, once V5 binds the commitment, the cards V6 hands on.
 
 | Case | What it shows | Sections |
@@ -313,9 +370,23 @@ every step and, once V5 binds the commitment, the cards V6 hands on.
 | `issued-at-past-skew-limit` | a valid commitment dated one second past the read time plus skew: `future_dated` | §6 V4 |
 | `a2a-commitment-in-discovery-object` | the commitment pointer in the evidence-request entry's `params`: `discovery_object`, not read | §5.2, §6 V0 |
 | `nostr-event-bad-signature` | an announce event whose signature does not verify: `nostr_event`, not read | §6 V0 |
+| `four-carriers-one-commitment` | the same commitment through a directory entry, an A2A entry, a Nostr event and an ERC-8004 entry on one domain: one digest, verified once, current, key bound, its card handed on | §5, §5.4, §6 |
+| `erc8004-data-uri-naddr` | an *agentURI* that is a `data:` URI, an entry whose `endpoint` is the announce event's `naddr`, a `registrations[]` whose second element matches the agent, and a `supportedTrust` that is not read: resolved to the event, same octets | §5.4, §5.3 |
+| `erc8004-stale-digest` | an ERC-8004 entry whose `digest` names an older version: `digest_mismatch`, the octets verify | §4, §5.4, §6 V1 |
+| `erc8004-entry-with-size` | an ERC-8004 entry with a `size` member: `erc8004_entry`, not read | §5.4, §6 V0 |
+| `erc8004-entry-bad-version` | an ERC-8004 entry whose `version` is not a profile of §3: `erc8004_entry`, not read | §5.4, §6 V0 |
+| `erc8004-entry-bad-scheme` | an ERC-8004 entry whose `endpoint` is neither `https:` nor `nostr:`: `erc8004_entry`, not read | §5.4, §6 V0 |
+| `erc8004-two-entries` | a registration file with two `evidence-commitment` entries: `erc8004_entry`, neither read | §5.4, §6 V0 |
+| `erc8004-registration-mismatch` | a file reached from an agent whose `registrations[]` names another `agentId`: `erc8004_registration`, not read | §5.4, §6 V0, §8 |
+| `erc8004-registry-mismatch` | a file whose `registrations[]` names the `agentId` on another chain: `erc8004_registration`, not read | §5.4, §6 V0, §8 |
+| `erc8004-agent-id-string` | a file whose `registrations[]` gives the `agentId` as a string of digits: `erc8004_registration`, not read | §5.4, §6 V0 |
+| `erc8004-registration-before-entry` | another agent's file that also has two entries: the registrations check comes first, `erc8004_registration` | §5.4, §6 V0 |
+| `erc8004-registrations-only` | a well-known file holding only `registrations`, beside a directory entry: no carrier entry, no result | §5.4 |
+| `erc8004-reached-by-link` | a file reached by a link, with no agent in hand: the registrations check is skipped, the entry is read | §5.4 |
+| `erc8004-forged-octets` | an ERC-8004 entry pointing to the commitment with a member changed: refused, `commitment_signature` | §5.4, §6 V2, §8 |
 
 The workflow `.github/workflows/evidence-commitment-carriers.yml` regenerates the vectors, fails
-when the committed files differ, and runs the test. No relay, directory or host is contacted. V6
+when the committed files differ, and runs the test. No relay, directory, chain or host is contacted. V6
 only hands the cards on, so it has no result of its own to test.
 
 ## 11. Open points
@@ -340,12 +411,14 @@ only hands the cards on, so it has no result of its own to test.
   checkpoint are terms of the admission pack, under the history-card and admission design now in
   progress. This document adds none, so a card is judged the same whether it arrived by a carrier
   here or another route.
+- **C-7. The ERC-8004 service name.** ERC-8004 keeps no list of service names. `evidence-commitment`
+  is this document's name, as the `t` value of §5.3 is, and is registered nowhere (C-5).
 
 ## References
 
 - ER: `draft-mih-agent-evidence-request-02`, `spec/draft-mih-agent-evidence-request-02.md`.
 - IP: Minimum Evidence Interoperability Profile v1, `evidence-interop/1`, `spec/interop-profile-v1.md`.
 - NMB: Nostr Mailbox Carriage v0, `spec/bindings/nostr-mailbox-v0.md`.
-- ARD v0.91, NANDA Index v2, A2A v1.0.1, NIP-01, NIP-19, NIP-21, NIP-24, NIP-65, NIP-94, BIP-340
-  (informative): §2.
+- ARD v0.91, NANDA Index v2, A2A v1.0.1, NIP-01, NIP-19, NIP-21, NIP-24, NIP-65, NIP-94, BIP-340,
+  ERC-8004, EIP-55 (informative): §2.
 - RFC 8032 (Ed25519), RFC 8785 (JCS), RFC 4648 §5 (base64url).

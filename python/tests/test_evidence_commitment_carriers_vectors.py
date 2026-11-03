@@ -5,7 +5,7 @@ spec/bindings/evidence-commitment-carriers-v0.md.
 The generator states the expected values. This test re-runs it and requires byte-identical output.
 With its own code it applies the binding's verify steps V0 to V5 to every carrier entry: the
 carrier forms, the NIP-01 id and BIP-340 signature of each announce event (the mailbox test's
-checks), the naddr (bech32), the commitment's Ed25519 signature over JCS, its staples, the newest
+checks), the naddr (bech32), an ERC-8004 registration file's entry and registrations, the commitment's Ed25519 signature over JCS, its staples, the newest
 issued_at, and the cards V6 hands to the admission pack. A V5 answer goes to the reference
 verifier of the interop profile, offline.
 """
@@ -81,7 +81,8 @@ _SHA_TAG = re.compile(r"sha256:[0-9a-f]{64}")
 # Every check a mutant test may switch off.
 ALL_CHECKS = frozenset({"discovery_object", "nostr_event", "key_id_spki", "commitment_signature",
                         "staple_digest", "future", "newest", "conflict", "key_binding",
-                        "handoff_gate", "directory_entry", "a2a_entry", "commitment_form"})
+                        "handoff_gate", "directory_entry", "a2a_entry", "commitment_form",
+                        "erc8004_entry", "erc8004_registration"})
 
 # ---------------------------------------------------------------------------
 # V0 and V1: carrier forms, and where the octets are
@@ -136,8 +137,46 @@ def fetch(uri: str, case: dict, checks: frozenset) -> tuple[bytes | None, dict |
     return b64u(case["served"][uri]), None
 
 
-def read_carrier(entry: dict, case: dict, checks: frozenset) -> dict:
-    """V0, then V1. Returns the carrier result and, when it is read, the octets and any event."""
+def registration_file(agent_uri: str, case: dict) -> dict:
+    """ERC-8004: the file an agentURI resolves to, a base64 data: URI or a served https: URI."""
+    prefix = "data:application/json;base64,"
+    if agent_uri.startswith(prefix):
+        return json.loads(base64.b64decode(agent_uri[len(prefix):]))
+    return json.loads(fetch(agent_uri, case, frozenset())[0])
+
+
+def same_registry(a: str, b: str) -> bool:
+    """§5.4: the same namespace and chain id, and the same address with letter case ignored (EIP-55)."""
+    (na, ca, xa), (nb, cb, xb) = a.split(":"), b.split(":")
+    return (na, ca) == (nb, cb) and xa.lower() == xb.lower()
+
+
+def commitment_entries(file: dict) -> list[dict]:
+    return [e for e in file.get("services", []) if e.get("name") == "evidence-commitment"]
+
+
+def erc8004_entry(file: dict) -> dict | None:
+    """§5.4: exactly one evidence-commitment entry, of exactly four members, in its form."""
+    entries = commitment_entries(file)
+    if len(entries) != 1:
+        return None
+    (e,) = entries
+    if (set(e) != {"name", "endpoint", "version", "digest"} or e["version"] not in PROFILES
+            or not e["endpoint"].startswith(("https:", "nostr:")) or not _SHA_TAG.fullmatch(e["digest"])):
+        return None
+    return e
+
+
+def same_agent(r: dict, agent: dict) -> bool:
+    """§5.4: agentId a JSON integer equal by value (a bool or a string of digits does not match)."""
+    aid = r.get("agentId")
+    return (isinstance(aid, int) and not isinstance(aid, bool) and aid == agent["agentId"]
+            and same_registry(r.get("agentRegistry", ""), agent["agentRegistry"]))
+
+
+def read_carrier(entry: dict, case: dict, checks: frozenset) -> dict | None:
+    """V0, then V1. Returns the carrier result and, when it is read, the octets and any event; None for
+    an ERC-8004 file with no evidence-commitment entry, which is not a carrier entry (§5.4)."""
     kind = entry["carrier"]
     if kind == "directory":
         (att,) = entry["record"]["trustManifest"]["attestations"]
@@ -160,6 +199,20 @@ def read_carrier(entry: dict, case: dict, checks: frozenset) -> dict:
             return {"carrier": kind, "check": "a2a_entry"}
         data, ev = fetch(ce[0]["params"]["commitment_uri"], case, checks)
         claimed = ce[0]["params"]["commitment_digest"][len("sha256:"):]
+    elif kind == "erc8004":
+        file = registration_file(entry["agent_uri"], case)
+        if not commitment_entries(file):
+            return None
+        agent = entry.get("agent")
+        if "erc8004_registration" in checks and agent is not None and not any(
+                same_agent(r, agent) for r in file.get("registrations", [])):
+            return {"carrier": kind, "check": "erc8004_registration"}
+        e = erc8004_entry(file)
+        if "erc8004_entry" in checks and e is None:
+            return {"carrier": kind, "check": "erc8004_entry"}
+        e = e or commitment_entries(file)[0]
+        data, ev = fetch(e["endpoint"], case, checks)
+        claimed = e["digest"][len("sha256:"):]
     else:
         ev = entry["event"]
         if not nostr_form(ev, checks):
@@ -273,6 +326,8 @@ def run_case(case: dict, checks: frozenset = ALL_CHECKS) -> dict:
     carriers, octets = [], []
     for entry in case["carriers"]:
         r = read_carrier(entry, case, checks)
+        if r is None:
+            continue
         carriers.append(r)
         if r["check"] is None and r["octets"] not in octets:
             octets.append(r["octets"])
@@ -354,6 +409,21 @@ def test_corpus_covers_the_acceptance():
     assert DATA["count"] == len(CASES)
 
 
+def test_corpus_covers_the_erc8004_acceptance():
+    """AAC#581's acceptance: the same commitment carried a fourth way, verifying to the same octets; a
+    wrong digest in the entry (a stale pointer, V1); and a registration file whose registrations[] does
+    not match the agent, which is not read."""
+    got = {c["id"]: run_case(c) for c in CASES}
+    four = got["four-carriers-one-commitment"]
+    assert [r["carrier"] for r in four["carriers"]] == ["directory", "a2a", "nostr", "erc8004"]
+    assert len({r["octets_sha256"] for r in four["carriers"]}) == 1
+    assert four["key_binding"] == "bound" and len(four["commitments"]) == 1
+    assert four["carriers"][3]["octets_sha256"] == got["three-carriers-one-commitment"]["carriers"][0]["octets_sha256"]
+    assert got["erc8004-stale-digest"]["carriers"][0]["digest_mismatch"] is True
+    for cid in ("erc8004-registration-mismatch", "erc8004-registry-mismatch"):
+        assert got[cid]["carriers"][0]["check"] == "erc8004_registration" and got[cid]["commitments"] == []
+
+
 def test_binding_lists_every_case():
     section = BINDING_TEXT.split("## 10. Vectors", 1)[1].split("## 11.", 1)[0]
     listed = re.findall(r"^\| `([a-z0-9-]+)` \|", section, flags=re.M)
@@ -393,7 +463,9 @@ def test_commitments_carry_no_count():
                     scan(x, f"{path}.{k}")
     for case in CASES:
         for uri, text in case["served"].items():
-            scan(json.loads(b64u(text)), uri)
+            doc = json.loads(b64u(text))
+            if "registrations" not in doc:  # a registration file's agentId is ERC-8004's, not a count
+                scan(doc, uri)
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +488,14 @@ def test_commitments_carry_no_count():
     ("directory_entry", "directory-entry-with-size"),
     ("a2a_entry", "a2a-entry-required"),
     ("commitment_form", "unknown-commitment-profile"),
+    ("erc8004_entry", "erc8004-entry-with-size"),
+    ("erc8004_entry", "erc8004-entry-bad-version"),
+    ("erc8004_entry", "erc8004-entry-bad-scheme"),
+    ("erc8004_entry", "erc8004-two-entries"),
+    ("erc8004_registration", "erc8004-registration-mismatch"),
+    ("erc8004_registration", "erc8004-registry-mismatch"),
+    ("erc8004_registration", "erc8004-agent-id-string"),
+    ("erc8004_registration", "erc8004-registration-before-entry"),
 ])
 def test_mutant_check_removed(check, case_id):
     (case,) = [c for c in CASES if c["id"] == case_id]
