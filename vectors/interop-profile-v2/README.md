@@ -53,4 +53,11 @@ here unchanged.
   - `refusal-policy-digest-checked-by-v1-verifier`: the signed refusal checked by a verifier that
     implements only `evidence-interop/1`, `refusal_signature` `FAIL`.
 
+- The manifest is also fetched over HTTP (v2 §11.4.2, P-70). `carriage-invariance` carries a third
+  copy, `http_well_known`: a `GET` at `/.well-known/evidence-manifest` whose body is the JCS
+  serialization of the manifest. `carriage-manifest-http-differs` is new: the body is another
+  manifest, so `manifest_form` is `PASS` for each copy and `manifest_consistency` is `FAIL`.
+  `carriage-manifest-http-not-jcs` is new too: the body is the same manifest pretty-printed, so
+  the HTTP copy's `manifest_form` is `FAIL` and `manifest_consistency` is `PASS`.
+
 The key seed labels and log entry labels keep their `evidence-interop/0` text, as in v1.

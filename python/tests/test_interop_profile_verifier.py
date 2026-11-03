@@ -196,11 +196,19 @@ def run_carriage_case(case: dict) -> dict:
     if "manifests" in inp:
         a2a_m = inp["manifests"]["a2a_extension"]["params"]
         mcp_m = inp["manifests"]["mcp_evidence_manifest"]["structuredContent"]
+        copies = [a2a_m, mcp_m]
         out["manifest_properties"] = {
             "a2a_extension": {"manifest_form": carriage_mod.manifest_form(a2a_m, vpolicy.profiles_implemented).status},
             "mcp_evidence_manifest": {
-                "manifest_form": carriage_mod.manifest_form(mcp_m, vpolicy.profiles_implemented).status},
-            "manifest_consistency": carriage_mod.manifest_consistency([a2a_m, mcp_m]).status}
+                "manifest_form": carriage_mod.manifest_form(mcp_m, vpolicy.profiles_implemented).status}}
+        if "http_well_known" in inp["manifests"]:
+            h = inp["manifests"]["http_well_known"]
+            http_m, http_ok = carriage_mod.manifest_from_http(octets(h["body"]), h["media_type"])
+            copies.append(http_m)
+            out["manifest_properties"]["http_well_known"] = {
+                "manifest_form": carriage_mod.manifest_form(http_m, vpolicy.profiles_implemented).status
+                if http_ok else "FAIL"}
+        out["manifest_properties"]["manifest_consistency"] = carriage_mod.manifest_consistency(copies).status
     return out
 
 
