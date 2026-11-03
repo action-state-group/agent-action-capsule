@@ -150,11 +150,13 @@ same-commit files in CI.
   wrongly opened, and one mutant per property the level adds. Derived from the personal-history run
   and the x402 adapter corpus;
   `python/scripts/generate_personal_history_outcome_v0_vectors.py` regenerates them.
-- `standard-history-v0/`: the derivation `standard_history/1` of `spec/standard-history-v0.md`:
-  positive cards for a person and a node, checked with and without the policy, the anchor and the
-  deal entries, the month-end window clamp and an empty window, and one negative per property of
-  its §6 (a percentage, a count without its denominator, a counted shop purchase, a window not in
-  the policy, among others); `python/scripts/generate_standard_history_v0_vectors.py` regenerates
+- `standard-history-v0/`: the derivations `standard_history/1` and `standard_history/2` of
+  `spec/standard-history-v0.md`: positive cards for a person and a node, checked with and without
+  the policy, the anchor and the deal entries, the month-end window clamp and an empty window, and
+  one negative per property of its §6 (a percentage, a count without its denominator, a counted
+  shop purchase, a window not in the policy, among others); and in `vectors-2.json` a `/2` card
+  with a deal whose amount is not recorded, counted in every total and in no band, with negatives
+  that leave it out, put it in a band or leave it out of the outcomes; `python/scripts/generate_standard_history_v0_vectors.py` regenerates
   them.
 - `inference-service-history-v0/`: the Inference-Service History Profile
   `spec/inference-service-history-profile-v0.md`: a served-only Standard History, the period

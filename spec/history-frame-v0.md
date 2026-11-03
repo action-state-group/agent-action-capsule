@@ -9,11 +9,11 @@ it leaves open are listed under [Open points](#9-open-points) (HF-1, HF-2, …).
 This document defines one **History frame**: the rules every History shares, a closed set of
 **frame parameters**, and two documents each instance supplies, a **counting table** and a
 **wording pack**. A History is an instance of the frame: it sets its values of the parameters and
-pins one table and one pack. Four instances exist, each defined by its own document:
+pins one table and one pack. Five instances exist, defined by four documents:
 
 | Tag | Document | Instance identifier |
 |---|---|---|
-| SH | `spec/standard-history-v0.md` | `standard_history/1` |
+| SH | `spec/standard-history-v0.md` | `standard_history/1` and `standard_history/2` |
 | PH | `spec/personal-agent-history-profile-v0.md`, Basic level | `personal_history_basic/1` |
 | PO | `spec/personal-agent-history-outcome-v0.md`, Outcome level | `personal_history_outcome/1` |
 | ISH | `spec/inference-service-history-profile-v0.md`, Standard and Detailed levels | `inference-service-history/0` |
@@ -195,8 +195,8 @@ together, by sharing a label, or by both verifying.
 Two counts over overlapping intervals can be subtracted, and the difference can be one deal or
 one exchange. ISH's period rules bound that for its own Standard level (ISH §6). The frame
 restates ISH §6.1 item 8 as it stands, and does not extend it: a node that serves Standard
-Histories under `inference-service-history/0` MUST NOT serve a `standard_history/1` card under the
-same key, because two such cards at consecutive checkpoints could be subtracted to isolate one
+Histories under `inference-service-history/0` MUST NOT serve a `standard_history/1` or
+`standard_history/2` card under the same key, because two such cards at consecutive checkpoints could be subtracted to isolate one
 exchange the periods protect. A subject key that serves both is out of conformance by ISH's text
 already; SH states the same exposure for its own cards (SH §9 "Differencing").
 
@@ -314,7 +314,7 @@ already signs (the token, the definition's `name`, or the definition's `profile`
 
 | Parameter | SH | PH | PO | ISH Standard | ISH Detailed |
 |---|---|---|---|---|---|
-| `identification` | `token` (`standard_history/1`) | `definition_digest` | `definition_digest` | `definition_digest` | `definition_digest` |
+| `identification` | `token` (`standard_history/1`, `standard_history/2`) | `definition_digest` | `definition_digest` | `definition_digest` | `definition_digest` |
 | `level` | `recipient_free` | `recipient_specific` | `recipient_specific` | `recipient_free` | `recipient_specific` |
 | `subject_form` | `full_history` | `correlation` | `correlation` | `full_history` | `full_history` |
 | `coverage_kind` | `policy_window` | `holder_selected` | any IP §6.7.1 kind; `stream_interval` only with rule `all_records` | `stream_interval`, rule `all_records` | `holder_selected` |
@@ -330,12 +330,14 @@ already signs (the token, the definition's `name`, or the definition's `profile`
 | `policy_digest` | `policy_octets` | `none` | `none` | `period_policy_jcs` | `none` |
 | `container` | `none` | `one_file` | `one_file` | `none` | `none` |
 
-ISH's two levels share one identifier, one counting table and one wording pack. Each instance's
+ISH's two levels share one identifier, one counting table and one wording pack. SH's two tokens
+share the SH column, and each pins its own counting table and wording pack. Each instance's
 documents and digests:
 
 | Instance | Counting table | Wording pack |
 |---|---|---|
 | `standard_history/1` | `spec/history-frame/standard-history-1-table.json`: `31122b837d2bea44dd3f559ca90a69f666c146ebb3f1b4d9f7df1c1fd3d47c53` | `spec/history-frame/standard-history-1-pack.json`: `dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74` |
+| `standard_history/2` | `spec/history-frame/standard-history-2-table.json`: `c18c28b9830440fddb0d2963c6731da698b019d00606e3f3e4205dfb34c48a1a` | `spec/history-frame/standard-history-2-pack.json`: `212fa32bf4a5193f4161ecc86059cf4b79bac9af183350a1800a05834797a564` |
 | `personal_history_basic/1` | `spec/history-frame/personal-history-basic-1-table.json`: `d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1` | `spec/history-frame/personal-history-basic-1-pack.json`: `b3e4868affdaeede5eeadb0d909d4e4f665260d6a68a3c10896ab9a0abf6be60` |
 | `personal_history_outcome/1` | `spec/history-frame/personal-history-outcome-1-table.json`: `a332d408c5ea2566b8f650769f92044c1b075c028cfcd64b112b626fc7b7e97c` | `spec/history-frame/personal-history-outcome-1-pack.json`: `00dce14b0bfdda0187b274727dd34d7b6a8bd5d5bf3884b934f6840604fc6d47` |
 | `inference-service-history/0` | `spec/history-frame/inference-service-history-0-table.json`: `3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057` | `spec/history-frame/inference-service-history-0-pack.json`: `693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82` |

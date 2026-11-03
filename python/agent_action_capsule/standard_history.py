@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The ``standard_history/1`` derivation (``spec/standard-history-v0.md``, cited as SH).
+"""The ``standard_history/1`` and ``standard_history/2`` derivations
+(``spec/standard-history-v0.md``, cited as SH).
 
-Two functions:
+Two functions, each for the token its ``derivation`` names (``/1`` when omitted):
 
 * :func:`derive_card` builds a card from the deal entries (SH §5.2), the policy's window and
   digest (SH §5.1) and the anchor. It is the holder's side.
@@ -24,6 +25,8 @@ from .canonical import too_deep
 
 __all__ = [
     "DERIVATION",
+    "DERIVATION_2",
+    "DERIVATIONS",
     "PROPERTIES",
     "COUNTERPARTY_CLASSES",
     "derive_card",
@@ -32,6 +35,9 @@ __all__ = [
 ]
 
 DERIVATION = "standard_history/1"
+#: SH §4, §5.3: /2 also counts the counted deals with no recorded amount, in ``unpriced``.
+DERIVATION_2 = "standard_history/2"
+DERIVATIONS = (DERIVATION, DERIVATION_2)
 
 #: SH §6, in the order a verifier reports them.
 PROPERTIES = ("card_form", "counts_integral", "denominator", "window_from_policy", "as_of",
@@ -61,6 +67,8 @@ TALLIES = {
 }
 CARD_MEMBERS = frozenset(("derivation", "holder_kind", "controller_class", "anchor", "since", "window",
                           "policy", "bands", "disputes") + tuple(TALLIES))
+#: SH §4: the members of each token's card.
+MEMBERS = {DERIVATION: CARD_MEMBERS, DERIVATION_2: CARD_MEMBERS | {"unpriced"}}
 BAND_KEYS = ("currency", "decade")
 MAX_COUNT = 2 ** 53 - 1
 
@@ -116,8 +124,9 @@ def _decade(amount: Mapping[str, Any]) -> int | None:
     return None if value == "0" else len(value) - scale - 1
 
 
-def _check_entry(deal: Mapping[str, Any]) -> None:
-    """The deal entry's form (SH §5.2). A malformed entry is the caller's error, never a count."""
+def _check_entry(deal: Mapping[str, Any], derivation: str) -> None:
+    """The deal entry's form (SH §5.2). A malformed entry is the caller's error, never a count.
+    ``amount`` may be absent only under /2: a /1 entry cannot be filled without it (SH §3)."""
     if not isinstance(deal, Mapping):
         raise ValueError("a deal entry is not an object")
     if not isinstance(deal.get("deal"), str) or not deal["deal"]:
@@ -128,11 +137,12 @@ def _check_entry(deal: Mapping[str, Any]) -> None:
     for member, values in (("role", ROLES), ("outcome", OUTCOMES), ("happened", HAPPENED)):
         if deal.get(member) not in values:
             raise ValueError(f"deal {deal['deal']}: {member} {deal.get(member)!r}")
-    amount = deal.get("amount")
-    if (not isinstance(amount, Mapping) or not isinstance(amount.get("assetCode"), str)
-            or not CURRENCY.fullmatch(amount["assetCode"])):
-        raise ValueError(f"deal {deal['deal']}: amount without an SR assetCode")
-    _decade(amount)
+    if "amount" in deal or derivation != DERIVATION_2:
+        amount = deal.get("amount")
+        if (not isinstance(amount, Mapping) or not isinstance(amount.get("assetCode"), str)
+                or not CURRENCY.fullmatch(amount["assetCode"])):
+            raise ValueError(f"deal {deal['deal']}: amount without an SR assetCode")
+        _decade(amount)
     disputes = deal.get("disputes")
     if not isinstance(disputes, list):
         raise ValueError(f"deal {deal['deal']}: disputes is not an array")
@@ -146,14 +156,17 @@ def _zero(parts: Sequence[str]) -> dict:
     return {"of": 0, **{p: 0 for p in parts}}
 
 
-def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], anchor_time: datetime) -> dict:
-    """The tallies SH §5 derives from the deal entries."""
+def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], anchor_time: datetime,
+            derivation: str = DERIVATION) -> dict:
+    """The tallies SH §5 derives from the deal entries, for the token's card."""
     t = {name: _zero(parts) for name, parts in TALLIES.items()}
+    if derivation == DERIVATION_2:
+        t["unpriced"] = _zero(OUTCOMES)
     bands: dict = {}
     disputes = {side: {"of": 0, "by_outcome": _zero(DISPUTE_OUTCOMES), "by_forum": _zero(FORUMS)}
                 for side in SIDES}
     for deal in deals:
-        _check_entry(deal)
+        _check_entry(deal, derivation)
         if not _in_window(_time(deal["agreed_at"]), window, anchor_time):
             continue
         t["in_window"]["of"] += 1
@@ -167,8 +180,12 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
         for name, member in (("outcomes", "outcome"), ("roles", "role"), ("happened", "happened")):
             t[name]["of"] += 1
             t[name][deal[member]] += 1
-        key = (deal["amount"]["assetCode"], _decade(deal["amount"]))
-        band = bands.setdefault(key, {"currency": key[0], "decade": key[1], **_zero(OUTCOMES)})
+        if "amount" not in deal:
+            # SH §5.3: an unpriced deal (/2 only) is in `unpriced` and in no band.
+            band = t["unpriced"]
+        else:
+            key = (deal["amount"]["assetCode"], _decade(deal["amount"]))
+            band = bands.setdefault(key, {"currency": key[0], "decade": key[1], **_zero(OUTCOMES)})
         band["of"] += 1
         band[deal["outcome"]] += 1
         for d in deal["disputes"]:
@@ -190,19 +207,22 @@ def _band_order(key: tuple) -> tuple:
 
 def derive_card(*, holder_kind: str, controller_class: str, anchor: str, anchor_time: str,
                 first_checkpoint_time: str, policy: Mapping[str, Any],
-                deals: Sequence[Mapping[str, Any]]) -> dict:
-    """The card SH §4 states for these inputs. ``policy`` is ``{"digest", "window"}`` (SH §5.1).
+                deals: Sequence[Mapping[str, Any]], derivation: str = DERIVATION) -> dict:
+    """The card of the token ``derivation`` that SH §4 states for these inputs. ``policy`` is
+    ``{"digest", "window"}`` (SH §5.1).
 
-    Raises ``ValueError`` on a malformed input.
+    Raises ``ValueError`` on a malformed input, a /1 deal entry without an amount included.
     """
+    if derivation not in DERIVATIONS:
+        raise ValueError(f"not a standard_history token: {derivation!r}")
     if not _policy_window(policy["window"]):
         raise ValueError(f"not a policy window: {policy['window']!r}")
     window = _whole(policy["window"])
     _time(first_checkpoint_time)
-    card = {"derivation": DERIVATION, "holder_kind": holder_kind, "controller_class": controller_class,
+    card = {"derivation": derivation, "holder_kind": holder_kind, "controller_class": controller_class,
             "anchor": anchor, "since": first_checkpoint_time[:7], "window": dict(window),
             "policy": policy["digest"]}
-    card.update(_counts(deals, window, _time(anchor_time)))
+    card.update(_counts(deals, window, _time(anchor_time), derivation))
     return card
 
 
@@ -231,10 +251,10 @@ def _tally_form(t: Any, parts: Sequence[str]) -> bool:
     return all(_is_number(v) for v in t.values())
 
 
-def _card_form(card: Any) -> bool:
-    if not isinstance(card, Mapping) or set(card) != CARD_MEMBERS:
+def _card_form(card: Any, derivation: str) -> bool:
+    if not isinstance(card, Mapping) or set(card) != MEMBERS[derivation]:
         return False
-    if card["derivation"] != DERIVATION or card["holder_kind"] not in HOLDER_KINDS:
+    if card["derivation"] != derivation or card["holder_kind"] not in HOLDER_KINDS:
         return False
     if card["controller_class"] != CONTROLLER_CLASSES[card["holder_kind"]]:
         return False
@@ -246,6 +266,8 @@ def _card_form(card: Any) -> bool:
     if not _window_form(card["window"]):
         return False
     if not all(_tally_form(card[name], parts) for name, parts in TALLIES.items()):
+        return False
+    if derivation == DERIVATION_2 and not _tally_form(card["unpriced"], OUTCOMES):
         return False
     bands = card["bands"]
     if not isinstance(bands, list):
@@ -330,8 +352,14 @@ def _denominator(card: Mapping[str, Any]) -> bool:
     for band in card["bands"]:
         if not _partitions(band, OUTCOMES) or band["of"] < 1:
             return False
+    # SH §4: on a /2 card the bands and `unpriced` together partition the outcomes.
+    priced = list(card["bands"])
+    if "unpriced" in card:
+        if not _partitions(card["unpriced"], OUTCOMES):
+            return False
+        priced.append(card["unpriced"])
     for o in ("of",) + OUTCOMES:
-        if sum(band[o] for band in card["bands"]) != card["outcomes"][o]:
+        if sum(band[o] for band in priced) != card["outcomes"][o]:
             return False
     for d in card["disputes"].values():
         if "of" not in d:
@@ -349,8 +377,10 @@ def _status(ok: bool) -> str:
 
 def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
                as_of: Mapping[str, Any] | None = None,
-               deals: Sequence[Mapping[str, Any]] | None = None) -> dict:
-    """The six card properties of SH §6, in order.
+               deals: Sequence[Mapping[str, Any]] | None = None,
+               derivation: str = DERIVATION) -> dict:
+    """The six card properties of SH §6, in order, for a card checked under the token
+    ``derivation``, the one the request named.
 
     ``policy`` is ``{"digest", "window"}`` (SH §5.1); ``as_of`` is ``{"anchor", "anchor_time",
     "first_checkpoint_time"}``; ``deals`` is every deal entry the stream holds at the anchor, passed only when the verifier has
@@ -360,11 +390,13 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
     malformed input, never on a malformed card. A card nested deeper than the shared
     128-level limit reads as no card, as Go's ``Check`` reads one it cannot parse.
     """
+    if derivation not in DERIVATIONS:
+        raise ValueError(f"not a standard_history token: {derivation!r}")
     parsed = not too_deep(card)
     if not parsed:
         card = None
     p = {}
-    p["card_form"] = _status(_card_form(card))
+    p["card_form"] = _status(_card_form(card, derivation))
     p["counts_integral"] = _status(parsed and _counts_integral(card))
     if p["card_form"] == "PASS" and p["counts_integral"] == "PASS":
         p["denominator"] = _status(_denominator(card))
@@ -389,7 +421,7 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
     if not ready:
         p["counts_recompute"] = "NOT_CHECKED"
     else:
-        derived = _counts(deals, _whole(card["window"]), _time(as_of.get("anchor_time")))
+        derived = _counts(deals, _whole(card["window"]), _time(as_of.get("anchor_time")), derivation)
         p["counts_recompute"] = _status(all(card[k] == v for k, v in derived.items()))
     return p
 

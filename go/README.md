@@ -71,8 +71,11 @@ properties of the `standard_history/1` derivation (spec
 `standard-history-v0.md` section 6) for a card's JSON octets, from whatever
 the caller holds beside it: a property that needs a missing input is
 `NOT_CHECKED`. `standardhistory.Derive` builds the card from the deal
-entries. Both are at parity with the Python reference
-`agent_action_capsule.standard_history`, and both run
+entries. `CheckAs` and `DeriveAs` do the same for a token they are given,
+`standard_history/1` or `standard_history/2`, whose card also counts deals
+with no recorded amount (`Deal.Unpriced`) in `unpriced`, in no value band.
+All are at parity with the Python reference
+`agent_action_capsule.standard_history`, and all run
 `../vectors/standard-history-v0/`.
 
 ## Controller binding v0

@@ -24,12 +24,13 @@ The personal-agent History profile (`spec/personal-agent-history-profile-v0.md`)
 profile. The two families are separate subjects. They compose only by an explicit, evidence-backed
 link between their keys, never by being shown together (`spec/history-frame-v0.md` §4.7).
 
-The Standard History derivation `standard_history/1` (`spec/standard-history-v0.md`) is a separate
+The Standard History derivation `standard_history/1`, and its revision `standard_history/2`
+(`spec/standard-history-v0.md`), is a separate
 derivation with its own purpose: one card that counts a holder's deals over a window ending at any
 anchor, with no period floor. It is not this profile's Standard level. Both are instances of the
 History frame (`spec/history-frame-v0.md`), which unifies their frame and keeps this profile's
 period rules (§6) as its own; it does not reconcile their counts. A node that serves this profile's Standard Histories serves no
-`standard_history/1` card under the same key (§6.1 item 8). Their labels do not map onto each
+`standard_history/1` or `standard_history/2` card under the same key (§6.1 item 8). Their labels do not map onto each
 other: `stamped_by_both` there is not `peer_confirmed` here. The two documents number their open
 points (SH-n) independently.
 
@@ -396,9 +397,9 @@ A record is in a period by the time the node's stream committed it.
 7. Each counts member names its policy by the digest of `period_policy` (SHA-256 of UTF-8 of JCS).
    A verifier shows the policy's `length_s` and `floor` beside the counts. This profile sets no
    minimum for either; whether a policy is strong enough is the relying party's judgement (SH-7).
-8. **No `standard_history/1` beside it.** A node that serves Standard Histories under this profile
-   MUST NOT serve a `standard_history/1` card (`spec/standard-history-v0.md`) under the same node
-   key. That card counts over a window that ends at any anchor, with no floor, so two of its cards
+8. **No `standard_history/1` or `/2` beside it.** A node that serves Standard Histories under this profile
+   MUST NOT serve a `standard_history/1` or `standard_history/2` card (`spec/standard-history-v0.md`)
+   under the same node key. That card counts over a window that ends at any anchor, with no floor, so two of its cards
    at consecutive checkpoints could be subtracted to isolate one exchange that these periods
    protect (§12).
 
@@ -725,8 +726,8 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
   exchange of a cell can still learn the last; the floor limits, and does not remove, what such a
   requester learns.
 - **Another derivation of the same stream.** §6 bounds only this profile's answers. A
-  `standard_history/1` card counts the holder's deals over a window ending at any anchor, with no
-  floor: two such cards under the node key, at consecutive checkpoints, differ by what was
+  `standard_history/1` or `standard_history/2` card counts the holder's deals over a window ending
+  at any anchor, with no floor: two such cards under the node key, at consecutive checkpoints, differ by what was
   committed between them, which can be one exchange. §6.1 item 8 therefore forbids a node that
   serves this profile's Standard level to serve that card under the same key. A verifier sees a
   breach only when it holds both answers.
@@ -760,11 +761,11 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-4 | `coverage_declaration_population` `NOT_CHECKED` for counts, which carry no records (§4.2). IP §7.1 could also be read to give `NOT_PRESENT`, which IP §6.7.3 item 4 maps to `INSUFFICIENT`; either way no completeness requirement is `SATISFIED`. A count checkable against records needs a disclosure of the records, or a verification-material kind for counts. Relatedly, ER §3.3 asks that a derivation result come with what the requester needs to check its binding; a count has nothing of the kind in this revision. |
 | SH-5 | The closed list of units (§5.1). The requirements' roles `conflict` and `unknown` are both counted in `exchanges_unattributed`; a later revision may split them. |
 | SH-6 | The labels and the peer-confirmation join (§7). The join's citation member is ER §3.1.1's. The citation is one-way; a two-way join (the peer's half citing the node's) would let `peer_confirmed` show receipt of the answer. `corroborated` needs evidence of distinct controllers in a form IP does not register (IP P-60). |
-| SH-7 | The period rules (§6.1): time-aligned periods, answers only at period boundaries, the refusal token, fixed cells, one policy per node, no `standard_history/1` card under the same key. No profile minimum for `length_s` or `floor` is set. The history card's exact log sizes are outside the period rules (§12). |
+| SH-7 | The period rules (§6.1): time-aligned periods, answers only at period boundaries, the refusal token, fixed cells, one policy per node, no `standard_history/1` or `/2` card under the same key. No profile minimum for `length_s` or `floor` is set. The history card's exact log sizes are outside the period rules (§12). |
 | SH-8 | Complementary suppression (§6.2 item 3) fixed only for one suppressed cell beside a published total; larger tables of dimensions need a fuller rule. |
 | SH-9 | The Detailed level declares `holder_selected`. A Detailed History complete relative to the node's exchanges with the recipient needs the records in a form whose population can be checked. |
 | SH-10 | Referee verdict eligibility (§5.3): the form of the referee's selection statement is not fixed here. |
 | SH-11 | The History properties (§8.3, §6.3) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping. |
 | SH-12 | The vector-only formats of §9. |
 | SH-13 | A host's definition conforms by its digest (§4.1). A host definition fixed before it carries `profile`, `coverage_declaration` and `period_policy` conforms only as a new version. |
-| SH-14 | No vectors in this revision for: verdict counts and session coverage (§5.3, §10); `definition_form`, `definition_binding`, `artifact_form`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both; a stream whose card commits no record. |
+| SH-14 | No vectors in this revision for: verdict counts and session coverage (§5.3, §10); `definition_form`, `definition_binding`, `artifact_form`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both; a stream whose card commits no record. |

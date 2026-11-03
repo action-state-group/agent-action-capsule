@@ -6,7 +6,7 @@ three document properties of HF §6.2.
 
 ## Derivation
 
-`python/scripts/generate_history_frame_v0_vectors.py` reads the eight documents in
+`python/scripts/generate_history_frame_v0_vectors.py` reads the ten documents in
 `spec/history-frame/` and states every expected property by hand. Each case gives:
 
 | Input | What it is |
@@ -22,8 +22,8 @@ the document. `instances` at the top of `vectors.json` repeats HF §6's list.
 
 ## The cases
 
-Positive: each of the four instances' documents as pinned: `standard-history-as-pinned`,
-`personal-history-basic-as-pinned`, `personal-history-outcome-as-pinned` and
+Positive: each of the five instances' documents as pinned: `standard-history-as-pinned`,
+`standard-history-2-as-pinned`, `personal-history-basic-as-pinned`, `personal-history-outcome-as-pinned` and
 `inference-service-history-as-pinned`.
 
 Negative, each failing the properties its `expected.fails` lists:

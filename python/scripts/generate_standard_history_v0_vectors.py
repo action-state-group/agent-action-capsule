@@ -4,7 +4,8 @@
 
 Each case is one card with what a verifier may hold beside it: the policy's window and digest
 (SH §5.1), the anchor (SH §6 ``as_of``) and the deal entries (SH §5.2). SH §6 lists the
-negatives.
+negatives. ``vectors.json`` holds the ``standard_history/1`` cases; ``vectors-2.json`` holds the
+``standard_history/2`` cases, each naming the token it is checked under in ``inputs.derivation``.
 
 Every card and every expected property is stated here by hand from SH §4 to §6. The script
 imports no implementation: ``python/tests/test_standard_history_v0_vectors.py`` runs the Python
@@ -34,6 +35,10 @@ GENERATOR = "python/scripts/generate_standard_history_v0_vectors.py"
 STATUS = ("Conformance vectors for the informational Standard History Derivation v0 "
           "(spec/standard-history-v0.md), standard_history/1. Every digest is a label digest for these "
           "vectors only.")
+STATUS_2 = ("Conformance vectors for the informational Standard History Derivation v0 "
+            "(spec/standard-history-v0.md), standard_history/2: deals without a recorded amount. Every "
+            "digest is a label digest for these vectors only.")
+SH1, SH2 = "standard_history/1", "standard_history/2"
 PROPERTIES = ("card_form", "counts_integral", "denominator", "window_from_policy", "as_of",
               "counts_recompute")
 
@@ -57,11 +62,14 @@ def amount(value: str, code: str, scale: int) -> dict:
     return {"assetCode": code, "assetScale": scale, "value": value}
 
 
-def deal(ref: str, agreed_at: str, role: str, amt: dict, outcome: str, happened: str,
+def deal(ref: str, agreed_at: str, role: str, amt: dict | None, outcome: str, happened: str,
          cls: str | None, disputes: tuple = ()) -> dict:
+    """A deal entry (SH §5.2). ``amt`` None is an unpriced deal (/2 only): the entry has no amount."""
     d = {"deal": ref, "agreed_at": agreed_at, "role": role, "amount": amt, "outcome": outcome,
          "happened": happened,
          "disputes": [{"side": s, "outcome": o, "forum": f} for s, o, f in disputes]}
+    if amt is None:
+        del d["amount"]
     if cls is not None:
         d["counterparty_class"] = cls
     return d
@@ -248,8 +256,11 @@ def props(**overrides: str) -> dict:
 
 
 def case(cid: str, description: str, sections: list, card_value: dict, expected: dict, *,
-         policy: dict | None = None, as_of: dict | None = None, deals: list | None = None) -> dict:
+         policy: dict | None = None, as_of: dict | None = None, deals: list | None = None,
+         derivation: str | None = None) -> dict:
     inputs: dict = {"card": card_value}
+    if derivation is not None:
+        inputs["derivation"] = derivation
     if policy is not None:
         inputs["policy"] = policy
     if as_of is not None:
@@ -370,6 +381,105 @@ def cases() -> list:
     ]
 
 
+# standard_history/2 (SH §4, §5.2, §5.3): DEALS and two deals whose records give no agreed amount.
+UNPRICED_DEALS = DEALS + [
+    # Counted and unpriced: held, provided, receipt_only, one raised dispute the holder withdrew.
+    deal("deal-09", "2026-09-20T10:00:00Z", "provided", None, "held", "receipt_only", "person_agent",
+         (("raised", "withdrawn", "external"),)),
+    # Unpriced and a shop purchase paid up front: in the window, not counted, so in no tally but in_window.
+    deal("deal-10", "2026-10-05T10:00:00Z", "bought", None, "held", "receipt_only", "shop_preauth"),
+    # Counted and unpriced, undecided, without counterparty_class: in unpriced.undecided and class_missing.
+    deal("deal-11", "2026-10-12T10:00:00Z", "bought", None, "undecided", "no_record", None),
+    # Unpriced and before the window start: in no count at all.
+    deal("deal-12", "2026-06-01T10:00:00Z", "provided", None, "did_not_hold", "no_record", "person_agent"),
+]
+
+
+def card2(base: dict, unpriced: dict, **members) -> dict:
+    """A /2 card: ``base``'s members with ``members`` replaced, and ``unpriced``, in the counting
+    table's member order."""
+    c = {**base, **members, "derivation": SH2}
+    out = {}
+    for k in c:
+        out[k] = c[k]
+        if k == "bands":
+            out["unpriced"] = unpriced
+    return out
+
+
+NO_UNPRICED = tally(0, held=0, did_not_hold=0, undecided=0)
+
+# SH §5 by hand over UNPRICED_DEALS, 3-month window: PERSON_3M's counts, deal-09 and deal-11 counted
+# in every tally and in `unpriced` but in no band, deal-10 in in_window.not_counted only, deal-12 in
+# nothing.
+PERSON_3M_2 = card2(
+    PERSON_3M, tally(2, held=1, did_not_hold=0, undecided=1),
+    in_window=tally(10, counted=7, not_counted=3),
+    class_missing=tally(7, count=2),
+    outcomes=tally(7, held=4, did_not_hold=1, undecided=2),
+    roles=tally(7, provided=4, bought=3),
+    happened=tally(7, stamped_by_both=2, receipt_only=3, no_record=2),
+    disputes={"raised": disputes_tally(3, {"for": 1, "split": 1, "withdrawn": 1},
+                                       {"rail": 1, "auto": 1, "external": 1}),
+              "received": PERSON_3M["disputes"]["received"]},
+)
+# The same stream with no unpriced deal: PERSON_3M's counts and `unpriced` 0 of 0.
+PERSON_3M_2_PRICED = card2(PERSON_3M, NO_UNPRICED)
+FULL_2 = {"policy": POLICY_3M, "as_of": AS_OF, "deals": UNPRICED_DEALS, "derivation": SH2}
+
+
+def cases_2() -> list:
+    return [
+        # Positive.
+        case("unpriced-counted", "Two counted deals without a recorded amount, one held and one undecided: "
+             "every total counts them, no band does, and unpriced is 2 of 2; an unpriced shop purchase is "
+             "only not_counted, and an unpriced deal before the window counts nowhere",
+             ["§4", "§5.2", "§5.3", "§6"], PERSON_3M_2, props(), **FULL_2),
+        case("unpriced-without-deals", "The same card, checked without the deal entries: the counts, "
+             "unpriced included, are the holder's statement", ["§2", "§6"], PERSON_3M_2,
+             props(counts_recompute=NC), policy=POLICY_3M, as_of=AS_OF, derivation=SH2),
+        case("unpriced-card-only", "The same card, checked with nothing beside it", ["§6"], PERSON_3M_2,
+             props(window_from_policy=NC, as_of=NC, counts_recompute=NC), derivation=SH2),
+        case("unpriced-none", "A /2 card over a stream whose every deal has an amount: unpriced is 0 of 0",
+             ["§4", "§5.3"], PERSON_3M_2_PRICED, props(), policy=POLICY_3M, as_of=AS_OF, deals=DEALS,
+             derivation=SH2),
+        # Negative.
+        case("unpriced-left-out", "The unpriced deals left out of every tally, the tallies agreeing with "
+             "each other", ["§3", "§5.3", "§6"],
+             card2(PERSON_3M, NO_UNPRICED, in_window=tally(8, counted=5, not_counted=3)),
+             props(counts_recompute="FAIL"), **FULL_2),
+        case("unpriced-in-band", "The unpriced deals counted in a zero-amount USD band instead of unpriced, "
+             "the tallies agreeing with each other", ["§5.3", "§6"],
+             mutate(PERSON_3M_2, lambda c: c.update(
+                 unpriced=NO_UNPRICED,
+                 bands=[band("BTC", -7, 1, held=1), band("EUR", 0, 1, did_not_hold=1),
+                        band("USD", None, 2, held=1, undecided=1), band("USD", 1, 2, held=1, undecided=1),
+                        band("USD", 2, 1, held=1)])),
+             props(counts_recompute="FAIL"), **FULL_2),
+        case("unpriced-outside-outcomes", "unpriced counts a deal but outcomes and the other totals do "
+             "not", ["§4 Denominators", "§6"],
+             card2(PERSON_3M, tally(1, held=1, did_not_hold=0, undecided=0),
+                   in_window=tally(8, counted=5, not_counted=3)),
+             props(denominator="FAIL", counts_recompute=NC), **FULL_2),
+        case("v2-without-unpriced", "A /2 card without the unpriced member", ["§4", "§6"],
+             mutate(PERSON_3M_2, lambda c: c.pop("unpriced")),
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL_2),
+        case("unpriced-with-currency", "unpriced names a currency, as if it were a band", ["§4", "§6"],
+             mutate(PERSON_3M_2, lambda c: c["unpriced"].update(currency="USD")),
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL_2),
+        case("v1-card-for-v2-request", "A /1 card answering a /2 request", ["§3", "§6"], PERSON_3M,
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC),
+             policy=POLICY_3M, as_of=AS_OF, deals=DEALS, derivation=SH2),
+        case("v2-card-for-v1-request", "A /2 card answering a /1 request", ["§3", "§6"], PERSON_3M_2_PRICED,
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC),
+             policy=POLICY_3M, as_of=AS_OF, deals=DEALS, derivation=SH1),
+        case("v1-card-with-unpriced", "A /1 card that carries unpriced, checked under /1", ["§4", "§6"],
+             PERSON_3M_2_PRICED | {"derivation": SH1},
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC),
+             policy=POLICY_3M, as_of=AS_OF, deals=DEALS, derivation=SH1),
+    ]
+
+
 def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
@@ -387,33 +497,36 @@ PACK_STRINGS = {  # §2, §6 "What a verifier shows"
     "deals.not_counted": "deals in the window not counted",
     "deals.undecided": "counted deals without a decided outcome",
 }
+PACK_STRINGS_2 = {**PACK_STRINGS, "deals.unpriced": "counted deals without a recorded amount, in no value band"}
 
 
-def check_frame(all_cases: list) -> None:
+def check_frame(all_cases: list, instance: str = SH1) -> None:
     """HF §6.3: the instance's counting table and wording pack (``spec/history-frame/``) equal, member
     for member, what this generator's constants and cases give, and every case's ``standard`` is
     HF §4.5's acceptance rule under the table's ``may_be_not_checked``."""
-    table, pack = history_frame.load("standard_history/1")
+    table, pack = history_frame.load(instance)
+    model = PERSON_3M if instance == SH1 else PERSON_3M_2
     raised = PERSON_3M["disputes"]["raised"]
     every_deal = [d for c in all_cases for d in c["inputs"].get("deals", [])]
     assert all(set(d) <= set(DEAL_ENTRY) for d in every_deal), "deal entry"
     assert {d["counterparty_class"] for d in every_deal if "counterparty_class" in d} <= set(COUNTERPARTY_CLASSES)
     # §5.3 on the positive case: in_window.not_counted is the deals in the window of a class in NOT_COUNTED.
-    person = next(c for c in all_cases if c["id"] == "person-3-months")
+    person = next(c for c in all_cases if c["id"] == ("person-3-months" if instance == SH1 else "unpriced-counted"))
     in_window = [d for d in person["inputs"]["deals"] if d["agreed_at"] >= "2026-07-28T12:00:00Z"]
-    assert PERSON_3M["in_window"]["not_counted"] == sum(d.get("counterparty_class") in NOT_COUNTED for d in in_window)
+    assert model["in_window"]["not_counted"] == sum(d.get("counterparty_class") in NOT_COUNTED for d in in_window)
     standard = [c["expected"]["properties"] for c in all_cases if c["expected"]["standard"]]
     expected_table = {
-        **history_frame.header("counting_table", "standard_history/1"),
+        **history_frame.header("counting_table", instance),
         "inputs": {"deal_entry": DEAL_ENTRY,
                    "dispute_entry": list(deal("x", "", "", {}, "", "", None, (("s", "o", "f"),))["disputes"][0]),
                    "counterparty_class": COUNTERPARTY_CLASSES, "not_counted": NOT_COUNTED,
                    "record_kinds": RECORD_KINDS},
-        "card_members": list(PERSON_3M),
-        "tallies": {**{name: list(PERSON_3M[name]) for name in
+        "card_members": list(model),
+        "tallies": {**{name: list(model[name]) for name in
                        ("in_window", "class_missing", "outcomes")},
-                    "band": list(PERSON_3M["bands"][0]),
-                    **{name: list(PERSON_3M[name]) for name in ("roles", "happened", "disputes")},
+                    "band": list(model["bands"][0]),
+                    **({"unpriced": list(model["unpriced"])} if "unpriced" in model else {}),
+                    **{name: list(model[name]) for name in ("roles", "happened", "disputes")},
                     "dispute": list(raised), "by_outcome": list(raised["by_outcome"]),
                     "by_forum": list(raised["by_forum"])},
         "units": UNITS,
@@ -421,21 +534,25 @@ def check_frame(all_cases: list) -> None:
         "may_be_not_checked": history_frame.not_checked_when_accepted(standard, list(PROPERTIES)),
     }
     assert table == expected_table, "counting table differs from this generator"
-    assert pack == {**history_frame.header("wording_pack", "standard_history/1"), "language": "en",
-                    "strings": PACK_STRINGS}, "wording pack differs from this generator"
+    assert pack == {**history_frame.header("wording_pack", instance), "language": "en",
+                    "strings": PACK_STRINGS if instance == SH1 else PACK_STRINGS_2}, \
+        "wording pack differs from this generator"
     for c in all_cases:
         statuses = c["expected"]["properties"]
         assert c["expected"]["standard"] is history_frame.accepted(statuses, table["may_be_not_checked"]), c["id"]
 
 
 def build() -> dict:
-    all_cases = cases()
-    ids = [c["id"] for c in all_cases]
+    all_cases, all_cases_2 = cases(), cases_2()
+    ids = [c["id"] for c in all_cases + all_cases_2]
     assert len(ids) == len(set(ids)), "duplicate case id"
     check_frame(all_cases)
+    check_frame([c for c in all_cases_2 if c["inputs"]["derivation"] == SH2], SH2)
     corpus = {"set": SET, "status": STATUS, "spec": SPEC, "properties": list(PROPERTIES),
               "count": len(all_cases), "cases": all_cases}
-    files = {"vectors.json": _dump(corpus)}
+    corpus_2 = {"set": SET, "status": STATUS_2, "spec": SPEC, "derivation": SH2, "properties": list(PROPERTIES),
+                "count": len(all_cases_2), "cases": all_cases_2}
+    files = {"vectors.json": _dump(corpus), "vectors-2.json": _dump(corpus_2)}
     files["manifest.json"] = _dump({
         "set": SET, "status": STATUS, "spec": SPEC, "generator": GENERATOR,
         "files": [{"path": name, "sha256": hashlib.sha256(data).hexdigest(), "count": json.loads(data).get("count")}
