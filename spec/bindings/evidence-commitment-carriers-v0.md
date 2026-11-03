@@ -223,7 +223,9 @@ the others (V1).
 *agentId* on that registry, reads the entry only when the file's `registrations[]` has an element
 whose `agentId` is that *agentId* and whose `agentRegistry` names the same registry. Any element
 may match, since an agent can be registered on several registries. `agentId` is a JSON integer
-compared by value; an `agentId` of any other type, a string of digits included, does not match.
+compared by value. It is a uint256, so it is compared exactly, without loss of precision, never as a
+floating-point number past 2^53. An `agentId` of any other type, a string of digits included, does
+not match.
 The registries are the same when the namespace and chain id are the same and the address is the
 same with letter case ignored (EIP-55 case is a checksum). Without one, the file is not that agent's file, and the entry is not read for that
 agent. The same rule applies to a file read at `/.well-known/agent-registration.json`. A verifier
@@ -256,7 +258,8 @@ that fails names the result.
   failure is `erc8004_registration`; the entry's form is checked after it. The entry is then not
   read.
 - **V1, octets.** Take the octets: from `content` when it is not empty, otherwise from the `uri`,
-  `commitment_uri`, `endpoint` or `r` tag. A carrier digest that does not match the octets is reported as
+  `commitment_uri`, `endpoint` or `r` tag. A `nostr:` `naddr` there resolves to its announce event
+  first (§5.3), and the octets are that event's. A carrier digest that does not match the octets is reported as
   `digest_mismatch` and changes nothing else: for a URI it means the pointer is stale. The octets
   are verified on their own, below.
 - **V2, signature.** The octets parse as a JSON object with a `profile` of §3; `key_id` is the raw
