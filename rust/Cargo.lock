@@ -15,6 +15,7 @@ dependencies = [
  "base64",
  "checkpointed-local-log",
  "coset",
+ "curve25519-dalek",
  "ed25519-dalek",
  "evidence-request",
  "hex",

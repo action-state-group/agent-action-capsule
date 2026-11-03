@@ -1,6 +1,6 @@
 // Derive settlement states from two parties' leg records (verification only):
 // "Two-Party Settlement Records for Agent Payments",
-// draft-mih-agent-settlement-records-00, ported from the Python reference
+// draft-mih-agent-settlement-records-01, ported from the Python reference
 // (python/agent_action_capsule/settlement.py).
 //
 // The payer and the payee are two independent sealers; each seals only what
@@ -14,7 +14,7 @@
 // the legs by `terms_ref` and derives the draft's payment and delivery states.
 // Amounts are compared exactly, as decimal digit strings. WebCrypto only.
 
-import { verifyEd25519Strict } from "./ed25519-strict.js";
+import { verifyEd25519Cofactored } from "./ed25519-cofactored.js";
 import { JsonNumber, sha256Hex, type ParsedJson } from "./json.js";
 import { nestedTooDeep } from "./nesting.js";
 import { verifyProducerEnvelope } from "./producer-envelope-verification.js";
@@ -22,7 +22,7 @@ import { verifyClass1 } from "./verify.js";
 import { fromHex } from "./witness.js";
 
 export const SETTLEMENT_MEMBER = "settlement";
-/** The `settlement` member's `version` for -00. */
+/** The `settlement` member's `version` for -00 and -01. */
 export const SETTLEMENT_VERSION = "0";
 export const SETTLEMENT_LEGS = [
   "terms",
@@ -500,9 +500,11 @@ const ascii = (bytes: Uint8Array): string => {
   return String.fromCharCode(...bytes);
 };
 
-/** Whether `octets` is a JWS compact object whose Ed25519 signature
- * verifies, strictly, under `publicHex`. An SD-JWT is the issuer-signed JWS, then "~"
- * and any disclosures: only the part before the first "~" is signed. */
+/** Whether `octets` is a JWS compact object whose Ed25519 signature counts
+ * as `publicHex`'s own under the -01 re-signing test (Section "Wrapping
+ * Existing Signed Objects", rule 3): the cofactored equation with any
+ * canonical R, not strict Ed25519. An SD-JWT is the issuer-signed JWS, then
+ * "~" and any disclosures: only the part before the first "~" is signed. */
 async function jwsVerifies(
   octets: Uint8Array,
   publicHex: string,
@@ -512,7 +514,7 @@ async function jwsVerifies(
   const dots = [...text.keys()].filter((i) => text[i] === 0x2e);
   if (dots.length !== 2) return false;
   try {
-    return await verifyEd25519Strict(
+    return await verifyEd25519Cofactored(
       fromHex(publicHex),
       b64u(ascii(text.subarray(dots[1]! + 1))),
       text.subarray(0, dots[1]),

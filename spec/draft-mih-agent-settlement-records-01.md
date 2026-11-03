@@ -28,6 +28,7 @@ normative:
   RFC8174:
   RFC3339:
   RFC4648:
+  RFC8032:
   RFC8126:
   RFC8785:
   RFC9052:
@@ -788,7 +789,18 @@ The rules:
    sealer holds an object with that digest, not that the sealer issued it.
    A wrapped object whose signature verifies under the sealer's own leg key,
    where the wrapped type's issuer is a different party, is
-   `wrapped_resigned`.
+   `wrapped_resigned`. For this check, an Ed25519 signature verifies under
+   the leg key A when A is a canonical encoding ({{RFC8032}}, Section
+   5.1.3) of a point not of small order (the eight points whose order
+   divides 8), the signature's R is a canonical encoding of any point, the
+   scalar S is below the group order L, and the cofactored equation
+   `[8][S]B = [8]R + [8][k]A` of {{RFC8032}}, Section 5.1.7, holds. This is
+   deliberately not the strict verification of
+   {{I-D.mih-scitt-agent-action-capsule}}, Conventions. The check looks for
+   the leg key's own signature, and only the holder of that key can produce
+   one whose R is of small or mixed order, so a verifier that refused such
+   an R would let a re-signing sealer evade the check. A small-order A is
+   refused, since anyone can produce a signature that verifies under it.
 4. **Verification of the wrapped object is the wrapped protocol's.** A
    verifier MAY verify the wrapped object under its own protocol's rules
    (for example an AP2 receipt under the processor's key). This document
@@ -1111,7 +1123,10 @@ content verifies that object under its own protocol.
 **Re-signing.** A sealer that re-signs an upstream object makes it look as
 though the sealer issued it, and replaces the upstream signer's evidence
 with its own. The never-re-sign rule ({{wrap}}) prevents this; the
-`wrapped_resigned` check detects the simplest case.
+`wrapped_resigned` check detects the simplest case. A re-signer can always
+avoid the check by signing with a key other than its leg key, so the
+absence of `wrapped_resigned` does not show that the sealer did not
+re-sign.
 
 **Amounts.** Floating-point amounts produce different values on different
 platforms and make digests unstable. Amounts are exact integers with a
@@ -1367,6 +1382,12 @@ before publication.
   record before any check in this document ({{conventions}}). The
   Capsule profile reference is updated to
   draft-mih-scitt-agent-action-capsule-06, which states the limit.
+* Re-signing: the `wrapped_resigned` check states how a signature is
+  verified under the leg key: the cofactored equation of {{RFC8032}}, with
+  any canonical R, and a key not of small order ({{wrap}}). A key holder's
+  signature with an R of small or mixed order is still found. Security
+  Considerations says that the absence of `wrapped_resigned` does not clear
+  the sealer ({{security}}).
 * Wire unchanged: the `settlement` member's `version` is still `"0"`
   ({{settlement-member}}).
 

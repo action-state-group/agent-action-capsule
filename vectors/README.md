@@ -35,7 +35,7 @@ same-commit files in CI.
   outcomes, caller invariance, retention, the `categories` field, A2A and MCP
   carriage, unavailable-window statements), derived from the draft text;
   `python/scripts/generate_evidence_request_vectors.py` regenerates them.
-- `settlement/`: draft-mih-agent-settlement-records-00 cases (two-party
+- `settlement/`: draft-mih-agent-settlement-records-01 cases (two-party
   payer/payee leg records, the payment reference join, wrapped objects by
   digest, exact amounts, delivered-content digests, derived states), derived
   from the draft text; `python/scripts/generate_settlement_vectors.py`
