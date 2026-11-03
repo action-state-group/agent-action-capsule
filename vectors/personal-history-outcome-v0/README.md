@@ -15,6 +15,11 @@ deal commitment, and to the first deal the outcome and consent records the case 
 re-signs each reply with the holder test key. The responder never produced these octets, and
 every case's `source` says so.
 
+The two tick path cases (§11, PH §8.3) first move each deal to a stream of its own and ask it at
+the Basic level's anchor tick, which commits to the third deal's stream only through its earlier
+tick, as that level's `multi-stream-earlier-tick` case does. They carry that stream's tick path,
+with the Basic level's tick log keys in the trust policy.
+
 The added records' digests are label digests, not record identifiers. That changes nothing a
 verifier checks: `anchor_inclusion` is `NOT_CHECKED` at this level as at the Basic level.
 

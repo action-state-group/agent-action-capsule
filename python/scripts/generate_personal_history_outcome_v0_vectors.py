@@ -13,7 +13,10 @@ rewrites:
 - one ``not_evaluable`` case: a deal whose payment is established and whose delivery is asked for;
 - the deal commitment of §7, opened, not opened and opened with other text;
 - a mutant for every level property that can be ``FAIL`` except ``native_check`` (§12 says why),
-  each re-signed by the holder key where it changes a reply.
+  each re-signed by the holder key where it changes a reply;
+- the tick paths of §11 (PH §8.3): the deals in three streams at the Basic level's anchor tick, one
+  committed through its earlier tick, with that stream's path, and the same with the path's
+  consistency proof changed.
 
 The native object is the x402 adapter corpus's ``positive`` case: its payment payload and settlement
 response octets, unchanged, and its recorded lookup with ``final`` set to true. Those two object
@@ -46,12 +49,16 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from generate_interop_profile_v0_vectors import EC_SCHEMA, KINDS, PROFILE, jcs, json_digest, sha, shx
 from generate_personal_history_basic_v0_vectors import (
+    ANCHOR_TICK,
+    ANCHOR_TICK_DIGEST,
+    EARLIER_TICK,
     RUN,
     answered,
     artifact_of,
     carried,
     decode,
     load_run,
+    multi_stream,
     resign,
 )
 
@@ -229,7 +236,7 @@ def reanswer(exchange: dict, env: dict, derivation: str, tag: str, extra: list[d
     deal's first record and ``extra`` records after the run's, re-signed by the holder key."""
     request = json.loads(exchange["request"]["octets_text"])
     request["derivation"] = derivation
-    request["nonce"] = request["nonce"].replace("/history-", f"/{tag}-")
+    request["nonce"] = request["nonce"].replace("/history-", f"/{tag}-").replace("/multi-stream-", f"/{tag}-")
     req = {"media_type": J, "octets_text": jcs(request)}
     a = artifact_of(env)
     a["derivation"] = derivation
@@ -311,9 +318,19 @@ def openings_result(deals: list[str], openings: dict) -> dict:
 ROLES = {"counterparty": [PUB["counterparty"]], "judge": [PUB["judge"]]}
 
 
-def pins(run: dict, native: dict | None = None, roles: dict | None = None) -> dict:
+def tick_paths(stream: str, consistency: bytes) -> dict:
+    """PH §8.3: the anchor tick, and one stream's path to the earlier tick."""
+    return {"anchor_tick": ANCHOR_TICK["checkpoint"].hex(),
+            "paths": [{"consistency": consistency.hex(), "evidence_stream": stream,
+                       "tick": EARLIER_TICK["checkpoint"].hex()}]}
+
+
+def pins(run: dict, native: dict | None = None, roles: dict | None = None, ticks: bool = False) -> dict:
+    log_keys = [cp["log_key"] for cp in run["checkpoints"]]
+    if ticks:  # PH §8.3: the tick log's two checkpoints
+        log_keys += [EARLIER_TICK["log_key"], ANCHOR_TICK["log_key"]]
     trust = {"responder_keys": [history_vectors.PUB["holder"]],
-             "log_keys": [cp["log_key"] for cp in run["checkpoints"]],
+             "log_keys": log_keys,
              "foreign_keys": [PUB["counterparty"], PUB["judge"]], "parties": {}, "successions": [],
              "require_action_time_from_other_party": False}
     out: dict[str, Any] = {"trust_policy": trust,
@@ -344,14 +361,20 @@ def cases(run: dict) -> list[dict]:
     x402_objects, x402_lookup, x402_digests = x402_positive()
     native_obs = {"x402-v0": {"lookup": x402_lookup}}
     all_openings = {d: opening(d) for d in deals}
+    # PH §2, §8.3: each deal in a stream of its own, answered at the Basic level's anchor tick, which
+    # commits to the third deal's stream only through its earlier tick.
+    late = [({"request": q}, decode(rep)) for q, rep in
+            (multi_stream(e, env, ANCHOR_TICK_DIGEST) for e, env in zip(history, envs))]
+    ended = artifact_of(late[2][1])["evidence_stream"]
 
     def case(cid: str, title: str, cites: list[str], source: str, extra: list[dict], claims: list[dict], *,
              evidence: list[dict] | None = None, openings: dict | None = None, defn: dict | None = None,
-             hprops: dict | None = None, native: bool = False, roles: dict | None = None) -> dict:
+             hprops: dict | None = None, native: bool = False, roles: dict | None = None,
+             paths: tuple[dict, list[dict]] | None = None) -> dict:
         d = defn if defn is not None else definition(basic)
         digest = shx(jcs(d).encode())
-        exchanges = [reanswer(x, env, digest, cid, extra if i == 0 else []) for i, (x, env) in
-                     enumerate(zip(history, envs))]
+        asked = zip(history, envs) if paths is None else late
+        exchanges = [reanswer(x, env, digest, cid, extra if i == 0 else []) for i, (x, env) in enumerate(asked)]
         results = [answered(decode(rep)) for _, rep in exchanges]
         hp = hprops or history_props()
         opened = all_openings if openings is None else openings
@@ -364,12 +387,15 @@ def cases(run: dict) -> list[dict]:
         inputs: dict[str, Any] = {"history": HISTORY, "definition": d,
                                   "exchanges": [{"request": q, "reply": r} for q, r in exchanges],
                                   "evidence": evidence or [], "openings": opened}
+        expected: dict[str, Any] = {
+            "exchanges": results, "history_properties": hp, "accepted": accepted, "claims": expected_claims,
+            "requirements": requirement_results(deals, expected_claims) if accepted else None,
+            "deal_commitment_opening": openings_result(deals, opened), "fails": fails}
+        if paths is not None:  # PH §6.2: reported beside the History properties, never among them
+            inputs["tick_paths"], expected["tick_paths"] = paths
         return {"id": cid, "title": title, "cites": cites, "source": source, "mode": "asked",
-                "pins": pins(run, native_obs if native else None, roles), "inputs": inputs,
-                "expected": {"exchanges": results, "history_properties": hp, "accepted": accepted,
-                             "claims": expected_claims,
-                             "requirements": requirement_results(deals, expected_claims) if accepted else None,
-                             "deal_commitment_opening": openings_result(deals, opened), "fails": fails}}
+                "pins": pins(run, native_obs if native else None, roles, ticks=paths is not None),
+                "inputs": inputs, "expected": expected}
 
     def outcome(predicate: str, src: str, ev: list[str] | None = None, **more: Any) -> dict:
         o: dict[str, Any] = {"predicate": predicate, "source": src}
@@ -527,6 +553,26 @@ def cases(run: dict) -> list[dict]:
                     ["§3", "§8.2"], f"{derived}; the definition's coverage declaration changed", [r],
                     [], defn=definition(basic, coverage_declaration=other_rule),
                     hprops=history_props(coverage_declaration_form="FAIL")))
+
+    # §11, PH §8.3: the tick paths. The check is not a History property (§8.2), so its result never
+    # changes acceptance or a claim.
+    r = record(1, "outcome_recorded", outcome=outcome("completed", "holder_record"))
+    hr = [claim_result(d1, r, claim_props("holder_record"))]
+    out.append(case("multi-stream-earlier-tick",
+                    "The holder's record of completed, the three deals in three streams at an anchor tick that "
+                    "commits to one through an earlier tick, with its tick path",
+                    ["§8.2", "§11", "PH §2", "PH §8.3"],
+                    f"{derived}, each deal moved to a stream of its own and asked at the Basic level's anchor tick; one "
+                    "outcome record added, re-signed by the holder key; a tick path for history-3's stream", [r], hr,
+                    paths=(tick_paths(ended, ANCHOR_TICK["consistency"]),
+                           [{"evidence_stream": ended, "status": "PASS"}])))
+    bent = bytearray(ANCHOR_TICK["consistency"])
+    bent[-1] ^= 0x01  # the last byte of the last right peak
+    out.append(case("mutant-tick-path-consistency-changed", "The same, with the tick path's consistency proof changed",
+                    ["§8.2", "§11", "PH §8.3"],
+                    "derived: multi-stream-earlier-tick with one octet of the consistency proof's last right peak "
+                    "flipped", [r], hr,
+                    paths=(tick_paths(ended, bytes(bent)), [{"evidence_stream": ended, "status": "FAIL"}])))
     return out
 
 

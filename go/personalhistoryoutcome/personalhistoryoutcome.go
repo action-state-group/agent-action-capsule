@@ -6,7 +6,8 @@
 // cited as PO): the acceptance of each answer under the Minimum Evidence
 // Interoperability Profile (PO §8.1), the level's History properties
 // (PO §8.2), the properties of each outcome claim (PO §5, §8.3), the
-// requirement results (PO §8.4) and the deal commitment openings (PO §7).
+// requirement results (PO §8.4), the deal commitment openings (PO §7) and
+// the tick paths a History carries (PO §11, PH §8.3).
 //
 // Each exchange is verified by evidencerequest.Verifier. Claims are
 // evaluated only over a History that is accepted. A native object's own
@@ -27,6 +28,7 @@ import (
 
 	"github.com/action-state-group/agent-action-capsule/go/evidencerequest"
 	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
+	"github.com/action-state-group/agent-action-capsule/go/personalhistory"
 )
 
 // Name is the Outcome level's name: what people read, not what the wire
@@ -140,12 +142,15 @@ type Exchange struct {
 
 // Inputs are what is evaluated: the definition the recipient holds, the
 // exchanges, the evidence objects held (each by the digest of its
-// octets), and the deal commitment openings by deal.
+// octets), the deal commitment openings by deal, and the tick paths
+// (PO §11; nil unless the History relies on a commitment through an
+// earlier tick, PH §2), as personalhistory.ParseTickPaths reads them.
 type Inputs struct {
 	Definition any
 	Exchanges  []Exchange
 	Evidence   [][]byte
 	Openings   map[string]any
+	TickPaths  *personalhistory.TickPaths
 }
 
 // ExchangeResult is one exchange: the verifier's reply result, the
@@ -180,7 +185,10 @@ type RequirementResult struct {
 
 // Result is a History evaluated. Claims, Requirements are nil unless the
 // History is accepted; Requirements maps a requirement id to each deal's
-// result; Openings maps a deal that commits to its opening's check.
+// result; Openings maps a deal that commits to its opening's check;
+// TickPaths is each tick path's check (PH §8.3), nil when the History
+// carries none. A tick path's result is not a History property and never
+// changes Accepted or a claim (PO §8.2).
 type Result struct {
 	Exchanges    []ExchangeResult
 	Properties   map[string]string
@@ -188,6 +196,7 @@ type Result struct {
 	Claims       []Claim
 	Requirements map[string]map[string]RequirementResult
 	Openings     map[string]string
+	TickPaths    []personalhistory.TickPathResult
 }
 
 // Evaluate verifies each exchange with v and applies PO §8.1 to each
@@ -260,6 +269,18 @@ func Evaluate(v *evidencerequest.Verifier, cfg Config, in Inputs, requirements [
 		out.Requirements = requirementResults(cfg, deals, out.Claims)
 	}
 	out.Openings = openingResults(envs, jsonModelMap(in.Openings))
+	if in.TickPaths != nil {
+		ph := personalhistory.Result{Exchanges: make([]personalhistory.ExchangeResult, len(out.Exchanges))}
+		for i, x := range out.Exchanges {
+			var artifact any
+			if x.env != nil {
+				artifact = x.env["artifact"]
+			}
+			ph.Exchanges[i] = personalhistory.ExchangeResult{Reply: x.Reply, Subject: x.Subject, Accepted: x.Accepted,
+				Artifact: artifact}
+		}
+		out.TickPaths = personalhistory.CheckTickPaths(v.Trust, ph, *in.TickPaths)
+	}
 	return out, nil
 }
 

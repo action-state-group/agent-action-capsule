@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/action-state-group/agent-action-capsule/go/evidencerequest"
+	"github.com/action-state-group/agent-action-capsule/go/personalhistory"
 	"github.com/action-state-group/agent-action-capsule/go/personalhistoryoutcome"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -65,8 +66,9 @@ type vectorCase struct {
 			Request message `json:"request"`
 			Reply   message `json:"reply"`
 		} `json:"exchanges"`
-		Evidence []message       `json:"evidence"`
-		Openings json.RawMessage `json:"openings"`
+		Evidence  []message       `json:"evidence"`
+		Openings  json.RawMessage `json:"openings"`
+		TickPaths json.RawMessage `json:"tick_paths"`
 	} `json:"inputs"`
 	Expected map[string]any `json:"expected"`
 }
@@ -234,6 +236,11 @@ func evaluate(t *testing.T, c corpus, vc vectorCase) personalhistoryoutcome.Resu
 		require.True(t, ok)
 		in.Openings = openings
 	}
+	if vc.Inputs.TickPaths != nil {
+		tp, err := personalhistory.ParseTickPaths(vc.Inputs.TickPaths)
+		require.NoError(t, err)
+		in.TickPaths = &tp
+	}
 	res, err := personalhistoryoutcome.Evaluate(v, cfg, in, []string{"r-deal-steps"})
 	require.NoError(t, err)
 	return res
@@ -309,8 +316,16 @@ func render(res personalhistoryoutcome.Result) map[string]any {
 	for k, v := range res.Openings {
 		openings[k] = v
 	}
-	return map[string]any{"exchanges": exchanges, "history_properties": hprops, "accepted": res.Accepted, "claims": cs,
+	out := map[string]any{"exchanges": exchanges, "history_properties": hprops, "accepted": res.Accepted, "claims": cs,
 		"requirements": reqs, "deal_commitment_opening": openings}
+	if res.TickPaths != nil {
+		paths := []any{}
+		for _, p := range res.TickPaths {
+			paths = append(paths, map[string]any{"evidence_stream": p.EvidenceStream, "status": p.Status})
+		}
+		out["tick_paths"] = paths
+	}
+	return out
 }
 
 // failing is the set of properties that FAIL anywhere in the result.
@@ -345,8 +360,8 @@ func failing(res personalhistoryoutcome.Result) map[string]bool {
 
 func TestPersonalHistoryOutcomeVectors(t *testing.T) {
 	c := load(t)
-	require.Equal(t, 25, c.Count)
-	require.Len(t, c.Cases, 25)
+	require.Equal(t, 27, c.Count)
+	require.Len(t, c.Cases, 27)
 	for _, vc := range c.Cases {
 		t.Run(vc.ID, func(t *testing.T) {
 			res := evaluate(t, c, vc)
@@ -443,5 +458,76 @@ func TestJunkDefinitionsFailClosed(t *testing.T) {
 		res := evaluate(t, c, vc)
 		assert.Equal(t, evidencerequest.StatusFail, res.Properties["definition_form"], junk)
 		assert.False(t, res.Accepted, junk)
+	}
+}
+
+// A tick path's check is reported beside the History and never changes
+// whether it is accepted or what its claims are (PO §8.2, §11); a History
+// carrying no tick paths reports none.
+func TestTickPathsNeverChangeAcceptance(t *testing.T) {
+	c := load(t)
+	byID := map[string]vectorCase{}
+	for _, vc := range c.Cases {
+		byID[vc.ID] = vc
+	}
+	pass := evaluate(t, c, byID["multi-stream-earlier-tick"])
+	fail := evaluate(t, c, byID["mutant-tick-path-consistency-changed"])
+	require.Len(t, pass.TickPaths, 1)
+	require.Len(t, fail.TickPaths, 1)
+	assert.Equal(t, evidencerequest.StatusPass, pass.TickPaths[0].Status)
+	assert.Equal(t, evidencerequest.StatusFail, fail.TickPaths[0].Status)
+	assert.Contains(t, fail.TickPaths[0].Detail, "step 5")
+	assert.True(t, pass.Accepted)
+	assert.True(t, fail.Accepted)
+	assert.Equal(t, pass.Properties, fail.Properties)
+	assert.Equal(t, pass.Claims, fail.Claims)
+	assert.Equal(t, pass.Requirements, fail.Requirements)
+	assert.Nil(t, evaluate(t, c, byID["holder-record"]).TickPaths)
+
+	// Without the tick log's keys in the trust policy the check is not PASS,
+	// and the History is still accepted.
+	vc := byID["multi-stream-earlier-tick"]
+	keys, ok := vc.Pins.TrustPolicy["log_keys"].([]any)
+	require.True(t, ok)
+	untrusted := vc
+	untrusted.Pins.TrustPolicy = map[string]any{}
+	for k, v := range vc.Pins.TrustPolicy {
+		untrusted.Pins.TrustPolicy[k] = v
+	}
+	untrusted.Pins.TrustPolicy["log_keys"] = keys[:len(keys)-2]
+	res := evaluate(t, c, untrusted)
+	require.Len(t, res.TickPaths, 1)
+	assert.NotEqual(t, evidencerequest.StatusPass, res.TickPaths[0].Status)
+	assert.True(t, res.Accepted)
+}
+
+// The tick paths a History carries are read by personalhistory.ParseTickPaths,
+// which rejects a value not of PH §8.3's form (PO §11).
+func TestMalformedTickPathsRejected(t *testing.T) {
+	c := load(t)
+	var raw json.RawMessage
+	for _, vc := range c.Cases {
+		if vc.ID == "multi-stream-earlier-tick" {
+			raw = vc.Inputs.TickPaths
+		}
+	}
+	require.NotNil(t, raw)
+	_, err := personalhistory.ParseTickPaths(raw)
+	require.NoError(t, err)
+	for name, mutate := range map[string]func(map[string]any){
+		"extra member":  func(m map[string]any) { m["witness"] = "00" },
+		"no paths":      func(m map[string]any) { m["paths"] = []any{} },
+		"uppercase hex": func(m map[string]any) { m["anchor_tick"] = "D2" },
+		"path extra member": func(m map[string]any) {
+			m["paths"].([]any)[0].(map[string]any)["anchor"] = "00"
+		},
+	} {
+		var m map[string]any
+		require.NoError(t, json.Unmarshal(raw, &m))
+		mutate(m)
+		b, err := json.Marshal(m)
+		require.NoError(t, err)
+		_, err = personalhistory.ParseTickPaths(b)
+		assert.ErrorIs(t, err, personalhistory.ErrInvalid, name)
 	}
 }
