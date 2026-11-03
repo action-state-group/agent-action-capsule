@@ -6,9 +6,10 @@ and states as its own, under [Open points](#13-open-points), every requirement t
 document says.
 
 This is revision v2, identified as `evidence-interop/2` (§3.1). It is `evidence-interop/1`
-(`spec/interop-profile-v1.md`, frozen) with one change: a refusal MAY carry `policy_digest`, the
+(`spec/interop-profile-v1.md`, frozen) with two changes: a refusal MAY carry `policy_digest`, the
 digest of the policy its responder declares, and the refusal's signature covers it when present
-(§6.3). P-69 lists the change. `evidence-interop/1` and `evidence-interop/0` keep their meaning: a
+(§6.3; P-69); and the HTTP binding serves the evidence manifest at one fixed path (§11.4.2; P-70),
+an additive rule that changes no signing input. `evidence-interop/1` and `evidence-interop/0` keep their meaning: a
 responder or verifier that implements several identifiers checks each exchange under the
 identifier it names.
 
@@ -30,14 +31,17 @@ every citation of v1 (§6.3, §7.2, P-65 and the rest) names the same rule here.
 2. **Replaced sections.** §3.1, §3.2, §6.3, §10 and §11.5 are replaced by the sections of the
    same number below. In the **Refusal** paragraph of §7.3, "Rebuild `{issued_at, reason,
    request_digest}` with JCS" reads "Rebuild the §6.3 signing input of the identifier the request
-   asks for", and the `refusal_signature` row of §7.2 checks that signing input.
-3. **Added open point.** §13 gains P-69. P-1 to P-68 are carried over as written.
+   asks for", and the `refusal_signature` row of §7.2 checks that signing input. §11.4.1, §11.4.2,
+   §11.4.7, §11.4.8 and §11.4.9 are replaced in part, by the amendments of
+   [11.4 Carriage and discovery](#114-carriage-and-discovery) below: v1's text of each stands except
+   for the sentences and rows named there.
+3. **Added open points.** §13 gains P-69 and P-70. P-1 to P-68 are carried over as written.
 4. **Unchanged.** Everything else: the Dependency boundary table and its pins (ER -02 included),
    naming, canonical bytes, the envelope and its material, the absence record, coverage
    declarations, the properties and statuses of §7, the mapping of §8, the ten §9.1 tokens, the
-   acceptance record, lifecycle links, the Evidence Contract prose, carriage and discovery, and the
-   security considerations. ER -02's unavailable-window statements stay deferred (P-66); adopting
-   them would take another identifier.
+   acceptance record, lifecycle links, the Evidence Contract prose, carriage and discovery except
+   for the amendments of 11.4 below, and the security considerations. ER -02's unavailable-window
+   statements stay deferred (P-66); adopting them would take another identifier.
 
 The host profiles that cite `evidence-interop/0` or `evidence-interop/1` stay on the identifier
 they cite until they re-pin.
@@ -156,6 +160,48 @@ three ERV A7 members, as in v1 §10.
 
 ## 11. Parts filled by later revisions
 
+### 11.4 Carriage and discovery
+
+v1 §11.4 stands, with the following amendments. They fill the placeholder v1 §11.4.9 lists as
+"where the HTTP binding serves the manifest", and they only add a requirement, a check and
+vectors: no signing input, member, token or outcome word changes [P-70].
+
+- **§11.4.1 table, Manifest row, native-stream column.** Read: "not carried; the HTTP binding serves
+  it at `/.well-known/evidence-manifest`".
+- **§11.4.2, new rule after "A responder MUST serve one manifest".** In that rule read "the HTTP
+  binding (next rule)" for "the HTTP binding". Then add:
+
+  > Over the HTTP binding the manifest is served at one fixed path, `/.well-known/evidence-manifest`,
+  > relative to the origin of the responder's HTTP binding [ER §10; P-70]. A requester that knows
+  > only that origin fetches it with `GET`. The response body is the JCS serialization of the
+  > manifest and its media type is `application/json` (parameters such as `charset` do not change
+  > the media type [RFC 9110 §8.3.1]), so its octets equal the JCS serialization of the A2A
+  > `params` value and of the `evidence_manifest` result. The resource is static and carries no
+  > envelope [ER §10]. A responder that serves the HTTP binding and publishes a manifest MUST
+  > serve it at this path, unless it shares its origin with another responder. Authentication,
+  > caller and request headers do not change the body (previous rule). The path adds no member,
+  > token or outcome word to the manifest. The path belongs to an origin [RFC 8615], so responders
+  > that share an origin do not use it.
+- **§11.4.7, `manifest_form`.** After "A number, boolean or map anywhere in it is `FAIL`." add: for
+  the copy fetched over HTTP it is also `FAIL` when the media type is not `application/json`, when
+  the body does not parse as JSON without duplicate member names, or when the body octets are not
+  exactly the JCS serialization of the value they parse to [P-45; P-70]. `manifest_consistency`
+  compares the HTTP copy with the others as it compares any two copies. A copy whose body does not
+  parse counts as a manifest unequal to every other copy, so `manifest_consistency` is `FAIL`.
+- **§11.4.8.** The `carriage-invariance` vector also fetches the manifest over HTTP, as the body of
+  a `GET` at `/.well-known/evidence-manifest`, and its expectation is that the three manifests give
+  `manifest_form` `PASS` and `manifest_consistency` `PASS`. Four rows are added to its negative
+  table:
+
+  | Change | Result |
+  |---|---|
+  | the body at `/.well-known/evidence-manifest` is the same manifest, pretty-printed instead of in JCS | `manifest_form` `FAIL` for that copy and `PASS` for the others; `manifest_consistency` `PASS`, since the values are equal |
+  | the body at `/.well-known/evidence-manifest` is the same manifest in JCS, served as `text/plain` | `manifest_form` `FAIL` for that copy and `PASS` for the others; `manifest_consistency` `PASS` |
+  | the body at `/.well-known/evidence-manifest` repeats a member name | the body does not parse, so `manifest_form` `FAIL` for that copy and `manifest_consistency` `FAIL` |
+  | the body at `/.well-known/evidence-manifest` is a different manifest (here another `subject_forms`) from the A2A `params` and the `evidence_manifest` result | `manifest_form` `PASS` for each copy; `manifest_consistency` `FAIL` |
+- **§11.4.9.** Delete "where the HTTP binding serves the manifest" from the list of what is still
+  unspecified.
+
 ### 11.5 Conformance vectors
 
 The vectors are in `vectors/interop-profile-v2/`. `python/scripts/generate_interop_profile_v0_vectors.py
@@ -171,6 +217,7 @@ lifecycle statement and manifest naming `evidence-interop/2`, the version cases 
 | `refusal-under-v1-still-verifies`, `refusal-under-v1-policy-digest-unbound` | a request for `evidence-interop/1` and its ERV A7 refusal, without and with a `policy_digest` outside the signature, checked by a verifier implementing both identifiers; every property `PASS` | §3.3, §6.3, P-69 |
 | `refusal-unimplemented-identifier-policy-digest-unbound`, `-signed`, `-not-a-digest` | a request for an identifier the verifier does not implement, answered by an ERV A7 refusal with a `policy_digest` outside the signature (every property `PASS`, and the member binds nothing), by the v2 signing input (`PASS`), and by the v2 signing input over a `policy_digest` that is not a digest (`refusal_signature` `FAIL`) | §5.2, §6.3, P-69 |
 | `refusal-under-v1-policy-digest-signed`, `refusal-policy-digest-checked-by-v1-verifier` | the v2 signing input answering a request for `evidence-interop/1`, and a signed `policy_digest` checked by a verifier implementing only `evidence-interop/1`; `refusal_signature` `FAIL` | §3.3, §6.3, P-69 |
+| `carriage-manifest-http-not-jcs`, `carriage-manifest-http-wrong-media-type`, `carriage-manifest-http-duplicate-member`, `carriage-manifest-http-differs` | the manifest fetched over HTTP, pretty-printed instead of in JCS or served as `text/plain` (that copy's `manifest_form` `FAIL`, `manifest_consistency` `PASS`), with a repeated member name (both `FAIL`), and another manifest (`manifest_consistency` `FAIL`); `carriage-invariance` gains the HTTP copy | §11.4.2, §11.4.7, §11.4.8, P-70 |
 
 A second set, `vectors/interop-profile-v2-requirement-facts/`, is the v2 regeneration of the v1
 requirement-facts set, from the same generator with `--set requirement-facts`. The witness Receipt
@@ -209,3 +256,17 @@ second change to take a new identifier under P-1.
   verifies. Left open: a policy format, where a relying party obtains the policy, and a property
   that compares the digest with the policy or with a commitment that names it; candidates for a
   later revision, or for the deployment that publishes the policy.
+- **P-70** The HTTP location of the manifest (§11.4.2). ER's HTTP binding says a responder SHOULD
+  publish a manifest and names no location, so a requester knowing only an origin had nothing to
+  fetch. This profile fixes `/.well-known/evidence-manifest`, with a JCS body served as
+  `application/json`, and makes the form of that response part of `manifest_form` (§11.4.7), with a
+  path that belongs to an origin, not to a responder. It adds no manifest member and no outcome word
+  and changes no signing input, so it fills a placeholder of v1 §11.4.9 (P-1). The new MUST and
+  the stricter `manifest_form` apply only to the HTTP copy of the manifest, so `evidence-interop/1`
+  and `evidence-interop/0` responders and verifiers are unaffected until they re-pin to
+  `evidence-interop/2` (§3.1). Left open: registering `evidence-manifest` in the IANA "Well-Known
+  URIs" registry [RFC 8615]. It is not registered; until it is the name is this profile's own, and
+  a later draft revision that adopts the path would carry the registration request. Also left
+  open: a requester has no fixed path for a responder that shares its origin with another
+  responder, since the path belongs to the origin. This revision adds RFC 8615 and RFC 9110 to the
+  references of v1.

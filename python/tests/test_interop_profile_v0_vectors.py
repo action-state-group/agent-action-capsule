@@ -897,10 +897,31 @@ class Verifier:
         if "manifests" in inp:
             ms = inp["manifests"]
             a2a_m, mcp_m = ms["a2a_extension"]["params"], ms["mcp_evidence_manifest"]["structuredContent"]
+            copies = [a2a_m, mcp_m]
             out["manifest_properties"] = {
                 "a2a_extension": {"manifest_form": self.manifest_form(a2a_m)},
-                "mcp_evidence_manifest": {"manifest_form": self.manifest_form(mcp_m)},
-                "manifest_consistency": "PASS" if jcs(a2a_m) == jcs(mcp_m) else "FAIL"}
+                "mcp_evidence_manifest": {"manifest_form": self.manifest_form(mcp_m)}}
+            if "http_well_known" in ms:
+                h = ms["http_well_known"]
+                body = self.octets(h["body"])
+                try:
+                    http_m = json.loads(body, object_pairs_hook=self.no_duplicates)
+                except ValueError:
+                    http_m = None
+                copies.append(http_m)
+                form = self.manifest_form(http_m) if http_m is not None else "FAIL"
+                if http_m is None or h["media_type"].split(";", 1)[0].strip().lower() != "application/json" or body != jcs(http_m):
+                    form = "FAIL"
+                out["manifest_properties"]["http_well_known"] = {"manifest_form": form}
+            out["manifest_properties"]["manifest_consistency"] = (
+                "PASS" if None not in copies and len({jcs(m) for m in copies}) == 1 else "FAIL")
+        return out
+
+    @staticmethod
+    def no_duplicates(pairs):
+        out = dict(pairs)
+        if len(out) != len(pairs):
+            raise ValueError("duplicate member name")
         return out
 
     # ---- a whole case ----
