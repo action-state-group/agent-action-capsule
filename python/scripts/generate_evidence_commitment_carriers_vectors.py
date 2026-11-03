@@ -216,10 +216,11 @@ def nostr_event(signer: str, data: bytes, created_at: str, *, inline: bool = Tru
             "tags": tags, "content": body, "sig": sig}
 
 
-def registration(endpoint: str, digest: str, *, agent_id: int = AGENT_ID, registry: str = REGISTRY,
-                 **extra: Any) -> dict:
+def registration(endpoint: str, digest: str, *, agent_id: Any = AGENT_ID, registry: str = REGISTRY,
+                 also_on: str | None = None, **extra: Any) -> dict:
     """§5.4: a registration file with the evidence-commitment entry beside another service. Its
-    ``registrations[]`` names the registry with the address in lowercase (EIP-55 case is not compared)."""
+    ``registrations[]`` names the registry with the address in lowercase (EIP-55 case is not compared),
+    after a registration on ``also_on`` when given."""
     entry = {"digest": digest, "endpoint": endpoint, "name": "evidence-commitment",
              "version": "evidence-commitment/1"}
     ns, chain, addr = registry.split(":")
@@ -228,7 +229,8 @@ def registration(endpoint: str, digest: str, *, agent_id: int = AGENT_ID, regist
             "image": f"{HOST}/node.png",
             "services": [{"endpoint": f"{HOST}/.well-known/agent-card.json", "name": "A2A", "version": "1.0.1"},
                          entry],
-            "registrations": [{"agentId": agent_id, "agentRegistry": f"{ns}:{chain}:{addr.lower()}"}], **extra}
+            "registrations": ([{"agentId": 3, "agentRegistry": also_on}] if also_on else [])
+            + [{"agentId": agent_id, "agentRegistry": f"{ns}:{chain}:{addr.lower()}"}], **extra}
 
 
 def erc8004(agent_uri: str, file: dict, *, agent: bool = True) -> tuple[dict, dict]:
@@ -510,11 +512,13 @@ def build_cases() -> list[dict]:
           "key_binding": "bound", "cards": cards_cur},
          uris=served(**{URI_CUR: CUR}, **four_served), answer_=answer())
 
-    data_file = registration(naddr, sha_tag(CUR), supportedTrust=["reputation"])
+    data_file = registration(naddr, sha_tag(CUR), also_on="eip155:11155111:0x8004A818BFB912233c491871b3d84c89A494BD9e",
+                             supportedTrust=["reputation"])
     data_carrier, _ = erc8004("data:", data_file)
     case("erc8004-data-uri-naddr",
-         "an agentURI that is a data: URI, whose entry's endpoint is the announce event's naddr and whose "
-         "supportedTrust is not read: resolved to the event, same octets",
+         "an agentURI that is a data: URI, whose entry's endpoint is the announce event's naddr, whose "
+         "registrations[] matches the agent in its second element and whose supportedTrust is not read: "
+         "resolved to the event, same octets",
          ["§5.4", "§5.3"],
          [data_carrier],
          {"carriers": [carrier_result("erc8004", CUR)], "commitments": [verified(CUR, "current")]},
@@ -558,6 +562,29 @@ def build_cases() -> list[dict]:
     bad_registration("erc8004-registry-mismatch",
                      "a registration file whose registrations[] names the agentId on another chain: "
                      "erc8004_registration, not read", registry=REGISTRY.replace(":84532:", ":1:"))
+    bad_registration("erc8004-agent-id-string",
+                     "a registration file whose registrations[] gives the agentId as a string of digits: "
+                     "erc8004_registration, not read", agent_id=str(AGENT_ID))
+
+    both = registration(URI_CUR, sha_tag(CUR), agent_id=AGENT_ID + 1)
+    both["services"].append(dict(entry_of(both)))
+    both_carrier, both_served = erc8004(URI_REG, both)
+    case("erc8004-registration-before-entry",
+         "another agent's file that also has two evidence-commitment entries: the registrations check comes "
+         "first, erc8004_registration, not read",
+         ["§5.4", "§6 V0"],
+         [both_carrier],
+         {"carriers": [carrier_result("erc8004", None, check="erc8004_registration")], "commitments": []},
+         uris=served(**{URI_CUR: CUR}, **both_served))
+
+    regs_only, regs_served = erc8004(URI_REG, {"registrations": [{"agentId": AGENT_ID, "agentRegistry": REGISTRY}]})
+    case("erc8004-registrations-only",
+         "a well-known registration file that holds only registrations: no evidence-commitment entry, so no "
+         "carrier entry and no result",
+         ["§5.4"],
+         [directory(URI_CUR, sha_tag(CUR)), regs_only],
+         {"carriers": [carrier_result("directory", CUR)], "commitments": [verified(CUR, "current")]},
+         uris=served(**{URI_CUR: CUR}, **regs_served))
 
     by_link, link_served = erc8004(URI_REG, registration(URI_CUR, sha_tag(CUR), agent_id=AGENT_ID + 1),
                                    agent=False)

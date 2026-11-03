@@ -42,7 +42,6 @@ DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
 CASES = DATA["cases"]
 KIND = DATA["carriage"]["announce_kind"]
 EXT_URI = DATA["carriage"]["a2a_extension_uri"]
-ERC8004_TYPE = DATA["carriage"]["erc8004_registration_type"]
 ER_EXT_URI = "https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"
 READ_AT = DATA["verifier"]["read_at"]
 assert DATA["verifier"]["clock_skew"] == "PT5M"
@@ -152,9 +151,13 @@ def same_registry(a: str, b: str) -> bool:
     return (na, ca) == (nb, cb) and xa.lower() == xb.lower()
 
 
+def commitment_entries(file: dict) -> list[dict]:
+    return [e for e in file.get("services", []) if e.get("name") == "evidence-commitment"]
+
+
 def erc8004_entry(file: dict) -> dict | None:
     """§5.4: exactly one evidence-commitment entry, of exactly four members, in its form."""
-    entries = [e for e in file.get("services", []) if e.get("name") == "evidence-commitment"]
+    entries = commitment_entries(file)
     if len(entries) != 1:
         return None
     (e,) = entries
@@ -164,8 +167,16 @@ def erc8004_entry(file: dict) -> dict | None:
     return e
 
 
-def read_carrier(entry: dict, case: dict, checks: frozenset) -> dict:
-    """V0, then V1. Returns the carrier result and, when it is read, the octets and any event."""
+def same_agent(r: dict, agent: dict) -> bool:
+    """§5.4: agentId a JSON integer equal by value (a bool or a string of digits does not match)."""
+    aid = r.get("agentId")
+    return (isinstance(aid, int) and not isinstance(aid, bool) and aid == agent["agentId"]
+            and same_registry(r.get("agentRegistry", ""), agent["agentRegistry"]))
+
+
+def read_carrier(entry: dict, case: dict, checks: frozenset) -> dict | None:
+    """V0, then V1. Returns the carrier result and, when it is read, the octets and any event; None for
+    an ERC-8004 file with no evidence-commitment entry, which is not a carrier entry (§5.4)."""
     kind = entry["carrier"]
     if kind == "directory":
         (att,) = entry["record"]["trustManifest"]["attestations"]
@@ -190,15 +201,16 @@ def read_carrier(entry: dict, case: dict, checks: frozenset) -> dict:
         claimed = ce[0]["params"]["commitment_digest"][len("sha256:"):]
     elif kind == "erc8004":
         file = registration_file(entry["agent_uri"], case)
+        if not commitment_entries(file):
+            return None
+        agent = entry.get("agent")
+        if "erc8004_registration" in checks and agent is not None and not any(
+                same_agent(r, agent) for r in file.get("registrations", [])):
+            return {"carrier": kind, "check": "erc8004_registration"}
         e = erc8004_entry(file)
         if "erc8004_entry" in checks and e is None:
             return {"carrier": kind, "check": "erc8004_entry"}
-        e = e or next(x for x in file["services"] if x["name"] == "evidence-commitment")
-        agent = entry.get("agent")
-        if "erc8004_registration" in checks and agent is not None and not any(
-                r["agentId"] == agent["agentId"] and same_registry(r["agentRegistry"], agent["agentRegistry"])
-                for r in file.get("registrations", [])):
-            return {"carrier": kind, "check": "erc8004_registration"}
+        e = e or commitment_entries(file)[0]
         data, ev = fetch(e["endpoint"], case, checks)
         claimed = e["digest"][len("sha256:"):]
     else:
@@ -314,6 +326,8 @@ def run_case(case: dict, checks: frozenset = ALL_CHECKS) -> dict:
     carriers, octets = [], []
     for entry in case["carriers"]:
         r = read_carrier(entry, case, checks)
+        if r is None:
+            continue
         carriers.append(r)
         if r["check"] is None and r["octets"] not in octets:
             octets.append(r["octets"])
@@ -450,7 +464,7 @@ def test_commitments_carry_no_count():
     for case in CASES:
         for uri, text in case["served"].items():
             doc = json.loads(b64u(text))
-            if doc.get("type") != ERC8004_TYPE:  # a registration file's agentId is ERC-8004's, not a count
+            if "registrations" not in doc:  # a registration file's agentId is ERC-8004's, not a count
                 scan(doc, uri)
 
 
@@ -480,6 +494,8 @@ def test_commitments_carry_no_count():
     ("erc8004_entry", "erc8004-two-entries"),
     ("erc8004_registration", "erc8004-registration-mismatch"),
     ("erc8004_registration", "erc8004-registry-mismatch"),
+    ("erc8004_registration", "erc8004-agent-id-string"),
+    ("erc8004_registration", "erc8004-registration-before-entry"),
 ])
 def test_mutant_check_removed(check, case_id):
     (case,) = [c for c in CASES if c["id"] == case_id]

@@ -212,16 +212,20 @@ and Agent Registration File]:
 | `digest` | the commitment digest, `sha256:<hex>` (§4) |
 
 The entry has exactly these four members, so it carries no size and no count (§5.1). A
-registration file carries at most one entry named `evidence-commitment`. ERC-8004 makes `version`
+registration file carries at most one entry named `evidence-commitment`. A file with none, such as
+a `/.well-known/agent-registration.json` that holds only `registrations`, carries no commitment on
+this carrier: it is not a carrier entry, and it has no result. ERC-8004 makes `version`
 optional and allows other members in an entry; this entry requires the first and allows none of
 the second. `digest` is a member of this entry only, so a stale pointer shows on this carrier as on
 the others (V1).
 
 **Registrations.** A verifier that reached the file from an agent, an *agentRegistry* and an
 *agentId* on that registry, reads the entry only when the file's `registrations[]` has an element
-whose `agentId` is that *agentId* and whose `agentRegistry` names the same registry: the same
-namespace and chain id, and the same address with letter case ignored (EIP-55 case is a
-checksum). Without one, the file is not that agent's file, and the entry is not read for that
+whose `agentId` is that *agentId* and whose `agentRegistry` names the same registry. Any element
+may match, since an agent can be registered on several registries. `agentId` is a JSON integer
+compared by value; an `agentId` of any other type, a string of digits included, does not match.
+The registries are the same when the namespace and chain id are the same and the address is the
+same with letter case ignored (EIP-55 case is a checksum). Without one, the file is not that agent's file, and the entry is not read for that
 agent. The same rule applies to a file read at `/.well-known/agent-registration.json`. A verifier
 that reached the file with no agent in hand, by a link, has no *agentId* to compare and skips this
 check. A match proves what ERC-8004's own domain check proves and nothing more: it binds no key
@@ -248,8 +252,9 @@ that fails names the result.
   §5.4), and for A2A the evidence-request entry carries no commitment member. A failure names the
   carrier check (`directory_entry`, `a2a_entry`, `discovery_object`, `nostr_event`,
   `erc8004_entry`). For a Nostr event the form includes its NIP-01 `id` and BIP-340 signature. For
-  an ERC-8004 file reached from an agent, the form includes the registrations check of §5.4, whose
-  failure is `erc8004_registration`. The entry is then not read.
+  an ERC-8004 file reached from an agent, the registrations check of §5.4 comes first, and its
+  failure is `erc8004_registration`; the entry's form is checked after it. The entry is then not
+  read.
 - **V1, octets.** Take the octets: from `content` when it is not empty, otherwise from the `uri`,
   `commitment_uri`, `endpoint` or `r` tag. A carrier digest that does not match the octets is reported as
   `digest_mismatch` and changes nothing else: for a URI it means the pointer is stale. The octets
@@ -363,7 +368,7 @@ every step and, once V5 binds the commitment, the cards V6 hands on.
 | `a2a-commitment-in-discovery-object` | the commitment pointer in the evidence-request entry's `params`: `discovery_object`, not read | §5.2, §6 V0 |
 | `nostr-event-bad-signature` | an announce event whose signature does not verify: `nostr_event`, not read | §6 V0 |
 | `four-carriers-one-commitment` | the same commitment through a directory entry, an A2A entry, a Nostr event and an ERC-8004 entry on one domain: one digest, verified once, current, key bound, its card handed on | §5, §5.4, §6 |
-| `erc8004-data-uri-naddr` | an *agentURI* that is a `data:` URI, an entry whose `endpoint` is the announce event's `naddr`, and a `supportedTrust` that is not read: resolved to the event, same octets | §5.4, §5.3 |
+| `erc8004-data-uri-naddr` | an *agentURI* that is a `data:` URI, an entry whose `endpoint` is the announce event's `naddr`, a `registrations[]` whose second element matches the agent, and a `supportedTrust` that is not read: resolved to the event, same octets | §5.4, §5.3 |
 | `erc8004-stale-digest` | an ERC-8004 entry whose `digest` names an older version: `digest_mismatch`, the octets verify | §4, §5.4, §6 V1 |
 | `erc8004-entry-with-size` | an ERC-8004 entry with a `size` member: `erc8004_entry`, not read | §5.4, §6 V0 |
 | `erc8004-entry-bad-version` | an ERC-8004 entry whose `version` is not a profile of §3: `erc8004_entry`, not read | §5.4, §6 V0 |
@@ -371,6 +376,9 @@ every step and, once V5 binds the commitment, the cards V6 hands on.
 | `erc8004-two-entries` | a registration file with two `evidence-commitment` entries: `erc8004_entry`, neither read | §5.4, §6 V0 |
 | `erc8004-registration-mismatch` | a file reached from an agent whose `registrations[]` names another `agentId`: `erc8004_registration`, not read | §5.4, §6 V0, §8 |
 | `erc8004-registry-mismatch` | a file whose `registrations[]` names the `agentId` on another chain: `erc8004_registration`, not read | §5.4, §6 V0, §8 |
+| `erc8004-agent-id-string` | a file whose `registrations[]` gives the `agentId` as a string of digits: `erc8004_registration`, not read | §5.4, §6 V0 |
+| `erc8004-registration-before-entry` | another agent's file that also has two entries: the registrations check comes first, `erc8004_registration` | §5.4, §6 V0 |
+| `erc8004-registrations-only` | a well-known file holding only `registrations`, beside a directory entry: no carrier entry, no result | §5.4 |
 | `erc8004-reached-by-link` | a file reached by a link, with no agent in hand: the registrations check is skipped, the entry is read | §5.4 |
 | `erc8004-forged-octets` | an ERC-8004 entry pointing to the commitment with a member changed: refused, `commitment_signature` | §5.4, §6 V2, §8 |
 
