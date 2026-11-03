@@ -96,6 +96,7 @@ GENERATORS = (
     "generate_registry_conformance_vectors.py",
     "generate_adapter_x402_vectors.py",
     "generate_ucp_adapter_vectors.py",
+    "generate_adapter_erc8183_vectors.py",
     # Experimental; reads the interop profile generator's keys and builders.
     "generate_nostr_mailbox_vectors.py",
     # Experimental; reads the interop profile and Nostr mailbox generators.

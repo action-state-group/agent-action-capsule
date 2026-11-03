@@ -39,6 +39,7 @@
     "anchor_witness_v1": "anchor-witness-v1/manifest.json",
     "adapter_x402": "adapters/x402/manifest.json",
     "adapter_ucp": "adapters/ucp/manifest.json",
+    "adapter_erc8183": "adapters/erc-8183/manifest.json",
     "json_nesting": "json-nesting/manifest.json",
     "cbor_nesting": "cbor-nesting/manifest.json",
     "cbor_request_model": "cbor-request-model/manifest.json"

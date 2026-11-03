@@ -1,0 +1,2968 @@
+{
+  "set": "aac-adapter-erc-8183-v0",
+  "profile": "spec/adapters/erc-8183-v0.md",
+  "status": "Vectors for an informational adapter profile. No chain was read: every lookup is a constructed recording. Every key is a test key derived from a public label; never use one for anything else.",
+  "checks": [
+    "is_evaluation",
+    "reason_binding",
+    "capsule_verifies",
+    "contract_binding",
+    "contract_digest",
+    "deliverable_cited",
+    "verdict_call"
+  ],
+  "test_keys": {
+    "evaluator": {
+      "label": "erc-8183-v0 vectors: evaluator key",
+      "public_key_hex": "ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be"
+    },
+    "provider": {
+      "label": "erc-8183-v0 vectors: provider key",
+      "public_key_hex": "c0fd02a9da8b612ab6eebda4b189b21058b0b805b316a3afcfc3ce5663a8ec16"
+    }
+  },
+  "contract_ref": "ec:example-review:2026-11@1",
+  "contract_digest": "60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8",
+  "cases": [
+    {
+      "id": "met-complete",
+      "description": "met judged and complete called with reason = the report's Capsule ID (§6.3, §6.4); the verifier holds the contract document",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 1,
+        "getJob": {
+          "id": 1,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 1,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0x05b06ff6e2a264143fe7e438fbc9e176db54dbee07b501498ad3ee89b47092ef"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 1,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0x800ab3387b8131b92dfd04cf9e66751dc32623f2f01ca3110e4a5a622490bf69"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-1",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "b09efd53645230c0b05acacbdcd0e856add90b5da1104ada64fcc7e6a3fd3a62"
+            }
+          },
+          "capsule_id": "800ab3387b8131b92dfd04cf9e66751dc32623f2f01ca3110e4a5a622490bf69"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820800ab3387b8131b92dfd04cf9e66751dc32623f2f01ca3110e4a5a622490bf695840dc4cde65a4d742a204f0fb5b3b41726bcd60f4777377a04ada4a273afaca35998e592e3de478c8a6599619650958ec00b0350debe92f14f390b756b1165e1209",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-1",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-1-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "05b06ff6e2a264143fe7e438fbc9e176db54dbee07b501498ad3ee89b47092ef",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:1",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "61ed0d18d6c4e8f0e049e3f589d8fd8330086814533d5ef2d22629e7b0e5efc0"
+            }
+          },
+          "capsule_id": "05b06ff6e2a264143fe7e438fbc9e176db54dbee07b501498ad3ee89b47092ef"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 1"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "PASS"
+      },
+      "predicates": [
+        "E1",
+        "E2"
+      ]
+    },
+    {
+      "id": "met-complete-no-contract-document",
+      "description": "as met-complete, without the contract document: contract_digest NOT_CHECKED (§7 step 5), which never downgrades E1 (§9.1)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 2,
+        "getJob": {
+          "id": 2,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 2,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0xbd03c9bd18ea78f1cd02460819f651ca0d5f5778a1a815111cfbcdf8392bcc29"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 2,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0xd985932d3ae37024dd1fbf5edd53c05d8354494174a5043e2f750c78143a8368"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-2",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "42b61e56f9c5e5642bafd6be5af2ced1d6a913eee97afcba1f97f7d0f414d71e"
+            }
+          },
+          "capsule_id": "d985932d3ae37024dd1fbf5edd53c05d8354494174a5043e2f750c78143a8368"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820d985932d3ae37024dd1fbf5edd53c05d8354494174a5043e2f750c78143a836858403099edd82358505b30f330e0003b47a753b845b2b77eb5077ed0716c8def1aab28674fb3ae7b880edc63cd815ca233cfec292c65b242a44c6c1fe545225ca001",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-2",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-2-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "bd03c9bd18ea78f1cd02460819f651ca0d5f5778a1a815111cfbcdf8392bcc29",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:2",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "7863ee2dfe050756fe88be3c980faa422eed96d53e423fff98bd08efbbedcfc9"
+            }
+          },
+          "capsule_id": "bd03c9bd18ea78f1cd02460819f651ca0d5f5778a1a815111cfbcdf8392bcc29"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 2"
+        }
+      },
+      "contract_document": null,
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "NOT_CHECKED",
+        "deliverable_cited": "PASS",
+        "verdict_call": "PASS"
+      },
+      "predicates": [
+        "E1"
+      ]
+    },
+    {
+      "id": "not-met-reject",
+      "description": "not_met judged and reject called by the evaluator (§6.4)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 3,
+        "getJob": {
+          "id": 3,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Rejected",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 3,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0xf5b20a3dcd8264a68206aa55d20bada33a3105dacc04e5278b862ae0435c1bc4"
+            }
+          },
+          {
+            "event": "JobRejected",
+            "args": {
+              "jobId": 3,
+              "rejector": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0xa24f89980683b6ce03cf1d02e13eb95bdb0e3be766631571731731f81db420e7"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-3",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "72277ba8a2d9dd5d3e5b52b95238ce4ab493d5644a22070ada8dbeaedbeb25ba"
+            }
+          },
+          "capsule_id": "a24f89980683b6ce03cf1d02e13eb95bdb0e3be766631571731731f81db420e7"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820a24f89980683b6ce03cf1d02e13eb95bdb0e3be766631571731731f81db420e75840abf22f38d9b4b4cd3b99b2aa28562659b82ccdd56a18fea18ed888999728cf571194f53e3058157b3b874ce28ff3350a7005d07602380050da946aeaa0b06d0d",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-3",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-3-case-1",
+              "verdict": "not_met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "f5b20a3dcd8264a68206aa55d20bada33a3105dacc04e5278b862ae0435c1bc4",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:3",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "b159ca9041ad771e4a9eb4d1e3f350971d6052ccbc434fbbbf959b3243a5047d"
+            }
+          },
+          "capsule_id": "f5b20a3dcd8264a68206aa55d20bada33a3105dacc04e5278b862ae0435c1bc4"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 3"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "PASS"
+      },
+      "predicates": [
+        "E1",
+        "E2"
+      ]
+    },
+    {
+      "id": "not-evaluable-refund",
+      "description": "not_evaluable judged; no call; claimRefund after expiredAt (§6.4). No call and no reason (§7 steps 1, 2); the report is bound off chain only (E3)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 4,
+        "getJob": {
+          "id": 4,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Expired",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 4,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0x45b75d5a2ea633ccc75ad2dedc1b111b467096ecee1d0d16450947367a7e8182"
+            }
+          },
+          {
+            "event": "JobExpired",
+            "args": {
+              "jobId": 4
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-4",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "f466c54baf662cf3f31268bbdbf487e32e8bf56fc2a1c1e6f4096e6d18d7f32e"
+            }
+          },
+          "capsule_id": "d0befe9d745cf05fb5470a5171e669a8af166254f82d2866f786b879d38430b2"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820d0befe9d745cf05fb5470a5171e669a8af166254f82d2866f786b879d38430b25840e882d717c2839e84281c668336a9289e628754226523a1e622449c3e67c2485aaabd78553a74d1882c7de7a80e26129254d947084ddb12c9ec368a09387b3f0d",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-4",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-4-case-1",
+              "verdict": "not_evaluable",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "45b75d5a2ea633ccc75ad2dedc1b111b467096ecee1d0d16450947367a7e8182",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:4",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "2f395593d04bdab3d34e3c8d677ba3b5ccd99517605003cc94f313cc41bc99ac"
+            }
+          },
+          "capsule_id": "45b75d5a2ea633ccc75ad2dedc1b111b467096ecee1d0d16450947367a7e8182"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 4"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "NOT_PRESENT",
+        "reason_binding": "NOT_PRESENT",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "PASS"
+      },
+      "predicates": [
+        "E3"
+      ]
+    },
+    {
+      "id": "reason-digest-mismatch",
+      "description": "reason names another capsule than the report held (§7 step 2)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 5,
+        "getJob": {
+          "id": 5,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 5,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0x612eb5d37e1c430b382738bde089611b19a3730cd9ec527d6b206490d63f2b26"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 5,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0xf52a3e3f907aeebb5491b598af69aeb1557064fd9cfd2e94efaac28627799b4e"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-5",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "1164f34dc5a4a3d406dee7d81924c529f08f5be0c3fc222a92219f80ff23e427"
+            }
+          },
+          "capsule_id": "bf4b3777e0a83a05963b5ce9d69522685244d1e5cae649417c0a8f3aa85ddb94"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820bf4b3777e0a83a05963b5ce9d69522685244d1e5cae649417c0a8f3aa85ddb9458400a3271bb84e05139cb897b4d1af1ca4f7688318d20c9dc009068d7b46e45b6fbfdc3016d73a42192e65169420904b132b593f53cfe2e44836b92eca41c310b0c",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-5",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-5-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "612eb5d37e1c430b382738bde089611b19a3730cd9ec527d6b206490d63f2b26",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:5",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "56d4af7fcb85f0551a0fd822e364a87f75f775c4358e1d238d521b166902feb6"
+            }
+          },
+          "capsule_id": "612eb5d37e1c430b382738bde089611b19a3730cd9ec527d6b206490d63f2b26"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 5"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "FAIL",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "PASS"
+      },
+      "predicates": []
+    },
+    {
+      "id": "contract-ref-mismatch",
+      "description": "the job's description names another contract than the report's contract_ref (§7 step 4); contract_digest is then NOT_CHECKED (§7 step 5)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 6,
+        "getJob": {
+          "id": 6,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-other:2026-11@2 sha256:1601bd47f1685a3f3a68c81317591b364cb7f3661e7ae3b1c1b3c58897e9878b\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 6,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0x3b073dcb3efe504965761c28445e2c0a0712efe72dcb32c89c8e965f8c2e710b"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 6,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0x3918ffba5304a48c5bea4f3b917e34d5b393092a8d44a9ad84062de40a3cd42f"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-6",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "a491bc0ded76b8177c6b17a3cac5eeff78a43e0fb19c3cd84d6c3fde3069671b"
+            }
+          },
+          "capsule_id": "3918ffba5304a48c5bea4f3b917e34d5b393092a8d44a9ad84062de40a3cd42f"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a058203918ffba5304a48c5bea4f3b917e34d5b393092a8d44a9ad84062de40a3cd42f58408b3ab4bea84085553e0aaf81aa4230289135df8b74e15e142f724da61cd8aecc1456b97ed5b48abdd26d11db7ddadd7b068c32f9bc727fac871256b35c0d3007",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-6",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-6-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "3b073dcb3efe504965761c28445e2c0a0712efe72dcb32c89c8e965f8c2e710b",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:6",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "a4f9976d4c11a35b2a3dcaf9adb9a53fc2e7e158db86594a98ff0279b034c886"
+            }
+          },
+          "capsule_id": "3b073dcb3efe504965761c28445e2c0a0712efe72dcb32c89c8e965f8c2e710b"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 6"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "FAIL",
+        "contract_digest": "NOT_CHECKED",
+        "deliverable_cited": "PASS",
+        "verdict_call": "PASS"
+      },
+      "predicates": []
+    },
+    {
+      "id": "deliverable-not-cited",
+      "description": "the report's case cites a capsule other than the job's deliverable (§7 step 6)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 7,
+        "getJob": {
+          "id": 7,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 7,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0xf2409a1d8ba011ce0513d762a59179f7b1c33261531151c521840ea9fd20669c"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 7,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0x86aa6136e5955cc044defabfd80886df5970e3cba052b66a9ed2519a805a0190"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-7",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "e16e8ddd2aa13768c2a3c7471eaff10deda2be102eb814ccb68faee3e998c740"
+            }
+          },
+          "capsule_id": "86aa6136e5955cc044defabfd80886df5970e3cba052b66a9ed2519a805a0190"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a0582086aa6136e5955cc044defabfd80886df5970e3cba052b66a9ed2519a805a01905840214d056ea30c58ba97fcdf160455a2852be3b5e98d51e8a30dc1fedbb81927716d556bc348b4ba95e8d49095b506ff214520b4243e4c81068aeec09af45b9b08",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-7",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-7-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "d04aaed0ccc159e486860d6a94e24f4ecd27bbb33fc859ca3a05b436a73f3854",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:7",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "84753980c883b6320a71f4ef5865eab86bc30e8a3fc1c2831286fd4cdd703e0e"
+            }
+          },
+          "capsule_id": "f2409a1d8ba011ce0513d762a59179f7b1c33261531151c521840ea9fd20669c"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 7"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "FAIL",
+        "verdict_call": "PASS"
+      },
+      "predicates": []
+    },
+    {
+      "id": "not-evaluable-with-complete",
+      "description": "a not_evaluable report under a complete call (§6.4, §7 step 7)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 8,
+        "getJob": {
+          "id": 8,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 8,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0xb963d6aa3edfb647a7a9030803c069928022193e2ffe26fd92d13db702d35c00"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 8,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0xb2832e00034b19693fadc1b3dffb361750b628d9b19226e206c8e69fe8ad0af8"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-8",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "3e246e2898eb05e52a089aed2b6e8679d5f5d2fb833d35ee54837dfd7118d608"
+            }
+          },
+          "capsule_id": "b2832e00034b19693fadc1b3dffb361750b628d9b19226e206c8e69fe8ad0af8"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820b2832e00034b19693fadc1b3dffb361750b628d9b19226e206c8e69fe8ad0af85840d6ecf813de99c3b67298a83ffb4db36437bc877146c31873c7f8b042302a99e7e0d3e1caf16771a4d34ae12fd28cffa74946f89e9c2265bc1a0d273b984b8201",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-8",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-8-case-1",
+              "verdict": "not_evaluable",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "b963d6aa3edfb647a7a9030803c069928022193e2ffe26fd92d13db702d35c00",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:8",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "cc617447c7c5aea76b049b7f8ce70e99700048736ea2555b245ab46d58f24b53"
+            }
+          },
+          "capsule_id": "b963d6aa3edfb647a7a9030803c069928022193e2ffe26fd92d13db702d35c00"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 8"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "FAIL"
+      },
+      "predicates": []
+    },
+    {
+      "id": "not-evaluable-with-reject",
+      "description": "a not_evaluable report under a reject call (§6.4, §7 step 7)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 9,
+        "getJob": {
+          "id": 9,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Rejected",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 9,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0xb405fabb9ad1ed3ef593373b25475afed4d55f84e76f43812afebe989079b2cd"
+            }
+          },
+          {
+            "event": "JobRejected",
+            "args": {
+              "jobId": 9,
+              "rejector": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0x8cd57bb773d371ec1a2f61cdce660b451259edbb707c42b11e321ba169feae0e"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-9",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "0d5f537333136759e7e68226877dbe49b069b55a1d2186954df4adb386eba53e"
+            }
+          },
+          "capsule_id": "8cd57bb773d371ec1a2f61cdce660b451259edbb707c42b11e321ba169feae0e"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a058208cd57bb773d371ec1a2f61cdce660b451259edbb707c42b11e321ba169feae0e5840ad5982bfcca4f30d0b80422b2846bda65803c73b165a0a5a32a8277bf1527609c8ed87bc9c6a0f3360001b32430e2a3ef431da413c29d95fe80cc8cfcb49ed05",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-9",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-9-case-1",
+              "verdict": "not_evaluable",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "b405fabb9ad1ed3ef593373b25475afed4d55f84e76f43812afebe989079b2cd",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:9",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "cea0454c60b469f839e7db7e19082d45c02eaa176b44a6424868d49aadfa37a6"
+            }
+          },
+          "capsule_id": "b405fabb9ad1ed3ef593373b25475afed4d55f84e76f43812afebe989079b2cd"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 9"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "FAIL"
+      },
+      "predicates": []
+    },
+    {
+      "id": "met-with-reject",
+      "description": "a met report under a reject call (§6.4, §7 step 7)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 10,
+        "getJob": {
+          "id": 10,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Rejected",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 10,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0xce5970d2382c0d6c5598372b9e0b736f8f7f13d1ef7d2c59b2cd7cd1781c439f"
+            }
+          },
+          {
+            "event": "JobRejected",
+            "args": {
+              "jobId": 10,
+              "rejector": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0x542333b628384ad8ec7284154a550811827a5f4397a90af9debacba318aa303e"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-10",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "928072cf1c2de28c3ddb0af885d550b1affab659d726c30608e726d5ac50d570"
+            }
+          },
+          "capsule_id": "542333b628384ad8ec7284154a550811827a5f4397a90af9debacba318aa303e"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820542333b628384ad8ec7284154a550811827a5f4397a90af9debacba318aa303e5840f5182e42de41ecb25d68fb4e1f37aed8726f5cc08d404e90aa91ecfa99f2c410ed3f344f96fc79939ffb6319ed65e65d89ce51a163e61d885b5bddb0e26db400",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-10",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-10-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "ce5970d2382c0d6c5598372b9e0b736f8f7f13d1ef7d2c59b2cd7cd1781c439f",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:10",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "85aaa25250fb27674ff465cbae2b8836658c242c6272fd997d8e54a412bdd37a"
+            }
+          },
+          "capsule_id": "ce5970d2382c0d6c5598372b9e0b736f8f7f13d1ef7d2c59b2cd7cd1781c439f"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 10"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "FAIL"
+      },
+      "predicates": []
+    },
+    {
+      "id": "not-met-with-complete",
+      "description": "a not_met report under a complete call (§6.4, §7 step 7)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 11,
+        "getJob": {
+          "id": 11,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 11,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0x6f6f6583592496e2f48861d32069d08ddaec126796771c113ec7c56b74964ddc"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 11,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0xfb6cb99a395cf498b1b24a3b829ab837a9b0cfd45d4a43f84ae804cf68731808"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-11",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "22020e328c81a9ee7adebd9f18ee4e5fd6b44e133000dbf442be40d546607a43"
+            }
+          },
+          "capsule_id": "fb6cb99a395cf498b1b24a3b829ab837a9b0cfd45d4a43f84ae804cf68731808"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820fb6cb99a395cf498b1b24a3b829ab837a9b0cfd45d4a43f84ae804cf6873180858404ce12afa07b066582ba4a41ca5887d24bb8245fbb8cfb483c10dc6962d6efc9a252b65cf5c6611549031628c87dc6891b15f00943595a51692b70f29bd937d03",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-11",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-11-case-1",
+              "verdict": "not_met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "6f6f6583592496e2f48861d32069d08ddaec126796771c113ec7c56b74964ddc",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:11",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "9fe2a0910400675e4e9f6b5be89ac39601b23fd8dc00524fdda35fa8c5a2c472"
+            }
+          },
+          "capsule_id": "6f6f6583592496e2f48861d32069d08ddaec126796771c113ec7c56b74964ddc"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 11"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "FAIL"
+      },
+      "predicates": []
+    },
+    {
+      "id": "out-of-scope-with-complete",
+      "description": "a out_of_scope report under a complete call (§6.4, §7 step 7)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 12,
+        "getJob": {
+          "id": 12,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 12,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0x5fa2e92ea288d9b45fb8239fcb1e6ea4cff3a31fd7f27210b89bca5fa1d7de7c"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 12,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0xb1a9268a2d2d810c17d22335aa884a653ccf6e76b197fb3662b194ce70bd9cf1"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-12",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "7f670a78e97300a37d9a18851b30f4e8a00ee0a4a4971490cb78e5e1d5e7b9fc"
+            }
+          },
+          "capsule_id": "b1a9268a2d2d810c17d22335aa884a653ccf6e76b197fb3662b194ce70bd9cf1"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820b1a9268a2d2d810c17d22335aa884a653ccf6e76b197fb3662b194ce70bd9cf15840054cb9c8c8df07f1234ef5ad5576d3dbee522d4e996da2084c0dc99d17a5e2d1247faaebe2b3c40f86e3b1f40f9f0f1eeae803b86092f462068a0cc8e1aa5608",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-12",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-12-case-1",
+              "verdict": "out_of_scope",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "5fa2e92ea288d9b45fb8239fcb1e6ea4cff3a31fd7f27210b89bca5fa1d7de7c",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:12",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "aedabadb8fb820354c55d500f6bf9b4618ff488811372ae66832a1de29bd9ce1"
+            }
+          },
+          "capsule_id": "5fa2e92ea288d9b45fb8239fcb1e6ea4cff3a31fd7f27210b89bca5fa1d7de7c"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 12"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "FAIL"
+      },
+      "predicates": []
+    },
+    {
+      "id": "two-cases",
+      "description": "a report with two cases, both citing the deliverable (§6.3: exactly one; §7 step 7)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 13,
+        "getJob": {
+          "id": 13,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 13,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0xc5ee4267130238b0bf728e3a7d9b309b4ea21b1838fbf3fc820815a6679bc808"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 13,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0x3354ee3a51ad7ae0b68cb50e92e8744e31df1f0a18c84213098c2f8a36d05ed7"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-13",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "786d04199b651b4b9e0ab6d6bdba19eb4a4fa409b8882195ed3fe6be51e0cdf4"
+            }
+          },
+          "capsule_id": "3354ee3a51ad7ae0b68cb50e92e8744e31df1f0a18c84213098c2f8a36d05ed7"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a058203354ee3a51ad7ae0b68cb50e92e8744e31df1f0a18c84213098c2f8a36d05ed7584044bd313e5f9dab9830320fc4a57c86fd65e004f2a2edb1ba90399ec763c24f33d1d9208ef14c4106085d2afbc5eed08a9d4d1cfc0581f0b68bb1fe871c35e70c",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-13",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-13-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "c5ee4267130238b0bf728e3a7d9b309b4ea21b1838fbf3fc820815a6679bc808",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            },
+            {
+              "case_id": "job-13-case-2",
+              "verdict": "not_met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "c5ee4267130238b0bf728e3a7d9b309b4ea21b1838fbf3fc820815a6679bc808",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:13",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "2211905236c5160f2cd636a03899a59a2b272c62aa54822fa061ae52087a404a"
+            }
+          },
+          "capsule_id": "c5ee4267130238b0bf728e3a7d9b309b4ea21b1838fbf3fc820815a6679bc808"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 13"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "FAIL"
+      },
+      "predicates": []
+    },
+    {
+      "id": "reason-zero",
+      "description": "complete called with reason bytes32(0): it names no report (§7 step 2)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 14,
+        "getJob": {
+          "id": 14,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 14,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0x1d5c3105ac9f6fb0af9045ffbf4abbffcd9d4027e0c3390e720a7801b960c3c4"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 14,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0x0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-14",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "a1fc6919caee2cef0c0fcb32407365d0d1ebdb65ea5639e5d889677bfbfef185"
+            }
+          },
+          "capsule_id": "f5aca2c2ce3ef41d437d6daead80c1bd860e8c7b7f5b4dfafa3e170953fc478e"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820f5aca2c2ce3ef41d437d6daead80c1bd860e8c7b7f5b4dfafa3e170953fc478e584012f24bd9ffd25b86e9615e8a97a487c6065b069c70666d539ebd6cf80f19093e1e6fc1617cebccc91ed88560e4092aa8ede9bae221a265a2fded0255bf429107",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-14",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-14-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "1d5c3105ac9f6fb0af9045ffbf4abbffcd9d4027e0c3390e720a7801b960c3c4",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:14",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "e5c3e398ec9edd62d106999b38cbeb97780a012b812979fc4a4bffb6c1eceefd"
+            }
+          },
+          "capsule_id": "1d5c3105ac9f6fb0af9045ffbf4abbffcd9d4027e0c3390e720a7801b960c3c4"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 14"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "NOT_PRESENT",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "PASS",
+        "verdict_call": "PASS"
+      },
+      "predicates": []
+    },
+    {
+      "id": "contract-digest-mismatch",
+      "description": "the description names the report's contract_ref with another digest, and the verifier holds the document (§7 step 5)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 15,
+        "getJob": {
+          "id": 15,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:b90149495a0fdc821b65659f65a8104a7aaa4a0f9090780332ec6ecb8a5b163d\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 15,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0x6ddc5a00dd587f0a04920c1a043eaa00cdbb2c182978f0884177048ca9e6236a"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 15,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0xfe54dd197431077973fc8c5b6feac8934aba84abf506bed48899f9415a3a1a72"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-15",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "62d9fe85b514a8305bb84700304ea41334aedd74e64968a1092d3a1b5c633dd4"
+            }
+          },
+          "capsule_id": "fe54dd197431077973fc8c5b6feac8934aba84abf506bed48899f9415a3a1a72"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820fe54dd197431077973fc8c5b6feac8934aba84abf506bed48899f9415a3a1a7258402c7a6931ae7207bc10e5da5de518ca86cc3d243b08f3503ce7e647bc70496bc035114e049e235e4cc31842da21f018078000d99d5aec2a8e249fcef7ed1caf0c",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-15",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-15-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "6ddc5a00dd587f0a04920c1a043eaa00cdbb2c182978f0884177048ca9e6236a",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:15",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "b03726e914e7523039eb202c6559af53c7e674e411ab9ae0718d8487d7e47a88"
+            }
+          },
+          "capsule_id": "6ddc5a00dd587f0a04920c1a043eaa00cdbb2c182978f0884177048ca9e6236a"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 15"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "FAIL",
+        "deliverable_cited": "PASS",
+        "verdict_call": "PASS"
+      },
+      "predicates": []
+    },
+    {
+      "id": "rejected-while-funded",
+      "description": "the evaluator rejected before any submit: no deliverable to cite (§7 step 6)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 16,
+        "getJob": {
+          "id": 16,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Rejected",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobRejected",
+            "args": {
+              "jobId": 16,
+              "rejector": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0x4ff9d0cc3f88c1c5003df3655ce67992f836641cd6364d2badcb422c41322db8"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-16",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "f99b641e5f6f084ed59371f92a39f35488f25815ac19006421153227fbd59fd4"
+            }
+          },
+          "capsule_id": "4ff9d0cc3f88c1c5003df3655ce67992f836641cd6364d2badcb422c41322db8"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a058204ff9d0cc3f88c1c5003df3655ce67992f836641cd6364d2badcb422c41322db8584008e9fe70f8eaf5fb8db8f45159ab61ee59ccc5aa83444814dec1976c71efe872b7e7cf27b4983f9522e9c98a48f646452246f0b0f892b869f1277e6bdd4c9e0e",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-16",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-16-case-1",
+              "verdict": "not_met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "ba2e5ac1e0ba4d44ef72aa34dffe732d3f782f7528886e21d63345edeb8c1e0e",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:16",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "7b08da394808e56c908b1a177418d25ef032f6fc93ee20b7e91637e7b351e5e2"
+            }
+          },
+          "capsule_id": "ba2e5ac1e0ba4d44ef72aa34dffe732d3f782f7528886e21d63345edeb8c1e0e"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 16"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "PASS",
+        "contract_binding": "PASS",
+        "contract_digest": "PASS",
+        "deliverable_cited": "NOT_PRESENT",
+        "verdict_call": "PASS"
+      },
+      "predicates": []
+    },
+    {
+      "id": "client-reject-open",
+      "description": "the client rejected while Open: not an evaluation, no report is read (§7 step 1)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 17,
+        "getJob": {
+          "id": 17,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Rejected",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobRejected",
+            "args": {
+              "jobId": 17,
+              "rejector": "0x00000000000000000000000000000000c11e0001",
+              "reason": "0x5505ae3b8e2c059175f3725b02492dd0e82415d855bc3cf49a09817fe7a9837e"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-17",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "22c065ecd8609bf3f3e8c38a18fc8e324fe4ab572676b153a68dc939b3832d5d"
+            }
+          },
+          "capsule_id": "5505ae3b8e2c059175f3725b02492dd0e82415d855bc3cf49a09817fe7a9837e"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a058205505ae3b8e2c059175f3725b02492dd0e82415d855bc3cf49a09817fe7a9837e58400bdefa12c7b5788b129e4cad0dcb2d69f0e10a5fb5155a1e9201072aad12568c2821c27c83196fb663329d2c7e0a25ad5eca14dc640b376f708930bcf8d39d0c",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-17",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-17-case-1",
+              "verdict": "not_met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "e36c847f903d9a8d9bbdaa1fdcb7d0ae5853dea3375e258d749894ad63ec032d",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:17",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "7ce7817083e2414b1784c94d3b4a15db0f2fdc389a0f93cbaa5f26fbcdbf9d06"
+            }
+          },
+          "capsule_id": "e36c847f903d9a8d9bbdaa1fdcb7d0ae5853dea3375e258d749894ad63ec032d"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 17"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "FAIL",
+        "reason_binding": "NOT_CHECKED",
+        "capsule_verifies": "NOT_CHECKED",
+        "contract_binding": "NOT_CHECKED",
+        "contract_digest": "NOT_CHECKED",
+        "deliverable_cited": "NOT_CHECKED",
+        "verdict_call": "NOT_CHECKED"
+      },
+      "predicates": []
+    },
+    {
+      "id": "bad-report-signature",
+      "description": "the report's Producer Envelope signature changed after signing (§7 step 3)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 18,
+        "getJob": {
+          "id": 18,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 18,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0x84266397a108b57d3d7e4a63dc61250ce9f93680c4c2da46c265d12341fb62e5"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 18,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0xc88896d9ae80e0f7cd1cd678f9a4eb7b4c92bbaa94c6d8ad2f3e3b8c5c112483"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-18",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "8fce38452554a20f812d1a48451ba113c518f589debc60409235f8d88b9e518d"
+            }
+          },
+          "capsule_id": "c88896d9ae80e0f7cd1cd678f9a4eb7b4c92bbaa94c6d8ad2f3e3b8c5c112483"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a05820c88896d9ae80e0f7cd1cd678f9a4eb7b4c92bbaa94c6d8ad2f3e3b8c5c112483584058cd87526fbf1783f9e4d2306f0630f24232da5e24fbca65434c2b0f6edb90e0afa2d70eef3ef97ac3c90127903ce5136e44f2dc23fe59fd08a567ece45c8409",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-18",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-18-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "84266397a108b57d3d7e4a63dc61250ce9f93680c4c2da46c265d12341fb62e5",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:18",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "84b7a9ad99471332027a25bb4bfbe3e9aadf1de933d516200089e6eb17df0220"
+            }
+          },
+          "capsule_id": "84266397a108b57d3d7e4a63dc61250ce9f93680c4c2da46c265d12341fb62e5"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 18"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "FAIL",
+        "contract_binding": "NOT_CHECKED",
+        "contract_digest": "NOT_CHECKED",
+        "deliverable_cited": "NOT_CHECKED",
+        "verdict_call": "NOT_CHECKED"
+      },
+      "predicates": []
+    },
+    {
+      "id": "payload-digest-mismatch",
+      "description": "the held payload's verdict changed from not_met to met after sealing: its JSON-DIGEST no longer equals agent_input_digest (§7 step 3)",
+      "job": {
+        "contract": "eip155:84532:0x00000000000000000000000000000000008183a0",
+        "job_id": 19,
+        "getJob": {
+          "id": 19,
+          "client": "0x00000000000000000000000000000000c11e0001",
+          "provider": "0x00000000000000000000000000000000c11e0002",
+          "evaluator": "0x00000000000000000000000000000000c11e0003",
+          "description": "ec:example-review:2026-11@1 sha256:60be1c70c49c5e2f44f61011fee653f3816c9b7effc1370559e1318a8371a4c8\nReview the attached change and report whether it does what the ticket asks.",
+          "budget": "1000000",
+          "expiredAt": 1793750400,
+          "status": "Completed",
+          "hook": "0x0000000000000000000000000000000000000000"
+        },
+        "events": [
+          {
+            "event": "JobSubmitted",
+            "args": {
+              "jobId": 19,
+              "provider": "0x00000000000000000000000000000000c11e0002",
+              "deliverable": "0xac6cf288244a9668affe6f24c10cf011c97074342f94d0d48a3b926c4e6f1c43"
+            }
+          },
+          {
+            "event": "JobCompleted",
+            "args": {
+              "jobId": 19,
+              "evaluator": "0x00000000000000000000000000000000c11e0003",
+              "reason": "0x0a32737e703d2bf0bfb6af5c15cc644efce84969b431f962443803889ae7764b"
+            }
+          }
+        ]
+      },
+      "report": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:evaluation-report:er-erc8183-job-19",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-evaluator@v1",
+          "timestamp": "2026-11-03T12:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "4dd2afa772d4035722582738291a9083bb607880554f5d50ba6daab7f0995ecb"
+            }
+          },
+          "capsule_id": "0a32737e703d2bf0bfb6af5c15cc644efce84969b431f962443803889ae7764b"
+        },
+        "envelope_hex": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820ceb6a0564d4b8d5f1be80bf62db11e91878f551aea3538f44ec691c45ba627be0127a058200a32737e703d2bf0bfb6af5c15cc644efce84969b431f962443803889ae7764b5840682e372b533b7d8ec02938ec57e1116e889a78a74aafe9940d2288cd3ee9c49ca401890d154c99fbcfef6bd8715724b033bb19df7f620f3cd736840e98dad806",
+        "payload": {
+          "record_version": "evaluation-report/v1",
+          "record_id": "er-erc8183-job-19",
+          "epistemic_type": "semantic_judgment",
+          "generated_at": "2026-11-03T12:00:00Z",
+          "contract_ref": "ec:example-review:2026-11@1",
+          "judge_pin": {
+            "model_id": "example-judge-v1",
+            "prompt_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "1b3abca0a8b2a01385855b995c23abefba53fd0279b37d4ea96eb89596d3cbc9"
+            },
+            "axes_digest": {
+              "digest_alg": "SHA-256",
+              "digest": "5d5e376fd9a85cd3dcf36c221831fc279c9d39f63ee80862c59b9a1fc9cd52ff"
+            },
+            "sampling": {
+              "seed": 1,
+              "temperature_micros": 0
+            }
+          },
+          "cases": [
+            {
+              "case_id": "job-19-case-1",
+              "verdict": "met",
+              "acts": [
+                {
+                  "type": "agent-action-capsule",
+                  "digest_alg": "SHA-256",
+                  "digest": "ac6cf288244a9668affe6f24c10cf011c97074342f94d0d48a3b926c4e6f1c43",
+                  "citation_purpose": "grounds"
+                }
+              ],
+              "method": {
+                "type": "rubric",
+                "digest_alg": "SHA-256",
+                "digest": "3703a9ebbf9ad985c2a4f986fde9bb3137fa843ae97de9985e507035c4ea3e79",
+                "citation_purpose": "method"
+              }
+            }
+          ]
+        }
+      },
+      "deliverable": {
+        "capsule": {
+          "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+          "format_version": "4",
+          "canonicalization_id": "jcs",
+          "action_id": "urn:example:deliverable:19",
+          "action_type": "fyi",
+          "operator": "example-operator",
+          "developer": "example-provider@v1",
+          "timestamp": "2026-11-03T11:00:00Z",
+          "assurance": {
+            "effect_mode": "not_applicable",
+            "attestation_mode": "self_attested",
+            "ledger_mode": "standalone"
+          },
+          "model_attestation": {
+            "compute_attestation": {
+              "agent_input_digest": "b053453e3cfac7d3f174a831f94cb6e354b9bac2e99676a8a27bc38c2efb7665"
+            }
+          },
+          "capsule_id": "ac6cf288244a9668affe6f24c10cf011c97074342f94d0d48a3b926c4e6f1c43"
+        },
+        "payload": {
+          "work": "erc-8183-v0 vectors: the provider's work product for job 19"
+        }
+      },
+      "contract_document": {
+        "id": "ec:example-review:2026-11",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-work",
+            "profile": "outcome",
+            "statement": "The submitted work does what the job description asks.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "semantic_judgment"
+              ]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "is_evaluation": "PASS",
+        "reason_binding": "PASS",
+        "capsule_verifies": "FAIL",
+        "contract_binding": "NOT_CHECKED",
+        "contract_digest": "NOT_CHECKED",
+        "deliverable_cited": "NOT_CHECKED",
+        "verdict_call": "NOT_CHECKED"
+      },
+      "predicates": []
+    }
+  ]
+}
