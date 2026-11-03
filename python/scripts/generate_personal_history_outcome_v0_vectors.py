@@ -16,7 +16,9 @@ rewrites:
   each re-signed by the holder key where it changes a reply;
 - the tick paths of §11 (PH §8.3): the deals in three streams at the Basic level's anchor tick, one
   committed through its earlier tick, with that stream's path, and the same with the path's
-  consistency proof changed.
+  consistency proof changed;
+- two files that are not a History at this level (§11): one with a member outside §11's table, and
+  one whose ``tick_paths`` value is not of PH §8.3's form.
 
 The native object is the x402 adapter corpus's ``positive`` case: its payment payload and settlement
 response octets, unchanged, and its recorded lookup with ``final`` set to true. Those two object
@@ -39,6 +41,7 @@ generators beside this script, for their encodings, keys and statuses.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -573,6 +576,25 @@ def cases(run: dict) -> list[dict]:
                     "derived: multi-stream-earlier-tick with one octet of the consistency proof's last right peak "
                     "flipped", [r], hr,
                     paths=(tick_paths(ended, bytes(bent)), [{"evidence_stream": ended, "status": "FAIL"}])))
+
+    # §11: a file with another member, or a tick_paths value not of PH §8.3's form, is not a History
+    # at this level. A verifier rejects it and evaluates nothing, so nothing else is expected.
+    by_id = {c["id"]: c for c in out}
+
+    def not_a_history(cid: str, title: str, base: str, how: str, change: Any) -> dict:
+        inputs = copy.deepcopy(by_id[base]["inputs"])
+        change(inputs)
+        return {"id": cid, "title": title, "cites": ["§11", "PH §8.3"], "source": f"derived: {base} with {how}",
+                "mode": "asked", "pins": by_id[base]["pins"], "inputs": inputs,
+                "expected": {"not_a_history": True, "fails": []}}
+
+    out.append(not_a_history("not-a-history-other-member", "A History file with a member outside §11's table",
+                             "holder-record", "a witness member added to the file",
+                             lambda i: i.__setitem__("witness", [])))
+    out.append(not_a_history("not-a-history-tick-path-other-member",
+                             "A History file whose tick path carries a member outside PH §8.3's",
+                             "multi-stream-earlier-tick", "the anchor digest added to its tick path",
+                             lambda i: i["tick_paths"]["paths"][0].__setitem__("anchor", ANCHOR_TICK_DIGEST)))
     return out
 
 
@@ -610,6 +632,7 @@ def check_frame(run: dict, all_cases: list[dict]) -> None:
     table, pack = history_frame.load(HISTORY)
     d = definition(json.loads(run["definitions"]["basic"]))
     assert sorted(d) == sorted(DEFINITION_MEMBERS) and d["holder_role"] in HOLDER_ROLES, "definition"
+    all_cases = [c for c in all_cases if not c["expected"].get("not_a_history")]
     accepted = [c["expected"]["history_properties"] for c in all_cases if c["expected"]["accepted"]]
     counted = [x["properties"] for c in all_cases for x in c["expected"]["claims"] or [] if x["counts"]]
     claim_order = [p for props in CLAIM_PROPS.values() for p in props]
