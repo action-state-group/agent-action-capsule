@@ -29,6 +29,7 @@ import subprocess
 import sys
 from collections import Counter
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -92,13 +93,14 @@ X402_REQUIRES = {
 }
 # §5.3: a payment shown for a deal also needs the payer and asset bound by the relying party's policy.
 X402_ALSO = ["payer_trust", "asset_trust"]
-# The Basic level corpus as it stood when this level was cut (its multi-stream revision included).
+# The Basic level corpus as it stood when this level was cut, with its multi-stream revision and the
+# readings of agent-action-capsule#328 (the §4.3 entry forms and the §8.3 tick paths).
 BASIC_RELEASED = {
-    "README.md": "054bc0339a2003b38c8bcda49bb6f6f4cccd141aa583f62d0f2072191dca606e",
-    "manifest.json": "fbf0e11e13735d12f6100cedf7eb76b305eb71384c2d02f9d54d838ff563abce",
+    "README.md": "f153449adf9937d6383a5b213d188be444b6e3c968b3e07b6ca40887648ed3f2",
+    "manifest.json": "f8e29f02384ae6be638c74010031e5d2b947bba711926fe7b50d4cff6d5e3aea",
     "producer/main.go": "e9054656ad2431de9c5cf9bed89cdb2316314039db0eb077148e3e8a20f7c38e",
     "responder-run.json": "f7d77d56d81ca187cb9a8118f8a15aae5407f5a96aca1c5525a5f5d2e827b848",
-    "vectors.json": "f1f0e1b95c7dd32f2ddc584d4c55bc9a643a58f550a941651bfd5d3e4c59a4b9",
+    "vectors.json": "e00bf5881965b8d58f509d1340a26c6d370b5e91c75f457c5b59446dd7157637",
 }
 HEX64 = re.compile(r"[0-9a-f]{64}")
 
@@ -174,7 +176,7 @@ def run_exchanges(case: dict) -> list[dict]:
         out.append({"message_type": r.message_type, "subject": env["subject"], "properties": props,
                     "accepted": accepted, "requirements": render_requirements(r.requirements),
                     "claim": {"evidence": r.evidence, "proofs": r.proofs},
-                    "_env": {**env, "artifact": json.loads(r.artifact)}})
+                    "_env": {**env, "artifact": artifact_value(r.artifact)}})
     return out
 
 
@@ -201,6 +203,42 @@ def declaration_form(dec: Any) -> bool:
     return True
 
 
+def artifact_value(octets: bytes | None) -> Any:
+    """The Artifact's value, or None unless its octets are exactly UTF-8 of JCS of one JSON value
+    (PH §4.3)."""
+    if octets is None:
+        return None
+    try:
+        value = json.loads(octets)
+        return value if jcs(value) == octets else None
+    except (ValueError, TypeError):
+        return None
+
+
+def is_time(v: Any) -> bool:
+    """IP §5.2's time form, naming a real calendar instant."""
+    if not (isinstance(v, str) and re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", v)):
+        return False
+    try:
+        datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return False
+    return True
+
+
+# PH §4.3: the forms of the entry members this level shares with the Basic level. PH fixes none for
+# the members this level adds to reads.
+ENTRY_FORMS: dict[str, Callable[[Any], bool]] = {
+    "digest": is_hex64,
+    "leaf_index": lambda v: type(v) is int and 0 <= v <= 2**53 - 1,
+    "committed_at": is_time,
+    "event_time_claim": is_time,
+    "epistemic_type": lambda v: isinstance(v, str) and v in {"observed_event", "system_of_record_fact", "producer_claim", "human_report",
+                                      "semantic_judgment", "derived_metric", "adjudication", "obligation_reference"},
+    "record_type": lambda v: isinstance(v, str),
+}
+
+
 def artifact_form(envs: list[dict]) -> bool:
     allowed = {"digest", "leaf_index", *READS}
     for env in envs:
@@ -208,12 +246,14 @@ def artifact_form(envs: list[dict]) -> bool:
         if not isinstance(a, dict) or set(a) != ARTIFACT_MEMBERS or not isinstance(a["evidence_stream"], str) \
                 or not a["evidence_stream"]:
             return False
-        if a["anchor"] != env["anchor"].get("digest") or a["derivation"] != env.get("derivation") \
-                or a["subject"] != env["subject"]:
+        if not is_hex64(a["anchor"]) or a["anchor"] != env["anchor"].get("digest") \
+                or a["derivation"] != env.get("derivation") or a["subject"] != env["subject"]:
             return False
         recs = a["records"]
         if not isinstance(recs, list) or not recs or any(
                 not isinstance(r, dict) or not {"digest", "leaf_index"} <= set(r) <= allowed for r in recs):
+            return False
+        if not all(ENTRY_FORMS[k](v) for r in recs for k, v in r.items() if k in ENTRY_FORMS):
             return False
     return True
 
@@ -738,3 +778,25 @@ def test_does_not_import_the_generator():
     modules = [a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names]
     modules += [n.module or "" for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)]
     assert not [m for m in modules if m.startswith("generate_")]
+
+
+def test_artifact_form_holds_the_basic_entry_forms():
+    """The entry members this level shares with the Basic level keep PH §4.3's forms; the members
+    it adds to reads have none from PH."""
+    digest = "0" * 64
+
+    def env(**change: Any) -> list[dict]:
+        r = {"digest": digest, "leaf_index": 1, "committed_at": "2026-10-15T00:00:02Z",
+             "epistemic_type": "producer_claim", "record_type": "outcome_recorded", "outcome": {"any": "object"}}
+        r.update(change)
+        return [{"anchor": {"digest": digest}, "derivation": "d", "subject": {"correlation": "deal"},
+                 "artifact": {"anchor": digest, "derivation": "d", "evidence_stream": "s",
+                              "subject": {"correlation": "deal"}, "records": [r]}}]
+
+    assert artifact_form(env())
+    for change in ({"digest": "private value"}, {"leaf_index": "1"}, {"committed_at": "2026-10-15T00:00:02.5Z"},
+                   {"event_time_claim": "2026-10-15T00:00:02+00:00"}, {"committed_at": "2026-02-30T00:00:00Z"},
+                   {"epistemic_type": "verified_fact"},
+                   {"epistemic_type": {"x": "y"}}):
+        assert not artifact_form(env(**change)), change
+    assert artifact_value(b'{ "a":1}') is None and artifact_value(b'{"a":1}') == {"a": 1}

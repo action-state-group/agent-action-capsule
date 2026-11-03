@@ -123,7 +123,7 @@ its 9 `record_signatures`.
 | `vectors/anchor-witness-v1/` | `spec/interop-profile-v1.md` §6.2.2 | verify | 69 |
 | `vectors/coverage-declaration-v0/` | `spec/interop-profile-v0.md` §6.7 | evaluate, verify | 13 |
 | `vectors/controller-binding-v0/` | `spec/controller-binding-v0.md` | verify | 42 |
-| `vectors/personal-history-basic-v0/` | `spec/personal-agent-history-profile-v0.md` §6.4 (Basic) | respond, verify | 14 |
+| `vectors/personal-history-basic-v0/` | `spec/personal-agent-history-profile-v0.md` §6.4 (Basic) | respond, verify | 23 |
 | `vectors/personal-history-outcome-v0/` | `spec/personal-agent-history-outcome-v0.md` (Outcome) | respond, evaluate | 25 |
 | `vectors/standard-history-v0/` | `spec/standard-history-v0.md` (`standard_history/1`) | evaluate, report | 30 |
 | `vectors/inference-service-history-v0/` | `spec/inference-service-history-profile-v0.md` | respond, verify | 27 |

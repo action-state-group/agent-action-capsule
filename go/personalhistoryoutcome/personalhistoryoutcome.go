@@ -459,7 +459,8 @@ func artifactForm(envs []map[string]any) bool {
 			return false
 		}
 		anchor := asMap(env["anchor"])
-		if !equal(a["anchor"], anchor["digest"]) || !equal(a["derivation"], env["derivation"]) || !equal(a["subject"], env["subject"]) {
+		digest, isText := a["anchor"].(string)
+		if !isText || !evidencerequest.IsDigest(digest) || !equal(a["anchor"], anchor["digest"]) || !equal(a["derivation"], env["derivation"]) || !equal(a["subject"], env["subject"]) {
 			return false
 		}
 		records, ok := a["records"].([]any)
@@ -477,14 +478,48 @@ func artifactForm(envs []map[string]any) bool {
 			if _, ok := r["leaf_index"]; !ok {
 				return false
 			}
-			for k := range r {
+			for k, v := range r {
 				if k != "digest" && k != "leaf_index" && !slices.Contains(Reads, k) {
+					return false
+				}
+				if form, ok := entryForms[k]; ok && !form(v) {
 					return false
 				}
 			}
 		}
 	}
 	return true
+}
+
+// entryForms are the forms PH §4.3 fixes for the entry members this level
+// shares with the Basic level: a 64-hex digest, an unsigned position, IP
+// §5.2 times and EL §4.1's epistemic types. PH fixes none for the members
+// this level adds to reads.
+var entryForms = map[string]func(any) bool{
+	"digest": func(v any) bool {
+		s, ok := v.(string)
+		return ok && evidencerequest.IsDigest(s)
+	},
+	"leaf_index": func(v any) bool {
+		_, ok := evidencerequest.UintValue(v)
+		return ok
+	},
+	"committed_at":     profileTime,
+	"event_time_claim": profileTime,
+	"epistemic_type": func(v any) bool {
+		s, ok := v.(string)
+		return ok && slices.Contains([]string{"observed_event", "system_of_record_fact", "producer_claim", "human_report",
+			"semantic_judgment", "derived_metric", "adjudication", "obligation_reference"}, s)
+	},
+}
+
+func profileTime(v any) bool {
+	s, ok := v.(string)
+	if !ok {
+		return false
+	}
+	_, ok = evidencerequest.ParseProfileTime(s)
+	return ok
 }
 
 // recordKindOK is PO §4: the closed kinds, outcome exactly on outcome

@@ -121,6 +121,12 @@ func (t TrustPolicy) AcceptsResponder(key any, at any) string {
 	return t.accepts(ok && slices.Contains(t.ResponderKeys, s), s, at)
 }
 
+// AcceptsLogKey is the status of the policy accepting kid as the key of the
+// log identity (iss, sub) at time at (profile §6.2.1 step 9).
+func (t TrustPolicy) AcceptsLogKey(iss, sub any, kid string, at any) string {
+	return t.acceptsLogKey(iss, sub, kid, at)
+}
+
 func (t TrustPolicy) acceptsLogKey(iss, sub any, kid string, at any) string {
 	i, ok1 := iss.(string)
 	s, ok2 := sub.(string)
