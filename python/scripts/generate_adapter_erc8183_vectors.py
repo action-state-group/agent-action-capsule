@@ -154,7 +154,7 @@ def deliverable_capsule(job_id: int) -> dict:
 
 
 def report_capsule(rec: dict) -> dict:
-    cap = seal(f"urn:example:evaluation-report:{rec['record_id']}", "example-evaluator@v1",
+    cap = seal(f"urn:example:evaluation-report:{rec.get('record_id', 'unnamed')}", "example-evaluator@v1",
                "2026-11-03T12:00:00Z", rec)
     return {"capsule": cap, "envelope_hex": envelope(cap["capsule_id"], "evaluator").hex(), "payload": rec}
 
@@ -165,23 +165,25 @@ def description(ref: str = CONTRACT_REF, digest: str = CONTRACT_DIGEST) -> str:
 
 
 def job(job_id: int, ending: str, deliverable: str | None, reason: str | None = None, desc: str | None = None,
-        rejector: str = EVALUATOR) -> dict:
-    """The recorded lookups for one job. ``ending`` is complete, reject or expire."""
-    status = {"complete": "Completed", "reject": "Rejected", "expire": "Expired"}[ending]
+        rejector: str = EVALUATOR, funded: bool = True, evaluator: str = EVALUATOR) -> dict:
+    """The recorded lookups for one job. ``ending`` is complete, reject, expire or open (no terminal event)."""
+    status = {"complete": "Completed", "reject": "Rejected", "expire": "Expired", "open": "Submitted"}[ending]
     events: list[dict] = []
+    if funded:
+        events.append({"event": "JobFunded", "args": {"jobId": job_id, "client": CLIENT, "amount": "1000000"}})
     if deliverable is not None:
         events.append({"event": "JobSubmitted",
                        "args": {"jobId": job_id, "provider": PROVIDER, "deliverable": "0x" + deliverable}})
     if ending == "complete":
-        events.append({"event": "JobCompleted", "args": {"jobId": job_id, "evaluator": EVALUATOR, "reason": reason}})
+        events.append({"event": "JobCompleted", "args": {"jobId": job_id, "evaluator": evaluator, "reason": reason}})
     elif ending == "reject":
         events.append({"event": "JobRejected", "args": {"jobId": job_id, "rejector": rejector, "reason": reason}})
-    else:
+    elif ending == "expire":
         events.append({"event": "JobExpired", "args": {"jobId": job_id}})
     return {
         "contract": CONTRACT,
         "job_id": job_id,
-        "getJob": {"id": job_id, "client": CLIENT, "provider": PROVIDER, "evaluator": EVALUATOR,
+        "getJob": {"id": job_id, "client": CLIENT, "provider": PROVIDER, "evaluator": evaluator,
                    "description": description() if desc is None else desc, "budget": "1000000",
                    "expiredAt": 1793750400, "status": status, "hook": "0x" + "00" * 20},
         "events": events,
@@ -218,7 +220,7 @@ def cases() -> list[dict]:
         rec = report(n, verdicts, kw.pop("cited", did), kw.pop("ref", CONTRACT_REF))
         rep = report_capsule(rec)
         reason = kw.pop("reason", "0x" + rep["capsule"]["capsule_id"])
-        j = job(n, ending, kw.pop("deliverable", did), reason if ending != "expire" else None, **kw)
+        j = job(n, ending, kw.pop("deliverable", did), reason if ending in ("complete", "reject") else None, **kw)
         return j, rep, d
 
     j, r, d = std(1, ["met"], "complete")
@@ -269,8 +271,16 @@ def cases() -> list[dict]:
     j, r, d = std(16, ["not_met"], "reject", deliverable=None)
     add("rejected-while-funded", "the evaluator rejected before any submit: no deliverable to cite (§7 step 6)",
         j, r, d, expect(deliverable_cited=NOT_PRESENT), [])
-    j, r, d = std(17, ["not_met"], "reject", deliverable=None, rejector=CLIENT)
+    j, r, d = std(17, ["not_met"], "reject", deliverable=None, rejector=CLIENT, funded=False)
     add("client-reject-open", "the client rejected while Open: not an evaluation, no report is read (§7 step 1)",
+        j, r, d, expect(is_evaluation=FAIL, **AFTER_EVAL_FAIL), [])
+    j, r, d = std(20, ["not_evaluable"], "open")
+    add("not-evaluable-still-open", "a not_evaluable report for a job that is still Submitted and has not expired: "
+        "no call yet, but the job has not ended (§7 step 7), so E3 does not hold (§9)", j, r, d,
+        expect(is_evaluation=NOT_PRESENT, reason_binding=NOT_PRESENT, verdict_call=NOT_CHECKED), [])
+    j, r, d = std(21, ["not_met"], "reject", deliverable=None, rejector=CLIENT, funded=False, evaluator=CLIENT)
+    add("client-is-evaluator-reject-open", "evaluator = client (ERC-8183 Roles); the client rejected while Open, "
+        "before any JobFunded or JobSubmitted: not an evaluation although rejector = evaluator (§7 step 1)",
         j, r, d, expect(is_evaluation=FAIL, **AFTER_EVAL_FAIL), [])
     j, r, d = std(18, ["met"], "complete")
     r = {**r, "envelope_hex": broken(bytes.fromhex(r["envelope_hex"])).hex()}
@@ -283,6 +293,26 @@ def cases() -> list[dict]:
     add("payload-digest-mismatch", "the held payload's verdict changed from not_met to met after sealing: its "
         "JSON-DIGEST no longer equals agent_input_digest (§7 step 3)", j, r, d,
         expect(capsule_verifies=FAIL, **AFTER_CAPSULE_FAIL), [])
+    j, r, d = std(22, ["out_of_scope"], "expire")
+    add("out-of-scope-refund", "out_of_scope judged; no call; JobExpired (§6.4): E3, as for not_evaluable", j, r, d,
+        expect(is_evaluation=NOT_PRESENT, reason_binding=NOT_PRESENT), ["E3"])
+    j, r, d = std(23, ["met"], "complete")
+    r = {**r, "capsule": {**r["capsule"], "capsule_id": "ab" * 32}}
+    add("carried-capsule-id-mismatch", "the held Capsule carries a capsule_id other than its recomputed one; reason "
+        "equals the recomputed one (§7 steps 2, 3)", j, r, d,
+        expect(capsule_verifies=FAIL, **AFTER_CAPSULE_FAIL), [])
+    d = deliverable_capsule(24)
+    skill_shape = {"record_type": "evaluation-report/v1", "verdict": "met", "contract_ref": CONTRACT_REF,
+                   "source_capsule_id": d["capsule"]["capsule_id"], "epistemic_type": "semantic_judgment"}
+    r = report_capsule(skill_shape)
+    j = job(24, "complete", d["capsule"]["capsule_id"], "0x" + r["capsule"]["capsule_id"])
+    add("payload-not-a-report", "a correctly sealed and signed payload that names itself evaluation-report/v1 but is "
+        "not the JF shape: no record_version, no cases (§7 step 3)", j, r, d,
+        expect(capsule_verifies=FAIL, **AFTER_CAPSULE_FAIL), [])
+    j, r, d = std(25, ["met"], "complete")
+    r = {**r, "envelope_hex": None}
+    add("report-without-envelope", "the report capsule is held without its Producer Envelope (§7 step 3)", j, r, d,
+        expect(capsule_verifies=NOT_PRESENT, **AFTER_CAPSULE_FAIL), [])
     return out
 
 

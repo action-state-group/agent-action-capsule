@@ -190,8 +190,8 @@ same-commit files in CI.
 - `adapters/erc-8183/`: the ERC-8183 adapter profile `spec/adapters/erc-8183-v0.md`: jobs whose
   evaluator's `reason` is the Capsule ID of a sealed `evaluation-report/v1`, with the job's recorded
   lookups, the report capsule, its Producer Envelope and payload, and the expected status of each
-  of the profile's seven checks. Four passing jobs (`met`/`complete`, `not_met`/`reject` and a
-  `not_evaluable` refund) and fifteen MUST-reject ones. Constructed, no chain read, signed with
+  of the profile's seven checks. Five passing jobs (`met`/`complete`, `not_met`/`reject` and the
+  `not_evaluable` and `out_of_scope` refunds) and twenty MUST-reject ones. Constructed, no chain read, signed with
   test keys derived from public labels; `python/scripts/generate_adapter_erc8183_vectors.py`
   regenerates them.
 - `adapters/nostr-mailbox/`: EXPERIMENTAL, not conformance vectors for any profile. The Nostr
