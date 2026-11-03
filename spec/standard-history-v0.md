@@ -37,6 +37,7 @@ the deal entry and the counting rules (§5), the card and its members (§4), the
 | EL | `draft-mih-agent-evidence-layer` -00 | the record header, its `record_type` and its correlation identifier, the epistemic types |
 | SR | `draft-mih-agent-settlement-records` -00 | the amount triple (`value`, `assetCode`, `assetScale`) ("Amounts"), the counterparty half citation ("Citations Between Legs") |
 | RES | `spec/evidence-result-v0.md` | the claim verdict `met`, `not_met`, `not_evaluable`, `out_of_scope` (§4) and the grade `self-attested` (§1) |
+| EB | `spec/draft-mih-zhang-agent-disclosure-bundle-02.md` (`evidence-bundle/v2`) | only the Bundle, its `records`, its `completeness` members (`missing`), the disclosure overlay ("Bundle-Level Disclosures"), the padding leaf ("Non-Record Leaves") and the interval coverage and per-record membership claims ("Completeness Claims and Log Membership"), as the carriage of the material `counts_recompute` needs (§6 "Handing the material") |
 | HF | `spec/history-frame-v0.md` | the History frame: its rules (§4), its parameters (§3), and this derivation's counting table and wording pack (§5, §6.1) |
 
 **Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
@@ -115,9 +116,10 @@ total it is part of, so a reader sees "9 of 12", never "75%".
 The holder key signs every card (the envelope, IP §6.2). That is the holder's statement of the
 counts. A recipient checks the card's form and its denominators without any further evidence
 (§6). It checks the window only against the policy (SH-9), and recomputes the counts only from
-deal entries, which it holds only when the holder hands it the Results and records they are read
-from (SH-3). Until then the window and the counts are the holder's statement, and a verifier
-shows them as such.
+deal entries, which it holds, shown complete, only when the holder hands it the records they are
+read from (§6 "Handing the material"). Without them the counts are the holder's statement, and
+without the policy so is the window; a verifier shows them as such, as the normal case and not as
+a warning: the holder signed the counts, and recomputing them needs the whole stream.
 
 ## 3. The derivation
 
@@ -138,7 +140,9 @@ The responder answers with an IP envelope [IP §6.2] whose `artifact` is UTF-8 o
 - **Who is answered** is the holder's policy, not this document. A responder that declines a
   requester refuses `policy_declined` or `not_authorized` [IP §6.3].
 - **Declared field set.** The card's members (§4). The card reveals no record, no record member
-  and no record digest [ER "Derivation-Scoped Disclosure"].
+  and no record digest [ER "Derivation-Scoped Disclosure"]. The material of §6 "Handing the
+  material" is not part of this answer: it is handed to one recipient, under the holder's own
+  disclosure policy, and the card's bytes are the same with or without it.
 - **Inclusion.** IP registers no verification-material kind for a derivation's artifact, so
   `anchor_inclusion` is `NOT_CHECKED` for a card [IP §6.2, P-13], as for PH §6.1. A card answer
   carries no `verification` member. The anchor's witness Receipts travel beside the card, as for
@@ -312,7 +316,7 @@ A verifier reports these properties of a card, in the IP §7.1 vocabulary [SH-1]
 | `denominator` | every tally carries `of`; its counts partition `of` (for `class_missing`, `count` is at most `of`); every band's `of` is 1 or more; the tallies agree as §4 says. `NOT_CHECKED` when `card_form` or `counts_integral` is `FAIL` | the card |
 | `window_from_policy` | the card's `window` equals the policy's window, and its `policy` the policy's digest. `NOT_CHECKED` without the policy | the policy's two members (§5.1) |
 | `as_of` | the card's `anchor` equals the anchor the envelope names, and its `since` is the year and month of the stream's first checkpoint. `NOT_CHECKED` without the anchor | the anchor, its time, the first checkpoint's time |
-| `counts_recompute` | every count of the card equals the count §5 derives from the deal entries, under the policy's window. `NOT_CHECKED` without the deal entries, the policy or the anchor, or when `card_form`, `counts_integral` or `denominator` is not `PASS` | the deal entries of every deal the stream holds at the anchor |
+| `counts_recompute` | every count of the card equals the count §5 derives, over the card's own `window`, from the deal entries. `NOT_CHECKED` without the deal entries of every deal the stream holds at the anchor, shown complete (§6 "Handing the material"), or without the anchor, or when `card_form`, `counts_integral` or `denominator` is not `PASS`. It does not need the policy: whether the card's window is the policy's is `window_from_policy` | the deal entries of every deal the stream holds at the anchor, shown complete; the anchor's time |
 
 A card is a **standard card** when every property is `PASS` or `NOT_CHECKED`, and `card_form`,
 `counts_integral` and `denominator` are `PASS`: HF §4.5's rule, with `window_from_policy`, `as_of`
@@ -323,6 +327,47 @@ verifier shows none of its counts.
 
 The card properties never change an envelope property or an IP §8 status. A card makes no outcome
 claim for a requirement to meet, and a requirement is never `SATISFIED` from a card alone.
+
+**Handing the material (SH-3).** A holder that wants a recipient to recompute a card's counts
+hands it `evidence-bundle/v2` Bundles [EB], one per log the anchor commits. This adds no member,
+derivation or token, and it is not a disclosure of SH-6: it changes neither the card nor its
+`coverage_kind`. Each Bundle's `records` are Capsules: the records the deal-entry mapping of the
+host's profile reads (SH-2), including the sealed records whose payloads carry the Results, the
+counterparty halves and the dispute statements. The holder includes only the records its own
+disclosure policy lets this recipient have, a policy this document does not define; the recipient
+learns nothing it may not already see. A Bundle's `root` is any record it carries and means
+nothing here, and its `completeness.records_mode` is not read: it describes citation closure from
+the `root`, not coverage.
+
+The recipient's verifier forms the deal entries (§5.2) by the host profile's mapping and reports
+which mapping it applied; with none for the card's host, `counts_recompute` is `NOT_CHECKED`. It
+passes the deal entries to the check only when it has shown **coverage**:
+
+- **(a)** the anchor's own log: every leaf from `seq` 1 to the anchor is a supplied record with
+  its per-record membership established, or a `padding` leaf [EB "Non-Record Leaves"], none listed
+  in `completeness.missing`, and the interval coverage claim established against the anchor [EB
+  "Completeness Claims and Log Membership"], neither claim labelled `checkpoint_unverified`. A
+  non-record leaf of any type but `padding` is not accepted: EB checks nothing further about it, so
+  it could hide a deal record;
+- **(b)** every other log the anchor commits, none excluded: the same, from `seq` 1 to the extent
+  the anchor commits for it. A recipient cannot tell a log the mapping reads from one it does not
+  unless it holds it. The set of committed logs must be in a form the recipient can check against
+  the anchor. An anchor that commits its logs through a salted or sparse tree does not enumerate
+  them, and this revision defines no disclosed form of that set (SH-10): for such an anchor
+  coverage cannot be shown, and `counts_recompute` is `NOT_CHECKED`.
+
+With coverage shown, a payload member the mapping reads that a Bundle withholds [EB "Bundle-Level
+Disclosures"] still makes the result `NOT_CHECKED`: a missing input would otherwise read as
+`undecided`, `no_record` or no `counterparty_class` (§5.2) and turn an honest card into a `FAIL`.
+Otherwise the check runs: every count equal is `PASS`, any difference `FAIL`. A `FAIL` therefore
+never comes from a partial handover, and the holder's own number of deals, `in_window.of`, is never
+what shows completeness. A card with `in_window.of` 0 recomputes `PASS` over coverage with no deal
+in it.
+
+The consequence is stated plainly: `PASS` needs every record of every log the anchor commits, deal
+records and others. A disclosure policy that shows a recipient only its own deals leaves
+`counts_recompute` `NOT_CHECKED` for any holder with other deals; a verifier shows that as the
+card's counts being the holder's statement (above), not as a defect of the card or the holder.
 
 **What a verifier shows** for a standard card, in this order: that the counts cover counted deals
 in the stated window, how many deals in it were not counted, and how many counted deals are
@@ -440,9 +485,14 @@ its correlation identifier is the deal reference. Its payload has exactly these 
   their cards learn only that they asked the same holder at the same anchor. A recipient that does
   not hold the policy cannot check the window (§6 `window_from_policy` `NOT_CHECKED`), so a card
   with another window is then the holder's statement too.
-- **The holder's statement.** The holder key signs the counts. Without deal entries a recipient
-  cannot recompute them (§6). A valid signature never shows that the counts are right, only that
+- **The holder's statement.** The holder key signs the counts. Without deal entries shown
+  complete a recipient cannot recompute them (§6). A valid signature never shows that the counts are right, only that
   the holder stated them.
+- **Handed material.** The Bundles of §6 "Handing the material" hold only records the holder's
+  own policy lets this recipient have, so they disclose nothing beyond it. With the anchor's log in
+  hand, whether a handover is partial or complete tells the recipient nothing the log sizes the
+  anchor commits do not already show. The Bundles are per recipient and are not a
+  `standard_history/1` answer.
 - **No grading.** As HF §4.6: this document defines no score, grade, ratio or ordering, and a
   verifier that follows it shows none. The outcome bar §6 allows draws the same three counts; it is
   not a ratio and never a rate.
@@ -453,10 +503,11 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 |---|---|
 | SH-1 | The card properties (§6) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping, as PH's PA-10. The History frame states this for every instance (HF §4.4). |
 | SH-2 | Filling the deal entry (§5.2) from a host's records: which record gives `agreed_at`, `role` and `amount`, and which claim is a deal's outcome claim. A host profile states its mapping, as `spec/deal-reconcile-contract-v0.md` §4.2 does for a half. |
-| SH-3 | Handing a recipient what `counts_recompute` needs: the Results and records the deal entries are read from, without disclosing more than the recipient may see. Until a carriage is defined, a recipient's verifier reports `counts_recompute` `NOT_CHECKED`. ER asks a derivation's result to be re-derivable by the requester; this revision meets that only with that material. |
+| SH-3 | Closed (§6 "Handing the material"): the carriage is one `evidence-bundle/v2` per log the anchor commits, and `counts_recompute` needs coverage shown. ER asks a derivation's result to be re-derivable by the requester; this revision meets that only with that material, and only where coverage can be shown (SH-10). |
 | SH-4 | Closed for the anchor: a card's page checks the anchor's witness Receipts with `anchor_witnessed` (IP1 §6.2.2, §6 "The witness line"). Still open: a verification-material kind that proves a derivation's artifact against the anchor (IP P-13), as PH's PA-13, without which `anchor_inclusion` stays `NOT_CHECKED` and no Receipt says anything about a card's counts; and carrying the Receipts in the envelope's `verification` instead of beside the card. |
 | SH-5 | Finer `controller_class` values for a node's declaration, and the node's further counts, such as counts per tier of paired answers and of referee findings. This revision defines a `node` card with the same members as a `person` card. The further counts belong in a separate derivation token for nodes, so that `/1` stays the same for every holder. |
 | SH-6 | A disclosure wider than the policy's window, sent to one requester at the holder's choice. It declares the IP §6.7 coverage kind `holder_selected` and is never a `standard_history/1` card. |
 | SH-7 | Reading a dispute's `outcome` and `forum` (§5.4) from the resolving process's statement: IP §11.2.6's statuses (`open`, `upheld`, `dismissed`, `conflicting`) do not say for whom a resolution found, and IP names no forum. |
 | SH-8 | Carrying `counterparty_class` in SR's terms leg, whose `settlement` member is closed in -00. Until a revision lists it, it is carried in another record of the deal (§7). |
 | SH-9 | Handing a recipient the policy, or the two members of it the card reads (§5.1), so that `window_from_policy` can run. Until a carriage is defined, a recipient's verifier reports it `NOT_CHECKED`, and the window is the holder's statement. |
+| SH-10 | A disclosed, checkable form of the set of logs an anchor commits, for an anchor that commits them through a salted or sparse tree, such as a batching tree whose root is a parent log's entry. Without it, coverage (b) of §6 "Handing the material" cannot be shown for such an anchor, and `counts_recompute` stays `NOT_CHECKED`. |

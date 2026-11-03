@@ -353,8 +353,10 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
     """The six card properties of SH §6, in order.
 
     ``policy`` is ``{"digest", "window"}`` (SH §5.1); ``as_of`` is ``{"anchor", "anchor_time",
-    "first_checkpoint_time"}``; ``deals`` is every deal entry the stream holds at the anchor. Each
-    is optional; a property that needs a missing one is ``NOT_CHECKED``. Raises ``ValueError`` on a
+    "first_checkpoint_time"}``; ``deals`` is every deal entry the stream holds at the anchor, passed only when the verifier has
+    shown coverage and no payload member the mapping reads is withheld (SH §6 "Handing the
+    material"); the counts are recomputed over the card's own
+    window, so the policy is not needed for them. Each is optional; a property that needs a missing one is ``NOT_CHECKED``. Raises ``ValueError`` on a
     malformed input, never on a malformed card. A card nested deeper than the shared
     128-level limit reads as no card, as Go's ``Check`` reads one it cannot parse.
     """
@@ -382,12 +384,12 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
         _time(as_of.get("first_checkpoint_time"))
         p["as_of"] = _status(isinstance(card, Mapping) and card.get("anchor") == as_of.get("anchor")
                              and card.get("since") == as_of["first_checkpoint_time"][:7])
-    ready = (deals is not None and policy is not None and as_of is not None
+    ready = (deals is not None and as_of is not None
              and all(p[k] == "PASS" for k in ("card_form", "counts_integral", "denominator")))
     if not ready:
         p["counts_recompute"] = "NOT_CHECKED"
     else:
-        derived = _counts(deals, _whole(policy["window"]), _time(as_of.get("anchor_time")))
+        derived = _counts(deals, _whole(card["window"]), _time(as_of.get("anchor_time")))
         p["counts_recompute"] = _status(all(card[k] == v for k, v in derived.items()))
     return p
 
