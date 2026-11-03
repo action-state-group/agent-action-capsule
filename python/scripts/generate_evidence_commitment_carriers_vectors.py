@@ -2,11 +2,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Generate the vectors of the experimental evidence commitment carriers (spec/bindings/evidence-commitment-carriers-v0.md).
 
-One signed evidence commitment is carried three ways: an attestation entry in a directory record's
-trust manifest, an extension entry in an A2A Agent Card, and an addressable Nostr event. Every
+One signed evidence commitment is carried four ways: an attestation entry in a directory record's
+trust manifest, an extension entry in an A2A Agent Card, an addressable Nostr event, and a service
+entry in an ERC-8004 agent registration file. Every
 expected result below is chosen by hand from the binding's text and cites the step it comes from;
 digests, event ids and signatures are computed. Nothing here runs a verifier or contacts a relay,
-directory or host. ``python/tests/test_evidence_commitment_carriers_vectors.py`` checks every
+directory, chain or host. ``python/tests/test_evidence_commitment_carriers_vectors.py`` checks every
 carrier entry, commitment, card and answer with its own code.
 
 The Nostr side reuses the mailbox generator's BIP-340, NIP-01 and bech32 code
@@ -62,6 +63,11 @@ RELAY = "wss://relay.example"
 COMMITMENT_EXT_URI = ("https://github.com/action-state-group/agent-action-capsule/blob/main/"
                       "spec/bindings/evidence-commitment-carriers-v0.md")
 HOST = "https://node.example"
+# §5.4: the ERC-8004 registration file type, and the Base Sepolia Identity Registry named in EIP-55
+# case. Nothing reads the chain: each case states the agent the verifier resolved the file from.
+ERC8004_TYPE = "https://eips.ethereum.org/EIPS/eip-8004#registration-v1"
+REGISTRY = "eip155:84532:0x8004A818BFB912233c491871b3d84c89A494BD9e"
+AGENT_ID = 7
 
 # ---------------------------------------------------------------------------
 # Test keys
@@ -210,6 +216,38 @@ def nostr_event(signer: str, data: bytes, created_at: str, *, inline: bool = Tru
             "tags": tags, "content": body, "sig": sig}
 
 
+def registration(endpoint: str, digest: str, *, agent_id: int = AGENT_ID, registry: str = REGISTRY,
+                 **extra: Any) -> dict:
+    """§5.4: a registration file with the evidence-commitment entry beside another service. Its
+    ``registrations[]`` names the registry with the address in lowercase (EIP-55 case is not compared)."""
+    entry = {"digest": digest, "endpoint": endpoint, "name": "evidence-commitment",
+             "version": "evidence-commitment/1"}
+    ns, chain, addr = registry.split(":")
+    return {"type": ERC8004_TYPE, "name": "example-node",
+            "description": "Answers evidence requests about its own records",
+            "image": f"{HOST}/node.png",
+            "services": [{"endpoint": f"{HOST}/.well-known/agent-card.json", "name": "A2A", "version": "1.0.1"},
+                         entry],
+            "registrations": [{"agentId": agent_id, "agentRegistry": f"{ns}:{chain}:{addr.lower()}"}], **extra}
+
+
+def erc8004(agent_uri: str, file: dict, *, agent: bool = True) -> tuple[dict, dict]:
+    """§5.4: the carrier, as the verifier holds it after resolving an agent's agentURI (or, with
+    ``agent`` false, after following a link). Returns the carrier and the octets its URI serves."""
+    data = ip.jcs(file).encode()
+    carrier: dict[str, Any] = {"carrier": "erc8004", "agent_uri": agent_uri}
+    if agent:
+        carrier["agent"] = {"agentId": AGENT_ID, "agentRegistry": REGISTRY}
+    if agent_uri.startswith("data:"):
+        carrier["agent_uri"] = "data:application/json;base64," + base64.b64encode(data).decode()
+        return carrier, {}
+    return carrier, {agent_uri: data}
+
+
+def entry_of(file: dict) -> dict:
+    return next(e for e in file["services"] if e["name"] == "evidence-commitment")
+
+
 def naddr_uri(author: str, relay: str) -> str:
     """§5.3: NIP-19 naddr (TLV 0 the d value, 1 a relay, 2 the author, 3 the kind) as a nostr: URI."""
     d = NODE_ID.encode("ascii")
@@ -223,6 +261,7 @@ def served(**uris: bytes) -> dict:
 
 
 URI_CUR, URI_OLD = f"{HOST}/commitment.json", f"{HOST}/commitment-2026-10-02.json"
+URI_REG = f"{HOST}/.well-known/agent-registration.json"
 SENT = "2026-10-03T12:06:00Z"
 
 # ---------------------------------------------------------------------------
@@ -457,6 +496,88 @@ def build_cases() -> list[dict]:
          [{"carrier": "nostr", "event": bad}],
          {"carriers": [carrier_result("nostr", None, check="nostr_event")], "commitments": []})
 
+    # §5.4: the ERC-8004 entry.
+    four_file = registration(URI_CUR, sha_tag(CUR))
+    four, four_served = erc8004(URI_REG, four_file)
+    case("four-carriers-one-commitment",
+         "one commitment through a directory entry, an A2A entry, a Nostr event and an ERC-8004 entry on one "
+         "domain: one digest, verified once",
+         ["§5", "§5.4", "§6", "§7"],
+         [directory(URI_CUR, sha_tag(CUR)), a2a(URI_CUR, sha_tag(CUR)), {"carrier": "nostr", "event": ev_cur}, four],
+         {"carriers": [carrier_result("directory", CUR), carrier_result("a2a", CUR),
+                       carrier_result("nostr", CUR, attribution="announced"), carrier_result("erc8004", CUR)],
+          "commitments": [verified(CUR, "current")],
+          "key_binding": "bound", "cards": cards_cur},
+         uris=served(**{URI_CUR: CUR}, **four_served), answer_=answer())
+
+    data_file = registration(naddr, sha_tag(CUR), supportedTrust=["reputation"])
+    data_carrier, _ = erc8004("data:", data_file)
+    case("erc8004-data-uri-naddr",
+         "an agentURI that is a data: URI, whose entry's endpoint is the announce event's naddr and whose "
+         "supportedTrust is not read: resolved to the event, same octets",
+         ["§5.4", "§5.3"],
+         [data_carrier],
+         {"carriers": [carrier_result("erc8004", CUR)], "commitments": [verified(CUR, "current")]},
+         relay_events=[ev_cur])
+
+    stale, stale_served = erc8004(URI_REG, registration(URI_CUR, sha_tag(OLD)))
+    case("erc8004-stale-digest",
+         "an ERC-8004 entry whose digest names an older version: digest_mismatch, and the served octets verify",
+         ["§4", "§5.4", "§6 V1"],
+         [stale],
+         {"carriers": [carrier_result("erc8004", CUR, digest_mismatch=True)],
+          "commitments": [verified(CUR, "current")]},
+         uris=served(**{URI_CUR: CUR}, **stale_served))
+
+    def bad_entry(cid: str, shows: str, change) -> None:
+        file = registration(URI_CUR, sha_tag(CUR))
+        change(file)
+        carrier, srv = erc8004(URI_REG, file)
+        case(cid, shows, ["§5.4", "§6 V0"], [carrier],
+             {"carriers": [carrier_result("erc8004", None, check="erc8004_entry")], "commitments": []},
+             uris=served(**{URI_CUR: CUR}, **srv))
+
+    bad_entry("erc8004-entry-with-size", "an ERC-8004 entry with a size member: erc8004_entry, not read",
+              lambda f: entry_of(f).update(size=len(CUR)))
+    bad_entry("erc8004-entry-bad-version", "an ERC-8004 entry whose version is not a commitment profile: "
+              "erc8004_entry, not read", lambda f: entry_of(f).update(version="1.0"))
+    bad_entry("erc8004-entry-bad-scheme", "an ERC-8004 entry whose endpoint is neither https: nor nostr:: "
+              "erc8004_entry, not read", lambda f: entry_of(f).update(endpoint="ipfs://bafyexample"))
+    bad_entry("erc8004-two-entries", "a registration file with two evidence-commitment entries: "
+              "erc8004_entry, neither read", lambda f: f["services"].append(dict(entry_of(f))))
+
+    def bad_registration(cid: str, shows: str, **kw: Any) -> None:
+        carrier, srv = erc8004(URI_REG, registration(URI_CUR, sha_tag(CUR), **kw))
+        case(cid, shows, ["§5.4", "§6 V0", "§8"], [carrier],
+             {"carriers": [carrier_result("erc8004", None, check="erc8004_registration")], "commitments": []},
+             uris=served(**{URI_CUR: CUR}, **srv))
+
+    bad_registration("erc8004-registration-mismatch",
+                     "a registration file whose registrations[] names another agentId on the same registry: "
+                     "erc8004_registration, not read", agent_id=AGENT_ID + 1)
+    bad_registration("erc8004-registry-mismatch",
+                     "a registration file whose registrations[] names the agentId on another chain: "
+                     "erc8004_registration, not read", registry=REGISTRY.replace(":84532:", ":1:"))
+
+    by_link, link_served = erc8004(URI_REG, registration(URI_CUR, sha_tag(CUR), agent_id=AGENT_ID + 1),
+                                   agent=False)
+    case("erc8004-reached-by-link",
+         "a registration file reached by a link, with no agent in hand: the registrations check is skipped, "
+         "and the entry is read",
+         ["§5.4"],
+         [by_link],
+         {"carriers": [carrier_result("erc8004", CUR)], "commitments": [verified(CUR, "current")]},
+         uris=served(**{URI_CUR: CUR}, **link_served))
+
+    forged_reg, forged_served = erc8004(URI_REG, registration(URI_CUR, sha_tag(forged_octets)))
+    case("erc8004-forged-octets",
+         "an ERC-8004 entry pointing to the commitment with a member changed: refused",
+         ["§5.4", "§6 V2", "§8"],
+         [forged_reg],
+         {"carriers": [carrier_result("erc8004", forged_octets)],
+          "commitments": [refused(forged_octets, "commitment_signature")]},
+         uris=served(**{URI_CUR: forged_octets}, **forged_served))
+
     return cases
 
 
@@ -476,9 +597,10 @@ def build() -> dict[str, bytes]:
     corpus = {
         "set": SET,
         "status": STATUS,
-        "provenance": "spec-derived, constructed; no relay, directory or host was contacted",
+        "provenance": "spec-derived, constructed; no relay, directory, chain or host was contacted",
         "binding": BINDING,
-        "carriage": {"announce_kind": ANNOUNCE_KIND, "relay": RELAY, "a2a_extension_uri": COMMITMENT_EXT_URI},
+        "carriage": {"announce_kind": ANNOUNCE_KIND, "relay": RELAY, "a2a_extension_uri": COMMITMENT_EXT_URI,
+                     "erc8004_registration_type": ERC8004_TYPE},
         "node_id": NODE_ID,
         "verifier": {"note": "The verifier's own configuration (binding §6 V4): when it reads the carriers "
                              "(its time), and its clock skew.",
