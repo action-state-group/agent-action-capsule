@@ -1046,6 +1046,9 @@ the card discloses commitments, external receipts over those commitments,
 and the proofs that each commitment extends the last. Its size is linear
 in the number of checkpoints and independent of the number of records.
 
+A `history_card/1` answers either the `checkpoints` subject or the
+`full_history` subject: both name the evidence stream the card is for.
+
 The history card is the default first question. It is the thing a
 stranger checks before deciding whether to ask for anything else; it is
 safe to serve to anyone under the digests-only tier; and it is sufficient

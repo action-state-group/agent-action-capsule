@@ -1538,6 +1538,9 @@ Internet-Draft              Evidence Request                October 2026
    extends the last.  Its size is linear in the number of checkpoints
    and independent of the number of records.
 
+   A history_card/1 answers either the checkpoints subject or the
+   full_history subject: both name the evidence stream the card is for.
+
    The history card is the default first question.  It is the thing a
    stranger checks before deciding whether to ask for anything else; it
    is safe to serve to anyone under the digests-only tier; and it is
@@ -1558,9 +1561,6 @@ Internet-Draft              Evidence Request                October 2026
    that a named subject will remain answerable under this interaction
    until a stated time.  It carries:
 
-   1.  the subject, in one of the forms of Section 3.1, and the evidence
-       stream it belongs to;
-
 
 
 
@@ -1569,6 +1569,9 @@ Mih                        Expires 3 May 2027                  [Page 28]
 
 Internet-Draft              Evidence Request                October 2026
 
+
+   1.  the subject, in one of the forms of Section 3.1, and the evidence
+       stream it belongs to;
 
    2.  until: the time after which the commitment lapses, covered by the
        signature;
@@ -1615,9 +1618,6 @@ Internet-Draft              Evidence Request                October 2026
    resolvable and the bytes staying unchanged are two different
    promises.  The digest keeps the second.  The commitment, when
    present, names who is answerable for the first, and for how long.
-
-
-
 
 
 
