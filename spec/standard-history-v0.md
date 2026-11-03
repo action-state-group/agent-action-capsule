@@ -147,8 +147,9 @@ a warning: the holder signed the counts, and recomputing them needs the whole st
 Everything this document says of a card holds under both tokens unless it names one. A responder
 answers a request with a card of the token the request names, never of the other one. A
 responder whose records do not give a deal's agreed amount cannot fill that deal's `/1` entry
-(§5.2), so it cannot answer `/1`: it refuses the request [IP §6.3]. It never leaves the deal out
-of a `/1` card, and it never fills an amount it was not given; it can answer `/2`.
+(§5.2), so it cannot answer `/1`: it refuses the request with reason `no_such_subject` [IP §6.3,
+ER "The Signed Refusal"]. It never leaves the deal out of a `/1` card, and it never fills an
+amount it was not given; it can answer `/2`.
 
 The responder answers with an IP envelope [IP §6.2] whose `artifact` is UTF-8 of JCS of the card
 (§4).
