@@ -179,13 +179,15 @@ vectors: no signing input, member, token or outcome word changes [P-70].
   > `params` value and of the `evidence_manifest` result. The resource is static and carries no
   > envelope [ER §10]. A responder that serves the HTTP binding and publishes a manifest MUST
   > serve it at this path, unless it shares its origin with another responder. Authentication,
-  > caller and request headers do not change the body (previous rule). The path adds no member, token or outcome word to the manifest. The path
-  > belongs to an origin [RFC 8615], so responders that share an origin do not use it.
+  > caller and request headers do not change the body (previous rule). The path adds no member,
+  > token or outcome word to the manifest. The path belongs to an origin [RFC 8615], so responders
+  > that share an origin do not use it.
 - **§11.4.7, `manifest_form`.** After "A number, boolean or map anywhere in it is `FAIL`." add: for
   the copy fetched over HTTP it is also `FAIL` when the media type is not `application/json`, when
   the body does not parse as JSON without duplicate member names, or when the body octets are not
   exactly the JCS serialization of the value they parse to [P-45; P-70]. `manifest_consistency`
-  compares the HTTP copy with the others as it compares any two copies.
+  compares the HTTP copy with the others as it compares any two copies. A copy whose body does not
+  parse counts as a manifest unequal to every other copy, so `manifest_consistency` is `FAIL`.
 - **§11.4.8.** The `carriage-invariance` vector also fetches the manifest over HTTP, as the body of
   a `GET` at `/.well-known/evidence-manifest`, and its expectation is that the three manifests give
   `manifest_form` `PASS` and `manifest_consistency` `PASS`. Four rows are added to its negative
@@ -265,6 +267,6 @@ second change to take a new identifier under P-1.
   `evidence-interop/2` (§3.1). Left open: registering `evidence-manifest` in the IANA "Well-Known
   URIs" registry [RFC 8615]. It is not registered; until it is the name is this profile's own, and
   a later draft revision that adopts the path would carry the registration request. Also left
-  open: a requester has no fixed path for a responder that shares its origin with another responder,
-  since the path belongs to the origin. This revision
-  adds RFC 8615 and RFC 9110 to the references of v1.
+  open: a requester has no fixed path for a responder that shares its origin with another
+  responder, since the path belongs to the origin. This revision adds RFC 8615 and RFC 9110 to the
+  references of v1.
