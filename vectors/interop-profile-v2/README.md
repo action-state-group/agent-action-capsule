@@ -59,5 +59,8 @@ here unchanged.
   manifest, so `manifest_form` is `PASS` for each copy and `manifest_consistency` is `FAIL`.
   `carriage-manifest-http-not-jcs` is new too: the body is the same manifest pretty-printed, so
   the HTTP copy's `manifest_form` is `FAIL` and `manifest_consistency` is `PASS`.
+  `carriage-manifest-http-wrong-media-type` serves the JCS body as `text/plain` (same results), and
+  `carriage-manifest-http-duplicate-member` repeats `subject_forms` in the body, so it does not
+  parse: the HTTP copy's `manifest_form` and `manifest_consistency` are both `FAIL`.
 
 The key seed labels and log entry labels keep their `evidence-interop/0` text, as in v1.

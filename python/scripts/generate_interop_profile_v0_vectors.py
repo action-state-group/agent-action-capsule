@@ -1618,6 +1618,32 @@ def carriage_cases() -> list[dict]:
                                      "mcp_evidence_manifest": {"manifest_form": "PASS"},
                                      "http_well_known": {"manifest_form": "FAIL"},
                                      "manifest_consistency": "PASS"}}))
+        out.append(case(
+            "carriage-manifest-http-wrong-media-type",
+            "§11.4.7: the body at /.well-known/evidence-manifest is the same manifest in JCS, served as "
+            "text/plain. manifest_form FAIL for that copy and PASS for the others; manifest_consistency PASS.",
+            carried(None, None, None, {"a2a_extension": card_entry, "mcp_evidence_manifest": mcp_manifest,
+                                       "http_well_known": http_manifest(manifest()) | {"media_type": "text/plain"}}),
+            {}, [], {"caller_invariance": "NOT_CHECKED"},
+            {"manifest_properties": {"a2a_extension": {"manifest_form": "PASS"},
+                                     "mcp_evidence_manifest": {"manifest_form": "PASS"},
+                                     "http_well_known": {"manifest_form": "FAIL"},
+                                     "manifest_consistency": "PASS"}}))
+        member = jcs(manifest()).encode()
+        key = b'"subject_forms":["record"]'
+        assert key in member
+        out.append(case(
+            "carriage-manifest-http-duplicate-member",
+            "§11.4.7: the body at /.well-known/evidence-manifest repeats the member subject_forms, so it "
+            "does not parse as JSON without duplicate member names. manifest_form FAIL for that copy and "
+            "manifest_consistency FAIL.",
+            carried(None, None, None, {"a2a_extension": card_entry, "mcp_evidence_manifest": mcp_manifest,
+                                       "http_well_known": http_manifest(manifest(), member.replace(key, key + b"," + key))}),
+            {}, [], {"caller_invariance": "NOT_CHECKED"},
+            {"manifest_properties": {"a2a_extension": {"manifest_form": "PASS"},
+                                     "mcp_evidence_manifest": {"manifest_form": "PASS"},
+                                     "http_well_known": {"manifest_form": "FAIL"},
+                                     "manifest_consistency": "FAIL"}}))
     return out
 
 
