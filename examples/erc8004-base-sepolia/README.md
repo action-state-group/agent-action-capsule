@@ -23,6 +23,10 @@ uv run erc8004_carrier.py resolve --agent-id N
   (V3). With `capsulectl` (capsule-cli v0.1.0-rc32 or later) on `PATH`, it then runs
   `capsulectl verify --history` on the commitment, which checks each stapled `history_card/1` and
   its checkpoint chain. V5, the key binding, needs a signed answer from the node, so it is not shown.
+  It follows only a `data:` or `https:` *agentURI* and an `https:` endpoint; it stops on an `ipfs:`
+  *agentURI* or a `nostr:` endpoint, which §5.4 allows but this example does not fetch.
+- **A failed second transaction.** If `setAgentURI()` fails after `register()` succeeded, rerun
+  `register` with `--agent-id` set to the printed id: it sends only `setAgentURI()`.
 
 Only the Identity Registry is used, never the Reputation or Validation Registry. Run it on Base
 Sepolia only, and never on mainnet. The vectors in `vectors/adapters/evidence-commitment-carriers/`

@@ -7,7 +7,7 @@
 resolve one from its agentId to a verified commitment (spec/bindings/evidence-commitment-carriers-v0.md
 §5.4 and §6).
 
-    uv run erc8004_carrier.py register --key-file KEY.json --commitment-url URL
+    uv run erc8004_carrier.py register --key-file KEY.json --commitment-url URL [--agent-id N]
     uv run erc8004_carrier.py resolve --agent-id N
 
 Base Sepolia (chain 84532) only, testnet gas only. It calls only the Identity Registry's register()
@@ -26,6 +26,7 @@ import argparse
 import base64
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -46,6 +47,7 @@ REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e"
 AGENT_REGISTRY = f"eip155:{CHAIN_ID}:{REGISTRY}"
 TYPE = "https://eips.ethereum.org/EIPS/eip-8004#registration-v1"
 PROFILES = {"evidence-commitment/0", "evidence-commitment/1"}
+SHA_TAG = re.compile(r"sha256:[0-9a-f]{64}")
 ABI = [
     {"type": "function", "name": "register", "inputs": [], "outputs": [{"name": "agentId", "type": "uint256"}],
      "stateMutability": "nonpayable"},
@@ -111,10 +113,13 @@ def cmd_register(args: argparse.Namespace) -> None:
     hop("commitment", f"{args.commitment_url} {digest}")
     hop("owner", account.address)
     # register() first: the file's registrations[] names the agentId, which only the registry assigns.
-    first = send(w3, account, contract.functions.register())
-    (event,) = contract.events.Registered().process_receipt(first)
-    agent_id = event.args.agentId
-    hop("register tx", "0x" + first.transactionHash.hex().removeprefix("0x"))
+    # With --agent-id, an agent registered by an earlier run whose setAgentURI failed is finished instead.
+    agent_id = args.agent_id
+    if agent_id is None:
+        first = send(w3, account, contract.functions.register())
+        (event,) = contract.events.Registered().process_receipt(first)
+        agent_id = event.args.agentId
+        hop("register tx", "0x" + first.transactionHash.hex().removeprefix("0x"))
     hop("agentId", str(agent_id))
     second = send(w3, account, contract.functions.setAgentURI(
         agent_id, data_uri(registration_file(agent_id, args.commitment_url, digest))))
@@ -125,6 +130,8 @@ def cmd_resolve(args: argparse.Namespace) -> None:
     contract = registry(Web3(Web3.HTTPProvider(RPC)))
     hop("agent", f"{AGENT_REGISTRY} agentId {args.agent_id}")
     uri = contract.functions.tokenURI(args.agent_id).call()
+    if not uri:
+        sys.exit("tokenURI is empty: the agent has no registration file yet (finish it with register --agent-id)")
     hop("tokenURI", uri if len(uri) < 120 else uri[:117] + "...")
     prefix = "data:application/json;base64,"
     file = json.loads(base64.b64decode(uri[len(prefix):]) if uri.startswith(prefix) else fetch(uri))
@@ -142,24 +149,32 @@ def cmd_resolve(args: argparse.Namespace) -> None:
         sys.exit("V0 erc8004_registration: registrations[] does not name this agent")
     hop("V0 registrations", "PASS")
     if (len(entries) != 1 or set(entries[0]) != {"name", "endpoint", "version", "digest"}
-            or entries[0]["version"] not in PROFILES or not entries[0]["endpoint"].startswith(("https:", "nostr:"))):
+            or entries[0]["version"] not in PROFILES or not entries[0]["endpoint"].startswith(("https:", "nostr:"))
+            or not SHA_TAG.fullmatch(entries[0]["digest"])):
         sys.exit("V0 erc8004_entry: the entry is not in §5.4's form")
     (entry,) = entries
     hop("V0 entry", "PASS")
     octets = fetch(entry["endpoint"])
     got = "sha256:" + hashlib.sha256(octets).hexdigest()
     hop("V1 octets", f"{entry['endpoint']} {got}" + ("" if got == entry["digest"] else " digest_mismatch"))
-    c = json.loads(octets)
-    if c.get("profile") not in PROFILES:
-        sys.exit("V2 commitment_form")
-    key = load_der_public_key(base64.b64decode(c["spki"]))
-    if not isinstance(key, Ed25519PublicKey) or key.public_bytes(Encoding.Raw, PublicFormat.Raw).hex() != c["key_id"]:
-        sys.exit("V2 key_id_spki")
-    sig = c["sig"]["value"]
     try:
+        c = json.loads(octets)
+        if not isinstance(c, dict) or c.get("profile") not in PROFILES or not isinstance(c.get("sig"), dict):
+            raise ValueError
+    except ValueError:
+        sys.exit("V2 commitment_form")
+    try:
+        key = load_der_public_key(base64.b64decode(c["spki"]))
+        if (not isinstance(key, Ed25519PublicKey)
+                or key.public_bytes(Encoding.Raw, PublicFormat.Raw).hex() != c["key_id"]):
+            raise ValueError
+    except (ValueError, KeyError, TypeError):
+        sys.exit("V2 key_id_spki")
+    try:
+        sig = c["sig"]["value"]
         key.verify(base64.urlsafe_b64decode(sig + "=" * (-len(sig) % 4)),
                    rfc8785.dumps({k: v for k, v in c.items() if k != "sig"}))
-    except InvalidSignature:
+    except (InvalidSignature, ValueError, KeyError, TypeError):
         sys.exit("V2 commitment_signature")
     hop("V2 signature", f"PASS key_id {c['key_id']} issued_at {c['issued_at']}")
     cards = c["history_cards"] if c["profile"] == "evidence-commitment/1" else [c["history_card"]]
@@ -186,6 +201,7 @@ def main() -> None:
     reg = sub.add_parser("register")
     reg.add_argument("--key-file", required=True)
     reg.add_argument("--commitment-url", required=True)
+    reg.add_argument("--agent-id", type=int, help="finish an agent an earlier run registered: only setAgentURI")
     reg.set_defaults(run=cmd_register)
     res = sub.add_parser("resolve")
     res.add_argument("--agent-id", type=int, required=True)
