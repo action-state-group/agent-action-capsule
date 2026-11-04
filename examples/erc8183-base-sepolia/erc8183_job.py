@@ -135,22 +135,26 @@ def capsule_id_or_none(capsule: dict) -> str | None:
     """The recomputed Capsule ID; None for a Capsule that has none, such as another format or one holding a float."""
     try:
         return compute_capsule_id(dict(capsule))
-    except ValueError:
+    except (ValueError, TypeError):
         return None
 
 
-def report_verifies(held: dict) -> bool:
-    """§7 step 3, for a Capsule of the supported format with its envelope and payload held."""
+def record_intact(held: dict) -> bool:
+    """A held record's Capsule ID, envelope and payload commitment all hold, whatever the payload is."""
     capsule, recomputed = held["capsule"], capsule_id_or_none(held["capsule"])
-    if recomputed is None:
+    if recomputed is None or not held["envelope_hex"] or capsule.get("capsule_id") != recomputed:
         return False
     committed = ((capsule.get("model_attestation") or {}).get("compute_attestation") or {}).get("agent_input_digest")
     try:
         digest = json_digest(held["payload"])
-    except ValueError:  # a float, say: nothing JSON-DIGEST can commit to
+    except (ValueError, TypeError):  # a float, say: nothing JSON-DIGEST can commit to
         return False
-    return (capsule.get("capsule_id") == recomputed and digest == committed and is_report(held["payload"])
-            and verify_producer_envelope(recomputed, bytes.fromhex(held["envelope_hex"])).ok)
+    return digest == committed and verify_producer_envelope(recomputed, bytes.fromhex(held["envelope_hex"])).ok
+
+
+def report_verifies(held: dict) -> bool:
+    """§7 step 3, for a Capsule of the supported format."""
+    return record_intact(held) and is_report(held["payload"])
 
 
 def check(job: dict, held: dict | None, contract_document: dict | None) -> dict:
@@ -322,6 +326,8 @@ def resolver_cases(data: dict) -> list[str]:
     other_format["capsule"]["format_version"] = "3"
     expect("other format", resolved(stored(other_format))["capsule_verifies"], NOT_CHECKED)
     expect("other format beside the report", predicates(resolved(stored(other_format), stored(good))), ["E3"])
+    other_format["capsule"]["canonicalization_id"] = 5
+    expect("non-string canonicalization beside the report", predicates(resolved(stored(other_format), stored(good))), ["E3"])
     # A float in the payload fails check 3; an undecodable envelope does too, and a good copy of the same Capsule wins.
     expect("float payload", resolved(stored(good, artifacts=[{"name": "payload", "content": encoded(
         {**good["payload"], "x": 1.5})}]))["capsule_verifies"], FAIL)
@@ -330,9 +336,19 @@ def resolver_cases(data: dict) -> list[str]:
     no_envelope = {k: v for k, v in stored(good).items() if k != "producer_envelope"}
     expect("good copy first", predicates(resolved(stored(good), no_envelope)), ["E3"])
     expect("good copy last", predicates(resolved(no_envelope, stored(good))), ["E3"])
+    deliverable = refund["deliverable"]["capsule"]
+    with tempfile.TemporaryDirectory() as scratch:  # the same holds for a good capsule that is no report
+        cid = deliverable["capsule_id"]
+        sealed = reseal({"capsule": deliverable, "payload": refund["deliverable"]["payload"]},
+                        data["test_keys"]["provider"]["label"])
+        (Path(scratch) / "0.record.json").write_text(json.dumps(stored(sealed)))
+        (Path(scratch) / "1.record.json").write_text(json.dumps(stored(sealed, producer_envelope="x")))
+        expect("good deliverable kept", record_intact(held_records(Path(scratch))[cid]), True)
     # A malformed candidate does not stop the choice.
-    expect("malformed acts", predicates(resolved(stored(good, artifacts=[{"name": "payload", "content": encoded(
-        {"cases": [{"acts": 1}]})}]), stored(good))), ["E3"])
+    malformed = copy.deepcopy(good)
+    malformed["capsule"]["timestamp"] = "2000-01-01T00:00:00Z"  # another Capsule ID, so it stays a candidate
+    malformed["payload"] = {"cases": [{"acts": 1}]}
+    expect("malformed acts", predicates(resolved(stored(malformed), stored(good))), ["E3"])
 
     with tempfile.TemporaryDirectory() as scratch:
         directory = Path(scratch)
@@ -566,7 +582,7 @@ def cmd_submit(args: argparse.Namespace) -> None:
 def evaluator_call(args: argparse.Namespace, function: str, verdict: str) -> None:
     """§6.4: the call follows the sealed report's verdict, so a report can never be sent with the wrong one."""
     record = read_record(args.capsule)
-    if not supported(record["capsule"]) or not record["envelope_hex"] or not report_verifies(record):
+    if not report_verifies(record):
         sys.exit(f"{args.capsule} does not verify as an evaluation report")
     cases = record["payload"]["cases"]
     if len(cases) != 1 or cases[0]["verdict"] != verdict:
@@ -720,7 +736,7 @@ def held_records(directory: Path) -> dict[str, dict]:
         capsule_id = capsule_id_or_none(record["capsule"]) or path.name  # §7 still reports on one with no Capsule ID
         kept = held.get(capsule_id)
         # A bad copy of a Capsule never replaces a good one.
-        if kept is None or not (supported(kept["capsule"]) and kept["envelope_hex"] and report_verifies(kept)):
+        if kept is None or not record_intact(kept):
             held[capsule_id] = record
     return held
 
@@ -742,7 +758,7 @@ def find_report(events: list[dict], held: dict[str, dict]) -> dict | None:
             return held[event["args"]["reason"][2:]]
     submitted = next((e["args"]["deliverable"][2:] for e in events if e["event"] == "JobSubmitted"), None)
     citing = [r for r in held.values() if cites(r, submitted)]
-    verified = [r for r in citing if supported(r["capsule"]) and r["envelope_hex"] and report_verifies(r)]
+    verified = [r for r in citing if report_verifies(r)]
     if len(verified) > 1:
         sys.exit(f"{len(verified)} verifying reports cite this job's deliverable: {[r['path'] for r in verified]}. "
                  "§6.3 allows one; keep only the one to check in --records.")
