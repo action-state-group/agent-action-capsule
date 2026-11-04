@@ -18,8 +18,8 @@
     },
     "refusal_digest_verifier": {
       "kind": "public browser verifier (Go compiled to WebAssembly), run under Node by check_digest.mjs",
-      "url": "https://continuitylaboratories.com/verifier/sr-verify.wasm",
-      "runtime": "https://continuitylaboratories.com/verifier/wasm_exec.js",
+      "url": "https://continuitylaboratories.com/verifier/archive/5c3acb19/sr-verify.wasm",
+      "runtime": "https://continuitylaboratories.com/verifier/archive/5c3acb19/wasm_exec.js",
       "sha256": "5c3acb19da62f99c454b19a271e2eaf008722968ca58732f827593bda77690db",
       "note": "the binary is published and pinned; its source is not. The format, its specification and conformance corpus are public, so any implementation of refusal-transparency section 4 can be substituted"
     }

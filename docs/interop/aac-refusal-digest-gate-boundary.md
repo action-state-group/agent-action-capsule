@@ -12,7 +12,7 @@ specification change on either side.
 | AAC profile | `draft-mih-scitt-agent-action-capsule-06`; Capsules carry `spec_version` `draft-mih-scitt-agent-action-capsule-05`, format 4, JCS |
 | AAC reference verifier | `python/` at `518303c` (the commit the check-5 result was observed at) and at `33aa732`; identical results |
 | Refusal digest | `css-refusal-digest` v0.2, `jsabes24/css-succession-receipts` `spec/refusal-transparency.md` at `edc254b`; `draft-sabey-refusal-transparency-03` |
-| Refusal-digest verifier | the public browser verifier, `https://continuitylaboratories.com/verifier/sr-verify.wasm`, SHA-256 `5c3acb19…90db` (full pin in `vector.json`), run under Node by `check_digest.mjs`. Its source is not public; the format, specification and corpus are, so any implementation of refusal-transparency §4 can be substituted |
+| Refusal-digest verifier | the public browser verifier, `https://continuitylaboratories.com/verifier/archive/5c3acb19/sr-verify.wasm`, SHA-256 `5c3acb19…90db` (full pin in `vector.json`), run under Node by `check_digest.mjs`. Served at a versioned path that does not change when the site's current verifier is rebuilt. Its source is not public; the format, specification and corpus are, so any implementation of refusal-transparency §4 can be substituted |
 
 ## Purpose
 
@@ -79,8 +79,8 @@ From the repository root:
 # Refusal-digest side (Node >= 20; the script checks the WASM's SHA-256 against the pin first):
 cd docs/interop/aac-refusal-digest-gate-boundary
 mkdir -p verifier
-curl -o verifier/sr-verify.wasm https://continuitylaboratories.com/verifier/sr-verify.wasm
-curl -o verifier/wasm_exec.js https://continuitylaboratories.com/verifier/wasm_exec.js
+curl -o verifier/sr-verify.wasm https://continuitylaboratories.com/verifier/archive/5c3acb19/sr-verify.wasm
+curl -o verifier/wasm_exec.js https://continuitylaboratories.com/verifier/archive/5c3acb19/wasm_exec.js
 node check_digest.mjs verifier
 ```
 

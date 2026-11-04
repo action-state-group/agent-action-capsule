@@ -3,8 +3,8 @@
 // browser verifier (Go compiled to WebAssembly), under Node >= 20.
 //
 //   mkdir verifier && cd verifier
-//   curl -O https://continuitylaboratories.com/verifier/sr-verify.wasm
-//   curl -O https://continuitylaboratories.com/verifier/wasm_exec.js
+//   curl -O https://continuitylaboratories.com/verifier/archive/5c3acb19/sr-verify.wasm
+//   curl -O https://continuitylaboratories.com/verifier/archive/5c3acb19/wasm_exec.js
 //   cd .. && node check_digest.mjs verifier
 //
 // The WASM must match the SHA-256 pinned in vector.json before anything runs.
