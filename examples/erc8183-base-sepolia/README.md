@@ -40,7 +40,9 @@ uv run erc8183_job.py resolve --contract 0x0Bea95653d2145b326c5B835F9bF3E5cCB705
 It reads `getJob` and the job's events from the chain, and each record from `--records`. It prints each
 hop, then the seven checks and the predicates. `--from-block` must be at or before the job's `createJob`,
 or it exits with an error. It reads logs 200 blocks per call, the public RPC's limit, and stops at the job's
-terminal event. An RPC failure also exits with an error; it does not report §7's offline `NOT_CHECKED`.
+terminal event. An RPC failure, or a contract without the reference interface, also exits with an error. A
+terminal event counts as settled once it is logged. So `resolve` never reports §7's `NOT_CHECKED` or `INCONCLUSIVE`
+for check 1.
 
 To compare the deployed code, run `build`, compare the digests it prints with the table above, and compare
 the creation code with the input of the `deploy` transactions in `run/run.json`. `resolve` prints the
@@ -54,19 +56,20 @@ and prints its hops, and CI runs it.
 
 You need:
 
-- **Three testnet keys,** each in a file `{"address", "private_key"}`. Use keys that hold nothing on any
-  chain: an EVM key controls the same address on mainnet too. A key is never printed.
+- **Three testnet keys,** each in a file `{"address", "private_key"}`, outside this repository. Use keys that
+  hold nothing on any chain: an EVM key controls the same address on mainnet too. A key is never printed.
 - **About 0.0001 Base Sepolia ETH** on the client's address, from a faucet. The recorded run cost about
   0.00005 testnet ETH in all, more than half of it deploying the implementation.
 - **`capsulectl`** on `PATH`, from [capsule-cli releases](https://github.com/action-state-group/capsule-cli/releases); v0.1.0-rc35 was used.
 - **The `claude` CLI,** signed in, for `judge`.
 
-Create one sealing profile per role. Repeat this with `evaluator` in place of `provider`:
+Create one sealing profile per role, with its seeds and store outside this repository, so that no `git add`
+picks them up. `DIR` is an absolute path to a directory of your own. Repeat this with `evaluator` in place of `provider`:
 
 ```bash
-capsulectl key generate --output provider.seed
-capsulectl key generate --output provider-checkpoint.seed
-capsulectl profile create --name provider --type jsonl --jsonl-path ./provider-store --log cll --log-id erc8183-provider --operator erc8183-base-sepolia --namespace erc8183 --signing-key-file "$PWD/provider.seed" --checkpoint-signing-key-file "$PWD/provider-checkpoint.seed" --trusted-key PROVIDER_PUBLIC_KEY --checkpoint-trusted-key CHECKPOINT_PUBLIC_KEY
+capsulectl key generate --output DIR/provider.seed
+capsulectl key generate --output DIR/provider-checkpoint.seed
+capsulectl profile create --name provider --type jsonl --jsonl-path DIR/provider-store --log cll --log-id erc8183-provider --operator erc8183-base-sepolia --namespace erc8183 --signing-key-file DIR/provider.seed --checkpoint-signing-key-file DIR/provider-checkpoint.seed --trusted-key PROVIDER_PUBLIC_KEY --checkpoint-trusted-key CHECKPOINT_PUBLIC_KEY
 capsulectl store init --profile provider
 ```
 

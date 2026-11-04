@@ -22,8 +22,9 @@
 Base Sepolia (chain 84532) only, testnet gas only. A key file is {"address", "private_key"} for a key that holds
 nothing on any chain; a key is never printed. The chain steps record each transaction in run/run.json.
 
-``resolve`` needs the chain: an RPC failure exits with an error, and it never reports §7's offline
-NOT_CHECKED for check 1. ``check-vectors`` needs no chain.
+``resolve`` needs the chain and the reference contract's interface. An RPC failure, or a contract without
+them, exits with an error, and a terminal event counts as settled once it is logged, so ``resolve`` never
+reports §7's NOT_CHECKED or INCONCLUSIVE for check 1. ``check-vectors`` needs no chain.
 """
 from __future__ import annotations
 
@@ -102,13 +103,16 @@ def load_record(path: Path) -> dict | None:
         capsule = json.loads(base64.b64decode(raw["capsule"]))
         if not isinstance(capsule, dict):
             return None
-        envelope = raw.get("producer_envelope")
         artifact = next((a for a in raw.get("artifacts") or [] if a.get("name") == "payload"), None)
         payload = json.loads(base64.b64decode(artifact["content"])) if artifact else None
     except (ValueError, KeyError, TypeError, AttributeError):
         return None
-    return {"capsule": capsule, "payload": payload,
-            "envelope_hex": base64.b64decode(envelope).hex() if envelope else None}
+    envelope = raw.get("producer_envelope")
+    try:
+        envelope_hex = base64.b64decode(envelope).hex() if envelope else None
+    except (ValueError, TypeError):
+        envelope_hex = "00"  # present but undecodable: an envelope that fails, not a missing one
+    return {"capsule": capsule, "payload": payload, "envelope_hex": envelope_hex}
 
 
 def is_report(payload: object) -> bool:
@@ -127,13 +131,26 @@ def supported(capsule: object) -> bool:
     return isinstance(capsule, dict) and capsule.get("format_version") == "4" and capsule.get("canonicalization_id") == "jcs"
 
 
+def capsule_id_or_none(capsule: dict) -> str | None:
+    """The recomputed Capsule ID; None for a Capsule that has none, such as another format or one holding a float."""
+    try:
+        return compute_capsule_id(dict(capsule))
+    except ValueError:
+        return None
+
+
 def report_verifies(held: dict) -> bool:
     """§7 step 3, for a Capsule of the supported format with its envelope and payload held."""
-    capsule, recomputed = held["capsule"], compute_capsule_id(dict(held["capsule"]))
+    capsule, recomputed = held["capsule"], capsule_id_or_none(held["capsule"])
+    if recomputed is None:
+        return False
     committed = ((capsule.get("model_attestation") or {}).get("compute_attestation") or {}).get("agent_input_digest")
-    return (capsule.get("capsule_id") == recomputed
-            and verify_producer_envelope(recomputed, bytes.fromhex(held["envelope_hex"])).ok
-            and json_digest(held["payload"]) == committed and is_report(held["payload"]))
+    try:
+        digest = json_digest(held["payload"])
+    except ValueError:  # a float, say: nothing JSON-DIGEST can commit to
+        return False
+    return (capsule.get("capsule_id") == recomputed and digest == committed and is_report(held["payload"])
+            and verify_producer_envelope(recomputed, bytes.fromhex(held["envelope_hex"])).ok)
 
 
 def check(job: dict, held: dict | None, contract_document: dict | None) -> dict:
@@ -167,7 +184,7 @@ def check(job: dict, held: dict | None, contract_document: dict | None) -> dict:
     elif not known:
         out["reason_binding"] = NOT_CHECKED
     else:
-        out["reason_binding"] = PASS if call[1]["reason"][2:] == compute_capsule_id(dict(capsule)) else FAIL
+        out["reason_binding"] = PASS if call[1]["reason"][2:] == capsule_id_or_none(capsule) else FAIL
 
     if held is None or not held.get("envelope_hex") or held.get("payload") is None:
         out["capsule_verifies"] = NOT_PRESENT
@@ -286,6 +303,37 @@ def resolver_cases(data: dict) -> list[str]:
             pass
 
     # A record with no envelope, or none of its parts, does not stop the resolver.
+    def encoded(value: object) -> str:
+        return base64.b64encode(json.dumps(value).encode()).decode()
+
+    def stored(report: dict, **changes: object) -> dict:
+        return {"capsule": encoded(report["capsule"]), "artifacts": [{"name": "payload", "content": encoded(report["payload"])}],
+                "producer_envelope": base64.b64encode(bytes.fromhex(report["envelope_hex"])).decode(), **changes}
+
+    def resolved(*files: dict) -> dict:
+        with tempfile.TemporaryDirectory() as scratch, contextlib.redirect_stdout(io.StringIO()):
+            for i, content in enumerate(files):
+                (Path(scratch) / f"{i}.record.json").write_text(json.dumps(content))
+            return print_resolution(refund["job"], held_records(Path(scratch)), refund["contract_document"])
+
+    good = refund["report"]
+    # Another format is NOT_CHECKED, and it stops nothing else.
+    other_format = copy.deepcopy(good)
+    other_format["capsule"]["format_version"] = "3"
+    expect("other format", resolved(stored(other_format))["capsule_verifies"], NOT_CHECKED)
+    expect("other format beside the report", predicates(resolved(stored(other_format), stored(good))), ["E3"])
+    # A float in the payload fails check 3; an undecodable envelope does too, and a good copy of the same Capsule wins.
+    expect("float payload", resolved(stored(good, artifacts=[{"name": "payload", "content": encoded(
+        {**good["payload"], "x": 1.5})}]))["capsule_verifies"], FAIL)
+    for name, envelope in (("not base64", "x"), ("not a string", 5)):
+        expect(f"envelope {name}", resolved(stored(good, producer_envelope=envelope))["capsule_verifies"], FAIL)
+    no_envelope = {k: v for k, v in stored(good).items() if k != "producer_envelope"}
+    expect("good copy first", predicates(resolved(stored(good), no_envelope)), ["E3"])
+    expect("good copy last", predicates(resolved(no_envelope, stored(good))), ["E3"])
+    # A malformed candidate does not stop the choice.
+    expect("malformed acts", predicates(resolved(stored(good, artifacts=[{"name": "payload", "content": encoded(
+        {"cases": [{"acts": 1}]})}]), stored(good))), ["E3"])
+
     with tempfile.TemporaryDirectory() as scratch:
         directory = Path(scratch)
         (directory / "a.record.json").write_text("{}")
@@ -669,7 +717,11 @@ def held_records(directory: Path) -> dict[str, dict]:
             print(f"skipped {path.name}: no readable Capsule")
             continue
         record["path"] = path.name
-        held[compute_capsule_id(dict(record["capsule"]))] = record
+        capsule_id = capsule_id_or_none(record["capsule"]) or path.name  # §7 still reports on one with no Capsule ID
+        kept = held.get(capsule_id)
+        # A bad copy of a Capsule never replaces a good one.
+        if kept is None or not (supported(kept["capsule"]) and kept["envelope_hex"] and report_verifies(kept)):
+            held[capsule_id] = record
     return held
 
 
@@ -677,8 +729,8 @@ def cites(record: dict, deliverable: str | None) -> bool:
     cases = record["payload"].get("cases") if isinstance(record["payload"], dict) else None
     if deliverable is None or not isinstance(cases, list):
         return False
-    return any(isinstance(c, dict) and any(isinstance(a, dict) and a.get("digest") == deliverable
-                                           for a in c.get("acts") or []) for c in cases)
+    return any(isinstance(c, dict) and isinstance(c.get("acts"), list)
+               and any(isinstance(a, dict) and a.get("digest") == deliverable for a in c["acts"]) for c in cases)
 
 
 def find_report(events: list[dict], held: dict[str, dict]) -> dict | None:
@@ -698,11 +750,11 @@ def find_report(events: list[dict], held: dict[str, dict]) -> dict | None:
 
 
 def print_envelope(name: str, record: dict) -> None:
-    capsule_id = compute_capsule_id(dict(record["capsule"]))
+    capsule_id = capsule_id_or_none(record["capsule"])
     hop(f"{name} file", record["path"])
-    hop(f"{name} Capsule ID, recomputed", capsule_id)
-    if not record["envelope_hex"]:
-        hop(f"{name} Producer Envelope", "not held")
+    hop(f"{name} Capsule ID, recomputed", capsule_id or "none: not a format-4 jcs Capsule")
+    if capsule_id is None or not record["envelope_hex"]:
+        hop(f"{name} Producer Envelope", "not checked" if capsule_id is None else "not held")
         return
     verified = verify_producer_envelope(capsule_id, bytes.fromhex(record["envelope_hex"]))
     hop(f"{name} Producer Envelope", {"verifies": verified.ok, "key": verified.public_key.hex() if verified.ok else None})
