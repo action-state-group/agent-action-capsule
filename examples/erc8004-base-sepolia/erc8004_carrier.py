@@ -8,7 +8,7 @@ resolve one from its agentId to a verified commitment (spec/bindings/evidence-co
 §5.4 and §6).
 
     uv run erc8004_carrier.py register --key-file KEY.json --commitment-url URL [--agent-id N]
-    uv run erc8004_carrier.py resolve --agent-id N
+    uv run erc8004_carrier.py resolve --agent-id N [--counterparty-key HEX] [--checkpoint-key HEX]...
 
 Base Sepolia (chain 84532) only, testnet gas only. It calls only the Identity Registry's register()
 and setAgentURI(), never the Reputation or Validation Registry. KEY.json is {"address", "private_key"}
@@ -16,9 +16,14 @@ for a key that holds no real funds on any chain; the key is never printed.
 
 ``resolve`` prints each hop: agentId -> tokenURI -> registration file -> registrations check (V0) ->
 the evidence-commitment entry (V0) -> the commitment octets and digest (V1) -> its signature (V2) ->
-its staples (V3). It then hands the commitment to ``capsulectl verify --history`` when capsulectl is
-on PATH, which checks each stapled history_card/1 and its checkpoint chain. V5 (key binding) needs a
-signed answer from the node and is not shown here.
+its staples (V3). It then hands the commitment and the reader's keys to ``capsulectl verify --history``
+when capsulectl is on PATH, which checks each stapled history_card/1 and its checkpoint chain. V5 (key
+binding) needs a signed answer from the node and is not shown here.
+
+``resolve`` exits with capsulectl's own status: a commitment's staple answers no request, so that is 1
+(NOT_ACCEPTED) even when no check failed; read ``staples[].findings`` in its report. A failed hop before
+it exits 1.
+Without capsulectl it exits 3: nothing failed, but the cards were not checked.
 """
 from __future__ import annotations
 
@@ -156,7 +161,9 @@ def cmd_resolve(args: argparse.Namespace) -> None:
     hop("V0 entry", "PASS")
     octets = fetch(entry["endpoint"])
     got = "sha256:" + hashlib.sha256(octets).hexdigest()
-    hop("V1 octets", f"{entry['endpoint']} {got}" + ("" if got == entry["digest"] else " digest_mismatch"))
+    hop("V1 octets", f"{entry['endpoint']} {got}")
+    if got != entry["digest"]:
+        sys.exit(f"V1 digest_mismatch: the entry's digest is {entry['digest']}")
     try:
         c = json.loads(octets)
         if not isinstance(c, dict) or c.get("profile") not in PROFILES or not isinstance(c.get("sig"), dict):
@@ -185,14 +192,18 @@ def cmd_resolve(args: argparse.Namespace) -> None:
     capsulectl = shutil.which("capsulectl")
     if capsulectl is None:
         hop("history cards", "NOT_CHECKED: capsulectl is not on PATH")
-        return
+        sys.exit(3)
+    keys = ["--counterparty-key", args.counterparty_key] if args.counterparty_key else []
+    for k in args.checkpoint_key:
+        keys += ["--checkpoint-key", k]
     with tempfile.NamedTemporaryFile(suffix=".json") as f:
         f.write(octets)
         f.flush()
-        out = subprocess.run([capsulectl, "verify", "--history", f.name], check=False, capture_output=True,
+        out = subprocess.run([capsulectl, "verify", "--history", f.name, *keys], check=False, capture_output=True,
                              text=True, stdin=subprocess.DEVNULL, timeout=120)
     print("capsulectl verify --history:")
     print(out.stdout + out.stderr)
+    sys.exit(out.returncode)
 
 
 def main() -> None:
@@ -205,6 +216,10 @@ def main() -> None:
     reg.set_defaults(run=cmd_register)
     res = sub.add_parser("resolve")
     res.add_argument("--agent-id", type=int, required=True)
+    res.add_argument("--counterparty-key",
+                     help="the key you hold for the node, 64 lowercase hex, never read from a carrier")
+    res.add_argument("--checkpoint-key", action="append", default=[],
+                     help="a log key you accept for the cards' checkpoints, 64 lowercase hex (repeat for each)")
     res.set_defaults(run=cmd_resolve)
     args = parser.parse_args()
     args.run(args)
