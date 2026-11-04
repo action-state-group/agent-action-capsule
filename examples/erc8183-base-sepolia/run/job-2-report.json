@@ -1,0 +1,43 @@
+{
+  "cases": [
+    {
+      "acts": [
+        {
+          "citation_purpose": "grounds",
+          "digest": "996f0dad90ac792339f5b5d07a84b907dffd3957f009783b1386fa26caa49dd1",
+          "digest_alg": "SHA-256",
+          "type": "agent-action-capsule"
+        }
+      ],
+      "case_id": "job-2-case-1",
+      "method": {
+        "citation_purpose": "method",
+        "digest": "8c27cb9b543a391aa4c992b0be5a5364586df4046c73237a5c77cd7fa7731318",
+        "digest_alg": "SHA-256",
+        "type": "rubric"
+      },
+      "verdict": "not_evaluable"
+    }
+  ],
+  "contract_ref": "ec:erc8183-lifecycle-summary:2026-11@1",
+  "epistemic_type": "semantic_judgment",
+  "generated_at": "2026-11-04T22:26:30Z",
+  "judge_pin": {
+    "axes_digest": {
+      "digest": "24ac3ac946db80cb8f962c7c6894beeb6db8be83f7cfd8e892e53cbf1de17b41",
+      "digest_alg": "SHA-256"
+    },
+    "model_id": "claude-sonnet-5-5",
+    "prompt_digest": {
+      "digest": "8c27cb9b543a391aa4c992b0be5a5364586df4046c73237a5c77cd7fa7731318",
+      "digest_alg": "SHA-256"
+    },
+    "sampling": {
+      "instruction_template_digest": "8bef7e5781add8f53f981c8475ba35f69bddb7cb3ffecb5658a358ab493f3ec7",
+      "reference_digest": "257c35bbaecab58d0c36823fe8fb2d0fffc83d6f1fd7301d97674707784efa3a",
+      "temperature": "harness default"
+    }
+  },
+  "record_id": "er-erc8183-job-2",
+  "record_version": "evaluation-report/v1"
+}

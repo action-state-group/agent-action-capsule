@@ -1,0 +1,4 @@
+{
+  "rationale": "The work names all six statuses and gives the right caller for each transition: client for createJob, fund and Open-state reject, provider for submit, evaluator for complete and for reject from Funded or Submitted, and anyone for claimRefund. It sends the budget to the provider (less platform and evaluator fees) on Completed and back to the client on Rejected and Expired, matching the reference. The zero-budget submit from Open and the evaluator fee match the reference implementation code. Saying the provider sets the budget omits that the spec text also lets the client do so, but that is an omission and not a contradiction.",
+  "verdict": "met"
+}

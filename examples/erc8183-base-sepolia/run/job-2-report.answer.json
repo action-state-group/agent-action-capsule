@@ -1,0 +1,4 @@
+{
+  "rationale": "The work contains only a title and a link to a PDF stating that the summary is there. No summary text is present, so the six statuses, role transitions and escrow destinations cannot be checked against the ERC-8183 reference.",
+  "verdict": "not_evaluable"
+}

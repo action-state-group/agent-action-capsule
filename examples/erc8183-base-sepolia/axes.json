@@ -1,0 +1,4 @@
+{
+  "verdicts": ["met", "not_met", "not_evaluable"],
+  "out_of_scope_offered": false
+}
