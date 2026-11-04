@@ -326,6 +326,7 @@ def resolver_cases(data: dict) -> list[str]:
     other_format["capsule"]["format_version"] = "3"
     expect("other format", resolved(stored(other_format))["capsule_verifies"], NOT_CHECKED)
     expect("other format beside the report", predicates(resolved(stored(other_format), stored(good))), ["E3"])
+    other_format["capsule"]["format_version"] = "4"
     other_format["capsule"]["canonicalization_id"] = 5
     expect("non-string canonicalization beside the report", predicates(resolved(stored(other_format), stored(good))), ["E3"])
     # A float in the payload fails check 3; an undecodable envelope does too, and a good copy of the same Capsule wins.
