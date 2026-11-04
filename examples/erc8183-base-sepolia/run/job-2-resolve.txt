@@ -1,5 +1,7 @@
 job: eip155:84532:0x0Bea95653d2145b326c5B835F9bF3E5cCB705aD1 jobId 2
+implementation (ERC-1967 slot): 0x50623B1Ed0aEE153E79C5341928cEc7A796e2434
 getJob: {"budget": 1000000, "client": "0x5ecB4f9fA91817E1f1C67278E2a515E88c762767", "description": "ec:erc8183-lifecycle-summary:2026-11@1 sha256:185e23872f79b1ff7afac05419f2360bcb23448dece0a59520a33d17edf3e91c\nSummarize the ERC-8183 job lifecycle.", "evaluator": "0xdF2C9f0370E0438b75F18e4aa65920Edaa921Ed5", "expiredAt": 1793831582, "hook": "0x0000000000000000000000000000000000000000", "id": 2, "provider": "0x3767a1f83233Faa69860F4C152c990fd0e9633B5", "status": "Expired"}
+event JobCreated: {"args": {"client": "0x5ecB4f9fA91817E1f1C67278E2a515E88c762767", "evaluator": "0xdF2C9f0370E0438b75F18e4aa65920Edaa921Ed5", "expiredAt": 1793831582, "hook": "0x0000000000000000000000000000000000000000", "jobId": 2, "provider": "0x3767a1f83233Faa69860F4C152c990fd0e9633B5"}, "block": 54546470, "tx": "0xa81229e924a4c9b98035fdaae7205b37805b5566560e52db7d5e03aaa7705efa"}
 event JobFunded: {"args": {"amount": 1000000, "client": "0x5ecB4f9fA91817E1f1C67278E2a515E88c762767", "jobId": 2}, "block": 54546477, "tx": "0xaf1dadd6af365921d1b9d11762d567c07201d73ab937fbef147378df64786ad4"}
 event JobSubmitted: {"args": {"deliverable": "0x996f0dad90ac792339f5b5d07a84b907dffd3957f009783b1386fa26caa49dd1", "jobId": 2, "provider": "0x3767a1f83233Faa69860F4C152c990fd0e9633B5"}, "block": 54546493, "tx": "0xe45389caac300ad355b51a0aa2bde45b075ff1b9c3a03eb8cd72135c01b9f234"}
 event JobExpired: {"args": {"jobId": 2}, "block": 54548590, "tx": "0x79fd4b5c400e7d943c8e1558bf7ce2490d52dc1d42776f34fc929503b147cd22"}
@@ -21,3 +23,4 @@ check contract_digest: PASS
 check deliverable_cited: PASS
 check verdict_call: PASS
 predicates: E3
+no call: no transaction of the evaluator binds this report, and nothing on chain says the evaluator made or stands behind it (§6.4, §9)
