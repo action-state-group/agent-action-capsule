@@ -170,13 +170,7 @@ has not yet.
 
 Tag `ts/v0.14.0`. This release carries AAC#572 (`parentWitness`), AAC#577 (`verifyKeyBinding`) and AAC#553 (cofactored `wrapped_resigned`), plus the spec entries merged since `ts/v0.13.1`.
 
-- Spec, normative (AAC#529): `spec/interop-profile-v1.md` §5.2 and P-12 say a CBOR request is read
-  only in core deterministic encoding with every item, ignored members included, in the JSON data
-  model; anything else is `request_malformed`. This is what Rust and Python already enforce. Go:
-  `ParseRequest` now refuses a CBOR request outside deterministic encoding or the data model at any
-  depth, which it used to accept. New vectors `vectors/cbor-request-model/` (18 cases).
-
-- TypeScript: `verifyKeyBinding(keyId, at, records, opts)` (AAC#514, PR #577) is exported from the package and the browser entry: it checks a key's binding to a controller at an instant over caller-supplied binding records, for ladder rung 8, with revocation lists run when given and `revocationChecked` reported. `ts/docs/controller-binding-carriage.md` states the `references[]` carriage rule. Additive.
+- TypeScript: `verifyKeyBinding(keyId, at, records, opts)` (AAC#514, PR #577) is exported from the package and the browser entry: over caller-supplied controller-binding records it reports whether a binding that names the key applies at an instant, for ladder rung 8, with revocation lists run when given and `revocationChecked` reported. `PASS` means both key holders signed the claim; it names no controller. `ts/docs/controller-binding-carriage.md` states the `references[]` carriage rule. Additive.
 
 - Spec, experimental: `spec/bindings/evidence-commitment-carriers-v0.md`, one signed evidence
   commitment over three carriers: an attestation entry in a directory record's trust manifest (ARD,
