@@ -1,0 +1,26 @@
+job: eip155:84532:0x0Bea95653d2145b326c5B835F9bF3E5cCB705aD1 jobId 2
+implementation (ERC-1967 slot): 0x50623B1Ed0aEE153E79C5341928cEc7A796e2434
+getJob: {"budget": 1000000, "client": "0x5ecB4f9fA91817E1f1C67278E2a515E88c762767", "description": "ec:erc8183-lifecycle-summary:2026-11@1 sha256:185e23872f79b1ff7afac05419f2360bcb23448dece0a59520a33d17edf3e91c\nSummarize the ERC-8183 job lifecycle.", "evaluator": "0xdF2C9f0370E0438b75F18e4aa65920Edaa921Ed5", "expiredAt": 1793831582, "hook": "0x0000000000000000000000000000000000000000", "id": 2, "provider": "0x3767a1f83233Faa69860F4C152c990fd0e9633B5", "status": "Expired"}
+event JobCreated: {"args": {"client": "0x5ecB4f9fA91817E1f1C67278E2a515E88c762767", "evaluator": "0xdF2C9f0370E0438b75F18e4aa65920Edaa921Ed5", "expiredAt": 1793831582, "hook": "0x0000000000000000000000000000000000000000", "jobId": 2, "provider": "0x3767a1f83233Faa69860F4C152c990fd0e9633B5"}, "block": 54546470, "tx": "0xa81229e924a4c9b98035fdaae7205b37805b5566560e52db7d5e03aaa7705efa"}
+event JobFunded: {"args": {"amount": 1000000, "client": "0x5ecB4f9fA91817E1f1C67278E2a515E88c762767", "jobId": 2}, "block": 54546477, "tx": "0xaf1dadd6af365921d1b9d11762d567c07201d73ab937fbef147378df64786ad4"}
+event JobSubmitted: {"args": {"deliverable": "0x996f0dad90ac792339f5b5d07a84b907dffd3957f009783b1386fa26caa49dd1", "jobId": 2, "provider": "0x3767a1f83233Faa69860F4C152c990fd0e9633B5"}, "block": 54546493, "tx": "0xe45389caac300ad355b51a0aa2bde45b075ff1b9c3a03eb8cd72135c01b9f234"}
+event JobExpired: {"args": {"jobId": 2}, "block": 54548590, "tx": "0x79fd4b5c400e7d943c8e1558bf7ce2490d52dc1d42776f34fc929503b147cd22"}
+description first line: ec:erc8183-lifecycle-summary:2026-11@1 sha256:185e23872f79b1ff7afac05419f2360bcb23448dece0a59520a33d17edf3e91c
+report file: job-2-report.record.json
+report Capsule ID, recomputed: d4b808b448ba24541bae7d2b01727551b904c69dd508d75346b8c1ed3bd95846
+report Producer Envelope: {"key": "1049baf424cef74e0f4ed5aa8b934e3091bdaa0f1a46776bbe33113939e0a8d8", "verifies": true}
+report payload digest: 1159f432c6ef0c46f50cfe8dc3175d6e0edb754fc14603570ed95e557bbac42a
+report judge pin: {"axes_digest": {"digest": "24ac3ac946db80cb8f962c7c6894beeb6db8be83f7cfd8e892e53cbf1de17b41", "digest_alg": "SHA-256"}, "model_id": "claude-sonnet-5-5", "prompt_digest": {"digest": "8c27cb9b543a391aa4c992b0be5a5364586df4046c73237a5c77cd7fa7731318", "digest_alg": "SHA-256"}, "sampling": {"instruction_template_digest": "8bef7e5781add8f53f981c8475ba35f69bddb7cb3ffecb5658a358ab493f3ec7", "reference_digest": "257c35bbaecab58d0c36823fe8fb2d0fffc83d6f1fd7301d97674707784efa3a", "temperature": "harness default"}}
+report case: {"acts": [{"citation_purpose": "grounds", "digest": "996f0dad90ac792339f5b5d07a84b907dffd3957f009783b1386fa26caa49dd1", "digest_alg": "SHA-256", "type": "agent-action-capsule"}], "case_id": "job-2-case-1", "method": {"citation_purpose": "method", "digest": "8c27cb9b543a391aa4c992b0be5a5364586df4046c73237a5c77cd7fa7731318", "digest_alg": "SHA-256", "type": "rubric"}, "verdict": "not_evaluable"}
+deliverable file: job-2-deliverable.record.json
+deliverable Capsule ID, recomputed: 996f0dad90ac792339f5b5d07a84b907dffd3957f009783b1386fa26caa49dd1
+deliverable Producer Envelope: {"key": "7a1228380cc7bb7a603b8fcc3a09f9120a78934c3d5f90429a8d0258e3f94fa0", "verifies": true}
+check is_evaluation: NOT_PRESENT
+check reason_binding: NOT_PRESENT
+check capsule_verifies: PASS
+check contract_binding: PASS
+check contract_digest: PASS
+check deliverable_cited: PASS
+check verdict_call: PASS
+predicates: E3
+no call: no transaction of the evaluator binds this report, and nothing on chain says the evaluator made or stands behind it (§6.4, §9)

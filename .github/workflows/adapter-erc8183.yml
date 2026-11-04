@@ -13,6 +13,7 @@ on:
       - "schemas/judge/evaluation-report-v1.json"
       - "spec/adapters/erc-8183-v0.md"
       - "vectors/adapters/erc-8183/**"
+      - "examples/erc8183-base-sepolia/**"
       - ".github/workflows/adapter-erc8183.yml"
   pull_request:
     paths:
@@ -23,6 +24,7 @@ on:
       - "schemas/judge/evaluation-report-v1.json"
       - "spec/adapters/erc-8183-v0.md"
       - "vectors/adapters/erc-8183/**"
+      - "examples/erc8183-base-sepolia/**"
       - ".github/workflows/adapter-erc8183.yml"
 
 permissions:
@@ -54,3 +56,8 @@ jobs:
       - name: verify offline
         working-directory: python
         run: pytest -q tests/test_adapter_erc8183_vectors.py
+      - name: the example's resolver agrees
+        working-directory: examples/erc8183-base-sepolia
+        run: |
+          pip install uv
+          uv run erc8183_job.py check-vectors

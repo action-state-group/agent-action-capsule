@@ -1,0 +1,12 @@
+{
+  "id": "ec:erc8183-lifecycle-summary:2026-11",
+  "version": "1",
+  "requirements": [
+    {
+      "id": "r-summary",
+      "profile": "outcome",
+      "statement": "The work is a summary of the ERC-8183 job lifecycle. It names all six job statuses, says which role may make each transition, and says where the escrowed budget goes on each of the three endings. Every statement it makes agrees with the ERC-8183 text.",
+      "evidence_requirements": {"accepted_epistemic_types": ["semantic_judgment"]}
+    }
+  ]
+}
