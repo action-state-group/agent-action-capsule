@@ -170,6 +170,8 @@ has not yet.
 
 Tag `ts/v0.14.0`. This release carries AAC#572 (`parentWitness`), AAC#577 (`verifyKeyBinding`) and AAC#553 (cofactored `wrapped_resigned`), plus the spec entries merged since `ts/v0.13.1`.
 
+- TypeScript: the package and browser entries export `verifyParentLogWitness`, `PARENT_LOG_WITNESS_KIND`, `PARENT_WITNESS_MAX_PATH` and the types `ParentWitnessExtent` and `ParentWitnessResult` (AAC#572), the strict check of a `parent-log-witness/v1` block. Additive.
+
 - TypeScript: `verifyKeyBinding(keyId, at, records, opts)` (AAC#514, PR #577) is exported from the package and the browser entry: over caller-supplied controller-binding records it reports whether a binding that names the key applies at an instant, for ladder rung 8, with revocation lists run when given and `revocationChecked` reported. `PASS` means both key holders signed the claim; it names no controller. `ts/docs/controller-binding-carriage.md` states the `references[]` carriage rule. Additive.
 
 - Spec, experimental: `spec/bindings/evidence-commitment-carriers-v0.md`, one signed evidence
