@@ -23,7 +23,8 @@ binding) needs a signed answer from the node and is not shown here.
 ``resolve`` exits with capsulectl's own status: a commitment's staple answers no request, so that is 1
 (NOT_ACCEPTED) even when no check failed; read ``staples[].findings`` in its report. A failed hop before
 it exits 1.
-Without capsulectl it exits 3: nothing failed, but the cards were not checked.
+Without capsulectl, or for an evidence-commitment/0 it does not read, it exits 3: nothing failed, but the
+cards were not checked. A digest_mismatch at V1 is a stale pointer and changes nothing else (§6).
 """
 from __future__ import annotations
 
@@ -161,9 +162,7 @@ def cmd_resolve(args: argparse.Namespace) -> None:
     hop("V0 entry", "PASS")
     octets = fetch(entry["endpoint"])
     got = "sha256:" + hashlib.sha256(octets).hexdigest()
-    hop("V1 octets", f"{entry['endpoint']} {got}")
-    if got != entry["digest"]:
-        sys.exit(f"V1 digest_mismatch: the entry's digest is {entry['digest']}")
+    hop("V1 octets", f"{entry['endpoint']} {got}" + ("" if got == entry["digest"] else " digest_mismatch"))
     try:
         c = json.loads(octets)
         if not isinstance(c, dict) or c.get("profile") not in PROFILES or not isinstance(c.get("sig"), dict):
@@ -190,8 +189,9 @@ def cmd_resolve(args: argparse.Namespace) -> None:
             sys.exit("V3 staple_digest")
     hop("V3 staples", f"PASS {[s.get('stream') for s in cards]}")
     capsulectl = shutil.which("capsulectl")
-    if capsulectl is None:
-        hop("history cards", "NOT_CHECKED: capsulectl is not on PATH")
+    if capsulectl is None or c["profile"] != "evidence-commitment/1":
+        hop("history cards", "NOT_CHECKED: " + ("capsulectl is not on PATH" if capsulectl is None
+                                                else "capsulectl reads only evidence-commitment/1"))
         sys.exit(3)
     keys = ["--counterparty-key", args.counterparty_key] if args.counterparty_key else []
     for k in args.checkpoint_key:

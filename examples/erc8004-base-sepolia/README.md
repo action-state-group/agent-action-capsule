@@ -35,7 +35,9 @@ uv run erc8004_carrier.py resolve --agent-id N [--counterparty-key HEX] [--check
   to the node.
 - **Exit status.** `resolve` exits with `capsulectl`'s status, so 1 for a commitment's staple whether
   or not a check failed, and 2 for a malformed key. A failed hop before `capsulectl` exits 1. Without
-  `capsulectl` it exits 3: nothing failed, but the cards were not checked.
+  `capsulectl`, or for an `evidence-commitment/0` it does not read, `resolve` exits 3: nothing failed,
+  but the cards were not checked. `digest_mismatch` at V1 means a stale pointer: it is printed, and the
+  octets are still verified.
 - **A failed second transaction.** If `setAgentURI()` fails after `register()` succeeded, rerun
   `register` with `--agent-id` set to the printed id: it sends only `setAgentURI()`.
 
