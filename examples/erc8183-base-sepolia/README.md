@@ -99,6 +99,9 @@ The next step follows the verdict `judge` printed (§6.4):
 | `not_met` | `uv run erc8183_job.py reject --key-file EVALUATOR.json --job 1 --capsule run/job-1-report.record.json` |
 | `not_evaluable` | no call: `uv run erc8183_job.py claim-refund --key-file CLIENT.json --job 1`, which waits for `expiredAt` |
 
+To reach the refund without a long wait, open the job with a short expiry: `createJob` needs more than 5 minutes,
+and job 2 used `--expires-in 420`.
+
 `complete` and `reject` read the sealed report and refuse a verdict that does not match them. Run the steps on
 Base Sepolia only, and never on mainnet.
 
