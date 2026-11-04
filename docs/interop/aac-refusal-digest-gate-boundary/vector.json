@@ -1,0 +1,235 @@
+{
+  "profile_label": "urn:action-state:aac-refusal-digest:gate-boundary:2026-11-04",
+  "status": "compatibility experiment; no commitment to adoption, integration or specification change",
+  "pins": {
+    "aac_spec": "draft-mih-scitt-agent-action-capsule-06 (Capsule spec_version draft-mih-scitt-agent-action-capsule-05)",
+    "aac_reference": {
+      "repo": "action-state-group/agent-action-capsule",
+      "python_at": [
+        "518303c",
+        "33aa732"
+      ]
+    },
+    "refusal_digest_spec": {
+      "repo": "jsabes24/css-succession-receipts",
+      "commit": "edc254b",
+      "spec": "spec/refusal-transparency.md (css-refusal-digest v0.2)",
+      "draft": "draft-sabey-refusal-transparency-03"
+    },
+    "refusal_digest_verifier": {
+      "kind": "public browser verifier (Go compiled to WebAssembly), run under Node by check_digest.mjs",
+      "url": "https://continuitylaboratories.com/verifier/sr-verify.wasm",
+      "runtime": "https://continuitylaboratories.com/verifier/wasm_exec.js",
+      "sha256": "5c3acb19da62f99c454b19a271e2eaf008722968ca58732f827593bda77690db",
+      "note": "the binary is published and pinned; its source is not. The format, its specification and conformance corpus are public, so any implementation of refusal-transparency section 4 can be substituted"
+    }
+  },
+  "derivation_inputs": {
+    "run_seed": {
+      "label": "aac-refusal-digest-gate-boundary",
+      "rule": "sha256(label), lowercase hex",
+      "value": "348054046ac706cdf7be5bc67239fce21df32e4d5cd0a9152ac4a9e4d0faecf9"
+    },
+    "test_signing_key": {
+      "label": "aac-refusal-digest-gate-boundary/test-signing-key",
+      "rule": "Ed25519 private key = sha256(label) (RFC 8032 seed)",
+      "key_id": "gate-boundary-test",
+      "public_key": "inputs/test-key.pub",
+      "note": "test constant; secures nothing"
+    },
+    "issued_digest": {
+      "file": "inputs/issued-digest.json",
+      "digest_hash": "e6bf735544b45aacedbc3ad7064223dfeff27791987bee40d1de74d851ba15ad"
+    },
+    "joined_probe": "clock-overreach",
+    "capsule_action_id_rule": "<probe id>@<digest run.seed>",
+    "evidence_digest_rule": "AAC json_digest(evidence) = HEX(SHA-256(JCS(evidence)))",
+    "capsule_id_rule": "AAC compute_capsule_id (format 4, JCS)"
+  },
+  "cross_format_checks": {
+    "attempt_join": "capsule.action_id == evidence.probe_id + '@' + evidence.run_seed, and that probe is a refused probe of the supplied digest whose run.seed matches (no manifest needed for the action_id half)",
+    "digest_binding": "evidence.refusal_digest.digest_hash == the supplied digest's verified proof.digest_hash, and evidence.refusal_ground / forbidden_event_types equal the probe's verbatim (needs the evidence, so manifest-dependent)"
+  },
+  "digest_cases": [
+    {
+      "case": "d-golden",
+      "file": "digest/d-golden.json",
+      "expect": "pass",
+      "failing_check": null,
+      "note": "the digest exactly as issued: every probe refused, every event hashed and signed"
+    },
+    {
+      "case": "d-ground-reworded",
+      "file": "digest/d-ground-reworded.json",
+      "expect": "fail",
+      "failing_check": "proof",
+      "note": "refusal ground edited, digest not re-signed"
+    },
+    {
+      "case": "d-forbidden-event-injected-resigned",
+      "file": "digest/d-forbidden-event-injected-resigned.json",
+      "expect": "fail",
+      "failing_check": "forbidden_event",
+      "note": "the refused transition appended to the probe ledger, hashed, signed and re-signed with the issuer key"
+    },
+    {
+      "case": "d-event-payload-altered-resigned",
+      "file": "digest/d-event-payload-altered-resigned.json",
+      "expect": "fail",
+      "failing_check": "event_hash",
+      "note": "one probe event's payload value edited without recomputing its hash"
+    },
+    {
+      "case": "d-event-signature-bitflip-resigned",
+      "file": "digest/d-event-signature-bitflip-resigned.json",
+      "expect": "fail",
+      "failing_check": "event_signature",
+      "note": "one probe event's signature corrupted"
+    },
+    {
+      "case": "d-summary-miscount-resigned",
+      "file": "digest/d-summary-miscount-resigned.json",
+      "expect": "fail",
+      "failing_check": "summary",
+      "note": "summary.refused restated wrongly"
+    },
+    {
+      "case": "d-seed-flipped-resigned",
+      "file": "digest/d-seed-flipped-resigned.json",
+      "expect": "fail",
+      "failing_check": "seed_derivation",
+      "note": "run.seed changed: the staged identities no longer derive from it"
+    },
+    {
+      "case": "d-spec-version-unknown-resigned",
+      "file": "digest/d-spec-version-unknown-resigned.json",
+      "expect": "fail",
+      "failing_check": "structure",
+      "note": "unimplemented spec_version"
+    },
+    {
+      "case": "d-lying-issuer-untrusted",
+      "file": "digest/d-lying-issuer-untrusted.json",
+      "expect": "fail",
+      "failing_check": "proof",
+      "note": "re-signed under the issuer's key_id by a key the relying party does not trust"
+    },
+    {
+      "case": "d-boundary-ground-rewritten-by-issuer",
+      "file": "digest/d-boundary-ground-rewritten-by-issuer.json",
+      "expect": "pass",
+      "failing_check": null,
+      "note": "BOUNDARY: the issuer re-signs a different ground. The ground is the issuer's statement; nothing in the digest can contradict its own signer"
+    },
+    {
+      "case": "d-boundary-tail-truncated-by-issuer",
+      "file": "digest/d-boundary-tail-truncated-by-issuer.json",
+      "expect": "pass",
+      "failing_check": null,
+      "note": "BOUNDARY: the issuer drops the last ledger event and re-signs. Absence is checked over the supplied ledger only; completeness of that ledger is the issuer's attestation"
+    }
+  ],
+  "capsule_cases": [
+    {
+      "case": "c-blocked-control",
+      "file": "capsule/c-blocked-control.json",
+      "evidence": "capsule/evidence.json",
+      "class1": "pass",
+      "class1_failing_checks": [],
+      "manifest_dependent": "pass",
+      "cross_format": "pass",
+      "note": "valid blocked Capsule: policy rejected it pre-dispatch; no Effect Record"
+    },
+    {
+      "case": "c-gate-executed-resealed",
+      "file": "capsule/c-gate-executed-resealed.json",
+      "evidence": "capsule/evidence.json",
+      "class1": "fail",
+      "class1_failing_checks": [
+        5
+      ],
+      "manifest_dependent": "pass",
+      "cross_format": "pass",
+      "note": "Imran's check-5 case: the blocked Capsule carries effect_attestation gate_executed and is resealed. effect_mode stays not_applicable, so the matrix requires the attestation absent"
+    },
+    {
+      "case": "c-gate-executed-no-status-resealed",
+      "file": "capsule/c-gate-executed-no-status-resealed.json",
+      "evidence": "capsule/evidence.json",
+      "class1": "fail",
+      "class1_failing_checks": [
+        4
+      ],
+      "manifest_dependent": "pass",
+      "cross_format": "pass",
+      "note": "the same claim without effect.status: a missing status derives dispatched_unconfirmed, for which the matrix REQUIRES an attestation, so check 5 is satisfied and check 4 (never-dispatch conflict) alone rejects it. Which check catches gate_executed depends on effect.status"
+    },
+    {
+      "case": "c-gate-executed-not-resealed",
+      "file": "capsule/c-gate-executed-not-resealed.json",
+      "evidence": "capsule/evidence.json",
+      "class1": "fail",
+      "class1_failing_checks": [
+        2,
+        5
+      ],
+      "manifest_dependent": "pass",
+      "cross_format": "pass",
+      "note": "gate_executed added without recomputing capsule_id"
+    },
+    {
+      "case": "c-dispatched-under-blocked-resealed",
+      "file": "capsule/c-dispatched-under-blocked-resealed.json",
+      "evidence": "capsule/evidence.json",
+      "class1": "fail",
+      "class1_failing_checks": [
+        4
+      ],
+      "manifest_dependent": "pass",
+      "cross_format": "pass",
+      "note": "a dispatched effect recorded under a blocked verdict"
+    },
+    {
+      "case": "c-capsule-id-mutated",
+      "file": "capsule/c-capsule-id-mutated.json",
+      "evidence": "capsule/evidence.json",
+      "class1": "fail",
+      "class1_failing_checks": [
+        2
+      ],
+      "manifest_dependent": "pass",
+      "cross_format": "pass",
+      "note": "capsule_id no longer recomputes"
+    },
+    {
+      "case": "c-evidence-digest-mutated-resealed",
+      "file": "capsule/c-evidence-digest-mutated-resealed.json",
+      "evidence": "capsule/evidence.json",
+      "class1": "pass",
+      "class1_failing_checks": [],
+      "manifest_dependent": "fail:evidence_digest",
+      "cross_format": "n/a",
+      "note": "Class 1 cannot see it: the constraint's evidence_digest no longer matches the evidence. Only the manifest-dependent check catches it"
+    },
+    {
+      "case": "c-evidence-binds-other-digest-resealed",
+      "file": "capsule/c-evidence-binds-other-digest-resealed.json",
+      "evidence": "capsule/c-evidence-binds-other-digest-resealed.evidence.json",
+      "class1": "pass",
+      "class1_failing_checks": [],
+      "manifest_dependent": "pass",
+      "cross_format": "fail:digest_binding",
+      "note": "the evidence is self-consistent and its digest matches, but it names a refusal digest other than the one supplied"
+    },
+    {
+      "case": "c-action-id-other-probe-resealed",
+      "file": "capsule/c-action-id-other-probe-resealed.json",
+      "evidence": "capsule/evidence.json",
+      "class1": "pass",
+      "class1_failing_checks": [],
+      "manifest_dependent": "pass",
+      "cross_format": "fail:attempt_join",
+      "note": "the Capsule names a different attempt than its evidence and the digest probe"
+    }
+  ]
+}
