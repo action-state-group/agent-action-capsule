@@ -22,8 +22,8 @@ authenticated.
 ## A case
 
 - `retained`, `current`: a head, `{size, root, log_id?}`: the MMR size (the checkpoint's
-  `mmr_size`, a JSON integer that an MMR can have: not 0, 2, 5, 6, 9, ...), the root (64
-  lowercase hex) and optionally the log's name (a string). `retained` may be absent or
+  `mmr_size`, a valid MMR size (1, 3, 4, 7, 8, 10, ...; never 0, 2, 5, 6, 9)), the root (64
+  lowercase hex) and optionally the log's id (`log_id`, a string). `retained` may be absent or
   `null`.
 - `proof`: the consistency proof from `retained.size` to `current.size`, in the wire shape of
   `parent-log-witness/v1`'s `earlier.consistency_proof` (`v` 1, `kind` `consistency`,
