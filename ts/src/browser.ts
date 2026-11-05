@@ -12,6 +12,7 @@ export * from "./json.js";
 export * from "./model.js";
 export * from "./outcome-report.js";
 export * from "./parent-witness.js";
+export * from "./retained-head.js";
 export * from "./presentation.js";
 export * from "./producer-envelope-verification.js";
 export * from "./registries.js";

@@ -1,9 +1,10 @@
 // Readers for CLL checkpoints and inclusion proofs shared by the strict
 // Bundle checks (bundle.ts) and the parent-log-witness/v1 check
-// (parent-witness.ts). Internal: the package entry points do not re-export it.
+// (parent-witness.ts) and the retained-head check (retained-head.ts). Internal: the package entry points do not re-export it.
 import {
   rootFromPeaks,
   verifyHexInclusion,
+  type MmrConsistencyProof,
   type MmrInclusionProof,
 } from "@action-state-group/cll";
 import { isHex64, JsonNumber } from "./json.js";
@@ -154,4 +155,34 @@ export async function verifyProof(
     identity,
     flattened,
   );
+}
+
+export const uint = (value: unknown): value is number =>
+  integer(value) && value >= 0;
+const hexList = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every(isHex64);
+
+/** A consistency proof (an `earlier.consistency_proof`, or a retained-head proof) as cll's, or undefined when its shape is not the draft's. */
+export function consistencyProof(
+  raw: unknown,
+): MmrConsistencyProof | undefined {
+  if (
+    !object(raw) ||
+    raw.kind !== "consistency" ||
+    raw.v !== 1 ||
+    !uint(raw.old_size) ||
+    !uint(raw.new_size) ||
+    !hexList(raw.old_peaks) ||
+    !hexList(raw.new_peaks) ||
+    !Array.isArray(raw.witness) ||
+    !raw.witness.every(hexList)
+  )
+    return undefined;
+  return {
+    oldSize: BigInt(raw.old_size),
+    newSize: BigInt(raw.new_size),
+    oldPeaks: raw.old_peaks.map(hex),
+    witness: (raw.witness as string[][]).map((path) => path.map(hex)),
+    newPeaks: raw.new_peaks.map(hex),
+  };
 }

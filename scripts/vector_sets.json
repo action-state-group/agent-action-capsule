@@ -15,6 +15,7 @@
   "vectors/bundle/producer-key/": {"python": ["test_bundle_producer_key_vectors.py"], "ts": ["bundle-producer-key-vector.test.ts"]},
   "vectors/bundle/report-single-record.json": {"python": ["test_bundle_report_vector.py"], "ts": ["bundle-report-vector.test.ts"]},
   "vectors/bundle/strict/": {"python": ["test_bundle_strict_vectors.py"], "ts": ["bundle-strict-vectors.test.ts"], "go": ["./bundle"], "rust": ["agent-action-capsule:bundle_strict_vectors"]},
+  "vectors/checkpoint-consistency/": {"ts": ["retained-head-vectors.test.ts"]},
   "vectors/bundle/fragment/": {"ts": ["fragment-vectors.test.ts"], "go": ["./bundle"]},
   "vectors/minimum-necessary/": {"python": ["test_min_necessary_vectors.py"]},
   "vectors/judgment/": {"python": ["test_judgment_extension_vectors.py"]},

@@ -15,18 +15,15 @@
  * `vectors/bundle/parent-log-witness/` and the Python reference
  * `python/agent_action_capsule/parent_witness.py`.
  */
+import { leafCount, verifyConsistency } from "@action-state-group/cll";
 import {
-  leafCount,
-  verifyConsistency,
-  type MmrConsistencyProof,
-} from "@action-state-group/cll";
-import {
+  consistencyProof,
   decodeCose,
   hex,
-  integer,
   object,
   parseProof,
   signedCheckpointFields,
+  uint,
   verifyProof,
 } from "./cll-checkpoint.js";
 import { isHex64, jcs, sha256Hex } from "./json.js";
@@ -68,10 +65,6 @@ const failed = (finding: string): ParentWitnessResult => ({
   extent: null,
   receipts: [],
 });
-/** A JSON integer from 0 to 2^53 - 1 (not a boolean or a float). */
-const uint = (value: unknown): value is number => integer(value) && value >= 0;
-const hexList = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every(isHex64);
 
 /** SHA-256 of the concatenated parts, as octets. */
 async function digest(...parts: readonly Uint8Array[]): Promise<Uint8Array> {
@@ -133,29 +126,6 @@ async function signedCheckpoint(
   if (cose === undefined) return "malformed";
   const signed = await signedCheckpointFields(cose);
   return signed === undefined ? "invalid" : { signed, cose };
-}
-
-/** The block's consistency proof as cll's, or undefined when its shape is not the draft's. */
-function consistencyProof(raw: unknown): MmrConsistencyProof | undefined {
-  if (
-    !object(raw) ||
-    raw.kind !== "consistency" ||
-    raw.v !== 1 ||
-    !uint(raw.old_size) ||
-    !uint(raw.new_size) ||
-    !hexList(raw.old_peaks) ||
-    !hexList(raw.new_peaks) ||
-    !Array.isArray(raw.witness) ||
-    !raw.witness.every(hexList)
-  )
-    return undefined;
-  return {
-    oldSize: BigInt(raw.old_size),
-    newSize: BigInt(raw.new_size),
-    oldPeaks: raw.old_peaks.map(hex),
-    witness: (raw.witness as string[][]).map((path) => path.map(hex)),
-    newPeaks: raw.new_peaks.map(hex),
-  };
 }
 
 /**
