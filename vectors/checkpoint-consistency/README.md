@@ -2,7 +2,7 @@
 
 These vectors pin `verifyRetainedHead` (TypeScript, `ts/src/retained-head.ts`): whether a
 log's current head extends a head the reader kept from an earlier look (checkpoint
-consistency). The kept head is the reader's own state, so it is a verifier input and no
+consistency). The kept head is the reader's own state, so it is a verifier input, not a
 Bundle member, and a page never fetches it.
 
 ## Files
@@ -49,4 +49,5 @@ Checked in this order; the first that applies is the result.
 7. A malformed proof: `fail`, `consistency_proof_malformed`; a proof whose `old_size` or
    `new_size` is not the two heads' sizes: `fail`, `consistency_proof_sizes_differ`.
 8. Otherwise `pass` when the proof verifies the retained root against the current root
-   (the `cll` MMR consistency check), else `fail`, `retained_head_not_a_prefix`.
+   (the `cll` MMR consistency check), else `fail`, `retained_head_not_a_prefix`. A proof the
+   check cannot process: `fail`, `consistency_proof_malformed`.
