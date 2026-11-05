@@ -9,7 +9,7 @@ const DIR = resolve(process.cwd(), "..", "vectors", "checkpoint-consistency");
 
 type Case = {
   id: string;
-  retained: unknown;
+  retained?: unknown;
   current: unknown;
   proof?: unknown;
   expect: { status: string; finding: string | null };

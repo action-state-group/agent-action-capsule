@@ -3,7 +3,7 @@
 """Generate the retained-head vectors (``vectors/checkpoint-consistency/``).
 
 A reader who kept a log head (MMR size and root) from an earlier look can ask
-whether a later head extends it (verification ladder rung 6). The kept head is
+whether a later head extends it (checkpoint consistency). The kept head is
 the reader's own state, so it is a verifier input and no Bundle member. Each
 case gives the retained head, the current head and an optional consistency
 proof in the wire shape of ``parent-log-witness/v1``'s
@@ -57,7 +57,10 @@ def proof(label: str, old_leaves: int, new_leaves: int) -> dict:
 
 
 def case(case_id: str, description: str, retained: Any, current: Any, proof_: Any, status: str, finding: Any) -> dict:
-    out: dict = {"id": case_id, "description": description, "retained": retained, "current": current}
+    out: dict = {"id": case_id, "description": description}
+    if retained is not ...:
+        out["retained"] = retained
+    out["current"] = current
     if proof_ is not ...:
         out["proof"] = proof_
     out["expect"] = {"status": status, "finding": finding}
@@ -91,6 +94,20 @@ def build_cases() -> list[dict]:
     ret = head(log("a", 4))
     good = proof("a", 4, 8)
     cases.append(case("np-retained-absent", "No retained head supplied.", None, cur, good, "not_present", "retained_head_absent"))
+    cases.append(case("np-retained-omitted", "The retained member is omitted.", ..., cur, good, "not_present",
+                      "retained_head_absent"))
+    cases.append(case("np-retained-ahead", "The retained head is later than the current (older) Bundle checkpoint; "
+                      "a valid proof the other way round is no help.", cur, ret, good, "not_present",
+                      "retained_head_ahead_of_current"))
+    cases.append(case("np-retained-ahead-no-proof", "Same, with no proof.", cur, ret, ..., "not_present",
+                      "retained_head_ahead_of_current"))
+    cases.append(case("np-other-log", "Both heads name a log and the names differ.",
+                      {**ret, "log_id": "log:one"}, {**cur, "log_id": "log:two"}, good, "not_present",
+                      "retained_head_other_log"))
+    cases.append(case("pos-same-log-id", "Both heads name the same log.",
+                      {**ret, "log_id": "log:one"}, {**cur, "log_id": "log:one"}, good, "pass", None))
+    cases.append(case("pos-log-id-on-one-head", "Only one head names a log; the caller matched the logs.",
+                      {**ret, "log_id": "log:one"}, cur, good, "pass", None))
     cases.append(case("np-proof-absent", "A retained head that differs from the current one, and no proof.", ret, cur, ...,
                       "not_present", "consistency_proof_absent"))
     cases.append(case("np-proof-null", "The proof is null.", ret, cur, None, "not_present", "consistency_proof_absent"))
@@ -126,8 +143,13 @@ def build_cases() -> list[dict]:
          "consistency_proof_sizes_differ"),
         ("neg-same-size-root-differs", "Same size, another root.", head(log("a", 5)), head(log("b", 5)), ...,
          "retained_head_root_differs"),
-        ("neg-retained-ahead", "The retained head is larger than the current head.", cur, ret, good,
-         "retained_head_ahead_of_current"),
+        ("neg-log-id-number", "log_id is a number.", {**ret, "log_id": 1}, cur, good, "retained_head_malformed"),
+        ("neg-retained-size-not-an-mmr", "The retained size is no MMR size (5).", {**ret, "size": 5}, cur, good,
+         "retained_head_malformed"),
+        ("neg-same-size-not-an-mmr", "Both heads have size 5, which no MMR has, and equal roots.",
+         {"size": 5, "root": "00" * 32}, {"size": 5, "root": "00" * 32}, ..., "retained_head_malformed"),
+        ("neg-current-size-not-an-mmr", "The current size is no MMR size (6).", ret, {**cur, "size": 6}, good,
+         "current_head_malformed"),
         ("neg-proof-kind-missing", "The proof has no kind.", ret, cur, edited(("kind",), ...), "consistency_proof_malformed"),
         ("neg-proof-not-object", "The proof is a string.", ret, cur, "proof", "consistency_proof_malformed"),
         ("neg-proof-peak-uppercase", "A peak hash is spelled in uppercase.", ret, cur,

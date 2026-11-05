@@ -1,6 +1,6 @@
 // Readers for CLL checkpoints and inclusion proofs shared by the strict
 // Bundle checks (bundle.ts) and the parent-log-witness/v1 check
-// (parent-witness.ts). Internal: the package entry points do not re-export it.
+// (parent-witness.ts) and the retained-head check (retained-head.ts). Internal: the package entry points do not re-export it.
 import {
   rootFromPeaks,
   verifyHexInclusion,
@@ -157,7 +157,8 @@ export async function verifyProof(
   );
 }
 
-const uint = (value: unknown): value is number => integer(value) && value >= 0;
+export const uint = (value: unknown): value is number =>
+  integer(value) && value >= 0;
 const hexList = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every(isHex64);
 

@@ -263,6 +263,188 @@
       }
     },
     {
+      "id": "np-retained-omitted",
+      "description": "The retained member is omitted.",
+      "current": {
+        "size": 15,
+        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+      },
+      "proof": {
+        "v": 1,
+        "kind": "consistency",
+        "old_size": 7,
+        "new_size": 15,
+        "old_peaks": [
+          "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+        ],
+        "witness": [
+          [
+            "091d1909092f031775af7f3faf5c18775dd93e118d4465417373dd37817a5a1b"
+          ]
+        ],
+        "new_peaks": [
+          "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+        ]
+      },
+      "expect": {
+        "status": "not_present",
+        "finding": "retained_head_absent"
+      }
+    },
+    {
+      "id": "np-retained-ahead",
+      "description": "The retained head is later than the current (older) Bundle checkpoint; a valid proof the other way round is no help.",
+      "retained": {
+        "size": 15,
+        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+      },
+      "current": {
+        "size": 7,
+        "root": "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+      },
+      "proof": {
+        "v": 1,
+        "kind": "consistency",
+        "old_size": 7,
+        "new_size": 15,
+        "old_peaks": [
+          "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+        ],
+        "witness": [
+          [
+            "091d1909092f031775af7f3faf5c18775dd93e118d4465417373dd37817a5a1b"
+          ]
+        ],
+        "new_peaks": [
+          "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+        ]
+      },
+      "expect": {
+        "status": "not_present",
+        "finding": "retained_head_ahead_of_current"
+      }
+    },
+    {
+      "id": "np-retained-ahead-no-proof",
+      "description": "Same, with no proof.",
+      "retained": {
+        "size": 15,
+        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+      },
+      "current": {
+        "size": 7,
+        "root": "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+      },
+      "expect": {
+        "status": "not_present",
+        "finding": "retained_head_ahead_of_current"
+      }
+    },
+    {
+      "id": "np-other-log",
+      "description": "Both heads name a log and the names differ.",
+      "retained": {
+        "size": 7,
+        "root": "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157",
+        "log_id": "log:one"
+      },
+      "current": {
+        "size": 15,
+        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50",
+        "log_id": "log:two"
+      },
+      "proof": {
+        "v": 1,
+        "kind": "consistency",
+        "old_size": 7,
+        "new_size": 15,
+        "old_peaks": [
+          "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+        ],
+        "witness": [
+          [
+            "091d1909092f031775af7f3faf5c18775dd93e118d4465417373dd37817a5a1b"
+          ]
+        ],
+        "new_peaks": [
+          "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+        ]
+      },
+      "expect": {
+        "status": "not_present",
+        "finding": "retained_head_other_log"
+      }
+    },
+    {
+      "id": "pos-same-log-id",
+      "description": "Both heads name the same log.",
+      "retained": {
+        "size": 7,
+        "root": "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157",
+        "log_id": "log:one"
+      },
+      "current": {
+        "size": 15,
+        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50",
+        "log_id": "log:one"
+      },
+      "proof": {
+        "v": 1,
+        "kind": "consistency",
+        "old_size": 7,
+        "new_size": 15,
+        "old_peaks": [
+          "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+        ],
+        "witness": [
+          [
+            "091d1909092f031775af7f3faf5c18775dd93e118d4465417373dd37817a5a1b"
+          ]
+        ],
+        "new_peaks": [
+          "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+        ]
+      },
+      "expect": {
+        "status": "pass",
+        "finding": null
+      }
+    },
+    {
+      "id": "pos-log-id-on-one-head",
+      "description": "Only one head names a log; the caller matched the logs.",
+      "retained": {
+        "size": 7,
+        "root": "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157",
+        "log_id": "log:one"
+      },
+      "current": {
+        "size": 15,
+        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+      },
+      "proof": {
+        "v": 1,
+        "kind": "consistency",
+        "old_size": 7,
+        "new_size": 15,
+        "old_peaks": [
+          "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+        ],
+        "witness": [
+          [
+            "091d1909092f031775af7f3faf5c18775dd93e118d4465417373dd37817a5a1b"
+          ]
+        ],
+        "new_peaks": [
+          "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+        ]
+      },
+      "expect": {
+        "status": "pass",
+        "finding": null
+      }
+    },
+    {
       "id": "np-proof-absent",
       "description": "A retained head that differs from the current one, and no proof.",
       "retained": {
@@ -576,15 +758,16 @@
       }
     },
     {
-      "id": "neg-retained-ahead",
-      "description": "The retained head is larger than the current head.",
+      "id": "neg-log-id-number",
+      "description": "log_id is a number.",
       "retained": {
-        "size": 15,
-        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+        "size": 7,
+        "root": "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157",
+        "log_id": 1
       },
       "current": {
-        "size": 7,
-        "root": "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+        "size": 15,
+        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
       },
       "proof": {
         "v": 1,
@@ -605,7 +788,89 @@
       },
       "expect": {
         "status": "fail",
-        "finding": "retained_head_ahead_of_current"
+        "finding": "retained_head_malformed"
+      }
+    },
+    {
+      "id": "neg-retained-size-not-an-mmr",
+      "description": "The retained size is no MMR size (5).",
+      "retained": {
+        "size": 5,
+        "root": "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+      },
+      "current": {
+        "size": 15,
+        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+      },
+      "proof": {
+        "v": 1,
+        "kind": "consistency",
+        "old_size": 7,
+        "new_size": 15,
+        "old_peaks": [
+          "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+        ],
+        "witness": [
+          [
+            "091d1909092f031775af7f3faf5c18775dd93e118d4465417373dd37817a5a1b"
+          ]
+        ],
+        "new_peaks": [
+          "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+        ]
+      },
+      "expect": {
+        "status": "fail",
+        "finding": "retained_head_malformed"
+      }
+    },
+    {
+      "id": "neg-same-size-not-an-mmr",
+      "description": "Both heads have size 5, which no MMR has, and equal roots.",
+      "retained": {
+        "size": 5,
+        "root": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "current": {
+        "size": 5,
+        "root": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "expect": {
+        "status": "fail",
+        "finding": "retained_head_malformed"
+      }
+    },
+    {
+      "id": "neg-current-size-not-an-mmr",
+      "description": "The current size is no MMR size (6).",
+      "retained": {
+        "size": 7,
+        "root": "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+      },
+      "current": {
+        "size": 6,
+        "root": "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+      },
+      "proof": {
+        "v": 1,
+        "kind": "consistency",
+        "old_size": 7,
+        "new_size": 15,
+        "old_peaks": [
+          "9b6a5d87d19f25c3559c6e2ac5f1c773dce8b3e44d21277774b0b16154240157"
+        ],
+        "witness": [
+          [
+            "091d1909092f031775af7f3faf5c18775dd93e118d4465417373dd37817a5a1b"
+          ]
+        ],
+        "new_peaks": [
+          "b75f58caf5575f944b0c5035027fbf02462f0e5933ccb928213a2b01bb019d50"
+        ]
+      },
+      "expect": {
+        "status": "fail",
+        "finding": "current_head_malformed"
       }
     },
     {

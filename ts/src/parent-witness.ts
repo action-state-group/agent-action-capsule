@@ -24,6 +24,7 @@ import {
   object,
   parseProof,
   signedCheckpointFields,
+  uint,
   verifyProof,
 } from "./cll-checkpoint.js";
 import { isHex64, jcs, sha256Hex } from "./json.js";
@@ -65,8 +66,6 @@ const failed = (finding: string): ParentWitnessResult => ({
   extent: null,
   receipts: [],
 });
-/** A JSON integer from 0 to 2^53 - 1 (not a boolean or a float). */
-const uint = (value: unknown): value is number => integer(value) && value >= 0;
 
 /** SHA-256 of the concatenated parts, as octets. */
 async function digest(...parts: readonly Uint8Array[]): Promise<Uint8Array> {
