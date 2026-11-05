@@ -20,7 +20,6 @@ import {
   consistencyProof,
   decodeCose,
   hex,
-  integer,
   object,
   parseProof,
   signedCheckpointFields,
