@@ -13,7 +13,7 @@ name = "agent-action-capsule"
 version = "0.9.0"
 dependencies = [
  "base64",
- "checkpointed-local-log",
+ "checkpointed-local-log 0.5.0",
  "coset",
  "curve25519-dalek",
  "ed25519-dalek",
@@ -73,6 +73,24 @@ name = "checkpointed-local-log"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1946d9506c829e225df887be5e559278f9b3db9dcca4c91e01261824a5373fb8"
+dependencies = [
+ "base64",
+ "coset",
+ "ed25519-dalek",
+ "hex",
+ "libc",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "ureq",
+]
+
+[[package]]
+name = "checkpointed-local-log"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ec489715bc08d10eb0b0a995217951ed1f9db3c2db76d30923300a81ca8b063"
 dependencies = [
  "base64",
  "coset",
@@ -306,7 +324,7 @@ name = "evidence-request"
 version = "0.4.1"
 dependencies = [
  "base64",
- "checkpointed-local-log",
+ "checkpointed-local-log 0.4.0",
  "ciborium",
  "coset",
  "ed25519-dalek",

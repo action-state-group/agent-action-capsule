@@ -45,7 +45,7 @@ ed25519-dalek = "2"
 # The settlement re-signing test's cofactored equation (`settlement`). Version 4
 # is the one ed25519-dalek 2 builds on, so the tree keeps one copy.
 curve25519-dalek = { version = "4", optional = true }
-cll = { package = "checkpointed-local-log", version = "0.4.0", optional = true }
+cll = { package = "checkpointed-local-log", version = "0.5.0", optional = true }
 base64 = { version = "0.22", optional = true }
 # The one Controller Binding v0 record verifier (`bundle`: the composed/v1
 # controller_binding join reads a binding record only through it).
