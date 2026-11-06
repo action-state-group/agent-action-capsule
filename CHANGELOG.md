@@ -166,6 +166,12 @@ has not yet.
 
 - Spec: `standard_history/2` counts agreed deals whose amount the holder's records do not give (action-state-group/agent-action-capsule#516). Its card is `standard_history/1`'s with one more tally, `unpriced` (`of`, `held`, `did_not_hold`, `undecided`): such a deal counts in every total and in no value band, so leaving out an amount never hides a deal. `/1` is unchanged and still cannot count one; a host refuses `/1` instead of leaving the deal out. New counting table and wording pack `spec/history-frame/standard-history-2-*.json`, registry row in `spec/REGISTRY.md` §16, and ISH §6.1 item 8 now forbids a `/2` card beside an ISH Standard History as it does `/1`. Vectors: `vectors/standard-history-v0/vectors-2.json` (12 cases); `vectors.json` is unchanged. Python `standard_history.check_card` and `derive_card` take `derivation=`; Go `standardhistory` gains `CheckAs`, `DeriveAs`, `Derivation2` and `Deal.Unpriced`. Additive: existing `/1` callers are unaffected.
 
+- **`examples/erc8004-base-sepolia`.** `resolve` takes `--counterparty-key` and `--checkpoint-key` and passes them to `capsulectl`, and exits with `capsulectl`'s status, or 3 when the cards were not checked. The README explains why a commitment's staple is `NOT_ACCEPTED` (#581).
+
+- Examples: `examples/erc8183-base-sepolia/` runs ERC-8183 jobs under `spec/adapters/erc-8183-v0.md` on Base Sepolia, with the recorded run of one `complete` job and one `not_evaluable` refund job, and a resolver that prints each hop and the seven checks (AAC#583).
+
+- TypeScript: the package and browser entries export `verifyRetainedHead` and the types `LogHead` and `RetainedHeadResult` (AAC#513): checkpoint consistency, meaning whether a log's current head extends a head the reader kept from an earlier look, given a consistency proof. The retained head is a verifier input, not a Bundle member; with none supplied the result is `not_present`, never `pass`. Additive; no spec or Bundle change. Vectors in `vectors/checkpoint-consistency/`.
+
 ## ts 0.14.0 — 2026-11-04
 
 Tag `ts/v0.14.0`. This release carries AAC#572 (`parentWitness`), AAC#577 (`verifyKeyBinding`) and AAC#553 (cofactored `wrapped_resigned`), plus the spec entries merged since `ts/v0.13.1`.

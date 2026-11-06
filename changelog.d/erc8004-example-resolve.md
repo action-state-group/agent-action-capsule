@@ -1,1 +1,0 @@
-- **`examples/erc8004-base-sepolia`.** `resolve` takes `--counterparty-key` and `--checkpoint-key` and passes them to `capsulectl`, and exits with `capsulectl`'s status, or 3 when the cards were not checked. The README explains why a commitment's staple is `NOT_ACCEPTED` (#581).
