@@ -2,7 +2,14 @@
 
 ## Unreleased
 
-- `settlement`: `wrapped_resigned` reads a signature under the leg key with the cofactored equation, any canonical R, a key not of small order and S below L, as settlement -01 §8 rule 3 states (AAC#494). Before, it used `verify_strict`, so a sealer that re-signed with its own key and an R of small or mixed order escaped the check. The `settlement` feature now depends on `curve25519-dalek` 4, the version `ed25519-dalek` 2 already builds on. Two new settlement vectors (26 cases).
+## 0.10.0 — 2026-11-06
+
+Tag `crates/agent-action-capsule-v0.10.0`.
+
+- New in strict Bundle verification (action-state-group/agent-action-capsule#347, #572): a `parent-log-witness/v1` extension block is checked under the caller's witness directory and reported beside the claims as `parent_witness`; only a failure changes the verdict. Additive: a Bundle without the block verifies as before.
+- `data/REGISTRY.md` lists `standard_history/2`, which counts deals with no recorded amount (action-state-group/agent-action-capsule#569). Registry data only, no code change.
+- `settlement`: `wrapped_resigned` reads a signature under the leg key with the cofactored equation, any canonical R, a key not of small order and S below L, as settlement -01 §8 rule 3 states (AAC#494, #553). Before, it used `verify_strict`, so a sealer that re-signed with its own key and an R of small or mixed order escaped the check. The `settlement` feature now depends on `curve25519-dalek` 4, the version `ed25519-dalek` 2 already builds on. Two new settlement vectors (26 cases).
+- Breaking for consumers of the `bundle` and `strict` features: `checkpointed-local-log` moves from 0.4.0 to 0.5.0 (action-state-group/agent-action-capsule#594), so the CLL types in the public API are 0.5.0's (the `cll::log::EntrySource` and `CheckpointStateStore` backend that `bundle::proof_source_from_cll` takes, and `cll::checkpoint::DecodedCheckpointCose`), and a CLL 0.4.0 backend no longer compiles against it. No code change in this crate and no wire or normative change.
 
 ## 0.9.0 — 2026-11-02
 
