@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The optional `evidence-request` dependency accepts `>=0.4.0, <0.6.0` (it was `0.4.0`), so the workspace builds against `evidence-request` 0.5.0. No code change.
+
 ## 0.10.0 — 2026-11-06
 
 Tag `crates/agent-action-capsule-v0.10.0`.
