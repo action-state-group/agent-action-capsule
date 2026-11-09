@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: nothing after `go/v0.21.0`, `python/v0.16.0` and `ts/v0.14.0`. The Rust crates keep their own
+Not in any tag yet: nothing after `go/v0.19.0`, `python/v0.15.0` and `ts/v0.14.0`. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
@@ -174,7 +174,7 @@ has not yet.
 
 ## python 0.16.0 — 2026-11-08
 
-Every change to `python/` or to a vector set the Python tests read since `python/v0.15.0`, by pull request. Each entry's full text is in Unreleased above or under `ts 0.13.1` and `ts 0.14.0`. Settlement vectors move to 26 cases (#553), which this release's `verify_settlements` passes.
+Tag `python/v0.16.0`. The pull requests that changed `python/` since `python/v0.15.0`:
 
 - feat(bundle-02): controller_binding joins in Python, TypeScript and Rust through one binding verifier (#530)
 - fix: read received CBOR to one shared 128-level nesting limit (#504) (#528)
@@ -198,7 +198,7 @@ Every change to `python/` or to a vector set the Python tests read since `python
 
 ## go 0.21.0 — 2026-11-08
 
-Every change to `go/` since `go/v0.20.1`, by pull request. Each entry's full text is in Unreleased above or under `ts 0.13.1` and `ts 0.14.0`. #553 adds `filippo.io/edwards25519` v1.2.0 and moves settlement `wrapped_resigned` to the cofactored equation.
+Tag `go/v0.21.0`. The pull requests that changed `go/` since `go/v0.20.1`:
 
 - spec(bundle-03): parent-log-witness/v1, a checkpoint witnessed through a parent log (#347) (#572)
 - spec(standard-history): close SH-3, the carriage for counts_recompute (#574)
