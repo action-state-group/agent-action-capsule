@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-11-09
+
+Tag `crates/evidence-request-v0.5.0`.
+
+- `checkpointed-local-log` moves from 0.4.0 to 0.5.0 (feature `cll`). No API or behavior change from it.
 - **`evidence-interop/2`** (`spec/interop-profile-v2.md`, AAC#438): `envelope::PROFILE_V2`, now in
   `envelope::PROFILES` and `acceptance::PROFILE_IDS`, with `/1`'s envelope, acceptance records,
   CLL material and ten §9.1 tokens. A refusal MAY carry `policy_digest`, signed under `/2` (v2
