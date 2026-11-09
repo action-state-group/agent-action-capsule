@@ -172,6 +172,42 @@ has not yet.
 
 - TypeScript: the package and browser entries export `verifyRetainedHead` and the types `LogHead` and `RetainedHeadResult` (AAC#513): checkpoint consistency, meaning whether a log's current head extends a head the reader kept from an earlier look, given a consistency proof. The retained head is a verifier input, not a Bundle member; with none supplied the result is `not_present`, never `pass`. Additive; no spec or Bundle change. Vectors in `vectors/checkpoint-consistency/`.
 
+## python 0.16.0 — 2026-11-08
+
+Tag `python/v0.16.0`. The pull requests that changed `python/` since `python/v0.15.0`:
+
+- feat(bundle-02): controller_binding joins in Python, TypeScript and Rust through one binding verifier (#530)
+- fix: read received CBOR to one shared 128-level nesting limit (#504) (#528)
+- spec: strict Ed25519 stated once (aac-06 Conventions), required by IP v1, with shared negative vectors (#502)
+- fix(bundle-02): composed/v1 not_derivable beside a declared-missing member, and a total join order (#535)
+- spec: experimental Nostr mailbox carriage for the evidence exchange (#542)
+- spec(nostr-mailbox): re-pin to evidence-interop/1 and ER -02, limit replies by content (#550)
+- fix: read a CBOR request only in deterministic encoding and the data model (#529) (#551)
+- spec(bundle-03): parent-log-witness/v1, a checkpoint witnessed through a parent log (#347) (#572)
+- spec(standard-history): close SH-3, the carriage for counts_recompute (#574)
+- feat(spec): personal-agent History profile readings O1 to O5 (#328) (#571)
+- spec(interop-profile): evidence-interop/2 signs a refusal's policy_digest (#438) (#570)
+- feat(spec): standard_history/2 counts deals with no recorded amount (#569)
+- spec: experimental evidence commitment carriers (directory, A2A, Nostr) (#546)
+- fix(settlement): read wrapped_resigned under the cofactored equation (#494) (#553)
+- spec(outcome): carry tick_paths in the Outcome one-file History (#580) (#582)
+- spec(carriers): ERC-8004 registration file as a fourth evidence-commitment carrier (#581) (#584)
+- spec(interop-profile): fix /.well-known/evidence-manifest as the HTTP manifest path in evidence-interop/2 (#556)
+- spec(adapters): ERC-8183 adapter profile binding reason to a sealed evaluation-report/v1 (#583) (#585)
+- feat(ts): verifyRetainedHead for ladder rung 6 (#513) (#592)
+
+## go 0.21.0 — 2026-11-08
+
+Tag `go/v0.21.0`. The pull requests that changed `go/` since `go/v0.20.1`:
+
+- spec(bundle-03): parent-log-witness/v1, a checkpoint witnessed through a parent log (#347) (#572)
+- spec(standard-history): close SH-3, the carriage for counts_recompute (#574)
+- feat(spec): personal-agent History profile readings O1 to O5 (#328) (#571)
+- spec(interop-profile): evidence-interop/2 signs a refusal's policy_digest (#438) (#570)
+- feat(spec): standard_history/2 counts deals with no recorded amount (#569)
+- fix(settlement): read wrapped_resigned under the cofactored equation (#494) (#553)
+- spec(outcome): carry tick_paths in the Outcome one-file History (#580) (#582)
+
 ## ts 0.14.0 — 2026-11-04
 
 Tag `ts/v0.14.0`. This release carries AAC#572 (`parentWitness`), AAC#577 (`verifyKeyBinding`) and AAC#553 (cofactored `wrapped_resigned`), plus the spec entries merged since `ts/v0.13.1`.
