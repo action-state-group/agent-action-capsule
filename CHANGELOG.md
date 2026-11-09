@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: nothing after `go/v0.19.0`, `python/v0.15.0` and `ts/v0.14.0`. The Rust crates keep their own
+Not in any tag yet: nothing after `go/v0.21.0`, `python/v0.16.0` and `ts/v0.14.0`. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
@@ -171,6 +171,42 @@ has not yet.
 - Examples: `examples/erc8183-base-sepolia/` runs ERC-8183 jobs under `spec/adapters/erc-8183-v0.md` on Base Sepolia, with the recorded run of one `complete` job and one `not_evaluable` refund job, and a resolver that prints each hop and the seven checks (AAC#583).
 
 - TypeScript: the package and browser entries export `verifyRetainedHead` and the types `LogHead` and `RetainedHeadResult` (AAC#513): checkpoint consistency, meaning whether a log's current head extends a head the reader kept from an earlier look, given a consistency proof. The retained head is a verifier input, not a Bundle member; with none supplied the result is `not_present`, never `pass`. Additive; no spec or Bundle change. Vectors in `vectors/checkpoint-consistency/`.
+
+## python 0.16.0 — 2026-11-08
+
+Every change to `python/` or to a vector set the Python tests read since `python/v0.15.0`, by pull request. Each entry's full text is in Unreleased above or under `ts 0.13.1` and `ts 0.14.0`. Settlement vectors move to 26 cases (#553), which this release's `verify_settlements` passes.
+
+- feat(bundle-02): controller_binding joins in Python, TypeScript and Rust through one binding verifier (#530)
+- fix: read received CBOR to one shared 128-level nesting limit (#504) (#528)
+- spec: strict Ed25519 stated once (aac-06 Conventions), required by IP v1, with shared negative vectors (#502)
+- fix(bundle-02): composed/v1 not_derivable beside a declared-missing member, and a total join order (#535)
+- spec: experimental Nostr mailbox carriage for the evidence exchange (#542)
+- spec(nostr-mailbox): re-pin to evidence-interop/1 and ER -02, limit replies by content (#550)
+- fix: read a CBOR request only in deterministic encoding and the data model (#529) (#551)
+- spec(bundle-03): parent-log-witness/v1, a checkpoint witnessed through a parent log (#347) (#572)
+- spec(standard-history): close SH-3, the carriage for counts_recompute (#574)
+- feat(spec): personal-agent History profile readings O1 to O5 (#328) (#571)
+- spec(interop-profile): evidence-interop/2 signs a refusal's policy_digest (#438) (#570)
+- feat(spec): standard_history/2 counts deals with no recorded amount (#569)
+- spec: experimental evidence commitment carriers (directory, A2A, Nostr) (#546)
+- fix(settlement): read wrapped_resigned under the cofactored equation (#494) (#553)
+- spec(outcome): carry tick_paths in the Outcome one-file History (#580) (#582)
+- spec(carriers): ERC-8004 registration file as a fourth evidence-commitment carrier (#581) (#584)
+- spec(interop-profile): fix /.well-known/evidence-manifest as the HTTP manifest path in evidence-interop/2 (#556)
+- spec(adapters): ERC-8183 adapter profile binding reason to a sealed evaluation-report/v1 (#583) (#585)
+- feat(ts): verifyRetainedHead for ladder rung 6 (#513) (#592)
+
+## go 0.21.0 — 2026-11-08
+
+Every change to `go/` since `go/v0.20.1`, by pull request. Each entry's full text is in Unreleased above or under `ts 0.13.1` and `ts 0.14.0`. #553 adds `filippo.io/edwards25519` v1.2.0 and moves settlement `wrapped_resigned` to the cofactored equation.
+
+- spec(bundle-03): parent-log-witness/v1, a checkpoint witnessed through a parent log (#347) (#572)
+- spec(standard-history): close SH-3, the carriage for counts_recompute (#574)
+- feat(spec): personal-agent History profile readings O1 to O5 (#328) (#571)
+- spec(interop-profile): evidence-interop/2 signs a refusal's policy_digest (#438) (#570)
+- feat(spec): standard_history/2 counts deals with no recorded amount (#569)
+- fix(settlement): read wrapped_resigned under the cofactored equation (#494) (#553)
+- spec(outcome): carry tick_paths in the Outcome one-file History (#580) (#582)
 
 ## ts 0.14.0 — 2026-11-04
 
