@@ -238,10 +238,10 @@ def normalize(v: Any) -> Any:
     Applied bottom-up so that, e.g., an object that becomes empty only after its
     own null/empty members are removed is itself removed by its parent.
 
-    Retained as a compat export for the vintage ``jcs-n`` canonicalization
-    (older records that normalize absent fields before JCS). Format-4 ``jcs``
-    above deliberately does NOT normalize; this function is for callers that
-    still read the pre-format-4 ``jcs-n`` shape.
+    A public helper for callers that digest a payload with absent fields
+    normalized. It is no longer part of any Capsule ID: the withdrawn ``jcs-n``
+    construction is not computed anywhere in this package, and format-4
+    ``jcs`` deliberately does NOT normalize.
 
     Raises NestingTooDeepError for a value nested more than MAX_NESTING_DEPTH
     levels deep.

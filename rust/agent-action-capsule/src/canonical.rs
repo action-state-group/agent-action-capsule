@@ -198,11 +198,11 @@ pub fn json_digest(v: &Value) -> Result<String, CanonicalError> {
     Ok(hex::encode(hash))
 }
 
-/// Absent-field normalization (§2) of the vintage `jcs-n` canonicalization:
-/// removes object members whose value is null, an empty array or an empty
-/// object, bottom-up, so an object emptied by the removal is itself removed
-/// by its parent. Array elements are kept. Format-4 `jcs` does not normalize;
-/// this is for reading pre-format-4 `jcs-n` records (Python `normalize`).
+/// Absent-field normalization: removes object members whose value is null, an
+/// empty array or an empty object, bottom-up, so an object emptied by the
+/// removal is itself removed by its parent. Array elements are kept. It is no
+/// longer part of any Capsule ID (the withdrawn `jcs-n` is not computed) and
+/// format-4 `jcs` does not normalize (Python `normalize`).
 pub fn normalize(v: &Value) -> Value {
     match v {
         Value::Object(map) => {

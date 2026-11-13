@@ -19,7 +19,7 @@
 //! local-only `signature` and `key_id` members) as authored, unclaimed or
 //! invalid, as the strict Evidence Bundle verifier reads it.
 
-use crate::canonical::{is_local_only_field, json_digest, normalize};
+use crate::canonical::{is_local_only_field, json_digest};
 use crate::verify::is_hex64;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde_json::{Map, Value};
@@ -437,39 +437,28 @@ pub(crate) fn hex_pairs(text: &str) -> Option<Vec<u8>> {
     hex::decode(text).ok()
 }
 
-/// The Capsule ID a record declares by its `canonicalization_id`. `jcs`
-/// commits every member but `capsule_id` and the local-only envelope fields.
-/// `jcs-n`, declared or implied by an absent or null `canonicalization_id`,
-/// is the vintage reading: it also drops `chain` and normalizes
-/// ([`crate::canonical::normalize`]) before JCS. Any other value cannot be
-/// recomputed.
+/// The Capsule ID a record declares by its `canonicalization_id`. Only `jcs`
+/// is supported: it commits every member but `capsule_id` and the local-only
+/// envelope fields. The withdrawn `jcs-n`, an absent or null value and any
+/// other value cannot be recomputed.
 fn record_capsule_id(record: &Map<String, Value>) -> Result<String, String> {
-    let algorithm = match record.get("canonicalization_id") {
-        None | Some(Value::Null) => "jcs-n",
-        Some(Value::String(s)) if s == "jcs" || s == "jcs-n" => s.as_str(),
+    match record.get("canonicalization_id") {
+        Some(Value::String(s)) if s == "jcs" => {}
         Some(other) => {
             return Err(format!(
                 "cannot compute capsule_id with canonicalization_id {other}"
             ))
         }
-    };
+        None => return Err("cannot compute capsule_id without a canonicalization_id".to_string()),
+    }
     let mut canonical = Map::with_capacity(record.len());
     for (key, value) in record {
-        if key == "capsule_id"
-            || is_local_only_field(key)
-            || (algorithm == "jcs-n" && key == "chain")
-        {
+        if key == "capsule_id" || is_local_only_field(key) {
             continue;
         }
         canonical.insert(key.clone(), value.clone());
     }
-    let canonical = Value::Object(canonical);
-    let digest = if algorithm == "jcs-n" {
-        json_digest(&normalize(&canonical))
-    } else {
-        json_digest(&canonical)
-    };
-    digest.map_err(|e| e.to_string())
+    json_digest(&Value::Object(canonical)).map_err(|e| e.to_string())
 }
 
 /// Grades a record's producer signature: [`AUTHORED`], [`UNCLAIMED`] or
@@ -479,12 +468,12 @@ fn record_capsule_id(record: &Map<String, Value>) -> Result<String, String> {
 /// public key. Neither present is unclaimed (an unsigned record, not a
 /// forgery). One without the other, or an envelope that does not verify under
 /// `key_id` over the Capsule ID recomputed from the record's own content
-/// (`jcs`, or the vintage `jcs-n`), is invalid. The carried `capsule_id` is
+/// (`jcs`), is invalid. The carried `capsule_id` is
 /// not read. The messages are empty unless the verdict is invalid; their text
 /// is not part of any contract. A record that nests arrays and objects
 /// deeper than 128 levels is invalid. Never panics.
 pub fn verify_record_signature(record: &Value) -> (&'static str, Vec<String>) {
-    // Before any recursive work (clone, normalize, JCS) on caller input.
+    // Before any recursive work (clone, JCS) on caller input.
     if crate::json::exceeds_max_depth(record) {
         return (
             INVALID,

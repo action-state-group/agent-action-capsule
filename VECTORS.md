@@ -93,7 +93,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/bundle/parent-log-witness/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`parent-log-witness/v1`) | verify | 36 |
 | `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`) | pack, verify | 8 |
 | `vectors/bundle/report-single-record.json` | `draft-mih-zhang-agent-disclosure-bundle-00` (report of one record) | report | 3 |
-| `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 108 |
+| `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 110 |
 | `vectors/bundle/fragment/` | `draft-mih-zhang-agent-disclosure-bundle` (Fragment Codec) | pack, report | 7 |
 | `vectors/minimum-necessary/` | `spec/REGISTRY.md` §10, §14, §16 (provisional entries) | pack, verify | 15 |
 | `vectors/judgment/` | `x-judgment-v1` extension (provisional) | record, verify | 5 |
@@ -106,7 +106,7 @@ of any positive vector's `input.json`, run the language's command, then
 Counts that are not a set's own case list: `vectors/cross-language/` is the 54
 Ed25519 and 14 COSE cases of `cll-ed25519-vectors.json` plus one case for each
 of its five other input files; `vectors/bundle/strict/` is its 99 `cases` plus
-its 9 `record_signatures`.
+its 11 `record_signatures`.
 
 ## Request, respond and the interop profile
 

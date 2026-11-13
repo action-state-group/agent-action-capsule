@@ -201,24 +201,18 @@ def _record_capsule_id(record: dict) -> str:
     """The Capsule ID ``record`` declares by its ``canonicalization_id``.
 
     ``jcs`` (format 4) commits every member but ``capsule_id`` and the
-    local-only envelope fields. ``jcs-n``, declared or implied by a record
-    without the slot (or with JSON ``null``), is the vintage reading, which also
-    drops ``chain`` and removes null and empty members before JCS. Any other
-    algorithm raises ``ValueError``.
+    local-only envelope fields. Any other value, including the withdrawn
+    ``jcs-n`` and an absent or ``null`` slot, raises ``ValueError``.
     """
     import hashlib
 
-    from .canonical import LOCAL_ONLY_FIELDS, jcs, normalize
+    from .canonical import LOCAL_ONLY_FIELDS, jcs
 
-    declared = record.get("canonicalization_id")
-    algorithm = "jcs-n" if declared is None else declared
+    algorithm = record.get("canonicalization_id")
+    if algorithm != "jcs":
+        raise ValueError(f"cannot compute capsule_id with canonicalization_id {algorithm!r}")
     canonical = {k: v for k, v in record.items() if k != "capsule_id" and k not in LOCAL_ONLY_FIELDS}
-    if algorithm == "jcs-n":
-        canonical.pop("chain", None)
-        return hashlib.sha256(jcs(normalize(canonical))).hexdigest()
-    if algorithm == "jcs":
-        return hashlib.sha256(jcs(canonical)).hexdigest()
-    raise ValueError(f"cannot compute capsule_id with canonicalization_id {algorithm!r}")
+    return hashlib.sha256(jcs(canonical)).hexdigest()
 
 
 def verify_record_signature(record: object) -> tuple[str, list[str]]:
@@ -228,7 +222,7 @@ def verify_record_signature(record: object) -> tuple[str, list[str]]:
     ``record["key_id"]`` the hex raw Ed25519 public key. Neither present is
     ``unclaimed`` (an unsigned record, not a forgery); one without the other,
     or an envelope that does not verify over the Capsule ID recomputed from the
-    record's own content (``jcs`` or vintage ``jcs-n``) under ``key_id``, is
+    record's own content (``jcs``) under ``key_id``, is
     ``invalid``. The carried ``capsule_id`` is not read. Returns ``(verdict,
     messages)``; ``messages`` is empty unless ``invalid``. Never raises.
     """

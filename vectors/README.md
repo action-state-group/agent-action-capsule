@@ -73,7 +73,7 @@ same-commit files in CI.
   result shape, over one worked example;
   `python/scripts/generate_min_necessary_vectors.py` regenerates them.
 - `bundle/strict/`: strict Evidence Bundle verification
-  (`verify_bundle(..., strict=True)`): producer signatures, including vintage
+  (`verify_bundle(..., strict=True)`): producer signatures, refusing the withdrawn
   `jcs-n` records, the checkpoint read from its signed COSE form,
   producer-selected Bundles, the `disclosures` claim and witness receipts of the
   `cll`, `rekor` and `scrapi` bindings under a supplied witness directory;

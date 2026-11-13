@@ -90,7 +90,7 @@ fn every_record_signature_matches() {
     let cases = vectors["record_signatures"]
         .as_array()
         .expect("record_signatures");
-    assert_eq!(cases.len(), 9);
+    assert_eq!(cases.len(), 11);
     for case in cases {
         let (verdict, messages) = verify_record_signature(&case["record"]);
         assert_eq!(json!(verdict), case["expect"], "{}", case["id"]);

@@ -1265,6 +1265,8 @@ def record_cases() -> list[dict]:
     declared = signed({**vintage, "canonicalization_id": "jcs-n"},
                       capsule_id=hashlib.sha256(jcs(normalize({**preimage, "canonicalization_id": "jcs-n"}))).hexdigest())
     declared["capsule_id"] = hashlib.sha256(jcs(normalize({**preimage, "canonicalization_id": "jcs-n"}))).hexdigest()
+    null_slot = signed({**vintage, "canonicalization_id": None}, capsule_id=vintage["capsule_id"])
+    number_slot = signed({**vintage, "canonicalization_id": 4}, capsule_id=vintage["capsule_id"])
     half = dict(jcs_record)
     del half["signature"]
     unknown = signed({**capsule("record-other"), "canonicalization_id": "as-transmitted"},
@@ -1276,10 +1278,16 @@ def record_cases() -> list[dict]:
     return [
         {"id": "authored-jcs", "description": "A format-4 record signed by its key_id.", "record": jcs_record,
          "expect": "authored"},
-        {"id": "authored-jcs-n", "description": "A vintage record with no canonicalization_id: jcs-n drops chain and "
-         "null or empty members.", "record": vintage_signed, "expect": "authored"},
-        {"id": "authored-jcs-n-declared", "description": "A vintage record declaring canonicalization_id jcs-n.",
-         "record": declared, "expect": "authored"},
+        {"id": "invalid-no-canonicalization", "description": "A vintage record with no canonicalization_id, signed "
+         "over its jcs-n Capsule ID (chain dropped, null and empty members removed): the withdrawn construction is "
+         "not recomputed.", "record": vintage_signed, "expect": "invalid"},
+        {"id": "invalid-jcs-n-declared", "description": "A vintage record declaring the withdrawn "
+         "canonicalization_id jcs-n, signed over its jcs-n Capsule ID.", "record": declared, "expect": "invalid"},
+        {"id": "invalid-null-canonicalization", "description": "A vintage record whose canonicalization_id is JSON "
+         "null, signed over its jcs-n Capsule ID: null is not read as the absent slot.", "record": null_slot,
+         "expect": "invalid"},
+        {"id": "invalid-non-string-canonicalization", "description": "A vintage record whose canonicalization_id is "
+         "the number 4, signed over its jcs-n Capsule ID.", "record": number_slot, "expect": "invalid"},
         {"id": "unclaimed", "description": "No signature and no key_id.", "record": capsule("record-unsigned"),
          "expect": "unclaimed"},
         {"id": "invalid-half-claim", "description": "key_id without signature.", "record": half, "expect": "invalid"},
