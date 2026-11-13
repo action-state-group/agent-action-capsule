@@ -513,6 +513,37 @@ bundle producer over the bundle digest.
 | `cose-sign1` | A tagged COSE_Sign1 whose attached payload is the raw 32-byte bundle digest, as defined by the Evidence Bundle draft. |
 | `countersign/v1` | The JSON entry `{type, signer, over, statement, signature, receipt?}` defined in the Evidence Bundle draft, "The countersign/v1 Entry": an Ed25519 signature over the bundle digest, the signer, and the countersigner's statement of the checks it recomputed, each with one of five results. |
 
+### Countersignature verification states (informational)
+
+These are the words capsule-cli prints for a `countersignatures[]` entry, listed
+here as the one spelling of each state. No Bundle member carries them and a
+producer never writes one, so they are not values of the registry above. The
+Evidence Bundle draft (`-01`), "Bundle Digest and Countersignatures" and
+"Verifying a countersign/v1 Entry", defines each entry state in prose; the
+second column gives its term. Other verifiers spell some states differently
+today.
+
+| Token | Draft term | Meaning |
+|---|---|---|
+| `invalid` | `invalid` | A `countersign/v1` entry whose `over` differs from the recomputed bundle digest, or whose `signature` fails under `signer.key_id`. Its checks are not shown as results. |
+| `unverified` | `unverified` | An entry of a `type` the verifier does not implement, including the reserved `cose-sign1` slot. It changes no other result. |
+| `not_independent` | `not independent` | `over` matches, the signature verifies, and `signer.key_id` is a key of the producer ("Self-Countersignature"). |
+| `unresolved_signer` | `unresolved signer` | `over` matches, the signature verifies, the entry is independent, and the key is in no directory the verifier consulted. |
+| `resolved` | `resolved` | `over` matches, the signature verifies, the entry is independent, and the key is in a directory the verifier consulted. |
+
+The draft names no state for a Bundle with no `countersignatures` entries;
+capsule-cli prints `none` for it.
+
+capsule-cli reports the `receipt` of an entry that is `not_independent`,
+`unresolved_signer` or `resolved` separately, as one of the words below. The
+draft names only the second.
+
+| Token | Meaning |
+|---|---|
+| `verified` | The receipt was checked against the entry's `statement` and verified. |
+| `unverified` | A receipt is present and was not verified, either because the verifier cannot check it or because the check failed. |
+| `absent` | The entry carries no receipt. Its absence does not invalidate the entry. |
+
 ## 16. Evidence Request derivation
 
 Defined in `draft-mih-agent-evidence-request`, "Derivation-Scoped
