@@ -466,6 +466,8 @@ checkpoint is signed by another, the log key.
 | `authored-jcs` | `authored` |
 | `invalid-no-canonicalization` | `invalid`: no `canonicalization_id`, signed over the withdrawn `jcs-n` Capsule ID |
 | `invalid-jcs-n-declared` | `invalid`: `canonicalization_id` is `jcs-n`, signed over its `jcs-n` Capsule ID |
+| `invalid-null-canonicalization` | `invalid`: `canonicalization_id` is JSON `null`, signed over the `jcs-n` Capsule ID |
+| `invalid-non-string-canonicalization` | `invalid`: `canonicalization_id` is the number 4, signed over the `jcs-n` Capsule ID |
 | `unclaimed` | `unclaimed` |
 | `invalid-half-claim` | `invalid`: `key_id` without `signature` |
 | `invalid-other-key` | `invalid` |

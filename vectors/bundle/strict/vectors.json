@@ -26025,6 +26025,54 @@
       "expect": "invalid"
     },
     {
+      "id": "invalid-null-canonicalization",
+      "description": "A vintage record whose canonicalization_id is JSON null, signed over its jcs-n Capsule ID: null is not read as the absent slot.",
+      "record": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-03",
+        "format_version": "3",
+        "action_id": "record-vintage",
+        "action_type": "fyi",
+        "operator": "ACME-CO",
+        "developer": "agent@v1",
+        "timestamp": "2026-10-15T00:00:00Z",
+        "chain": {
+          "parent_capsule_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "relation": "follows"
+        },
+        "constraints": [],
+        "effect": null,
+        "capsule_id": "b3bc023e4c7e57950f05c93d54efa90899bb5fbc59fa7b648007b9322ba7a5a4",
+        "canonicalization_id": null,
+        "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b3bc023e4c7e57950f05c93d54efa90899bb5fbc59fa7b648007b9322ba7a5a4584049d4db47915e32af8c606a67f7df94a996234a41d66517c1e60a4de6201ced5c8ee0fad5088dc095d2d8c785764fe11061ea313dfaec3bfb76cb1cebc109c701",
+        "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+      },
+      "expect": "invalid"
+    },
+    {
+      "id": "invalid-non-string-canonicalization",
+      "description": "A vintage record whose canonicalization_id is the number 4, signed over its jcs-n Capsule ID.",
+      "record": {
+        "spec_version": "draft-mih-scitt-agent-action-capsule-03",
+        "format_version": "3",
+        "action_id": "record-vintage",
+        "action_type": "fyi",
+        "operator": "ACME-CO",
+        "developer": "agent@v1",
+        "timestamp": "2026-10-15T00:00:00Z",
+        "chain": {
+          "parent_capsule_id": "1111111111111111111111111111111111111111111111111111111111111111",
+          "relation": "follows"
+        },
+        "constraints": [],
+        "effect": null,
+        "capsule_id": "b3bc023e4c7e57950f05c93d54efa90899bb5fbc59fa7b648007b9322ba7a5a4",
+        "canonicalization_id": 4,
+        "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b3bc023e4c7e57950f05c93d54efa90899bb5fbc59fa7b648007b9322ba7a5a4584049d4db47915e32af8c606a67f7df94a996234a41d66517c1e60a4de6201ced5c8ee0fad5088dc095d2d8c785764fe11061ea313dfaec3bfb76cb1cebc109c701",
+        "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+      },
+      "expect": "invalid"
+    },
+    {
       "id": "unclaimed",
       "description": "No signature and no key_id.",
       "record": {
