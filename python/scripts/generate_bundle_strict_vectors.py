@@ -1276,10 +1276,11 @@ def record_cases() -> list[dict]:
     return [
         {"id": "authored-jcs", "description": "A format-4 record signed by its key_id.", "record": jcs_record,
          "expect": "authored"},
-        {"id": "authored-jcs-n", "description": "A vintage record with no canonicalization_id: jcs-n drops chain and "
-         "null or empty members.", "record": vintage_signed, "expect": "authored"},
-        {"id": "authored-jcs-n-declared", "description": "A vintage record declaring canonicalization_id jcs-n.",
-         "record": declared, "expect": "authored"},
+        {"id": "invalid-no-canonicalization", "description": "A vintage record with no canonicalization_id, signed "
+         "over its jcs-n Capsule ID (chain dropped, null and empty members removed): the withdrawn construction is "
+         "not recomputed.", "record": vintage_signed, "expect": "invalid"},
+        {"id": "invalid-jcs-n-declared", "description": "A vintage record declaring the withdrawn "
+         "canonicalization_id jcs-n, signed over its jcs-n Capsule ID.", "record": declared, "expect": "invalid"},
         {"id": "unclaimed", "description": "No signature and no key_id.", "record": capsule("record-unsigned"),
          "expect": "unclaimed"},
         {"id": "invalid-half-claim", "description": "key_id without signature.", "record": half, "expect": "invalid"},

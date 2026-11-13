@@ -72,10 +72,8 @@ least one record and every record's identity holds. Otherwise it fails with
 
 The Capsule ID is recomputed as the record's `canonicalization_id` declares.
 Under `jcs`, every member except `capsule_id`, `signature` and `key_id` is
-committed. Under `jcs-n`, declared or implied by an absent or `null` member
-(the vintage reading), `chain` is also removed, then null, empty-array and
-empty-object members are removed bottom-up before JCS. Any other value is
-`invalid`. The carried `capsule_id` is not read.
+committed. Any other value, the withdrawn `jcs-n` and an absent or `null`
+member included, is `invalid`. The carried `capsule_id` is not read.
 
 The claim's findings are `producer_signature_invalid:<id>` for each invalid
 record, then `producer_signature_unclaimed:<id>` for each unclaimed one. The
@@ -466,8 +464,8 @@ checkpoint is signed by another, the log key.
 | id | expect |
 |---|---|
 | `authored-jcs` | `authored` |
-| `authored-jcs-n` | `authored`: no `canonicalization_id`, so `chain` and null or empty members are dropped |
-| `authored-jcs-n-declared` | `authored`: `canonicalization_id` is `jcs-n` |
+| `invalid-no-canonicalization` | `invalid`: no `canonicalization_id`, signed over the withdrawn `jcs-n` Capsule ID |
+| `invalid-jcs-n-declared` | `invalid`: `canonicalization_id` is `jcs-n`, signed over its `jcs-n` Capsule ID |
 | `unclaimed` | `unclaimed` |
 | `invalid-half-claim` | `invalid`: `key_id` without `signature` |
 | `invalid-other-key` | `invalid` |

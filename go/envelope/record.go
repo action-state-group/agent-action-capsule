@@ -26,8 +26,8 @@ const (
 // Unclaimed or Invalid. record["signature"] is the hex Producer Envelope and
 // record["key_id"] the hex raw Ed25519 public key. The envelope must verify
 // over the Capsule ID recomputed from the record's own content as its
-// canonicalization_id declares (jcs, or the vintage jcs-n, declared or
-// implied by an absent or null member); the carried capsule_id is not read.
+// canonicalization_id declares (jcs; the withdrawn jcs-n and an absent or
+// null member are invalid); the carried capsule_id is not read.
 // It returns the verdict and messages, which are empty unless Invalid.
 // It never panics.
 func VerifyRecordSignature(value interface{}) (string, []string) {
@@ -88,13 +88,11 @@ func VerifyRecordSignature(value interface{}) (string, []string) {
 }
 
 // recordCapsuleID recomputes the Capsule ID a record declares by its
-// canonicalization_id. jcs commits every member but capsule_id and the
-// local-only envelope fields; jcs-n also drops chain, then null, empty-array
-// and empty-object members bottom-up before JCS.
+// canonicalization_id. Only jcs is supported; it commits every member but
+// capsule_id and the local-only envelope fields.
 func recordCapsuleID(record map[string]interface{}) (string, error) {
-	algorithm := interface{}("jcs-n")
-	if declared := record["canonicalization_id"]; declared != nil {
-		algorithm = declared
+	if algorithm := record["canonicalization_id"]; algorithm != canonical.CanonicalizationJCS {
+		return "", fmt.Errorf("cannot compute capsule_id with canonicalization_id %v", algorithm)
 	}
 	preimage := make(map[string]interface{}, len(record))
 	for name, member := range record {
@@ -102,55 +100,10 @@ func recordCapsuleID(record map[string]interface{}) (string, error) {
 			preimage[name] = member
 		}
 	}
-	var data []byte
-	var err error
-	switch algorithm {
-	case "jcs-n":
-		delete(preimage, "chain")
-		data, err = canonical.JCS(normalize(preimage))
-	case canonical.CanonicalizationJCS:
-		data, err = canonical.JCS(preimage)
-	default:
-		return "", fmt.Errorf("cannot compute capsule_id with canonicalization_id %v", algorithm)
-	}
+	data, err := canonical.JCS(preimage)
 	if err != nil {
 		return "", err
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]), nil
-}
-
-// normalize is the vintage jcs-n absent-field normalization: members whose
-// value is null, an empty array or an empty object are removed, bottom-up, so
-// an object emptied by its own removals is removed by its parent. Array
-// elements are normalized but never removed.
-func normalize(value interface{}) interface{} {
-	switch value := value.(type) {
-	case map[string]interface{}:
-		out := make(map[string]interface{}, len(value))
-		for name, member := range value {
-			normalized := normalize(member)
-			switch normalized := normalized.(type) {
-			case nil:
-				continue
-			case map[string]interface{}:
-				if len(normalized) == 0 {
-					continue
-				}
-			case []interface{}:
-				if len(normalized) == 0 {
-					continue
-				}
-			}
-			out[name] = normalized
-		}
-		return out
-	case []interface{}:
-		out := make([]interface{}, len(value))
-		for i, member := range value {
-			out[i] = normalize(member)
-		}
-		return out
-	}
-	return value
 }

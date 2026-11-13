@@ -123,8 +123,8 @@ mean the certificate is invalid.
 calls a Bundle VALID, and sets `result.verdict` to `VALID`, `INCOMPLETE` or
 `INVALID`:
 
-- each record's producer signature (`signatures`), including vintage `jcs-n`
-  records; an unsigned record is not shown unless you pass
+- each record's producer signature (`signatures`); a record with no
+  `canonicalization_id`, or the withdrawn `jcs-n`, is `invalid`; an unsigned record is not shown unless you pass
   `require_signature=True`;
 - the checkpoint, read only from its signed COSE form (`checkpoint`); without
   one, interval coverage and membership are not shown, so the Bundle is never

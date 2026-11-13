@@ -8,24 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNormalizeIsBottomUp(t *testing.T) {
-	value := map[string]interface{}{
-		"keep":  json.Number("0"),
-		"null":  nil,
-		"empty": []interface{}{},
-		"outer": map[string]interface{}{"inner": map[string]interface{}{"gone": nil}},
-		"list":  []interface{}{nil, map[string]interface{}{"x": nil}},
-		"false": false,
-		"blank": "",
-	}
-	require.Equal(t, map[string]interface{}{
-		"keep":  json.Number("0"),
-		"list":  []interface{}{nil, map[string]interface{}{}},
-		"false": false,
-		"blank": "",
-	}, normalize(value))
-}
-
 func TestVerifyRecordSignatureRefusals(t *testing.T) {
 	verdict, messages := VerifyRecordSignature([]interface{}{})
 	require.Equal(t, Invalid, verdict)

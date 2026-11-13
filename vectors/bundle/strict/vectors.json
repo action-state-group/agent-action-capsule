@@ -25978,8 +25978,8 @@
       "expect": "authored"
     },
     {
-      "id": "authored-jcs-n",
-      "description": "A vintage record with no canonicalization_id: jcs-n drops chain and null or empty members.",
+      "id": "invalid-no-canonicalization",
+      "description": "A vintage record with no canonicalization_id, signed over its jcs-n Capsule ID (chain dropped, null and empty members removed): the withdrawn construction is not recomputed.",
       "record": {
         "spec_version": "draft-mih-scitt-agent-action-capsule-03",
         "format_version": "3",
@@ -25998,11 +25998,11 @@
         "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a05820b3bc023e4c7e57950f05c93d54efa90899bb5fbc59fa7b648007b9322ba7a5a4584049d4db47915e32af8c606a67f7df94a996234a41d66517c1e60a4de6201ced5c8ee0fad5088dc095d2d8c785764fe11061ea313dfaec3bfb76cb1cebc109c701",
         "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
       },
-      "expect": "authored"
+      "expect": "invalid"
     },
     {
-      "id": "authored-jcs-n-declared",
-      "description": "A vintage record declaring canonicalization_id jcs-n.",
+      "id": "invalid-jcs-n-declared",
+      "description": "A vintage record declaring the withdrawn canonicalization_id jcs-n, signed over its jcs-n Capsule ID.",
       "record": {
         "spec_version": "draft-mih-scitt-agent-action-capsule-03",
         "format_version": "3",
@@ -26022,7 +26022,7 @@
         "signature": "d284584ca30378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582066be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a0127a058209a1d1a1f50ebae789b58bfd79a44b34b3f247b2c6a5f59db39af46bb1a4bee6258403ead98fea26c66a197f3afb8c62e9d69e79a62e665fb688d91bcb29e6dd1bc50bd8c1cf4dd54f2288dce09fd11f3c9380c895029c68fbbe82aaad0a36923e60a",
         "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
       },
-      "expect": "authored"
+      "expect": "invalid"
     },
     {
       "id": "unclaimed",
