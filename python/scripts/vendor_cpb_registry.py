@@ -103,38 +103,17 @@ _REFERENCE = re.compile(r"\*\*Reference:\*\*\s*(.+?)\s*$", re.MULTILINE)
 # vocabulary (e.g. ``terminal_state``, ``observation_point``). It does NOT
 # restate the AAC six-registry field values (``effect.type``,
 # ``effect_attestation``, ``chain.relation``) that a producer of that class
-# sets on the surrounding capsule. Those are resolved here, hand-curated from
-# the producer named in the entry's Reference, with an explicit source pin so
-# provenance is honest (never fabricated into the CPB registry itself).
+# sets on the surrounding capsule. A class whose producer sets values that are
+# not yet registered gets an entry here, hand-curated from the producer named
+# in the entry's Reference with an explicit source pin, shaped
+# ``{"<class>": {"source": "...", "values": {"<registry>": ["<value>"]}}}``.
+# Drop an entry as soon as its values are registered: check 8 resolves a
+# registered value as seeded and never consults it.
 #
 # Keys are AAC registry names (see agent_action_capsule.registries.REGISTRY_NAMES).
-_CAPSULE_FIELD_VALUES: dict[str, dict] = {
-    "mesh-inference-exchange": {
-        "source": (
-            "action-state-group/capsule-emit-mesh "
-            "plugins/admission-policy/src/capsule_emit.rs "
-            "(effect_type, effect_attestation, chain.relation) and "
-            "capsule_sidecar.py"
-        ),
-        "values": {
-            # From the Rust capsule-producer plugin that seals the real mesh
-            # capsules (capsule_emit.rs / capsule.rs). The Python sidecar path
-            # uses effect_attestation='gate_executed' and chain.relation=
-            # 'confirms' (both already seeded), so only the wire-producer values
-            # need provisional resolution here.
-            # 'inference_completion' (REGISTRY.md §3), 'host_served_observed'
-            # (§5) and 'follows' (§6) are all registered as of the -05
-            # revision, so check 8 resolves each as seeded and never consults
-            # these entries. All three are kept until the next snapshot refresh
-            # so the committed cpb_provisional.json (pinned by snapshot_sha256
-            # and mirrored into go/registries/data/) stays byte-identical; drop
-            # them when re-vendoring.
-            "effect.type": ["inference_completion"],
-            "effect_attestation": ["host_served_observed"],
-            "chain.relation": ["follows"],
-        },
-    },
-}
+# Empty: the mesh-inference-exchange values (inference_completion,
+# host_served_observed, follows) are registered as of the -05 revision.
+_CAPSULE_FIELD_VALUES: dict[str, dict] = {}
 
 
 def _projection_from_markdown(md: str) -> dict:
