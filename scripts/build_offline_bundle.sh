@@ -57,7 +57,7 @@ echo "== rust: vendor"
 echo "== python: wheelhouse"
 py="$work/venv"
 python3 -m venv "$py"
-"$py/bin/pip" -q wheel --wheel-dir "$root/deps/wheelhouse" "$snap/python[dev,bundle]" jsonschema
+"$py/bin/pip" -q wheel --wheel-dir "$root/deps/wheelhouse" "$snap/python[dev,bundle]" "checkpointed-local-log<0.9" jsonschema
 
 echo "== ts: npm cache (macOS and Linux, x64 and arm64)"
 for target in "darwin arm64" "darwin x64" "linux arm64" "linux x64"; do
