@@ -176,8 +176,8 @@ def load_registries(path: Path | None = None) -> dict[str, frozenset[str]]:
 # artifact-type entries are vendored here as a local, no-network snapshot
 # (``data/cpb_provisional.json``, refreshed by ``scripts/vendor_cpb_registry.py``,
 # pinned to an upstream commit). The verifier consults it so that a value a
-# provisional payload class is known to set — e.g. the mesh-inference-exchange
-# class's ``effect.type='inference_completion'`` — resolves as *known with
+# provisional payload class is known to set — e.g. a not-yet-registered
+# ``effect.type`` its producer emits — resolves as *known with
 # status provisional* rather than unknown. The never-reject invariant (§4, §12)
 # is unchanged: a provisional value is still informational, never a rejection,
 # and a genuinely unknown value still surfaces as ``unknown_registry_value``.

@@ -594,8 +594,8 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
     # A value not seeded in the six §12 registries is informational (never a
     # rejection — §4, §12). Before calling it "unknown", we consult the vendored
     # CPB *provisional* registry snapshot: a value a provisional payload class is
-    # known to set (e.g. the mesh-inference-exchange class's
-    # effect.type='inference_completion') resolves as *known with status
+    # known to set (e.g. a not-yet-registered
+    # effect.type its producer emits) resolves as *known with status
     # provisional* — still informational, but no longer unknown.
     provisional = _load_provisional()
     for reg_name, (block, member) in _REGISTRY_FIELDS:

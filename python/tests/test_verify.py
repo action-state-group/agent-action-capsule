@@ -196,9 +196,9 @@ def test_unknown_chain_relation_is_informational(executed):
 # ---- Check 8: vendored CPB provisional resolution --------------------------
 def test_mesh_effect_type_resolves_seeded(executed):
     # effect.type='inference_completion' is registered (REGISTRY.md §3), so
-    # check 8 resolves it as seeded and never consults the vendored CPB
-    # provisional snapshot that still lists it: neither known-provisional nor
-    # unknown for this field.
+    # check 8 resolves it as seeded, so it is neither known-provisional nor
+    # unknown for this field (the vendored CPB provisional snapshot no longer
+    # lists it).
     d = dict(executed)
     d["effect"] = dict(d["effect"], type="inference_completion")
     res = verify(reseal(d))
