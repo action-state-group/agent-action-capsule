@@ -20,10 +20,10 @@ jobs:
         run: pip install -e ".[dev,transparent,anchor]"
       - name: install cll reference (bundle completeness proofs)
         # The evidence-bundle vectors verify against real CLL MMR proofs, and the
-        # strict-mode vectors against its COSE checkpoint verifier (0.5.0+). Install
+        # strict-mode vectors against its COSE checkpoint verifier (0.9.0+). Install
         # the released checkpointed-local-log reference (import package `cll`) so
         # they actually run instead of importorskip-skipping.
-        run: pip install "checkpointed-local-log>=0.6,<0.7"
+        run: pip install "checkpointed-local-log>=0.9,<0.10"
       - name: require cll importable (the bundle vectors use importorskip; fail loud in CI)
         # test_bundle_vectors.py importorskips cll so local dev without it still runs the
         # rest of the suite; here cll MUST be present, so a broken/empty install fails the
