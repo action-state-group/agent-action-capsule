@@ -759,8 +759,13 @@ function isCaseRecordFor(
     return false;
   if (record.carriedActionId === `urn:${conversationId}`) return true;
   const input = record.carriedInput;
-  if (input === undefined || input.state !== "disclosed") return false;
-  const ids = sealedCaseIds(input.payload as ObjectValue);
+  if (
+    input === undefined ||
+    input.state !== "disclosed" ||
+    !isObject(input.payload)
+  )
+    return false;
+  const ids = sealedCaseIds(input.payload);
   return (
     ids.includes(conversationId) &&
     ids.some((id) => record.carriedActionId === `urn:${id}`)

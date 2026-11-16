@@ -1592,7 +1592,7 @@ describe("conversation transcript", () => {
       "tau2:airline:claude-3-7-sonnet-20250219:task-7:trial-0";
     const withheld = (
       agentModel: string,
-      input: "disclosed" | "withheld" = "disclosed",
+      input: "disclosed" | "withheld" | Record<string, unknown> = "disclosed",
     ) => {
       const result = synthetic({
         withholdReports: true,
@@ -1604,20 +1604,22 @@ describe("conversation transcript", () => {
       (result.records as Map<string, unknown>).set("case-rec", {
         ...caseRec,
         carriedInput:
-          input === "disclosed"
-            ? {
-                state: "disclosed",
-                payload: {
-                  case: {
-                    benchmark: "tau2",
-                    domain: "airline",
-                    task_id: 7,
-                    trial: 0,
-                    agent_model: agentModel,
+          typeof input === "object"
+            ? input
+            : input === "disclosed"
+              ? {
+                  state: "disclosed",
+                  payload: {
+                    case: {
+                      benchmark: "tau2",
+                      domain: "airline",
+                      task_id: 7,
+                      trial: 0,
+                      agent_model: agentModel,
+                    },
                   },
-                },
-              }
-            : { state: "withheld" },
+                }
+              : { state: "withheld" },
       });
       return buildOutcomeReportModel(result, options).conversations[0]!;
     };
@@ -1628,6 +1630,11 @@ describe("conversation transcript", () => {
     // name another model, or state nothing, is not this conversation's case
     expect(withheld("gpt-4.1-2025-04-14").sourceCapsuleId).toBeUndefined();
     expect(withheld("x", "withheld").sourceCapsuleId).toBeUndefined();
+    // a disclosed input that is not an object states nothing, and never throws
+    for (const payload of [null, "text", 7])
+      expect(
+        withheld("x", { state: "disclosed", payload }).sourceCapsuleId,
+      ).toBeUndefined();
   });
 
   it("dates the judging from the report capsule only for a withheld report: a mismatched report, and a disclosed one without a period, stay unknown", () => {
