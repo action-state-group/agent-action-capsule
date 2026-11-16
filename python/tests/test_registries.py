@@ -123,14 +123,19 @@ def test_parser_handles_multiline_wrapping(tmp_path: Path):
 
 
 # ---- Vendored CPB provisional registry -------------------------------------
-def test_cpb_provisional_snapshot_resolves_mesh_values():
-    """The vendored CPB provisional snapshot maps the mesh-inference-exchange
-    class's surrounding-capsule field values to that payload class."""
-    from agent_action_capsule.registries import load_cpb_provisional_values
+def test_cpb_provisional_snapshot_drops_registered_mesh_values():
+    """The vendored CPB provisional snapshot no longer lists the
+    mesh-inference-exchange capsule field values: they are registered (REGISTRY.md
+    §3, §5, §6), so check 8 resolves them as seeded, not provisional."""
+    import json
 
-    vals = load_cpb_provisional_values()
-    assert vals.get("effect.type", {}).get("inference_completion") == "mesh-inference-exchange"
-    assert vals.get("effect_attestation", {}).get("host_served_observed") == "mesh-inference-exchange"
+    from agent_action_capsule.registries import find_cpb_provisional, load_cpb_provisional_values
+
+    assert load_cpb_provisional_values() == {}
+    doc = json.loads(find_cpb_provisional().read_text(encoding="utf-8"))
+    mesh = doc["provisional_artifact_types"]["mesh-inference-exchange"]
+    assert "capsule_field_values" not in mesh
+    assert "capsule_field_values_source" not in mesh
 
 
 def test_cpb_provisional_missing_snapshot_is_empty_not_error(monkeypatch, tmp_path: Path):

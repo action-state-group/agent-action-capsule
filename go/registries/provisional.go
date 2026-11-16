@@ -19,12 +19,16 @@ var cpbSnapshot []byte
 // It mirrors Python check 8; this diagnostic metadata never grants trust.
 // Callers own the returned map.
 func ProvisionalValues() (map[string]map[string]string, error) {
+	return parseProvisional(cpbSnapshot)
+}
+
+func parseProvisional(data []byte) (map[string]map[string]string, error) {
 	var snapshot struct {
 		Types map[string]struct {
 			Values map[string][]string `json:"capsule_field_values"`
 		} `json:"provisional_artifact_types"`
 	}
-	if err := json.Unmarshal(cpbSnapshot, &snapshot); err != nil {
+	if err := json.Unmarshal(data, &snapshot); err != nil {
 		return nil, fmt.Errorf("decode embedded CPB provisional registry: %w", err)
 	}
 	result := make(map[string]map[string]string)

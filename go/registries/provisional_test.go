@@ -16,12 +16,18 @@ func TestProvisionalSnapshotMatchesPython(t *testing.T) {
 	assert.Equal(t, expected, cpbSnapshot, "refresh the vendored snapshot from Python when its provenance changes")
 	values, err := ProvisionalValues()
 	require.NoError(t, err)
-	assert.Equal(t, "mesh-inference-exchange", values["effect.type"]["inference_completion"])
-	assert.Empty(t, values["effect.type"]["future-effect"])
-	values["effect.type"]["inference_completion"] = "caller mutation"
-	fresh, err := ProvisionalValues()
+	assert.Empty(t, values, "the mesh-inference-exchange values are registered, so the snapshot lists none")
+}
+
+func TestProvisionalValuesAreCallerOwned(t *testing.T) {
+	snapshot := []byte(`{"provisional_artifact_types": {"example-class": {"capsule_field_values": {"effect.type": ["future-effect"]}}}}`)
+	values, err := parseProvisional(snapshot)
 	require.NoError(t, err)
-	assert.Equal(t, "mesh-inference-exchange", fresh["effect.type"]["inference_completion"])
+	assert.Equal(t, "example-class", values["effect.type"]["future-effect"])
+	values["effect.type"]["future-effect"] = "caller mutation"
+	fresh, err := parseProvisional(snapshot)
+	require.NoError(t, err)
+	assert.Equal(t, "example-class", fresh["effect.type"]["future-effect"])
 }
 
 func TestLoadOlderRegistrySnapshot(t *testing.T) {

@@ -35,13 +35,7 @@
           "backend_dispatch",
           "client_egress"
         ]
-      },
-      "capsule_field_values": {
-        "effect.type": ["inference_completion"],
-        "effect_attestation": ["host_served_observed"],
-        "chain.relation": ["follows"]
-      },
-      "capsule_field_values_source": "action-state-group/capsule-emit-mesh plugins/admission-policy/src/capsule_emit.rs (effect_type, effect_attestation, chain.relation) and capsule_sidecar.py"
+      }
     },
     "mmr-checkpoint": {
       "status": "provisional",
@@ -49,5 +43,5 @@
       "governed_values": {}
     }
   },
-  "snapshot_sha256": "541a1e74446a5bd32629a4e34c77e971c33539cb6299d30b2bcfee1278393518"
+  "snapshot_sha256": "68617be45d5d186e15fb0035fa30829cdef02f7fda85b9b9cecee9a6151994bc"
 }
