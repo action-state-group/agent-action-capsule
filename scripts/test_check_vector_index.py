@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPEC = importlib.util.spec_from_file_location("check_vector_index", os.path.join(HERE, "check_vector_index.py"))
@@ -41,5 +42,5 @@ def test_duplicate_and_garbled_rows_fail(tmp_path, monkeypatch, capsys):
     row = next(l for l in real_index().split("\n") if l.startswith("| `vectors/judge/`"))
     code, out = run_with(tmp_path, monkeypatch, real_index().replace(row, row + "\n" + row), capsys)
     assert code == 1 and "twice" in out
-    code, out = run_with(tmp_path, monkeypatch, real_index().replace(row, row.replace("| 18 |", "| 18a |")), capsys)
+    code, out = run_with(tmp_path, monkeypatch, real_index().replace(row, re.sub(r"\| (\d+) \|$", r"| \1a |", row)), capsys)
     assert code == 1 and "no integer case count" in out
