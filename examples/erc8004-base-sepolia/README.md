@@ -20,7 +20,7 @@ uv run erc8004_carrier.py resolve --agent-id N [--counterparty-key HEX] [--check
   other chain: an EVM key controls the same address on mainnet too. The key is never printed.
 - **`resolve`.** It prints each hop: `tokenURI`, the registration file, the registrations check and
   the entry's form (V0), the commitment octets and digest (V1), the signature (V2) and the staples
-  (V3). With `capsulectl` (capsule-cli v0.1.0-rc35 or later) on `PATH`, it then runs
+  (V3). With `capsulectl` (capsule-cli v0.1.0-rc36 or later) on `PATH`, it then runs
   `capsulectl verify --history` on the commitment, which checks each stapled `history_card/1` and
   its checkpoint chain. V5, the key binding, needs a signed answer from the node, so it is not shown.
   It follows only a `data:` or `https:` *agentURI* and an `https:` endpoint; it stops on an `ipfs:`
@@ -30,14 +30,18 @@ uv run erc8004_carrier.py resolve --agent-id N [--counterparty-key HEX] [--check
   them the sender and checkpoint key checks are `NOT_CHECKED`.
 - **`NOT_ACCEPTED` is the expected verdict.** A commitment staples a card with no request, so its
   `request_binding` is `NOT_PRESENT` and `capsulectl` does not accept it, even with your keys and with
-  every other check passing. A failed check is listed under its staple, in `staples[].findings`, and
-  shows `FAIL` in `properties`; the top-level `findings` stays empty. A fresh card needs its own request
-  to the node.
-- **Exit status.** `resolve` exits with `capsulectl`'s status, so 1 for a commitment's staple whether
-  or not a check failed, and 2 for a malformed key. A failed hop before `capsulectl` exits 1. Without
-  `capsulectl`, or for an `evidence-commitment/0` it does not read, `resolve` exits 3: nothing failed,
-  but the cards were not checked. `digest_mismatch` at V1 means a stale pointer: it is printed, and the
-  octets are still verified.
+  every other check passing: the card checks out, but it was not sent in answer to a request of yours.
+  A failed check is listed under its staple, in `staples[].findings`, and shows `FAIL` in
+  `properties`; the top-level `findings` repeats it, prefixed `staples[N]: `. A fresh card needs its
+  own request to the node.
+- **Exit status.** `resolve` exits with `capsulectl`'s status. For a commitment's staple that is 3, the
+  expected outcome, when nothing failed: either every check passes except `request_binding`
+  (`NOT_PRESENT`) and `caller_invariance` (`NOT_CHECKED`), or a key was not given and the checks that
+  could not run are named. A failed check or missing evidence exits 1, and a malformed key exits 2. A
+  failed hop before `capsulectl` exits 1. Without `capsulectl`, or for an `evidence-commitment/0` it
+  does not read, `resolve` also exits 3: nothing failed, but the cards were not checked, so read the
+  `history cards` hop to tell the two apart. `digest_mismatch` at V1 means a stale pointer: it is
+  printed, and the octets are still verified.
 - **A failed second transaction.** If `setAgentURI()` fails after `register()` succeeded, rerun
   `register` with `--agent-id` set to the printed id: it sends only `setAgentURI()`.
 
