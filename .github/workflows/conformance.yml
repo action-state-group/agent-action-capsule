@@ -55,8 +55,10 @@ jobs:
       - name: Install Python reference
         working-directory: python
         # `bundle` (checkpointed-local-log) is the Evidence Bundle producer's
-        # dependency, which the interlock's producer step runs.
-        run: pip install -e ".[dev,bundle]"
+        # dependency, which the interlock's producer step runs. Capped below
+        # 0.9: 0.9.0 emits the CLL -02 checkpoint `sub`, which the Go, TS and
+        # Rust pins here reject and which regenerates every bundle vector.
+        run: pip install -e ".[dev,bundle]" "checkpointed-local-log<0.9"
       - name: Check Python reference
         working-directory: python
         run: |
