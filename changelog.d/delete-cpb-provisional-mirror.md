@@ -1,0 +1,1 @@
+- Removed `spec/cpb-provisional-registry.md`, an orphaned July mirror of the registry owned by `scitt-payload-binding`. It still offered the withdrawn `jcs-n` and `cde-n`; nothing in this repository read it (#603).
