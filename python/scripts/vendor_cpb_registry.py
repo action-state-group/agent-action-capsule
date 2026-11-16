@@ -94,10 +94,14 @@ def _pinned_commit(spb: Path) -> str:
 # --------------------------------------------------------------------------- #
 _PROP_HEADER = re.compile(r"^## Proposed:\s+`([^`]+)`\s*$")
 _CLOSED_SET = re.compile(r"`([a-z_.]+)`\s*(?:∈|\\in|in)\s*`?\{([^}`]+)\}`?")
-# A field may be hard-wrapped: continuation lines run until a blank line, a
-# heading or the next ``**Label:**`` line.
+# A field may be hard-wrapped, or start on the line after its label: it runs
+# through continuation lines up to a blank line, a Markdown heading (``#`` plus
+# a space) or the next ``**Label:**`` line, each allowing leading indentation.
+_REF_STOP = r"[ \t]*(?:\*\*[^*\n]+:\*\*|#{1,6}[ \t])"
 _REFERENCE = re.compile(
-    r"\*\*Reference:\*\*[ \t]*(.+(?:\n(?![ \t]*$|\*\*|#).+)*)", re.MULTILINE
+    r"\*\*Reference:\*\*[ \t]*(?:\n(?![ \t]*$|" + _REF_STOP + r"))?[ \t]*"
+    r"(.+(?:\n(?![ \t]*$|" + _REF_STOP + r").+)*)",
+    re.MULTILINE,
 )
 
 

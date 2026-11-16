@@ -30,3 +30,22 @@ def test_reference_stops_at_next_label():
 
 def test_reference_stops_at_blank_line():
     assert _ref("**Reference:** `a/b`\n\nprose\n") == "`a/b`"
+
+
+def test_bold_text_inside_reference_is_not_a_label():
+    got = _ref("**Reference:** `a/b`\n**release v1** at `c0ffee`\n")
+    assert got == "`a/b` **release v1** at `c0ffee`"
+
+
+def test_indented_label_and_heading_stop_the_field():
+    assert _ref("**Reference:** `a/b`\n  **Reference files:** `f.py`\n") == "`a/b`"
+    assert _ref("**Reference:** `a/b`\n  ### Details\nprose\n") == "`a/b`"
+
+
+def test_issue_reference_line_is_not_a_heading():
+    got = _ref("**Reference:** `a/b`\n#111 follow-up\n")
+    assert got == "`a/b` #111 follow-up"
+
+
+def test_reference_starting_on_the_line_after_its_label():
+    assert _ref("**Reference:**\n`a/b` @ `c0ffee`\n") == "`a/b` @ `c0ffee`"
