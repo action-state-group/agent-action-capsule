@@ -735,37 +735,35 @@ export function reportState(
 }
 
 /**
- * The `action_id`s a benchmark case capsule for this conversation declares
- * itself under: `urn:<conversation id>`, and for a model-named id
- * (`benchmark:domain:<model>:task-N:trial-T`) also the model-less
- * `urn:benchmark:domain:task-N:trial-T` the backfill seals. This is the
- * case model's own identity (evidencebook-skills' backfill), read from the
- * checked carried capsule, never from a hint.
- */
-function caseActionIds(conversationId: string): string[] {
-  const ids = [`urn:${conversationId}`];
-  const named = /^([^:]+):([^:]+):.+:(task-[^:]+:trial-[^:]+)$/u.exec(
-    conversationId,
-  );
-  if (named !== null) ids.push(`urn:${named[1]}:${named[2]}:${named[3]}`);
-  return ids;
-}
-
-/**
  * Whether `record` is this conversation's case record: an evidence-book
  * record whose carried capsule checks out (`carriedCapsuleId`) and declares
- * itself this conversation's case (`carriedActionId`, see `caseActionIds`).
- * A shared transcript, policy, rubric or judge-pin capsule declares
- * something else and is never one.
+ * itself this conversation's case (`carriedActionId`). A shared transcript,
+ * policy, rubric or judge-pin capsule declares something else and is never
+ * one.
+ *
+ * The declaration is read from data the bundle states, never from the shape
+ * of the conversation id: the action id is `urn:<conversation id>`, or, when
+ * the case's own disclosed input states its case fields (`sealedCaseIds`)
+ * and names this conversation, `urn:` plus any id those fields produce (a
+ * model-named conversation id is declared under the model-less id the
+ * backfill seals).
  */
 function isCaseRecordFor(
   record: CitedRecord | undefined,
   conversationId: string,
 ): record is CitedRecord & { carriedCapsuleId: string } {
+  if (
+    record?.carriedCapsuleId === undefined ||
+    record.carriedActionId === undefined
+  )
+    return false;
+  if (record.carriedActionId === `urn:${conversationId}`) return true;
+  const input = record.carriedInput;
+  if (input === undefined || input.state !== "disclosed") return false;
+  const ids = sealedCaseIds(input.payload as ObjectValue);
   return (
-    record?.carriedCapsuleId !== undefined &&
-    record.carriedActionId !== undefined &&
-    caseActionIds(conversationId).includes(record.carriedActionId)
+    ids.includes(conversationId) &&
+    ids.some((id) => record.carriedActionId === `urn:${id}`)
   );
 }
 

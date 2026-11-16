@@ -1587,20 +1587,47 @@ describe("conversation transcript", () => {
     }
   });
 
-  it("with the reports withheld, a model-named conversation matches the model-less case action id the backfill seals", () => {
+  it("with the reports withheld, a model-named conversation matches the model-less case action id when the case's own sealed fields state the model", () => {
     const conversationId =
       "tau2:airline:claude-3-7-sonnet-20250219:task-7:trial-0";
-    const conversation = buildOutcomeReportModel(
-      synthetic({
+    const withheld = (
+      agentModel: string,
+      input: "disclosed" | "withheld" = "disclosed",
+    ) => {
+      const result = synthetic({
         withholdReports: true,
         conversationId,
-        agentModel: "claude-3-7-sonnet-20250219",
+        agentModel,
         caseActionId: `urn:${CASE}`,
-      }),
-      options,
-    ).conversations[0]!;
-    expect(conversation.caseFrom).toBe("claims");
-    expect(conversation.transcript.state).toBe("cited");
+      });
+      const caseRec = result.records.get("case-rec")!;
+      (result.records as Map<string, unknown>).set("case-rec", {
+        ...caseRec,
+        carriedInput:
+          input === "disclosed"
+            ? {
+                state: "disclosed",
+                payload: {
+                  case: {
+                    benchmark: "tau2",
+                    domain: "airline",
+                    task_id: 7,
+                    trial: 0,
+                    agent_model: agentModel,
+                  },
+                },
+              }
+            : { state: "withheld" },
+      });
+      return buildOutcomeReportModel(result, options).conversations[0]!;
+    };
+    const ok = withheld("claude-3-7-sonnet-20250219");
+    expect(ok.caseFrom).toBe("claims");
+    expect(ok.transcript.state).toBe("cited");
+    // an id that merely looks like the layout, but whose sealed case fields
+    // name another model, or state nothing, is not this conversation's case
+    expect(withheld("gpt-4.1-2025-04-14").sourceCapsuleId).toBeUndefined();
+    expect(withheld("x", "withheld").sourceCapsuleId).toBeUndefined();
   });
 
   it("dates the judging from the report capsule only for a withheld report: a mismatched report, and a disclosed one without a period, stay unknown", () => {
