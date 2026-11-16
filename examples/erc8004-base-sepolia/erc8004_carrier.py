@@ -21,8 +21,8 @@ when capsulectl is on PATH, which checks each stapled history_card/1 and its che
 binding) needs a signed answer from the node and is not shown here.
 
 ``resolve`` exits with capsulectl's own status. A commitment's staple answers no request, so on a clean one
-that is 3 (still NOT_ACCEPTED): every check passes except request_binding, or a key was not given and the
-checks that could not run are named. A failed check or missing evidence is 1; read ``staples[].findings`` in
+that is 3 (still NOT_ACCEPTED): every check passes except request_binding (NOT_PRESENT) and
+caller_invariance (NOT_CHECKED), or a key was not given and the checks that could not run are named. A failed check or missing evidence is 1; read ``staples[].findings`` in
 its report, which the top-level findings repeat. A failed hop before it exits 1.
 Without capsulectl, or for an evidence-commitment/0 it does not read, it also exits 3: nothing failed, but the
 cards were not checked (the ``history cards`` hop says NOT_CHECKED). A digest_mismatch at V1 is a stale
