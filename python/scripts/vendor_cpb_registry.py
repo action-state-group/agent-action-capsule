@@ -94,7 +94,15 @@ def _pinned_commit(spb: Path) -> str:
 # --------------------------------------------------------------------------- #
 _PROP_HEADER = re.compile(r"^## Proposed:\s+`([^`]+)`\s*$")
 _CLOSED_SET = re.compile(r"`([a-z_.]+)`\s*(?:∈|\\in|in)\s*`?\{([^}`]+)\}`?")
-_REFERENCE = re.compile(r"\*\*Reference:\*\*\s*(.+?)\s*$", re.MULTILINE)
+# A field may be hard-wrapped, or start on the line after its label: it runs
+# through continuation lines up to a blank line, a Markdown heading (``#`` plus
+# a space) or the next ``**Label:**`` line, each allowing leading indentation.
+_REF_STOP = r"[ \t]*(?:\*\*[^*\n]+:\*\*|#{1,6}[ \t])"
+_REFERENCE = re.compile(
+    r"\*\*Reference:\*\*[ \t]*(?:\n(?![ \t]*$|" + _REF_STOP + r"))?[ \t]*"
+    r"(.+(?:\n(?![ \t]*$|" + _REF_STOP + r").+)*)",
+    re.MULTILINE,
+)
 
 
 # Curated capsule-field-value bindings for provisional payload classes.
@@ -150,7 +158,7 @@ def _projection_from_markdown(md: str) -> dict:
         ref_m = _REFERENCE.search(text)
         entry: dict = {
             "status": "provisional",
-            "reference": ref_m.group(1) if ref_m else "",
+            "reference": " ".join(ref_m.group(1).split()) if ref_m else "",
             "governed_values": governed,
         }
         curated = _CAPSULE_FIELD_VALUES.get(current)
