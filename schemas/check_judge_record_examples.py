@@ -326,6 +326,14 @@ def main() -> int:
             extra_neg = _load_fixture(VECTORS_DIR / extra_subdir / f"{extra_name}.json")
             if list(validator.iter_errors(extra_neg)):
                 print(f"OK  {record_version:<28} {extra_name}.json correctly REJECTED")
+                if extra_name == "neg-empty-clause-ref":
+                    # Load-bearing proof: without Case.clause_ref's minLength the
+                    # same fixture validates, so that rule is what rejected it.
+                    clause_ref_mutant = copy.deepcopy(schema)
+                    del clause_ref_mutant["$defs"]["Case"]["properties"]["clause_ref"]["minLength"]
+                    _mutant_check(
+                        f"{record_version}/{extra_name}", schema, clause_ref_mutant, extra_neg
+                    )
             else:
                 findings.append(
                     f"NEGATIVE-DID-NOT-FAIL {record_version}/{extra_name}: validated clean"
