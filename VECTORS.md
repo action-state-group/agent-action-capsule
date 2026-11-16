@@ -45,7 +45,7 @@ The runner itself never touches the network.
 
 | Language | Setup |
 |---|---|
-| Python | `python3 -m venv python/.venv && python/.venv/bin/pip install -e "python[dev,bundle]" "checkpointed-local-log<0.9" jsonschema` (the cap holds until #608 moves the corpus to CLL 0.9.0) |
+| Python | `python3 -m venv python/.venv && python/.venv/bin/pip install -e "python[dev,bundle]" jsonschema` |
 | TypeScript | `cd ts && npm ci` |
 | Go | `cd go && GOWORK=off go mod vendor` (the runner then uses `-mod=vendor` and `GOPROXY=off`) |
 | Rust | `cd rust && mkdir -p .cargo && cargo vendor --locked vendor > .cargo/config.toml` (the runner passes `--offline --locked`) |

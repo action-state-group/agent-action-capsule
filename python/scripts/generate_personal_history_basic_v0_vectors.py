@@ -142,6 +142,7 @@ def tick_checkpoint(entries: list[bytes], prev_entries: int, issued_at: str) -> 
     size, prev_size = sizes[len(entries)], sizes[prev_entries]
     commitment = [db[p] for p in mmr_peaks(size - 1)]
     prev_commitment = [db[p] for p in mmr_peaks(prev_size - 1)] if prev_size else []
+    # CLL -01 form, as the interop profile pins it; CLL 0.9 readers accept it too.
     sub = f"{TICK_LOG}#{size}"
     protected = cbor({1: -8, 4: bytes.fromhex(PUB["holder-log"]), 15: {1: TICK_LOG, 2: sub}})
     payload = cbor({"kind": "cll-checkpoint", "log_size": len(entries), "prev_size": prev_entries,
