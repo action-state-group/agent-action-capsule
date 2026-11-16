@@ -2,7 +2,7 @@
   "schema_version": "1",
   "_vendored_from": "action-state-group/scitt-payload-binding",
   "_vendored_source": "spec/cpb-provisional-registry.md",
-  "_vendored_commit": "e0ad1c7e0b0248b9aed25c747f174548cb8e141d",
+  "_vendored_commit": "fa57e7cb890c9021f34e7b8cc8e6e203ee0be184",
   "_vendored_note": "Machine-readable resolver projection of the CPB *provisional* (Rung 3) Artifact Type entries. Lossy by design: name -> status + governed closed-set values. The markdown is normative; do not hand-edit -- re-run scripts/vendor_cpb_registry.py.",
   "provisional_artifact_types": {
     "verifiable-agent-conversation": {
@@ -17,7 +17,7 @@
     },
     "mesh-inference-exchange": {
       "status": "provisional",
-      "reference": "`action-state-group/capsule-emit-mesh` @ `0304296` (`mesh_record_emitter.py`, `mesh_record_verifier.py`)",
+      "reference": "`action-state-group/capsule-emit-mesh` @ `9be03df` —",
       "governed_values": {
         "terminal_state": [
           "completed",
@@ -49,5 +49,5 @@
       "governed_values": {}
     }
   },
-  "snapshot_sha256": "c401fceb810116b64e3ea2f824d03bd016a63c7e47daf7a74ab239adf35e7cbc"
+  "snapshot_sha256": "541a1e74446a5bd32629a4e34c77e971c33539cb6299d30b2bcfee1278393518"
 }
