@@ -127,8 +127,8 @@ TICK_ROOTS = [sha(f"personal-agent-history-profile-v0 conformance vectors: tick 
 def tick_checkpoint(entries: list[bytes], prev_entries: int, issued_at: str) -> dict:
     """The tick log's checkpoint over ``entries`` in IP §6.2.1's one form, signed by the holder log
     key, with the MMR consistency proof from its ``prev_entries`` checkpoint. The MMR is IP §10.1's
-    (leaf value SHA-256(0x00 || E)), and ``sub`` names the checkpoint as CLL's reference
-    implementation does: the log and its MMR size."""
+    (leaf value SHA-256(0x00 || E)), and ``sub`` is the CLL -01 form that the interop profile
+    pins: the log id and its MMR size."""
     db: list[bytes] = []
     sizes = {0: 0}
     for n, e in enumerate(entries):
@@ -142,6 +142,7 @@ def tick_checkpoint(entries: list[bytes], prev_entries: int, issued_at: str) -> 
     size, prev_size = sizes[len(entries)], sizes[prev_entries]
     commitment = [db[p] for p in mmr_peaks(size - 1)]
     prev_commitment = [db[p] for p in mmr_peaks(prev_size - 1)] if prev_size else []
+    # CLL -01 form, as the interop profile pins it; CLL 0.9 readers accept it too.
     sub = f"{TICK_LOG}#{size}"
     protected = cbor({1: -8, 4: bytes.fromhex(PUB["holder-log"]), 15: {1: TICK_LOG, 2: sub}})
     payload = cbor({"kind": "cll-checkpoint", "log_size": len(entries), "prev_size": prev_entries,

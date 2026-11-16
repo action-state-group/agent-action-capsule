@@ -15,7 +15,7 @@ the current head is taken from a checkpoint the caller has authenticated). The
 output is a pure function of this file. ``README.md`` is hand-written and never
 rewritten here.
 
-Dependencies: ``checkpointed-local-log`` >=0.6,<0.7 (import package ``cll``).
+Dependencies: ``checkpointed-local-log`` >=0.9,<0.10 (import package ``cll``).
 """
 from __future__ import annotations
 

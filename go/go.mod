@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	filippo.io/edwards25519 v1.2.0
-	github.com/action-state-group/checkpointed-local-log/go v0.1.0
+	github.com/action-state-group/checkpointed-local-log/go v0.4.0
 	github.com/btcsuite/btcd/btcec/v2 v2.5.1
 	github.com/fxamacker/cbor/v2 v2.9.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3

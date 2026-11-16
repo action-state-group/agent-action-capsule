@@ -526,6 +526,7 @@ def build_log() -> dict[str, Any]:
     claims = {"kind": "cll-checkpoint", "log_size": size, "commitment": commitment, "prev_size": 0,
               "prev_commitment": b"", "issued_at": CHECKPOINT_ISSUED_AT}
     payload = cbor(claims)
+    # Hand-built checkpoint in the CLL -01 `<log_id>#<size>` subject form; CLL 0.9 readers accept it.
     protected = cbor({1: -8, 3: CLL_CHECKPOINT_CONTENT_TYPE, 4: LOG_KEY.public,
                       15: {1: LOG_ID, 2: f"{LOG_ID}#{size}"}})
     signature = LOG_KEY.private.sign(cbor(["Signature1", protected, b"", payload]))

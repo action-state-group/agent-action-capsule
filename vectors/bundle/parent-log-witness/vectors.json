@@ -198,7 +198,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         }
       },
       "expect": {
@@ -384,7 +384,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -401,7 +401,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -418,8 +418,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -630,7 +630,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -646,7 +646,7 @@
             ],
             "earlier": {
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0Qm9wcmV2X2NvbW1pdG1lbnRAWECPLRxzV5aLt-4omHcl63gJWptju9LlffWo5lt0v-NhM9D0WhujsnI6C0_IBwidaGIbbBxhE-XRgyUKez-s46kM"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJvcHJldl9jb21taXRtZW50QFhAvjiGSH2NSYH1fmay7d_72XhZtBKdeHpjOeyRM-XWkZ6CcmZoTxQJIaToRarJM0hZ6l_KYmMBYVqsavOciEymCg"
               },
               "consistency_proof": {
                 "v": 1,
@@ -668,7 +668,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCASKhdbtAZ_GpQVdJ3-qymiupD0mPntySiOkTBxQJweFm9wcmV2X2NvbW1pdG1lbnRAWEB-EV_ns64qYzBYEsLvniWTCGSHPoK-IYiTzd7Sw2ZymaF6MYoQIHRa1otsaZiXxK8y-rr8XRW8Ni-oq5V8AQIL"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggpKCAV_qsEykl1g9vA8dI5WjWmmYe4IueTRjQng8LXKFvcHJldl9jb21taXRtZW50QFhAygGQZieeeSE2MrVbNBvdVXldgC5wXdUO0v8MWZvxBfKo7XGdPIyvv6k3HxzUyTFQj0yWmRZaKch-4YC7dNdVCA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -685,8 +685,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "2ec9be92aeed6e65e087b649dd879c3e4507acb7a4d8836a8f7e14c700140cfa",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGGB94cCJnJQ79O3vPnu/zw5xIIYG3F9WOnrxQQZ9QS+wIxVb8tZINMhKIghLF0Q0YONXHcNw8YM3WSgFOkGagw=",
+                  "entry_hash": "02c452da32af835af4350768735d212bc888702d4631ba354743525f6ae262b8",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQC/OEi5jdDRaNtgzPrFo8qi7weRFZnm1s+byjoeNXTjr/YqipttNbPezuaCddkcZ/2LBG/64JQvZaIgzjRAc4AE=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -897,7 +897,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -913,7 +913,7 @@
             ],
             "earlier": {
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0Qm9wcmV2X2NvbW1pdG1lbnRAWECPLRxzV5aLt-4omHcl63gJWptju9LlffWo5lt0v-NhM9D0WhujsnI6C0_IBwidaGIbbBxhE-XRgyUKez-s46kM"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJvcHJldl9jb21taXRtZW50QFhAvjiGSH2NSYH1fmay7d_72XhZtBKdeHpjOeyRM-XWkZ6CcmZoTxQJIaToRarJM0hZ6l_KYmMBYVqsavOciEymCg"
               },
               "consistency_proof": {
                 "v": 1,
@@ -935,7 +935,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCASKhdbtAZ_GpQVdJ3-qymiupD0mPntySiOkTBxQJweFm9wcmV2X2NvbW1pdG1lbnRAWEB-EV_ns64qYzBYEsLvniWTCGSHPoK-IYiTzd7Sw2ZymaF6MYoQIHRa1otsaZiXxK8y-rr8XRW8Ni-oq5V8AQIL"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggpKCAV_qsEykl1g9vA8dI5WjWmmYe4IueTRjQng8LXKFvcHJldl9jb21taXRtZW50QFhAygGQZieeeSE2MrVbNBvdVXldgC5wXdUO0v8MWZvxBfKo7XGdPIyvv6k3HxzUyTFQj0yWmRZaKch-4YC7dNdVCA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -952,8 +952,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "2ec9be92aeed6e65e087b649dd879c3e4507acb7a4d8836a8f7e14c700140cfa",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGGB94cCJnJQ79O3vPnu/zw5xIIYG3F9WOnrxQQZ9QS+wIxVb8tZINMhKIghLF0Q0YONXHcNw8YM3WSgFOkGagw=",
+                  "entry_hash": "02c452da32af835af4350768735d212bc888702d4631ba354743525f6ae262b8",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQC/OEi5jdDRaNtgzPrFo8qi7weRFZnm1s+byjoeNXTjr/YqipttNbPezuaCddkcZ/2LBG/64JQvZaIgzjRAc4AE=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -1168,7 +1168,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -1180,7 +1180,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCDbkfGfY6jTqYwp-KkT3qoRCGjFPp589Bdb_08wJ410zW9wcmV2X2NvbW1pdG1lbnRAWEA9RAVUcudt5Z0UfTs9jgQa23OV4AKTStgDoNL5tOEC5Hgfz-XKW_QO2j5PRvtZ1d_VHIw-eiLAkUstwuhASi4E"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggS0P6rqsi8Y-Ade-6MH7-NNVY2UC90U2s5hWxB3N0DZ5vcHJldl9jb21taXRtZW50QFhAMe37BEN4zJk4iFfzJZZTpBbnj79659_eM75d9bKS9FeHJCqoiZ_AYhsS7kgqFJaUeKqYvxh-E6QkMHmvQ9wvDA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -1197,8 +1197,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "648f2b5793ed1cf1ecec48c6261ec4913f5e32f8df09cab375bbcf615291e575",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHuByGTsWWE1IFvRdyZO9cEqar5G4WEI61JxNXyOTz074VxDL+dfL07k8lKX6kWhJU4APBMA42umOiuj0yThUgg=",
+                  "entry_hash": "6ae4a8514d58ba83105f1f9050e7334d0b486047eb62e369e5726fcfdcc47f3b",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQNr4rRX68X3EjS2Yqw1AHDDtD5bIym0MmqT2Dsac60RctyUbd/GsU60T3j18WnJ+bkPfMEMEnQ85o+q4/9RMwgc=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -1409,7 +1409,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -1426,7 +1426,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -1443,8 +1443,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -1654,7 +1654,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -1671,7 +1671,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -1897,7 +1897,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -1914,8 +1914,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -2115,7 +2115,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": [
@@ -2133,7 +2133,7 @@
               "parent": {
                 "log_id": "log:parent-vectors",
                 "checkpoint": {
-                  "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                  "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
                 },
                 "entry_index": 1,
                 "inclusion_proof": {
@@ -2150,8 +2150,8 @@
                 "witnesses": [
                   {
                     "ts_url": "https://cll-witness.example",
-                    "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                    "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                    "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                    "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                     "leaf_index": 0,
                     "tree_size": 1
                   }
@@ -2352,7 +2352,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -2390,7 +2390,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCASKhdbtAZ_GpQVdJ3-qymiupD0mPntySiOkTBxQJweFm9wcmV2X2NvbW1pdG1lbnRAWEB-EV_ns64qYzBYEsLvniWTCGSHPoK-IYiTzd7Sw2ZymaF6MYoQIHRa1otsaZiXxK8y-rr8XRW8Ni-oq5V8AQIL"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggpKCAV_qsEykl1g9vA8dI5WjWmmYe4IueTRjQng8LXKFvcHJldl9jb21taXRtZW50QFhAygGQZieeeSE2MrVbNBvdVXldgC5wXdUO0v8MWZvxBfKo7XGdPIyvv6k3HxzUyTFQj0yWmRZaKch-4YC7dNdVCA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -2407,8 +2407,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "2ec9be92aeed6e65e087b649dd879c3e4507acb7a4d8836a8f7e14c700140cfa",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGGB94cCJnJQ79O3vPnu/zw5xIIYG3F9WOnrxQQZ9QS+wIxVb8tZINMhKIghLF0Q0YONXHcNw8YM3WSgFOkGagw=",
+                  "entry_hash": "02c452da32af835af4350768735d212bc888702d4631ba354743525f6ae262b8",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQC/OEi5jdDRaNtgzPrFo8qi7weRFZnm1s+byjoeNXTjr/YqipttNbPezuaCddkcZ/2LBG/64JQvZaIgzjRAc4AE=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -2608,7 +2608,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -2626,7 +2626,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCASKhdbtAZ_GpQVdJ3-qymiupD0mPntySiOkTBxQJweFm9wcmV2X2NvbW1pdG1lbnRAWEB-EV_ns64qYzBYEsLvniWTCGSHPoK-IYiTzd7Sw2ZymaF6MYoQIHRa1otsaZiXxK8y-rr8XRW8Ni-oq5V8AQIL"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggpKCAV_qsEykl1g9vA8dI5WjWmmYe4IueTRjQng8LXKFvcHJldl9jb21taXRtZW50QFhAygGQZieeeSE2MrVbNBvdVXldgC5wXdUO0v8MWZvxBfKo7XGdPIyvv6k3HxzUyTFQj0yWmRZaKch-4YC7dNdVCA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -2643,8 +2643,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "2ec9be92aeed6e65e087b649dd879c3e4507acb7a4d8836a8f7e14c700140cfa",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGGB94cCJnJQ79O3vPnu/zw5xIIYG3F9WOnrxQQZ9QS+wIxVb8tZINMhKIghLF0Q0YONXHcNw8YM3WSgFOkGagw=",
+                  "entry_hash": "02c452da32af835af4350768735d212bc888702d4631ba354743525f6ae262b8",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQC/OEi5jdDRaNtgzPrFo8qi7weRFZnm1s+byjoeNXTjr/YqipttNbPezuaCddkcZ/2LBG/64JQvZaIgzjRAc4AE=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -2844,7 +2844,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -2860,7 +2860,7 @@
             ],
             "earlier": {
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0Qm9wcmV2X2NvbW1pdG1lbnRAWECPLRxzV5aLt-4omHcl63gJWptju9LlffWo5lt0v-NhM9D0WhujsnI6C0_IBwidaGIbbBxhE-XRgyUKez-s46kN"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJvcHJldl9jb21taXRtZW50QFhAvjiGSH2NSYH1fmay7d_72XhZtBKdeHpjOeyRM-XWkZ6CcmZoTxQJIaToRarJM0hZ6l_KYmMBYVqsavOciEymCw"
               },
               "consistency_proof": {
                 "v": 1,
@@ -2882,7 +2882,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCASKhdbtAZ_GpQVdJ3-qymiupD0mPntySiOkTBxQJweFm9wcmV2X2NvbW1pdG1lbnRAWEB-EV_ns64qYzBYEsLvniWTCGSHPoK-IYiTzd7Sw2ZymaF6MYoQIHRa1otsaZiXxK8y-rr8XRW8Ni-oq5V8AQIL"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggpKCAV_qsEykl1g9vA8dI5WjWmmYe4IueTRjQng8LXKFvcHJldl9jb21taXRtZW50QFhAygGQZieeeSE2MrVbNBvdVXldgC5wXdUO0v8MWZvxBfKo7XGdPIyvv6k3HxzUyTFQj0yWmRZaKch-4YC7dNdVCA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -2899,8 +2899,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "2ec9be92aeed6e65e087b649dd879c3e4507acb7a4d8836a8f7e14c700140cfa",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGGB94cCJnJQ79O3vPnu/zw5xIIYG3F9WOnrxQQZ9QS+wIxVb8tZINMhKIghLF0Q0YONXHcNw8YM3WSgFOkGagw=",
+                  "entry_hash": "02c452da32af835af4350768735d212bc888702d4631ba354743525f6ae262b8",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQC/OEi5jdDRaNtgzPrFo8qi7weRFZnm1s+byjoeNXTjr/YqipttNbPezuaCddkcZ/2LBG/64JQvZaIgzjRAc4AE=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -3100,7 +3100,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -3116,7 +3116,7 @@
             ],
             "earlier": {
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzMEWCCIS4hX9OqhYTxhUE2zTUvq80ZReg4x3jzd1Nm0IB2dCwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0Qm9wcmV2X2NvbW1pdG1lbnRAWEDXYA89uPF0fq6YF5_NowV7PTG81hnpSXoLsosShQokZjNJqdHvpnSmGH-mQjDmSrko0CGpHXu7pISR313s9ioF"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFggiEuIV_TqoWE8YVBNs01L6vNGUXoOMd483dTZtCAdnQsBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJvcHJldl9jb21taXRtZW50QFhAXCFW-Guj_Gsc3KPtuiKD6YTaf4MmDSI1X5Yac2HL7UsOv2lc4o5CRFOEpyU9tsnWicfhpPcuGy4qKNVioc7rAw"
               },
               "consistency_proof": {
                 "v": 1,
@@ -3138,7 +3138,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBCwIVIP4zcAuI55fc1wWWZywU-j1l2rnZCv6chkKDbrm9wcmV2X2NvbW1pdG1lbnRAWEB-7nNhEIyrEZZQ6bhdcestSQ4Sj8RYEVwLqULvhF_QotH-Dti5T4BaQe2ZBr0NrNw1ICcGj4-fEmP0EoK7nyEO"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggAfZWF1q8UpqFRHgrfnqxFtWE4dZWzaBVSO4BIVmYen5vcHJldl9jb21taXRtZW50QFhAJbMz9vFMLT5UmJdamETPxKIF5XEILdfxdAeOuFptn9rYODFCkx9X5ou5YZ4wTiPqIfV3MbR3lMQup3eL9DyLAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -3155,8 +3155,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "6539cfc6b86b3eb5bb1875fbf52d14ce5161c837ee53a2c528f02bcd143e7f52",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQJKVZk3G7T6NvzIJPve+1b8Z5uyCP8yBl94bim7aWalm/PMBvZxa+EhaWLOaftthhUQrm04DJfPT7nVgE8aVSgs=",
+                  "entry_hash": "682cd91c40a2b223ef37cf0d85a5d891b335b9e46e8ec314aae702080b9017f6",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQK8Vk5l4ezhoudAqKQ8LnD9wz3pVwycn+Dvpcrr5JNFdHzgOmoPMv2qNueUk9+HHSv1YcvX4HmPOjuPvdu7Hjgk=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -3356,7 +3356,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -3372,7 +3372,7 @@
             ],
             "earlier": {
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
               },
               "consistency_proof": {
                 "v": 1,
@@ -3394,7 +3394,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCASKhdbtAZ_GpQVdJ3-qymiupD0mPntySiOkTBxQJweFm9wcmV2X2NvbW1pdG1lbnRAWEB-EV_ns64qYzBYEsLvniWTCGSHPoK-IYiTzd7Sw2ZymaF6MYoQIHRa1otsaZiXxK8y-rr8XRW8Ni-oq5V8AQIL"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggpKCAV_qsEykl1g9vA8dI5WjWmmYe4IueTRjQng8LXKFvcHJldl9jb21taXRtZW50QFhAygGQZieeeSE2MrVbNBvdVXldgC5wXdUO0v8MWZvxBfKo7XGdPIyvv6k3HxzUyTFQj0yWmRZaKch-4YC7dNdVCA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -3411,8 +3411,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "2ec9be92aeed6e65e087b649dd879c3e4507acb7a4d8836a8f7e14c700140cfa",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGGB94cCJnJQ79O3vPnu/zw5xIIYG3F9WOnrxQQZ9QS+wIxVb8tZINMhKIghLF0Q0YONXHcNw8YM3WSgFOkGagw=",
+                  "entry_hash": "02c452da32af835af4350768735d212bc888702d4631ba354743525f6ae262b8",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQC/OEi5jdDRaNtgzPrFo8qi7weRFZnm1s+byjoeNXTjr/YqipttNbPezuaCddkcZ/2LBG/64JQvZaIgzjRAc4AE=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -3612,7 +3612,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -3628,7 +3628,7 @@
             ],
             "earlier": {
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0Qm9wcmV2X2NvbW1pdG1lbnRAWECPLRxzV5aLt-4omHcl63gJWptju9LlffWo5lt0v-NhM9D0WhujsnI6C0_IBwidaGIbbBxhE-XRgyUKez-s46kM"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJvcHJldl9jb21taXRtZW50QFhAvjiGSH2NSYH1fmay7d_72XhZtBKdeHpjOeyRM-XWkZ6CcmZoTxQJIaToRarJM0hZ6l_KYmMBYVqsavOciEymCg"
               },
               "consistency_proof": {
                 "v": 1,
@@ -3650,7 +3650,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCASKhdbtAZ_GpQVdJ3-qymiupD0mPntySiOkTBxQJweFm9wcmV2X2NvbW1pdG1lbnRAWEB-EV_ns64qYzBYEsLvniWTCGSHPoK-IYiTzd7Sw2ZymaF6MYoQIHRa1otsaZiXxK8y-rr8XRW8Ni-oq5V8AQIL"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggpKCAV_qsEykl1g9vA8dI5WjWmmYe4IueTRjQng8LXKFvcHJldl9jb21taXRtZW50QFhAygGQZieeeSE2MrVbNBvdVXldgC5wXdUO0v8MWZvxBfKo7XGdPIyvv6k3HxzUyTFQj0yWmRZaKch-4YC7dNdVCA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -3667,8 +3667,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "2ec9be92aeed6e65e087b649dd879c3e4507acb7a4d8836a8f7e14c700140cfa",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGGB94cCJnJQ79O3vPnu/zw5xIIYG3F9WOnrxQQZ9QS+wIxVb8tZINMhKIghLF0Q0YONXHcNw8YM3WSgFOkGagw=",
+                  "entry_hash": "02c452da32af835af4350768735d212bc888702d4631ba354743525f6ae262b8",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQC/OEi5jdDRaNtgzPrFo8qi7weRFZnm1s+byjoeNXTjr/YqipttNbPezuaCddkcZ/2LBG/64JQvZaIgzjRAc4AE=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -3868,7 +3868,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -3884,7 +3884,7 @@
             ],
             "earlier": {
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0Qm9wcmV2X2NvbW1pdG1lbnRAWECPLRxzV5aLt-4omHcl63gJWptju9LlffWo5lt0v-NhM9D0WhujsnI6C0_IBwidaGIbbBxhE-XRgyUKez-s46kM"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJvcHJldl9jb21taXRtZW50QFhAvjiGSH2NSYH1fmay7d_72XhZtBKdeHpjOeyRM-XWkZ6CcmZoTxQJIaToRarJM0hZ6l_KYmMBYVqsavOciEymCg"
               },
               "consistency_proof": {
                 "v": 1,
@@ -3906,7 +3906,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCASKhdbtAZ_GpQVdJ3-qymiupD0mPntySiOkTBxQJweFm9wcmV2X2NvbW1pdG1lbnRAWEB-EV_ns64qYzBYEsLvniWTCGSHPoK-IYiTzd7Sw2ZymaF6MYoQIHRa1otsaZiXxK8y-rr8XRW8Ni-oq5V8AQIL"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggpKCAV_qsEykl1g9vA8dI5WjWmmYe4IueTRjQng8LXKFvcHJldl9jb21taXRtZW50QFhAygGQZieeeSE2MrVbNBvdVXldgC5wXdUO0v8MWZvxBfKo7XGdPIyvv6k3HxzUyTFQj0yWmRZaKch-4YC7dNdVCA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -3923,8 +3923,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "2ec9be92aeed6e65e087b649dd879c3e4507acb7a4d8836a8f7e14c700140cfa",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGGB94cCJnJQ79O3vPnu/zw5xIIYG3F9WOnrxQQZ9QS+wIxVb8tZINMhKIghLF0Q0YONXHcNw8YM3WSgFOkGagw=",
+                  "entry_hash": "02c452da32af835af4350768735d212bc888702d4631ba354743525f6ae262b8",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQC/OEi5jdDRaNtgzPrFo8qi7weRFZnm1s+byjoeNXTjr/YqipttNbPezuaCddkcZ/2LBG/64JQvZaIgzjRAc4AE=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -4124,7 +4124,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -4141,7 +4141,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -4158,8 +4158,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -4359,7 +4359,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -4376,7 +4376,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -4393,8 +4393,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -4594,7 +4594,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -4611,7 +4611,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -4628,8 +4628,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -4829,7 +4829,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -4846,7 +4846,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -4863,8 +4863,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -5064,7 +5064,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -5110,7 +5110,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -5127,8 +5127,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -5328,7 +5328,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -5345,7 +5345,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -5362,8 +5362,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -5563,7 +5563,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -5580,7 +5580,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -5597,8 +5597,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -5798,7 +5798,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -5815,7 +5815,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -5832,8 +5832,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -6033,7 +6033,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -6050,7 +6050,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB="
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg="
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -6067,8 +6067,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -6268,7 +6268,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -6476,7 +6476,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -6493,7 +6493,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIA"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAw"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -6510,8 +6510,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -6711,7 +6711,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -6728,7 +6728,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCIS4hX9OqhYTxhUE2zTUvq80ZReg4x3jzd1Nm0IB2dCwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWECE_AJytKjdC74KmNtyrd-W5erSEp9hJbheFCnVVNR6EuyT3h32wtQVZ9GUCJ_hFDoj5fbB54rJL2MPIHtaYCkN"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFggiEuIV_TqoWE8YVBNs01L6vNGUXoOMd483dTZtCAdnQsBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhA5aREl_TP33DUk1iSh6wNO9HIInaYGt9xhErqrTaC1hHigAxrIYQ0YhRDCDpClT7g4HGL2CyecAkeSgQmEp7nCA"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -6745,8 +6745,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "6da8be1b927b7f79774dc2613d8549cbbc824a382498e54bb1437f6a413c9bcc",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQMshs4+c/h5uu7AT4mD/eNoVwCr1pPfBL8bBkQAafkQI2TN8jVLpX/qaIl5R+bqO8wZoBL5FzbKQ88vQCHV3nA8=",
+                  "entry_hash": "91cd5cafd7020257ca393d4f26d540795450b2a3996bed5ba3f6950d5c90a387",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQGFqiKzLdrtwLBtdHQ1upO6tgGdLIggqLk8cSMBDl9wHvdr3JHi8bKR2fD/S3VZkPo1smVODjJTHLPAzDEBG8Ak=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -6946,7 +6946,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -6963,7 +6963,7 @@
             "parent": {
               "log_id": "log:other",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -6980,8 +6980,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -7181,7 +7181,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -7198,7 +7198,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -7215,8 +7215,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -7416,7 +7416,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -7433,7 +7433,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -7450,8 +7450,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -7651,7 +7651,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -7668,7 +7668,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 0,
               "inclusion_proof": {
@@ -7685,8 +7685,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -7886,7 +7886,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -7903,7 +7903,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": "1",
               "inclusion_proof": {
@@ -7920,8 +7920,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -8121,7 +8121,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -8138,7 +8138,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -8154,8 +8154,8 @@
               "witnesses": [
                 {
                   "ts_url": "https://cll-witness.example",
-                  "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+                  "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+                  "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
                   "leaf_index": 0,
                   "tree_size": 1
                 }
@@ -8355,7 +8355,7 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ"
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc"
         },
         "extensions": {
           "parent-log-witness/v1": {
@@ -8372,7 +8372,7 @@
             "parent": {
               "log_id": "log:parent-vectors",
               "checkpoint": {
-                "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJ0bG9nOnBhcmVudC12ZWN0b3JzIzMEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFiKpmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplA2lpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WCOBWCBA1fUpddovGhQMCqYhCrtXu-gESs-KjJ_F62CMAcl6SW9wcmV2X2NvbW1pdG1lbnRAWEC4JO_kN2EORY5-WyVha_SEqGpfL-w5MfskkMeTM312MBnAyfJ1dvKidC06TM-h7Bcqj4jVs7Pdjnv3TynizJIB"
+                "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpwYXJlbnQtdmVjdG9ycwJybG9nOnBhcmVudC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggwmyQ5ovE5qQ3WCpKOEMzyypmIMTiWLPQnRrgvQWcZYVvcHJldl9jb21taXRtZW50QFhAn9qSvnU8y1UT4E0Lgi711r-6sUBaaa-NoO_wR9Z6bNojHHCd6DgEq1DkMIDu6vb-0z088daP4lPmv1dDCElFAg"
               },
               "entry_index": 1,
               "inclusion_proof": {
@@ -8600,12 +8600,12 @@
           "prev_root": "",
           "key_id": "9475c6cf0eda34057528d8694781ecc92ad639d7e2bd27761ed3ef74924beb07",
           "timestamp": "2026-10-15T00:00:00Z",
-          "cose": "0oRYdKQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJ0bG9nOnN0cmljdC12ZWN0b3JzIzQEWCCUdcbPDto0BXUo2GlHgezJKtY51-K9J3Ye0-90kkvrBwEnoFispmRraW5kbmNsbC1jaGVja3BvaW50aGxvZ19zaXplBGlpc3N1ZWRfYXR0MjAyNi0xMC0xNVQwMDowMDowMFppcHJldl9zaXplAGpjb21taXRtZW50WEWCWCBB3etGJ6Fg1HVW8w1ieWDgfGkqyhLrhSFpoE63o8m0QlggZkml6f4hXMzsHud1v2wpza0iTZqeaEayq7_5HjV1lPdvcHJldl9jb21taXRtZW50QFhA2cqH5J6lP77JriQZHk3nvKkLO_vG_f_cpMAtKSRJ5yfPTJvNdT39brGhJEWdjMeVBr4TmCM65v0jnb4NMaGBAQ",
+          "cose": "0oRYcqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBcmxvZzpzdHJpY3QtdmVjdG9ycwJybG9nOnN0cmljdC12ZWN0b3JzBFgglHXGzw7aNAV1KNhpR4HsySrWOdfivSd2HtPvdJJL6wcBJ6BYrKZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQRpaXNzdWVkX2F0dDIwMjYtMTAtMTVUMDA6MDA6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFhFglggQd3rRiehYNR1VvMNYnlg4HxpKsoS64UhaaBOt6PJtEJYIGZJpen-IVzM7B7ndb9sKc2tIk2anmhGsqu_-R41dZT3b3ByZXZfY29tbWl0bWVudEBYQCMj8cw1KIOI58e7fHxRJarVcNd62dsz9kOLfSSHEgelTuVQwGZ7lB2VBIqmlsBRbYsYb3G_Rg52tsFvQouyjwc",
           "witnesses": [
             {
               "ts_url": "https://cll-witness.example",
-              "entry_hash": "eb90f373bb924667932d20f11176db711f1154b647d9c2ee09912762f4c8071e",
-              "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQCCdjdGSsqCj40XweG8rYTbwH51iiP3KhgSfX4CI9XCThXQBvPwvFwLQTS9MNY2mGtyr1GYBaXWZiIQVwPpIpQc=",
+              "entry_hash": "34b20a80a2f3b982be3da505a28bafc9cf81acb1e0beb0e4c5a467b947f34ff3",
+              "receipt_b64": "0oRYIaQZAYsBD6EGGmrQF7w6AAEAAGxtbXItdmVyaWZpZWQBJ6EZAYyhIIFEgwEAgPZYQHHAwZYGzlP7DDIV8cb8nTGkgdb6ccKwFLXvvZaMuHDjjGWUZTwgQ19YlLsm5Fd3a5nWOE2OKLcvF5dmWE4TJQU=",
               "leaf_index": 0,
               "tree_size": 1
             }
