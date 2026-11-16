@@ -82,11 +82,15 @@ class AdjudicationResponseDoc(TypedDict, total=False):
 
 # --- evaluation-report/v1 ----------------------------------------------------
 
-class CaseDoc(TypedDict):
+class _CaseRequired(TypedDict):
     case_id: str
     verdict: str
     acts: List[CitationDoc]
     method: CitationDoc
+
+
+class CaseDoc(_CaseRequired, total=False):
+    clause_ref: str
 
 
 class EvaluationReportDoc(TypedDict):
