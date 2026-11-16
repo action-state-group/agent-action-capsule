@@ -140,12 +140,12 @@ evaluation-report:
 ```
 
 **`clause_ref` (optional).** A grouping key: the id of the clause, within the Evidence Contract
-`contract_ref` pins, that the case answers, in the same identifier space as `calibration-summary/v1`
-`clauses[].clause_ref` (§8). It is a non-empty string, never free text, and never carries the
+`contract_ref` pins, that the case answers. It is a non-empty string, never free text, and never carries the
 judge's or an adjudicator's words: words can quote conversation content, so any such record is a
 separate cited record under the share gate, not a member of the `Case`. Absent, the case names no
-clause. **Normative, not schema-enforced in v1:** that the id exists in the pinned contract needs
-the contract, which JSON Schema cannot see; a conforming verifier that holds the contract MUST
+clause. A verifier on a schema that predates this member refuses a report that carries it, since
+`Case` is closed to unknown members. **Normative, not schema-enforced in v1:** that the id exists
+in the pinned contract needs the contract, which JSON Schema cannot see; a conforming verifier that holds the contract MUST
 reject a report whose `clause_ref` is not a clause of it, in addition to schema validation. A
 verifier without the contract cannot check it and MUST NOT treat the value as verified.
 
