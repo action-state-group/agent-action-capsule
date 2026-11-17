@@ -10,14 +10,14 @@ of its §6.4 (open point PA-11). Every case cites the sections its expected valu
 **The positive run comes from an IP responder.** `responder-run.json` holds every request and
 reply of the run as the octets carried. The responder is evidencebook's `Book.Respond`, unmodified,
 from <https://github.com/action-state-group/evidencebook> at commit
-`43f3cb1b955d647bc92cb4da0d823973d1981cad`. `producer/main.go` drives it. It seeds a holder stream
+`b2605f7f243c295d21a6ef1376f09bf4fbe5b87e`. `producer/main.go` drives it. It seeds a holder stream
 of four deals, registers the Basic level definition for one recipient, and asks for each deal as
 that recipient. It uses a fixed clock and test keys, so every run gives the same bytes. To
 reproduce the file, set up that repository as its `docs/THIRD-PARTY-VERIFIER.md` §2 describes,
 then run:
 
 ```bash
-git checkout 43f3cb1b955d647bc92cb4da0d823973d1981cad
+git checkout b2605f7f243c295d21a6ef1376f09bf4fbe5b87e
 mkdir -p test/interop/personal-history
 cp <this directory>/producer/main.go test/interop/personal-history/main.go
 go run ./test/interop/personal-history > responder-run.json
@@ -147,8 +147,8 @@ The profile leaves some readings open. This corpus fixes them as follows:
   the anchor tick are checkpoints of one tick log (`holder-tick-log`), in IP §6.2.1's one form,
   signed by the holder log key, and the consistency proof between them is real. Each entry of the
   tick log is a label digest standing for a tick's root: how a tick commits to each stream's
-  checkpoint is not checked at the Basic level (PA-14). Each checkpoint's `sub` names the log and
-  its MMR size, as CLL's reference implementation does, and the pins accept both.
+  checkpoint is not checked at the Basic level (PA-14). Each checkpoint's `sub` is the bare log id, as CLL 0.9 writes it (the same for every
+  checkpoint of the log).
 - **An Artifact that is not exactly JCS has no records to read**, so `mutant-artifact-not-jcs`
   fails `record_kinds` as well as `artifact_form`. The other entry-form mutants keep a readable
   Artifact and fail `artifact_form` only.

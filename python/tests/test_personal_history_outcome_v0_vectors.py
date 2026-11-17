@@ -100,13 +100,14 @@ X402_REQUIRES = {
 # §5.3: a payment shown for a deal also needs the payer and asset bound by the relying party's policy.
 X402_ALSO = ["payer_trust", "asset_trust"]
 # The Basic level corpus as it stood when this level was cut, with its multi-stream revision and the
-# readings of agent-action-capsule#328 (the §4.3 entry forms and the §8.3 tick paths).
+# readings of agent-action-capsule#328 (the §4.3 entry forms and the §8.3 tick paths), regenerated
+# for the CLL 0.9 checkpoint `sub` (agent-action-capsule#622).
 BASIC_RELEASED = {
-    "README.md": "f153449adf9937d6383a5b213d188be444b6e3c968b3e07b6ca40887648ed3f2",
-    "manifest.json": "f8e29f02384ae6be638c74010031e5d2b947bba711926fe7b50d4cff6d5e3aea",
-    "producer/main.go": "e9054656ad2431de9c5cf9bed89cdb2316314039db0eb077148e3e8a20f7c38e",
-    "responder-run.json": "f7d77d56d81ca187cb9a8118f8a15aae5407f5a96aca1c5525a5f5d2e827b848",
-    "vectors.json": "e00bf5881965b8d58f509d1340a26c6d370b5e91c75f457c5b59446dd7157637",
+    "README.md": "d04b5725a4c697436aa917c7fc49962928863f2e2c36f289eb97b8629e2fea7a",
+    "manifest.json": "e15cb55a7948e2c93e0cffb116675d3757bbb121d60be592ef545d4949860eef",
+    "producer/main.go": "451cdd37b70884581d95e9e0e0d2a4106d96899a2c79c20a46c34614243634fd",
+    "responder-run.json": "8cbf6272ab8f42c534e45e0b1f90358cbb88b5e3cf0263bf79bd92d53d606684",
+    "vectors.json": "884ca5aaf0751a4beec7c9c2215212f81edbe9c7d3f18c0a4592fdb5896859ad",
 }
 HEX64 = re.compile(r"[0-9a-f]{64}")
 
