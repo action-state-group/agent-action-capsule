@@ -5,7 +5,7 @@
   "generator": "python/scripts/generate_personal_history_outcome_v0_vectors.py",
   "run": {
     "path": "personal-history-basic-v0/responder-run.json",
-    "sha256": "f7d77d56d81ca187cb9a8118f8a15aae5407f5a96aca1c5525a5f5d2e827b848"
+    "sha256": "8cbf6272ab8f42c534e45e0b1f90358cbb88b5e3cf0263bf79bd92d53d606684"
   },
   "native_objects": {
     "corpus": "adapters/x402/cases.json",
@@ -15,7 +15,7 @@
   "files": [
     {
       "path": "vectors.json",
-      "sha256": "6f5d395be2c8beb7bcc622ab2034f380a3c02706ceb2189c6afccee10d611f02",
+      "sha256": "3ad6bab0a57dca35a716dcec6532d2ad3034edfcf4d115c4badbc724ee608718",
       "count": 29
     }
   ]

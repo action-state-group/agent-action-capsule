@@ -5,12 +5,12 @@
   "generator": "python/scripts/generate_coverage_declaration_v0_vectors.py",
   "run": {
     "path": "personal-history-basic-v0/responder-run.json",
-    "sha256": "f7d77d56d81ca187cb9a8118f8a15aae5407f5a96aca1c5525a5f5d2e827b848"
+    "sha256": "8cbf6272ab8f42c534e45e0b1f90358cbb88b5e3cf0263bf79bd92d53d606684"
   },
   "files": [
     {
       "path": "vectors.json",
-      "sha256": "2070b63ca9172a12fba8995fcf486a90fe04332aeb75617dd525082d4833640c",
+      "sha256": "63089c3eecc98adc66bc434c6a35ea6c0d50b6d887df944f6a34d972a044987b",
       "count": 13
     }
   ]

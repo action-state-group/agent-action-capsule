@@ -75,7 +75,7 @@ J = "application/json"
 # The responder that produced responder-run.json, and the commit it ran at.
 RESPONDER = {
     "repository": "https://github.com/action-state-group/evidencebook",
-    "commit": "43f3cb1b955d647bc92cb4da0d823973d1981cad",
+    "commit": "b2605f7f243c295d21a6ef1376f09bf4fbe5b87e",
     "entry_point": "Book.Respond, driven by producer/main.go from the repository's test/interop/ directory",
 }
 
@@ -127,8 +127,7 @@ TICK_ROOTS = [sha(f"personal-agent-history-profile-v0 conformance vectors: tick 
 def tick_checkpoint(entries: list[bytes], prev_entries: int, issued_at: str) -> dict:
     """The tick log's checkpoint over ``entries`` in IP §6.2.1's one form, signed by the holder log
     key, with the MMR consistency proof from its ``prev_entries`` checkpoint. The MMR is IP §10.1's
-    (leaf value SHA-256(0x00 || E)), and ``sub`` is the CLL -01 form that the interop profile
-    pins: the log id and its MMR size."""
+    (leaf value SHA-256(0x00 || E)), and ``sub`` is the bare log id of CLL 0.9 (CLL -02)."""
     db: list[bytes] = []
     sizes = {0: 0}
     for n, e in enumerate(entries):
@@ -142,8 +141,7 @@ def tick_checkpoint(entries: list[bytes], prev_entries: int, issued_at: str) -> 
     size, prev_size = sizes[len(entries)], sizes[prev_entries]
     commitment = [db[p] for p in mmr_peaks(size - 1)]
     prev_commitment = [db[p] for p in mmr_peaks(prev_size - 1)] if prev_size else []
-    # CLL -01 form, as the interop profile pins it; CLL 0.9 readers accept it too.
-    sub = f"{TICK_LOG}#{size}"
+    sub = TICK_LOG
     protected = cbor({1: -8, 4: bytes.fromhex(PUB["holder-log"]), 15: {1: TICK_LOG, 2: sub}})
     payload = cbor({"kind": "cll-checkpoint", "log_size": len(entries), "prev_size": prev_entries,
                     "issued_at": issued_at, "commitment": cbor(commitment),
