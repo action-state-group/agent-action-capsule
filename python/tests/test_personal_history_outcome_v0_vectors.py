@@ -103,7 +103,7 @@ X402_ALSO = ["payer_trust", "asset_trust"]
 # readings of agent-action-capsule#328 (the §4.3 entry forms and the §8.3 tick paths), regenerated
 # for the CLL 0.9 checkpoint `sub` (agent-action-capsule#622).
 BASIC_RELEASED = {
-    "README.md": "d04b5725a4c697436aa917c7fc49962928863f2e2c36f289eb97b8629e2fea7a",
+    "README.md": "d023657eff3a986ce571090aeeef71bc9faa3ead512cbf5863b8f67c8365cbd3",
     "manifest.json": "e15cb55a7948e2c93e0cffb116675d3757bbb121d60be592ef545d4949860eef",
     "producer/main.go": "451cdd37b70884581d95e9e0e0d2a4106d96899a2c79c20a46c34614243634fd",
     "responder-run.json": "8cbf6272ab8f42c534e45e0b1f90358cbb88b5e3cf0263bf79bd92d53d606684",
@@ -666,8 +666,8 @@ def test_native_case_uses_released_octets_and_a_final_lookup():
 
 
 def test_basic_vectors_unchanged():
-    """The Basic level's corpus is byte-identical to its release: every file has the digest the
-    release pinned, and no file was added."""
+    """The Basic level's corpus is byte-identical to the pinned regeneration (CLL 0.9 checkpoint
+    `sub`): every file has the digest pinned in BASIC_RELEASED, and no file was added."""
     files = sorted(p.relative_to(BASIC_VECTORS).as_posix() for p in BASIC_VECTORS.rglob("*") if p.is_file())
     assert set(files) - {"SHA256SUMS"} == set(BASIC_RELEASED)
     for name, digest in BASIC_RELEASED.items():

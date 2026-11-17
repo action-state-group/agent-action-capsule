@@ -147,8 +147,8 @@ The profile leaves some readings open. This corpus fixes them as follows:
   the anchor tick are checkpoints of one tick log (`holder-tick-log`), in IP §6.2.1's one form,
   signed by the holder log key, and the consistency proof between them is real. Each entry of the
   tick log is a label digest standing for a tick's root: how a tick commits to each stream's
-  checkpoint is not checked at the Basic level (PA-14). Each checkpoint's `sub` is the bare log id, as CLL 0.9 writes it (the same for every
-  checkpoint of the log).
+  checkpoint is not checked at the Basic level (PA-14). Each checkpoint's `sub` is the bare log id, as CLL 0.9 writes it (the same for
+  every checkpoint of the log).
 - **An Artifact that is not exactly JCS has no records to read**, so `mutant-artifact-not-jcs`
   fails `record_kinds` as well as `artifact_form`. The other entry-form mutants keep a readable
   Artifact and fail `artifact_form` only.
