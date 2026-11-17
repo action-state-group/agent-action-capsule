@@ -644,8 +644,8 @@ These formats are fixed for the vectors only and are not registered [SH-12]:
   "periods": [{"from", "to", "cells": [...]}]}`, whose cells are `period_counts` cells in the unit
   `referee_verdicts` with `dimension` `{"model_hash", "result"}`, or `{"result"}` on a result's total, listed for
   each result of §5.3 in its order, models in hash order and then the total. Where a rule of §5.3 has no History
-  property in §8.3, such as the signer being the checker or the four results staying separate counts, the set pins
-  it through this shape only, and `artifact_form` failing there is relative to this shape [SH-16].
+  property in §8.3, such as the result being signed by the checker, the one kind of check or the four results staying
+  separate counts, the set pins it through this shape only, and `artifact_form` failing there is relative to this shape [SH-16].
 
 ### 9.1 Standard level
 
@@ -804,4 +804,4 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-13 | A host's definition conforms by its digest (§4.1). A host definition fixed before it carries `profile`, `coverage_declaration` and `period_policy` conforms only as a new version. |
 | SH-14 | No vectors in this revision for: session coverage (§10); `definition_form`, `definition_binding`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both; a stream whose card commits no record. The verdict counts member has its own set, `vectors/inference-service-history-verdicts-v0/`, whose shape is fixed for it alone (§9, SH-12, SH-16); it has cases for `artifact_form` failing, and none for a published total that differs from its published cells, two or more models withheld under the floor beside a published total (SH-8), or the delivery of a verdict and the ask by digest (SH-15). |
 | SH-15 | Verdicts the node received without asking (§5.3): the delivery that puts such a verdict in the node's log, and the ask by digest, are the host's; this profile fixes only what counts and that the count is over the node's own log. Because the ask is the host's, one implementation cannot yet check another's omissions; interoperable omission checking is open. |
-| SH-16 | §5.3's rules that a verdict count is signed by the checker and never by the node it concerns, and that the four results stay separate counts, have no History property in §8.3. The verdict counts vectors pin them through their vector-only shape (§9, SH-12), so a host that uses another shape can break them and pass every property. |
+| SH-16 | §5.3's rules that the result being counted is signed by the checker and never by the node it concerns, that a verdict count is the count of one kind of check, a referee verdict, and that the four results stay separate counts, have no History property in §8.3. The verdict counts vectors pin them through their vector-only shape (§9, SH-12), so a host that uses another shape can break them and pass every property. |

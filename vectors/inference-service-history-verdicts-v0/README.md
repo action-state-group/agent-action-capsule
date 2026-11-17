@@ -18,7 +18,7 @@ results is listed (§5.1). Whether the node or the other party asked the referee
 artifact.
 
 A shape other than this one is another format, not a violation of the profile: `artifact_form` failing
-here means this set's fixed format, which §4.3 leaves to the host (SH-12; the shape is listed in §9). §5.3's rules that the signer is the checker and that the four results stay separate counts have no History property in §8.3, so three cases (`mutant-verdict-counts-signed-by-the-node`, `mutant-verdict-counts-of-another-check`, `mutant-verdict-results-added-together`) pin them through the shape only (SH-16). Two choices are the plugin's
+here means this set's fixed format, which §4.3 leaves to the host (SH-12; the shape is listed in §9). §5.3's rules that the result being counted is signed by the checker, that a count is of one kind of check and that the four results stay separate counts have no History property in §8.3, so three cases (`mutant-verdict-counts-signed-by-the-node`, `mutant-verdict-counts-of-another-check`, `mutant-verdict-results-added-together`) pin them through the shape only (SH-16). Two choices are the plugin's
 that wrote them, not the profile's: the cells are keyed by the model identity hash the referee compared
 (a stated claim, declared in `claims`, never the weights digest), and a count of who asked the referee, the node
 or the other party, is not in the artifact; a split by asker would be a new shape, not an extension of this one.
