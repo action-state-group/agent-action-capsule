@@ -672,8 +672,9 @@ A counted deal has one of §5.2's three outcomes, by the first rule in this orde
   leaving it out would let a holder drop a row from its card by never timing the record the row's
   date hangs on. It comes after `did_not_hold`, so a row never timed cannot hide a row the holder
   did not meet. The target design's text (evidencebook#461 §4.2, "A latest date") left it out.
-- **Not yet final.** A deal with a row not yet due or a contest window still open is `undecided`
-  until its rows are final; the `disputes` tally (§5.4) carries what the outcome does not.
+- **Not yet final.** When no rule before it applies, a deal with a row not yet due or a contest
+  window still open is `undecided` until its rows are final; the `disputes` tally (§5.4) carries
+  what the outcome does not.
 
 The rules cover every deal: a deal no rule above `held` applies to has only rows that `held` names.
 
@@ -686,8 +687,8 @@ Two counts say what became of the deals that did not hold; a `did_not_hold` deal
   card keeps it here.
 - **`remedied`**: its **unmet rows**, the rows the holder owed that are `agreed_so_far`, `agreed`,
   `uncontested` or `ruled` with value `not_met`, are one or more and all have remedy `made`, by a
-  ruling or without one (SH-16). A deal with an unmet row whose remedy is `none` or `due` is
-  neither.
+  ruling or without one (SH-16). A deal with an unmet row whose remedy is `none` or `due`, and no
+  ruling not honoured, is in neither.
 
 ### 11.5 The coverage start
 

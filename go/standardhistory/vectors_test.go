@@ -350,7 +350,8 @@ func TestV3Remedied(t *testing.T) {
 		remedies [2]string
 		detail   string
 	}{{[2]string{"none", "made"}, ""}, {[2]string{"due", "made"}, ""},
-		{[2]string{"made", "made"}, "remedied"}, {[2]string{"made", "not_honoured"}, "not_honoured"}} {
+		{[2]string{"made", "made"}, "remedied"}, {[2]string{"made", "not_honoured"}, "not_honoured"},
+		{[2]string{"none", "not_honoured"}, "not_honoured"}, {[2]string{"due", "not_honoured"}, "not_honoured"}} {
 		a := standardhistory.Row{OwedBy: "holder", Status: "ruled", Value: "not_met", Remedy: c.remedies[0]}
 		b := standardhistory.Row{OwedBy: "holder", Status: "ruled", Value: "not_met", Remedy: c.remedies[1]}
 		refund := standardhistory.Row{OwedBy: "holder", Status: "agreed", Value: "not_met", Remedy: "made"}

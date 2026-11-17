@@ -182,6 +182,8 @@ def test_v3_outcome_rules(rows: list, outcome: str) -> None:
     (("due", "made"), None),
     (("made", "made"), "remedied"),
     (("made", "not_honoured"), "not_honoured"),
+    (("none", "not_honoured"), "not_honoured"),
+    (("due", "not_honoured"), "not_honoured"),
 ])
 def test_v3_remedied(remedies: tuple, detail: str | None) -> None:
     """SH §11.4: a did_not_hold deal is remedied only when every unmet row the holder owed has its
