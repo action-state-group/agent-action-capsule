@@ -289,9 +289,10 @@ A receiver that takes pushes over A2A MUST list one `AgentExtension` in its Agen
 | `params` | absent |
 
 As in IP §11.4.4, the URI names the datatracker page of the Internet-Draft meant to carry this
-binding, the extension entry is what advertises the push, and no `AgentSkill` is needed.
-`required` is `false` because a push is opted into per message. A receiver MUST NOT advertise
-this binding under any other URI. The Agent Card SHOULD list `application/json` in
+binding, the extension entry is what advertises the push, and no `AgentSkill` is needed. The URI
+is an identifier: it does not resolve until that draft is posted, and this document defines the
+binding. `required` is `false` because a push is opted into per message. A receiver MUST NOT
+advertise this binding under any other URI. The Agent Card SHOULD list `application/json` in
 `defaultInputModes` and `defaultOutputModes`.
 
 ### 4.2 The message
