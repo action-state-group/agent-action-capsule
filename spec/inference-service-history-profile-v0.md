@@ -342,6 +342,8 @@ about one of the node's exchanges counts only when [SH-10]:
 The node counts every verdict that qualifies and that its own log holds, in the period that
 committed it (§6.1). It does not count from a list it keeps apart from its log, and a verdict it
 received is counted whether the node or the other party to the exchange asked for it [SH-15].
+A host definition fixed before this rule conforms as that definition, by its digest (§4.1,
+SH-13); the rule binds a definition fixed after it.
 
 Verdict counts stay four separate counts, `corroborated`, `contradicted`, `inconclusive` and
 `not_comparable`, each in the unit `referee_verdicts`, with "not adjudicated" and its reason shown
@@ -359,8 +361,9 @@ a denial is the host's [SH-15].
 
 A verdict count is the count of one kind of check, a referee verdict (§5.3), whose result is
 signed by the checker and never by the node it concerns. A count of another kind of check, such as
-an audit result signed by its auditor, is a further count under its own unit and rules in a later
-revision, never added to these.
+an audit result signed by its auditor, is carried in the same member, labelled by its kind of
+check and its signer, counted separately and never added to these; the rules for such a kind come
+in a later revision.
 
 ## 6. Period counts
 
@@ -790,4 +793,4 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-12 | The vector-only formats of §9. |
 | SH-13 | A host's definition conforms by its digest (§4.1). A host definition fixed before it carries `profile`, `coverage_declaration` and `period_policy` conforms only as a new version. |
 | SH-14 | No vectors in this revision for: verdict counts and session coverage (§5.3, §10); `definition_form`, `definition_binding`, `artifact_form`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both; a stream whose card commits no record. |
-| SH-15 | Verdicts the node received without asking (§5.3): the delivery that puts such a verdict in the node's log, and the ask by digest, are the host's; this profile fixes only what counts and that the count is over the node's own log. |
+| SH-15 | Verdicts the node received without asking (§5.3): the delivery that puts such a verdict in the node's log, and the ask by digest, are the host's; this profile fixes only what counts and that the count is over the node's own log. Because the ask is the host's, one implementation cannot yet check another's omissions; interoperable omission checking is open. |
