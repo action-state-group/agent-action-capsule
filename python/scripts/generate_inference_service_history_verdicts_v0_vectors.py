@@ -172,7 +172,7 @@ def cases() -> list[dict]:
         v["periods"][1]["cells"] = [c for c in v["periods"][1]["cells"]
                                     if c["dimension"]["result"] != "inconclusive"]
     case("mutant-verdict-result-table-dropped", "A period that lists no inconclusive cells at all",
-         ["§5.3", "§8.3"], "constructed: period 2 without its inconclusive table", tampered(drop_table),
+         ["§5.3", "§13 SH-12"], "constructed: period 2 without its inconclusive table", tampered(drop_table),
          "artifact_form")
 
     def withheld_with_a_value(v: dict) -> None:
@@ -188,6 +188,14 @@ def cases() -> list[dict]:
     case("mutant-verdict-withheld-for-an-unknown-reason", "A withheld cell whose reason is not one of the profile's",
          ["§6.2", "§6.3"], "constructed: period 1's under-floor contradicted cell withheld as 'because'",
          tampered(unknown_reason), "period_floor")
+
+    def wrong_total(v: dict) -> None:
+        c = next(c for c in v["periods"][0]["cells"]
+                 if c["dimension"] == {"result": "corroborated"})
+        c["value"] = 14  # the published cells (9 and 6) add up to 15
+    case("mutant-verdict-total-is-not-its-cells-sum", "A published total that its published cells do not add up to",
+         ["§6.2", "§6.3"], "constructed: period 1's corroborated total published as 14 beside 9 and 6",
+         tampered(wrong_total), "period_floor")
 
     def another_unit(v: dict) -> None:
         v["periods"][0]["cells"][0]["unit"] = "exchanges_served"
@@ -219,7 +227,7 @@ def cases() -> list[dict]:
         cells = v["periods"][0]["cells"]
         cells[0], cells[1] = cells[1], cells[0]
     case("mutant-verdict-models-out-of-order", "A result's model cells not in model hash order",
-         ["§5.3", "§9.4"], "constructed: the first two cells of period 1 swapped", tampered(swapped),
+         ["§5.3", "§13 SH-12"], "constructed: the first two cells of period 1 swapped", tampered(swapped),
          "artifact_form")
 
     def other_policy(v: dict) -> None:

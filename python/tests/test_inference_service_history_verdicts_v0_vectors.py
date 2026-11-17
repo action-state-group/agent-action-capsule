@@ -96,7 +96,7 @@ def fails(case: dict) -> set[str]:
 
 def test_every_case_agrees_with_the_independent_evaluation():
     data = corpus()
-    assert data["count"] == len(data["cases"]) == 15
+    assert data["count"] == len(data["cases"]) == 16
     for case in data["cases"]:
         expected = set(case["expected"]["fails"])
         got = fails(case)
