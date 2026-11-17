@@ -19,6 +19,13 @@
       "pack_digest": "212fa32bf4a5193f4161ecc86059cf4b79bac9af183350a1800a05834797a564"
     },
     {
+      "instance": "standard_history/3",
+      "table": "spec/history-frame/standard-history-3-table.json",
+      "pack": "spec/history-frame/standard-history-3-pack.json",
+      "table_digest": "71e38ed61fbe928ff535aa851e4bc4f86bd7ee039a2a80707cb54a493340cc00",
+      "pack_digest": "bd5f940e4b541d2a91fe7532cde65b3c94004f5958b2d3d573eaabcacf6f55ac"
+    },
+    {
       "instance": "personal_history_basic/1",
       "table": "spec/history-frame/personal-history-basic-1-table.json",
       "pack": "spec/history-frame/personal-history-basic-1-pack.json",
@@ -45,7 +52,7 @@
     "pack_binding",
     "pack_form"
   ],
-  "count": 10,
+  "count": 11,
   "cases": [
     {
       "id": "standard-history-as-pinned",
@@ -370,6 +377,233 @@
             "deals.not_counted": "deals in the window not counted",
             "deals.undecided": "counted deals without a decided outcome",
             "deals.unpriced": "counted deals without a recorded amount, in no value band"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "PASS",
+          "pack_form": "PASS"
+        },
+        "accepted": true,
+        "fails": []
+      }
+    },
+    {
+      "id": "standard-history-3-as-pinned",
+      "description": "The counting table and wording pack of standard_history/3, as spec/history-frame/ holds them",
+      "sections": [
+        "§5",
+        "§6"
+      ],
+      "inputs": {
+        "instance": "standard_history/3",
+        "listed": {
+          "table": "71e38ed61fbe928ff535aa851e4bc4f86bd7ee039a2a80707cb54a493340cc00",
+          "pack": "bd5f940e4b541d2a91fe7532cde65b3c94004f5958b2d3d573eaabcacf6f55ac"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "standard_history/3",
+          "inputs": {
+            "deal_entry": [
+              "deal",
+              "agreed_at",
+              "counterparty_class",
+              "left_out",
+              "role",
+              "amount",
+              "rows",
+              "happened",
+              "disputes"
+            ],
+            "row_result": [
+              "owed_by",
+              "status",
+              "value",
+              "remedy"
+            ],
+            "row_status": [
+              "not_reached",
+              "not_due",
+              "no_statement",
+              "waiting",
+              "uncontested",
+              "agreed_so_far",
+              "agreed",
+              "in_disagreement",
+              "in_dispute",
+              "ruled"
+            ],
+            "row_value": [
+              "met",
+              "not_met"
+            ],
+            "remedy": [
+              "none",
+              "due",
+              "made",
+              "not_honoured"
+            ],
+            "owed_by": [
+              "holder",
+              "counterparty"
+            ],
+            "dispute_entry": [
+              "side",
+              "outcome",
+              "forum"
+            ],
+            "counterparty_class": [
+              "person_agent",
+              "business_agent",
+              "shop_preauth"
+            ],
+            "not_counted": [
+              "shop_preauth",
+              "no_witness_time"
+            ],
+            "record_kinds": [
+              "receipt_document"
+            ]
+          },
+          "card_members": [
+            "derivation",
+            "holder_kind",
+            "controller_class",
+            "anchor",
+            "since",
+            "coverage_start",
+            "window",
+            "policy",
+            "in_window",
+            "class_missing",
+            "outcomes",
+            "did_not_hold",
+            "bands",
+            "unpriced",
+            "roles",
+            "happened",
+            "disputes"
+          ],
+          "tallies": {
+            "in_window": [
+              "of",
+              "counted",
+              "not_counted"
+            ],
+            "class_missing": [
+              "of",
+              "count"
+            ],
+            "outcomes": [
+              "of",
+              "held",
+              "held_so_far",
+              "did_not_hold",
+              "undecided",
+              "ruling_not_honoured"
+            ],
+            "did_not_hold": [
+              "of",
+              "not_remedied",
+              "remedy_pending",
+              "remedied",
+              "other_side"
+            ],
+            "band": [
+              "currency",
+              "decade",
+              "of",
+              "held",
+              "held_so_far",
+              "did_not_hold",
+              "undecided",
+              "ruling_not_honoured"
+            ],
+            "unpriced": [
+              "of",
+              "held",
+              "held_so_far",
+              "did_not_hold",
+              "undecided",
+              "ruling_not_honoured"
+            ],
+            "roles": [
+              "of",
+              "provided",
+              "bought"
+            ],
+            "happened": [
+              "of",
+              "stamped_by_both",
+              "receipt_only",
+              "no_record"
+            ],
+            "disputes": [
+              "raised",
+              "received"
+            ],
+            "dispute": [
+              "of",
+              "by_outcome",
+              "by_forum"
+            ],
+            "by_outcome": [
+              "of",
+              "open",
+              "for",
+              "against",
+              "split",
+              "no_finding",
+              "withdrawn"
+            ],
+            "by_forum": [
+              "of",
+              "auto",
+              "network",
+              "rail",
+              "external"
+            ]
+          },
+          "units": [
+            "deals",
+            "disputes"
+          ],
+          "properties": [
+            "card_form",
+            "counts_integral",
+            "denominator",
+            "window_from_policy",
+            "as_of",
+            "counts_recompute"
+          ],
+          "may_be_not_checked": [
+            "window_from_policy",
+            "as_of",
+            "counts_recompute"
+          ]
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "standard_history/3",
+          "language": "en",
+          "strings": {
+            "count.of": "{count} of {of}",
+            "counts.cover": "the counts cover counted deals in the stated window",
+            "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
+            "deals.not_counted": "deals in the window not counted",
+            "deals.undecided": "counted deals whose outcome cannot be decided yet",
+            "deals.unpriced": "counted deals without a recorded amount, in no value band",
+            "deals.held_so_far": "counted deals held so far, with a row not yet due or a contest window open",
+            "deals.did_not_hold.split": "of the deals that did not hold, by what became of the unmet rows",
+            "coverage.start": "complete from {coverage_start}; before it, the deals the holder carried into its shelf log",
+            "level.recomputed": "recounted from the holder's whole shelf",
+            "level.form_only": "checked for its form only",
+            "anchor.unwitnessed": "unwitnessed: no witness receipt for this snapshot"
           }
         }
       },

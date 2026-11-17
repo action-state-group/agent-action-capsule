@@ -18,8 +18,9 @@ import (
 // is compared with the case's whole expected block, as
 // python/tests/test_standard_history_v0_vectors.py compares the Python
 // reference. Every fully checked standard card is also rebuilt by DeriveAs.
-// vectors.json holds the standard_history/1 cases and vectors-2.json the
-// standard_history/2 ones, each naming the token it is checked under.
+// vectors.json holds the standard_history/1 cases, vectors-2.json the
+// standard_history/2 ones and vectors-3.json the standard_history/3 ones
+// (SH §11), each naming the token it is checked under.
 
 type vectorCase struct {
 	ID     string `json:"id"`
@@ -69,15 +70,17 @@ func loadFile(t *testing.T, name string) corpus {
 }
 
 func TestCorpusHeader(t *testing.T) {
-	for _, c := range []corpus{load(t), loadFile(t, "vectors-2.json")} {
+	for _, c := range []corpus{load(t), loadFile(t, "vectors-2.json"), loadFile(t, "vectors-3.json")} {
 		assert.Equal(t, "spec/standard-history-v0.md", c.Spec)
 		assert.Equal(t, standardhistory.Properties, c.Properties)
 	}
 	assert.Equal(t, standardhistory.Derivation2, loadFile(t, "vectors-2.json").Derivation)
+	assert.Equal(t, standardhistory.Derivation3, loadFile(t, "vectors-3.json").Derivation)
 }
 
 func TestVectors(t *testing.T) {
 	all := append(load(t).Cases, loadFile(t, "vectors-2.json").Cases...)
+	all = append(all, loadFile(t, "vectors-3.json").Cases...)
 	for _, tc := range all {
 		t.Run(tc.ID, func(t *testing.T) {
 			got, err := standardhistory.CheckAs(tc.derivation(), tc.Inputs.Card, tc.Inputs.Policy, tc.Inputs.AsOf,
@@ -242,9 +245,110 @@ func TestUnpricedDealDecoding(t *testing.T) {
 }
 
 func TestUnknownTokenIsAnError(t *testing.T) {
-	_, err := standardhistory.CheckAs("standard_history/3", baseCase(t).Inputs.Card, nil, nil, nil)
+	_, err := standardhistory.CheckAs("standard_history/4", baseCase(t).Inputs.Card, nil, nil, nil)
 	require.Error(t, err)
-	_, err = standardhistory.DeriveAs("standard_history/3", "person", "person_declared", standardhistory.AsOf{},
+	_, err = standardhistory.DeriveAs("standard_history/4", "person", "person_declared", standardhistory.AsOf{},
 		standardhistory.Policy{}, nil)
 	require.Error(t, err)
+}
+
+func v3Case(t *testing.T, id string) vectorCase {
+	t.Helper()
+	for _, c := range loadFile(t, "vectors-3.json").Cases {
+		if c.ID == id {
+			return c
+		}
+	}
+	t.Fatalf("no case %s", id)
+	return vectorCase{}
+}
+
+// SH §11.3, §11.4: every pair of well-formed row results falls in exactly one
+// line, and a did_not_hold deal in exactly one part.
+func TestV3LinesCoverEveryRowResult(t *testing.T) {
+	var results []standardhistory.Row
+	for _, s := range []string{"not_reached", "not_due", "no_statement", "in_disagreement", "in_dispute"} {
+		results = append(results, standardhistory.Row{Status: s})
+	}
+	for _, s := range []string{"waiting", "uncontested", "agreed_so_far", "agreed"} {
+		for _, v := range []string{"met", "not_met"} {
+			results = append(results, standardhistory.Row{Status: s, Value: v})
+		}
+	}
+	for _, v := range []string{"met", "not_met"} {
+		for _, r := range []string{"none", "due", "made", "not_honoured"} {
+			results = append(results, standardhistory.Row{Status: "ruled", Value: v, Remedy: r})
+		}
+	}
+	var rows []standardhistory.Row
+	for _, o := range []string{"holder", "counterparty"} {
+		for _, r := range results {
+			r.OwedBy = o
+			rows = append(rows, r)
+		}
+	}
+	lines := []string{"ruling_not_honoured", "undecided", "did_not_hold", "held_so_far", "held"}
+	parts := []string{"not_remedied", "remedy_pending", "remedied", "other_side"}
+	for _, a := range rows {
+		for _, b := range rows {
+			line, part := standardhistory.Line([]standardhistory.Row{a, b})
+			assert.Contains(t, lines, line)
+			if line == "did_not_hold" {
+				assert.Contains(t, parts, part)
+			} else {
+				assert.Empty(t, part)
+			}
+		}
+	}
+}
+
+// SH §11.1: deals with no new fact move line when the anchor moves.
+func TestV3QuietDealMovesLine(t *testing.T) {
+	a := v3Case(t, "lines-and-split").Inputs.Deals
+	b := v3Case(t, "quiet-deals-later-anchor").Inputs.Deals
+	require.Len(t, b, len(a))
+	moved := map[string][2]string{}
+	for i := range a {
+		la, _ := standardhistory.Line(a[i].Rows)
+		lb, _ := standardhistory.Line(b[i].Rows)
+		if la != lb {
+			moved[a[i].Deal] = [2]string{la, lb}
+		}
+	}
+	assert.Equal(t, map[string][2]string{"deal-302": {"held_so_far", "undecided"}, "deal-314": {"held_so_far", "held"}},
+		moved)
+}
+
+func TestMalformedV3DealEntryIsAnError(t *testing.T) {
+	tc := v3Case(t, "lines-and-split")
+	for _, change := range []string{
+		`{"outcome":"held"}`,
+		`{"rows":[]}`,
+		`{"rows":null}`,
+		`{"rows":[{"owed_by":"holder","status":"agreed"}]}`,
+		`{"rows":[{"owed_by":"holder","status":"not_due","value":"met"}]}`,
+		`{"rows":[{"owed_by":"holder","status":"ruled","value":"met"}]}`,
+		`{"rows":[{"owed_by":"seller","status":"not_due"}]}`,
+		`{"left_out":"late"}`,
+	} {
+		octets, err := json.Marshal(tc.Inputs.Deals[0])
+		require.NoError(t, err)
+		var entry map[string]any
+		require.NoError(t, json.Unmarshal(octets, &entry))
+		var patch map[string]any
+		require.NoError(t, json.Unmarshal([]byte(change), &patch))
+		for k, v := range patch {
+			entry[k] = v
+		}
+		octets, err = json.Marshal(entry)
+		require.NoError(t, err)
+		var d standardhistory.Deal
+		if json.Unmarshal(octets, &d) != nil {
+			continue // refused while decoding
+		}
+		deals := append([]standardhistory.Deal{d}, tc.Inputs.Deals[1:]...)
+		_, err = standardhistory.CheckAs(standardhistory.Derivation3, tc.Inputs.Card, tc.Inputs.Policy, tc.Inputs.AsOf,
+			deals)
+		assert.Error(t, err, change)
+	}
 }

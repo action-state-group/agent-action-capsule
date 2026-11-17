@@ -8,8 +8,8 @@ Every case runs from its inputs alone through ``agent_action_capsule.standard_hi
 - for every standard card checked with the policy, the anchor and the deal entries,
   ``derive_card`` rebuilds exactly the case's card from them.
 
-``vectors.json`` holds the ``standard_history/1`` cases and ``vectors-2.json`` the
-``standard_history/2`` ones; a case's ``inputs.derivation`` names the token it is checked under,
+``vectors.json`` holds the ``standard_history/1`` cases, ``vectors-2.json`` the
+``standard_history/2`` ones and ``vectors-3.json`` the ``standard_history/3`` ones (SH §11); a case's ``inputs.derivation`` names the token it is checked under,
 ``/1`` when absent.
 
 ``go/standardhistory`` runs the same cases. The test regenerates the corpus twice and requires
@@ -36,9 +36,11 @@ GENERATOR = ROOT / "python" / "scripts" / "generate_standard_history_v0_vectors.
 HAND_WRITTEN = ("README.md",)
 DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
 DATA_2 = json.loads((VECTORS / "vectors-2.json").read_text(encoding="utf-8"))
+DATA_3 = json.loads((VECTORS / "vectors-3.json").read_text(encoding="utf-8"))
 CASES = DATA["cases"]
 CASES_2 = DATA_2["cases"]
-ALL_CASES = CASES + CASES_2
+CASES_3 = DATA_3["cases"]
+ALL_CASES = CASES + CASES_2 + CASES_3
 
 
 def _check(c: dict) -> dict:
@@ -56,16 +58,18 @@ def _derive(c: dict) -> dict:
     return sh.derive_card(holder_kind=card["holder_kind"], controller_class=card["controller_class"],
                           anchor=i["as_of"]["anchor"], anchor_time=i["as_of"]["anchor_time"],
                           first_checkpoint_time=i["as_of"]["first_checkpoint_time"], policy=i["policy"],
-                          deals=i["deals"], derivation=i.get("derivation", sh.DERIVATION))
+                          deals=i["deals"], derivation=i.get("derivation", sh.DERIVATION),
+                          coverage_start_time=i["as_of"].get("coverage_start_time"))
 
 
 def test_corpus_header() -> None:
-    for data in (DATA, DATA_2):
+    for data in (DATA, DATA_2, DATA_3):
         assert data["spec"] == "spec/standard-history-v0.md"
         assert tuple(data["properties"]) == sh.PROPERTIES
         assert data["count"] == len(data["cases"])
     assert DATA_2["derivation"] == sh.DERIVATION_2
-    assert all(c["inputs"]["derivation"] in sh.DERIVATIONS for c in CASES_2)
+    assert DATA_3["derivation"] == sh.DERIVATION_3
+    assert all(c["inputs"]["derivation"] in sh.DERIVATIONS for c in CASES_2 + CASES_3)
     assert not any("derivation" in c["inputs"] for c in CASES)
     spec = (ROOT / DATA["spec"]).read_text(encoding="utf-8")
     for prop in sh.PROPERTIES:
@@ -104,6 +108,64 @@ def test_every_negative_named_for_v2_is_present() -> None:
     assert next(c for c in CASES_2 if c["id"] == "unpriced-counted")["expected"]["standard"]
 
 
+def test_every_negative_named_for_v3_is_present() -> None:
+    """SH §11.10: the /3 cases, each negative failing the property named."""
+    fails = {c["id"]: c["expected"]["fails"] for c in CASES_3}
+    assert fails["line-not-first"] == ["counts_recompute"]
+    assert fails["left-out-counted"] == ["counts_recompute"]
+    assert fails["split-not-the-line"] == ["denominator"]
+    assert fails["coverage-start-other-month"] == ["as_of"]
+    for cid in ("band-three-outcomes", "v3-card-for-v2-request"):
+        assert fails[cid] == ["card_form"], cid
+    for cid in ("no-coverage-start", "coverage-start-before-since", "v2-card-for-v3-request"):
+        assert fails[cid][0] == "card_form", cid
+    for cid in ("lines-and-split", "quiet-deals-later-anchor"):
+        c = next(c for c in CASES_3 if c["id"] == cid)
+        assert c["expected"]["standard"] and _derivable(c), cid
+
+
+def test_v3_lines_cover_every_row_result() -> None:
+    """SH §11.3: every combination of row results falls in exactly one line, and a did_not_hold deal
+    in exactly one part (§11.4)."""
+    results = [{"status": s} for s in ("not_reached", "not_due", "no_statement", "in_disagreement",
+                                       "in_dispute")]
+    results += [{"status": s, "value": v} for s in ("waiting", "uncontested", "agreed_so_far", "agreed")
+                for v in sh.ROW_VALUES]
+    results += [{"status": "ruled", "value": v, "remedy": r} for v in sh.ROW_VALUES for r in sh.REMEDIES]
+    rows = [{"owed_by": o, **r} for o in sh.OWED_BY for r in results]
+    for a in rows:
+        for b in rows:
+            line, part = sh.line([a, b])
+            assert line in sh.LINES
+            assert (part in sh.SPLIT) == (line == "did_not_hold")
+
+
+def test_v3_quiet_deal_moves_line_with_the_anchor() -> None:
+    """SH §11.1: the same deal, with no new fact, falls in another line at a later anchor."""
+    a = next(c for c in CASES_3 if c["id"] == "lines-and-split")["inputs"]["deals"]
+    b = next(c for c in CASES_3 if c["id"] == "quiet-deals-later-anchor")["inputs"]["deals"]
+    moved = {x["deal"]: (sh.line(x["rows"])[0], sh.line(y["rows"])[0])
+             for x, y in zip(a, b) if x != y}
+    assert moved == {"deal-302": ("held_so_far", "undecided"), "deal-314": ("held_so_far", "held")}
+
+
+@pytest.mark.parametrize("change", [
+    {"outcome": "held"},                                              # /3 reads no outcome claim
+    {"rows": []},
+    {"rows": [{"owed_by": "holder", "status": "agreed"}]},            # agreed carries a value
+    {"rows": [{"owed_by": "holder", "status": "not_due", "value": "met"}]},
+    {"rows": [{"owed_by": "holder", "status": "ruled", "value": "met"}]},   # ruled carries a remedy
+    {"rows": [{"owed_by": "seller", "status": "not_due"}]},
+    {"left_out": "late"},
+])
+def test_malformed_v3_deal_entry_raises(change: dict) -> None:
+    c = next(c for c in CASES_3 if c["id"] == "lines-and-split")
+    deals = json.loads(json.dumps(c["inputs"]["deals"]))
+    deals[0].update(change)
+    with pytest.raises(ValueError):
+        _check({**c, "inputs": {**c["inputs"], "deals": deals}})
+
+
 def test_v1_cannot_count_an_unpriced_deal() -> None:
     """SH §3, §5.2: a /1 deal entry needs an amount, so a /1 card over an unpriced deal cannot be built;
     the same entries build a /2 card."""
@@ -131,7 +193,7 @@ def test_v2_amount_present_must_be_an_amount(amount) -> None:
 
 def test_unknown_token_raises() -> None:
     with pytest.raises(ValueError):
-        sh.check_card(CASES[0]["inputs"]["card"], derivation="standard_history/3")
+        sh.check_card(CASES[0]["inputs"]["card"], derivation="standard_history/4")
 
 
 def test_counts_integral_reads_the_value() -> None:
@@ -203,18 +265,47 @@ def _mutant_disagrees(monkeypatch: pytest.MonkeyPatch, name: str, replacement) -
                    for c in ALL_CASES)
 
 
-def _partitions_only(card: dict) -> bool:
+def _partitions_only(card: dict, derivation: str) -> bool:
     """A denominator check that skips the cross-tally totals of SH §4."""
     return all("of" in card[name] and (name == "class_missing" or sh._partitions(card[name], parts))
-               for name, parts in sh.TALLIES.items())
+               for name, parts in sh._tallies(derivation).items())
 
 
 _REAL_DENOMINATOR = sh._denominator
 
 
-def _bands_only(card: dict) -> bool:
+def _bands_only(card: dict, derivation: str) -> bool:
     """A denominator check that reads a /2 card as a /1 one: the bands alone partition the outcomes."""
-    return _REAL_DENOMINATOR({k: v for k, v in card.items() if k != "unpriced"})
+    return _REAL_DENOMINATOR({k: v for k, v in card.items() if k != "unpriced"}, derivation)
+
+
+def _split_unchecked(card: dict, derivation: str) -> bool:
+    """A denominator check that does not tie the did_not_hold split to its line (SH §11.6)."""
+    return _REAL_DENOMINATOR(card, sh.DERIVATION_2 if derivation == sh.DERIVATION_3 else derivation)
+
+
+_REAL_LINE = sh.line
+
+
+def _line_in_order(order: tuple):
+    """A line function that takes the lines in another order than SH §11.3."""
+    def line(rows):
+        got = [_REAL_LINE([r]) for r in rows]
+        for name in order:
+            for g in got:
+                if g[0] == name:
+                    return g
+        return _REAL_LINE(rows)
+    return line
+
+
+_REAL_COUNTS = sh._counts
+
+
+def _counting_left_out(deals, window, anchor_time, derivation=sh.DERIVATION):
+    """Counts as if no deal carried left_out (SH §11.2)."""
+    return _REAL_COUNTS([{k: v for k, v in d.items() if k != "left_out"} for d in deals], window, anchor_time,
+                        derivation)
 
 
 def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -234,6 +325,12 @@ def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
         "lets a /2 card leave out unpriced": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_2: sh.CARD_MEMBERS}),
         "lets a /1 card carry unpriced": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION: sh.MEMBERS[sh.DERIVATION_2]}),
         "leaves unpriced out of the outcome totals": ("_denominator", _bands_only),
+        "does not tie the split to its line": ("_denominator", _split_unchecked),
+        "takes did_not_hold before undecided": ("line", _line_in_order(
+            ("ruling_not_honoured", "did_not_hold", "undecided", "held_so_far", "held"))),
+        "counts a deal left out": ("_counts", _counting_left_out),
+        "lets a /3 card leave out coverage_start": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_3:
+                                                                sh.MEMBERS[sh.DERIVATION_3] - {"coverage_start"}}),
     }
     agreeing = [desc for desc, (name, value) in mutants.items()
                 if not _mutant_disagrees(monkeypatch, name, value)]

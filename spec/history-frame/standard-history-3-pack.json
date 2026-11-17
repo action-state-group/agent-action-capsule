@@ -1,0 +1,20 @@
+{
+  "document": "wording_pack",
+  "frame": "history-frame/0",
+  "instance": "standard_history/3",
+  "language": "en",
+  "strings": {
+    "count.of": "{count} of {of}",
+    "counts.cover": "the counts cover counted deals in the stated window",
+    "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
+    "deals.not_counted": "deals in the window not counted",
+    "deals.undecided": "counted deals whose outcome cannot be decided yet",
+    "deals.unpriced": "counted deals without a recorded amount, in no value band",
+    "deals.held_so_far": "counted deals held so far, with a row not yet due or a contest window open",
+    "deals.did_not_hold.split": "of the deals that did not hold, by what became of the unmet rows",
+    "coverage.start": "complete from {coverage_start}; before it, the deals the holder carried into its shelf log",
+    "level.recomputed": "recounted from the holder's whole shelf",
+    "level.form_only": "checked for its form only",
+    "anchor.unwitnessed": "unwitnessed: no witness receipt for this snapshot"
+  }
+}

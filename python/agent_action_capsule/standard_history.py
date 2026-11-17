@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The ``standard_history/1`` and ``standard_history/2`` derivations
-(``spec/standard-history-v0.md``, cited as SH).
+"""The ``standard_history/1``, ``standard_history/2`` and ``standard_history/3`` derivations
+(``spec/standard-history-v0.md``, cited as SH; ``/3`` is SH §11).
 
 Two functions, each for the token its ``derivation`` names (``/1`` when omitted):
 
@@ -26,6 +26,7 @@ from .canonical import too_deep
 __all__ = [
     "DERIVATION",
     "DERIVATION_2",
+    "DERIVATION_3",
     "DERIVATIONS",
     "PROPERTIES",
     "COUNTERPARTY_CLASSES",
@@ -37,7 +38,10 @@ __all__ = [
 DERIVATION = "standard_history/1"
 #: SH §4, §5.3: /2 also counts the counted deals with no recorded amount, in ``unpriced``.
 DERIVATION_2 = "standard_history/2"
-DERIVATIONS = (DERIVATION, DERIVATION_2)
+#: SH §11: /3 counts each deal's term rows in five lines, splits did_not_hold, and carries the
+#: shelf log's coverage start.
+DERIVATION_3 = "standard_history/3"
+DERIVATIONS = (DERIVATION, DERIVATION_2, DERIVATION_3)
 
 #: SH §6, in the order a verifier reports them.
 PROPERTIES = ("card_form", "counts_integral", "denominator", "window_from_policy", "as_of",
@@ -53,6 +57,18 @@ CONTROLLER_CLASSES = {"person": "person_declared", "node": "node_declared"}
 ROLES = ("provided", "bought")
 OUTCOMES = ("held", "did_not_hold", "undecided")
 HAPPENED = ("stamped_by_both", "receipt_only", "no_record")
+#: SH §11.3: /3's outcome lines, in the order the first that applies wins.
+LINES = ("ruling_not_honoured", "undecided", "did_not_hold", "held_so_far", "held")
+#: SH §11.4: the parts of did_not_hold, in the order the first that applies wins.
+SPLIT = ("not_remedied", "remedy_pending", "remedied", "other_side")
+#: SH §11.2: a row result's members' values.
+ROW_STATUSES = ("not_reached", "not_due", "no_statement", "waiting", "uncontested", "agreed_so_far",
+                "agreed", "in_disagreement", "in_dispute", "ruled")
+VALUED = frozenset(("waiting", "uncontested", "agreed_so_far", "agreed", "ruled"))
+ROW_VALUES = ("met", "not_met")
+REMEDIES = ("none", "due", "made", "not_honoured")
+OWED_BY = ("holder", "counterparty")
+LEFT_OUT = ("no_witness_time",)
 SIDES = ("raised", "received")
 DISPUTE_OUTCOMES = ("open", "for", "against", "split", "no_finding", "withdrawn")
 FORUMS = ("auto", "network", "rail", "external")
@@ -68,7 +84,8 @@ TALLIES = {
 CARD_MEMBERS = frozenset(("derivation", "holder_kind", "controller_class", "anchor", "since", "window",
                           "policy", "bands", "disputes") + tuple(TALLIES))
 #: SH §4: the members of each token's card.
-MEMBERS = {DERIVATION: CARD_MEMBERS, DERIVATION_2: CARD_MEMBERS | {"unpriced"}}
+MEMBERS = {DERIVATION: CARD_MEMBERS, DERIVATION_2: CARD_MEMBERS | {"unpriced"},
+           DERIVATION_3: CARD_MEMBERS | {"unpriced", "coverage_start", "did_not_hold"}}
 BAND_KEYS = ("currency", "decade")
 MAX_COUNT = 2 ** 53 - 1
 
@@ -79,6 +96,15 @@ TIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")   #
 VALUE = re.compile(r"0|[1-9][0-9]*")                       # SR "Amounts"
 # SR "Amounts" assetCode: an ISO 4217 alphabetic code (BTC included), or a CAIP-19 asset type.
 CURRENCY = re.compile(r"[A-Z]{3}|[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}/[-a-z0-9]{3,8}:[-.%a-zA-Z0-9]{1,128}")
+
+
+def _outcomes(derivation: str) -> tuple:
+    """The parts of ``outcomes``, of each band and of ``unpriced`` under the token."""
+    return LINES if derivation == DERIVATION_3 else OUTCOMES
+
+
+def _tallies(derivation: str) -> dict:
+    return {**TALLIES, "outcomes": _outcomes(derivation)}
 
 
 def _is_number(v: Any) -> bool:
@@ -124,20 +150,52 @@ def _decade(amount: Mapping[str, Any]) -> int | None:
     return None if value == "0" else len(value) - scale - 1
 
 
+#: SH §11.2: the members a /3 deal entry may carry. /1 and /2 entries are read as SH §5.2 says.
+ENTRY_MEMBERS_3 = frozenset(("deal", "agreed_at", "counterparty_class", "left_out", "role", "amount",
+                             "rows", "happened", "disputes"))
+ROW_MEMBERS = frozenset(("owed_by", "status", "value", "remedy"))
+
+
+def _check_row(ref: str, row: Any) -> None:
+    """SH §11.2: a row result, with ``value`` and ``remedy`` exactly where the status carries them."""
+    if not isinstance(row, Mapping) or not set(row) <= ROW_MEMBERS:
+        raise ValueError(f"deal {ref}: malformed row result {row!r}")
+    status = row.get("status")
+    if row.get("owed_by") not in OWED_BY or status not in ROW_STATUSES:
+        raise ValueError(f"deal {ref}: malformed row result {row!r}")
+    if ("value" in row) != (status in VALUED) or ("value" in row and row["value"] not in ROW_VALUES):
+        raise ValueError(f"deal {ref}: row value {row!r}")
+    if ("remedy" in row) != (status == "ruled") or ("remedy" in row and row["remedy"] not in REMEDIES):
+        raise ValueError(f"deal {ref}: row remedy {row!r}")
+
+
 def _check_entry(deal: Mapping[str, Any], derivation: str) -> None:
-    """The deal entry's form (SH §5.2). A malformed entry is the caller's error, never a count.
-    ``amount`` may be absent only under /2: a /1 entry cannot be filled without it (SH §3)."""
+    """The deal entry's form (SH §5.2; under /3, §11.2). A malformed entry is the caller's error,
+    never a count. ``amount`` may be absent only under /2 and /3: a /1 entry cannot be filled
+    without it (SH §3)."""
     if not isinstance(deal, Mapping):
         raise ValueError("a deal entry is not an object")
     if not isinstance(deal.get("deal"), str) or not deal["deal"]:
         raise ValueError("deal entry without a deal reference")
+    v3 = derivation == DERIVATION_3
+    if v3 and not set(deal) <= ENTRY_MEMBERS_3:
+        raise ValueError(f"deal {deal['deal']}: a member a /3 entry does not have")
     _time(deal.get("agreed_at"))
     if "counterparty_class" in deal and deal["counterparty_class"] not in COUNTERPARTY_CLASSES:
         raise ValueError(f"unknown counterparty_class: {deal['counterparty_class']!r}")
-    for member, values in (("role", ROLES), ("outcome", OUTCOMES), ("happened", HAPPENED)):
+    checks = [("role", ROLES), ("happened", HAPPENED)] + ([] if v3 else [("outcome", OUTCOMES)])
+    for member, values in checks:
         if deal.get(member) not in values:
             raise ValueError(f"deal {deal['deal']}: {member} {deal.get(member)!r}")
-    if "amount" in deal or derivation != DERIVATION_2:
+    if v3:
+        if "left_out" in deal and deal["left_out"] not in LEFT_OUT:
+            raise ValueError(f"deal {deal['deal']}: left_out {deal['left_out']!r}")
+        rows = deal.get("rows")
+        if not isinstance(rows, list) or not rows:
+            raise ValueError(f"deal {deal['deal']}: rows is not a non-empty array")
+        for row in rows:
+            _check_row(deal["deal"], row)
+    if "amount" in deal or derivation == DERIVATION:
         amount = deal.get("amount")
         if (not isinstance(amount, Mapping) or not isinstance(amount.get("assetCode"), str)
                 or not CURRENCY.fullmatch(amount["assetCode"])):
@@ -152,6 +210,32 @@ def _check_entry(deal: Mapping[str, Any], derivation: str) -> None:
             raise ValueError(f"deal {deal['deal']}: malformed dispute {d!r}")
 
 
+def line(rows: Sequence[Mapping[str, Any]]) -> tuple[str, str | None]:
+    """SH §11.3 and §11.4: a counted deal's line, and its part of ``did_not_hold`` (None for any
+    other line), the first that applies in each table."""
+    if any(r["status"] == "ruled" and r["remedy"] == "not_honoured" for r in rows):
+        return "ruling_not_honoured", None
+    if any(r["status"] in ("in_disagreement", "in_dispute", "no_statement", "not_reached")
+           or (r["status"] == "waiting" and r["value"] == "not_met") for r in rows):
+        return "undecided", None
+    unmet = [r for r in rows if r["status"] in ("agreed_so_far", "agreed", "uncontested", "ruled")
+             and r["value"] == "not_met"]
+    if unmet:
+        own = [r for r in unmet if r["owed_by"] == "holder"]
+        if not own:
+            return "did_not_hold", "other_side"
+        if any(r["status"] != "ruled" or r["remedy"] == "none" for r in own):
+            return "did_not_hold", "not_remedied"
+        if any(r["remedy"] == "due" for r in own):
+            return "did_not_hold", "remedy_pending"
+        # Every own unmet row is ruled; none has remedy none (above) or not_honoured (line 1), and
+        # none is due: each has its remedy made.
+        return "did_not_hold", "remedied"
+    if any(r["status"] in ("not_due", "waiting", "agreed_so_far") for r in rows):
+        return "held_so_far", None
+    return "held", None
+
+
 def _zero(parts: Sequence[str]) -> dict:
     return {"of": 0, **{p: 0 for p in parts}}
 
@@ -159,9 +243,12 @@ def _zero(parts: Sequence[str]) -> dict:
 def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], anchor_time: datetime,
             derivation: str = DERIVATION) -> dict:
     """The tallies SH §5 derives from the deal entries, for the token's card."""
-    t = {name: _zero(parts) for name, parts in TALLIES.items()}
-    if derivation == DERIVATION_2:
-        t["unpriced"] = _zero(OUTCOMES)
+    outcomes = _outcomes(derivation)
+    t = {name: _zero(parts) for name, parts in _tallies(derivation).items()}
+    if derivation != DERIVATION:
+        t["unpriced"] = _zero(outcomes)
+    if derivation == DERIVATION_3:
+        t["did_not_hold"] = _zero(SPLIT)
     bands: dict = {}
     disputes = {side: {"of": 0, "by_outcome": _zero(DISPUTE_OUTCOMES), "by_forum": _zero(FORUMS)}
                 for side in SIDES}
@@ -170,24 +257,32 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
         if not _in_window(_time(deal["agreed_at"]), window, anchor_time):
             continue
         t["in_window"]["of"] += 1
-        if deal.get("counterparty_class") == NOT_COUNTED:
+        # SH §11.2: under /3 a deal left out is not counted either.
+        if deal.get("counterparty_class") == NOT_COUNTED or (derivation == DERIVATION_3 and "left_out" in deal):
             t["in_window"]["not_counted"] += 1
             continue
         t["in_window"]["counted"] += 1
         t["class_missing"]["of"] += 1
         if "counterparty_class" not in deal:
             t["class_missing"]["count"] += 1
-        for name, member in (("outcomes", "outcome"), ("roles", "role"), ("happened", "happened")):
+        if derivation == DERIVATION_3:
+            outcome, part = line(deal["rows"])
+            if part is not None:
+                t["did_not_hold"]["of"] += 1
+                t["did_not_hold"][part] += 1
+        else:
+            outcome = deal["outcome"]
+        for name, value in (("outcomes", outcome), ("roles", deal["role"]), ("happened", deal["happened"])):
             t[name]["of"] += 1
-            t[name][deal[member]] += 1
+            t[name][value] += 1
         if "amount" not in deal:
             # SH §5.3: an unpriced deal (/2 only) is in `unpriced` and in no band.
             band = t["unpriced"]
         else:
             key = (deal["amount"]["assetCode"], _decade(deal["amount"]))
-            band = bands.setdefault(key, {"currency": key[0], "decade": key[1], **_zero(OUTCOMES)})
+            band = bands.setdefault(key, {"currency": key[0], "decade": key[1], **_zero(outcomes)})
         band["of"] += 1
-        band[deal["outcome"]] += 1
+        band[outcome] += 1
         for d in deal["disputes"]:
             tally = disputes[d["side"]]
             tally["of"] += 1
@@ -207,9 +302,11 @@ def _band_order(key: tuple) -> tuple:
 
 def derive_card(*, holder_kind: str, controller_class: str, anchor: str, anchor_time: str,
                 first_checkpoint_time: str, policy: Mapping[str, Any],
-                deals: Sequence[Mapping[str, Any]], derivation: str = DERIVATION) -> dict:
-    """The card of the token ``derivation`` that SH §4 states for these inputs. ``policy`` is
-    ``{"digest", "window"}`` (SH §5.1).
+                deals: Sequence[Mapping[str, Any]], derivation: str = DERIVATION,
+                coverage_start_time: str | None = None) -> dict:
+    """The card of the token ``derivation`` that SH §4 (under /3, §11.6) states for these inputs.
+    ``policy`` is ``{"digest", "window"}`` (SH §5.1). ``coverage_start_time`` is the time of the
+    shelf log's coverage start (SH §11.5), required under /3 only.
 
     Raises ``ValueError`` on a malformed input, a /1 deal entry without an amount included.
     """
@@ -222,6 +319,11 @@ def derive_card(*, holder_kind: str, controller_class: str, anchor: str, anchor_
     card = {"derivation": derivation, "holder_kind": holder_kind, "controller_class": controller_class,
             "anchor": anchor, "since": first_checkpoint_time[:7], "window": dict(window),
             "policy": policy["digest"]}
+    if derivation == DERIVATION_3:
+        _time(coverage_start_time)
+        if coverage_start_time < first_checkpoint_time:
+            raise ValueError("the coverage start is before the first checkpoint")
+        card["coverage_start"] = coverage_start_time[:7]
     card.update(_counts(deals, window, _time(anchor_time), derivation))
     return card
 
@@ -265,10 +367,17 @@ def _card_form(card: Any, derivation: str) -> bool:
         return False
     if not _window_form(card["window"]):
         return False
-    if not all(_tally_form(card[name], parts) for name, parts in TALLIES.items()):
+    outcomes = _outcomes(derivation)
+    if not all(_tally_form(card[name], parts) for name, parts in _tallies(derivation).items()):
         return False
-    if derivation == DERIVATION_2 and not _tally_form(card["unpriced"], OUTCOMES):
+    if derivation != DERIVATION and not _tally_form(card["unpriced"], outcomes):
         return False
+    if derivation == DERIVATION_3:
+        start = card["coverage_start"]
+        if not isinstance(start, str) or not MONTH.fullmatch(start) or start < card["since"]:
+            return False
+        if not _tally_form(card["did_not_hold"], SPLIT):
+            return False
     bands = card["bands"]
     if not isinstance(bands, list):
         return False
@@ -280,7 +389,7 @@ def _card_form(card: Any, derivation: str) -> bool:
             return False
         if band["decade"] is not None and not _is_number(band["decade"]):
             return False
-        if not _tally_form({k: v for k, v in band.items() if k not in BAND_KEYS}, OUTCOMES):
+        if not _tally_form({k: v for k, v in band.items() if k not in BAND_KEYS}, outcomes):
             return False
         keys.append(_band_order((band["currency"], band["decade"])))
     if any(a >= b for a, b in zip(keys, keys[1:])):
@@ -335,9 +444,10 @@ def _partitions(t: Mapping[str, Any], parts: Sequence[str]) -> bool:
     return "of" in t and sum(t[p] for p in parts) == t["of"]
 
 
-def _denominator(card: Mapping[str, Any]) -> bool:
-    """SH §4 "Denominators". Run only on a card whose form and counts are PASS."""
-    for name, parts in TALLIES.items():
+def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
+    """SH §4 "Denominators" (under /3, §11.6). Run only on a card whose form and counts are PASS."""
+    outcomes = _outcomes(derivation)
+    for name, parts in _tallies(derivation).items():
         t = card[name]
         if "of" not in t:
             return False
@@ -350,16 +460,20 @@ def _denominator(card: Mapping[str, Any]) -> bool:
     if any(card[name]["of"] != counted for name in ("class_missing", "outcomes", "roles", "happened")):
         return False
     for band in card["bands"]:
-        if not _partitions(band, OUTCOMES) or band["of"] < 1:
+        if not _partitions(band, outcomes) or band["of"] < 1:
             return False
     # SH §4: on a /2 card the bands and `unpriced` together partition the outcomes.
     priced = list(card["bands"])
     if "unpriced" in card:
-        if not _partitions(card["unpriced"], OUTCOMES):
+        if not _partitions(card["unpriced"], outcomes):
             return False
         priced.append(card["unpriced"])
-    for o in ("of",) + OUTCOMES:
+    for o in ("of",) + outcomes:
         if sum(band[o] for band in priced) != card["outcomes"][o]:
+            return False
+    if derivation == DERIVATION_3:
+        split = card["did_not_hold"]
+        if not _partitions(split, SPLIT) or split["of"] != card["outcomes"]["did_not_hold"]:
             return False
     for d in card["disputes"].values():
         if "of" not in d:
@@ -383,7 +497,7 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
     ``derivation``, the one the request named.
 
     ``policy`` is ``{"digest", "window"}`` (SH §5.1); ``as_of`` is ``{"anchor", "anchor_time",
-    "first_checkpoint_time"}``; ``deals`` is every deal entry the stream holds at the anchor, passed only when the verifier has
+    "first_checkpoint_time"}``, and under /3 also ``"coverage_start_time"`` (SH §11.7); ``deals`` is every deal entry the stream holds at the anchor, passed only when the verifier has
     shown coverage and no payload member the mapping reads is withheld (SH §6 "Handing the
     material"); the counts are recomputed over the card's own
     window, so the policy is not needed for them. Each is optional; a property that needs a missing one is ``NOT_CHECKED``. Raises ``ValueError`` on a
@@ -399,7 +513,7 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
     p["card_form"] = _status(_card_form(card, derivation))
     p["counts_integral"] = _status(parsed and _counts_integral(card))
     if p["card_form"] == "PASS" and p["counts_integral"] == "PASS":
-        p["denominator"] = _status(_denominator(card))
+        p["denominator"] = _status(_denominator(card, derivation))
     else:
         p["denominator"] = "NOT_CHECKED"
     if policy is None:
@@ -414,8 +528,12 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
         p["as_of"] = "NOT_CHECKED"
     else:
         _time(as_of.get("first_checkpoint_time"))
-        p["as_of"] = _status(isinstance(card, Mapping) and card.get("anchor") == as_of.get("anchor")
-                             and card.get("since") == as_of["first_checkpoint_time"][:7])
+        ok = (isinstance(card, Mapping) and card.get("anchor") == as_of.get("anchor")
+              and card.get("since") == as_of["first_checkpoint_time"][:7])
+        if derivation == DERIVATION_3:
+            _time(as_of.get("coverage_start_time"))
+            ok = ok and card.get("coverage_start") == as_of["coverage_start_time"][:7]
+        p["as_of"] = _status(ok)
     ready = (deals is not None and as_of is not None
              and all(p[k] == "PASS" for k in ("card_form", "counts_integral", "denominator")))
     if not ready:
