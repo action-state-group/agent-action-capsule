@@ -161,6 +161,14 @@ def test_v3_split_order(remedies: tuple, part: str) -> None:
     assert sh.line(unruled + rows) == ("did_not_hold", part)
 
 
+def test_v3_as_of_without_anchor_time_raises() -> None:
+    """A /3 as_of input without its anchor time is malformed input, never an as_of FAIL."""
+    c = next(c for c in CASES_3 if c["id"] == "lines-without-shelf")
+    as_of = {k: v for k, v in c["inputs"]["as_of"].items() if k != "anchor_time"}
+    with pytest.raises(ValueError):
+        sh.check_card(c["inputs"]["card"], as_of=as_of, derivation=sh.DERIVATION_3)
+
+
 def test_v3_quiet_deal_moves_line_with_the_anchor() -> None:
     """SH §11.1: the same deal, with no new fact, falls in another line at a later anchor."""
     a = next(c for c in CASES_3 if c["id"] == "lines-and-split")["inputs"]["deals"]

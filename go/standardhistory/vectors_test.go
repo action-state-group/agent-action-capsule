@@ -305,6 +305,16 @@ func TestV3LinesCoverEveryRowResult(t *testing.T) {
 	}
 }
 
+// A /3 as_of input without its anchor time is malformed input, never an
+// as_of FAIL.
+func TestV3AsOfWithoutAnchorTimeIsAnError(t *testing.T) {
+	tc := v3Case(t, "lines-without-shelf")
+	asOf := *tc.Inputs.AsOf
+	asOf.AnchorTime = ""
+	_, err := standardhistory.CheckAs(standardhistory.Derivation3, tc.Inputs.Card, nil, &asOf, nil)
+	require.Error(t, err)
+}
+
 // SH §11.4: two unmet rows the holder owed compete for parts; the first part
 // that applies wins, whatever the order of the rows.
 func TestV3SplitOrder(t *testing.T) {

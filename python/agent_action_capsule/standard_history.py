@@ -552,6 +552,7 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
               and card.get("since") == as_of["first_checkpoint_time"][:7])
         if derivation == DERIVATION_3:
             _time(as_of.get("coverage_start_time"))
+            _time(as_of.get("anchor_time"))
             # SH §11.1: the anchor is at or after the coverage start.
             ok = (ok and card.get("coverage_start") == as_of["coverage_start_time"][:7]
                   and as_of["coverage_start_time"] <= as_of.get("anchor_time", ""))

@@ -1208,6 +1208,9 @@ func CheckAs(derivation string, card []byte, policy *Policy, asOf *AsOf, deals [
 			if _, err := parseTime(asOf.CoverageStartTime); err != nil {
 				return nil, err
 			}
+			if _, err := parseTime(asOf.AnchorTime); err != nil {
+				return nil, err
+			}
 			// SH §11.1: the anchor is at or after the coverage start.
 			ok = ok && m["coverage_start"] == asOf.CoverageStartTime[:7] && asOf.CoverageStartTime <= asOf.AnchorTime
 		}

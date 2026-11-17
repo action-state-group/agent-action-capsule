@@ -580,6 +580,7 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-14 | The wire form of the whole-shelf handover `/3`'s `counts_recompute` reads (§11.7), as SF-7. Until it is defined, the handover is EBL's form, and a verifier that does not read it reports `counts_recompute` `NOT_CHECKED`. |
 | SH-15 | A coverage start earlier than the format switch. EBL lets a reader that checks the old ticks' material against the genesis facts take the shelf log's first entry as the coverage start (its design §4); a `/3` card always carries the switch's month (§11.5), so such a holder's card understates its coverage. |
 | SH-16 | A remedy made without a ruling. EBL's row rule carries a remedy only for a `ruled` row; the remedy of an unmet row that is not ruled (§11.2) is the host profile's, read from the holder's own remedy record of the row, such as a refund (SH-2). |
+| SH-17 | The `forum` of a dispute under `/3`. `/3` keeps §5.4's dispute entry and tally, `by_forum` included, so a host profile whose dispute and ruling records give no forum cannot fill a `/3` deal entry with a dispute. evidencebook#482 (the deal profile `x-deal-v1`, its Q4) decides those record kinds, and `/3` needs them to give a forum. |
 
 ## 11. `standard_history/3`
 
@@ -637,7 +638,8 @@ conflicting final rulings) and `ruled` (the first final ruling of the adjudicato
 names; its remedy `not_honoured` when the remedy's date passed without one).
 
 A host fills each row result by that rule, from the status value of the deal's latest fact, as of
-`T`. It MUST NOT fill a row result it did not compute by the rule, and a host that cannot compute a
+`T`. It MUST NOT fill a row result it did not compute by the rule, the `remedy` of an unmet row that
+is not ruled excepted, which it fills as SH-16 says; and a host that cannot compute a
 row's result from what it holds cannot fill the deal's entry, so it cannot answer `/3`: it refuses
 with reason `no_such_subject`, as §3 says of `/1`. It never leaves the deal or the row out. A deal is
 **counted** under `/3` when it is in the window and neither its `counterparty_class` is
