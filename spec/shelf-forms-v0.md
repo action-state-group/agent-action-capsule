@@ -65,6 +65,13 @@ described in BCP 14 (RFC 2119, RFC 8174) when, and only when, they appear in all
 - **Size:** a CLL MMR size (the number of nodes), never a count of entries, unless a rule says
   "entries".
 - **Hex:** lowercase hexadecimal. A **digest** is 64 hex characters, a SHA-256 value.
+- **Matter:** what a record belongs to, as the receiver's profile names it (EBL `ReceivedRecord`
+  `DealID`); this document gives it no other meaning.
+- **Counted prefix:** for one sender and book log, the run of records the receiver holds from
+  position `1` up with no gap and no fork (§6.2). A record in it is **counted**.
+- **Coverage:** here, a received record being covered by an accepted stamp proof (§6.3). It is
+  unrelated to the `coverage` of an Evidence Request, and to the **coverage start** of a shelf
+  log (§3.6).
 
 ## 2. Overview
 
@@ -148,7 +155,10 @@ its size (design §2.2).
 ```
 
 `stamp` is the stamp's number and `facts` the number of facts the stamp appended before this
-entry (EBL `shelf_facts.go` `StampEntry`; `shelf_stamp.go` `buildStampLocked`). Every stamp ends
+entry. Stamps are numbered after the ticks of the format before the switch: the switch's own
+stamp is `last_tick + 1` (§3.5), each later stamp is the previous one's number plus one, and a
+stamp finished after a crash keeps the number its stored batch has (EBL `shelf_stamp.go`
+`Migrate`, `stampLocked`) (EBL `shelf_facts.go` `StampEntry`; `shelf_stamp.go` `buildStampLocked`). Every stamp ends
 with one stamp entry, so the shelf log grows, and a new shelf checkpoint is cut, at every stamp,
 including a stamp with no fact (design §2.5).
 
@@ -200,7 +210,8 @@ An **opening** shows one committed value:
 
 A verifier of an opening against a commitment MUST check, in this order, that `salt` is 32 bytes
 written as 64 lowercase hex characters; that `value` is valid JSON text with no unpaired
-surrogate escape; and that `hex(SHA-256(salt || JCS(value)))` equals the commitment (EBL
+surrogate escape, nested no deeper than 128 levels (AAC's canonical JSON limit, `canonical`
+`MaxNestingDepth`, where `[]` is one level); and that `hex(SHA-256(salt || JCS(value)))` equals the commitment (EBL
 `shelf_facts.go` `FactOpening.Verify`). An opening that fails any of these is refused.
 
 Because each commitment has its own fresh salt, two facts with the same value carry different
@@ -228,15 +239,17 @@ commitments: values are compared, never commitments (design §2.4).
 ### 4.3 Audiences
 
 A holder hands a party only the openings that party's audience may have (EBL `shelf_facts.go`
-`OpeningsFor`; `shelf_stamp.go` `Openings`, the only call that hands openings out; design §2.2):
+`OpeningsFor`; `shelf_stamp.go` `Openings`, which hands a book's facts with their openings by
+audience, and `Cadence.StampProof`, which puts a status opening in a stamp proof (§5.1); design
+§2.2):
 
 | Audience | Book fact: link opening | Book fact: status opening | Journal fact: both openings |
 |---|---|---|---|
 | `counterparty` (the other side of the book) | yes | yes | no |
 | `adjudicator` (the adjudicator the book's agreement names) | yes | no | no |
-| `asker` (an asker the holder's disclosure pack lets see that book) | yes | no | no |
+| `asker` (an asker the holder lets see that book) | yes | no | no |
 | `chosen_reader` (a reader the holder chooses, such as a reader handed the whole shelf) | no | yes | no |
-| `auditor` (an auditor the holder appoints) | no | no | yes |
+| `auditor` (an auditor the holder appoints; EBL's current rule, design §2.2, not ruled: SF-9) | no | no | yes |
 | `owner` (the holder itself) | yes | yes | yes |
 
 The fact documents themselves are not hidden: every audience may be handed the facts, each with
@@ -273,8 +286,10 @@ EBL agree.)
 | `book_checkpoint`, `shelf_checkpoint` | the statement bytes in standard base64 with padding [B64] |
 | `inclusion` | `{"kind": "cll-mmr-inclusion", "seq": <the fact entry's position, from 1>, "proof": {"v": 1, "kind": "inclusion", "size": <shelf MMR size>, "leaf_index": <seq - 1>, "witness": ["<digest>", ...], "peaks_left": ["<digest>", ...], "peaks_right": ["<digest>", ...]}}` |
 
-EBL's readers ignore a member they do not know and read an absent or `null` member as empty, so
-that such a proof then fails a check of §5.3 (EBL Python `StampProof.from_value`; SF-4).
+EBL's readers ignore a member they do not know and read an absent or `null` member as its zero
+value (empty bytes, an empty list, `0`, no opening), and then run §5.3 on what they read. Whether
+the proof then fails depends on the member: an unknown member, or a `null` `status_opening`,
+leaves a proof that otherwise passes still passing (EBL Python `StampProof.from_value`; SF-4).
 
 ### 5.3 Verification
 
@@ -302,8 +317,9 @@ A verifier MUST run these checks in this order, and MUST refuse the proof at the
     `proof.leaf_index` is `inclusion.seq - 1` (CLL Go `mmr.VerifyInclusion`, v0.4.0).
 
 A proof that passes shows the fact, the book checkpoint, the shelf checkpoint and the proof's key.
-It shows nothing about the records the receiver holds: comparing the book checkpoint with them is
-the receiver's step (§6.3). EBL does not check that the shelf checkpoint's log is the holder's
+It shows nothing about the records the receiver holds, and a proof that passes is not yet
+coverage of any record: comparing the book checkpoint with the records is the receiver's step
+(§6.3). EBL does not check that the shelf checkpoint's log is the holder's
 shelf log beyond the shared key (SF-5).
 
 ## 6. The record push
@@ -324,7 +340,7 @@ with a proof it lacked the first time still delivers the proof (design §3).
 This document does not define a record format. A receiver reads a record through its profile,
 which checks the record's signature and gives, for the record (EBL `ReceiveProfile.Read`,
 `ReceivedRecord`): its digest (its entry in its sender's book log, a digest); the sender's key;
-the book log id and the position in it (from `1`); the digest of the record at the position before
+the book log id and the position in it (from `1` to `2^63 - 1`); the digest of the record at the position before
 it (empty exactly at position `1`); the matter the record belongs to; and whether it is an
 unsolicited offer, a record that belongs to no book the receiver holds.
 
@@ -335,33 +351,38 @@ A receiver handles the record in this order (EBL `shelf_receive.go` `receiveReco
 
 1. A record over the receiver's size bound is refused `over_limit` (EBL default 1 MiB).
 2. A record the profile cannot read, or whose signature fails, is refused `invalid`; so is one
-   whose fields break §6.1 (no sender, log or matter; position `0`; a predecessor named at
-   position `1`, or none after it).
+   whose fields break §6.1 (no sender, log or matter; position `0` or past `2^63 - 1`; a
+   predecessor named at position `1`, or none after it).
 3. A record the receiver held once and deleted under its retention is answered `deleted`: it is
    not stored again.
 4. A record already held is answered `duplicate`, with whether it is counted, and is not stored
    again. Other bytes under a held record's digest are refused `invalid`.
 5. A sender the push rule does not admit is refused `refused`, and nothing is stored. The push
-   rule (design §3, EBL `ReceiveProfile.Admit`): an offer may come from any key; any other record
-   only from a key a book on the shelf names as its counterparty or adjudicator, a key whose offer
-   the holder answered, or a key to which an offer in the holder's journal was sent. Holding
-   someone's offer grants nothing.
-6. An offer over the offer byte bound is refused `over_limit`. To make room under the offer
-   bounds (per sender and in total, in count and bytes), the oldest offers are dropped first,
-   except one the holder has answered, which leaves the bounds instead. If the holder's books keep
-   changing while room is made, the offer is refused `busy`, and sending it again later may
-   succeed (EBL `planOfferRoom`, `ErrBusy`).
-7. A record past the per-book count bound is refused `over_limit` (EBL default 100000 records
-   held from one sender and log).
-8. Otherwise the record is stored. If it contradicts a record held, or a position a deleted record
-   held, it forks (§6.4).
+   rule is EBL's current rule (design §3, EBL `ReceiveProfile.Admit`), not ruled (SF-6): an
+   offer may come from any key; any other record only from a key a book on the shelf names as its
+   counterparty or adjudicator, a key whose offer the holder answered, or a key to which an offer
+   in the holder's journal was sent. Holding someone's offer grants nothing.
+6. An offer over the offer byte bound is refused `over_limit`. For an offer, the receiver then
+   plans the room it needs under the offer bounds (per sender and in total, in count and bytes):
+   the oldest offers are to be dropped first, except one the holder has answered, which is to
+   leave the bounds instead (EBL defaults: 16 offers and 4 MiB per sender, 1024 offers and 64 MiB
+   in total). Nothing is dropped yet. If the holder's books keep changing while the
+   plan is made, the offer is refused `busy`, and sending it again later may succeed (EBL
+   `planOfferRoom`, `ErrBusy`).
+7. In one write, before anything is dropped: a record past the per-book count bound (EBL default
+   100000 records held from one sender and log) is refused `over_limit`, and the planned drops
+   are not made. Otherwise the planned drops are made, and
+8. the record is stored, in the same write. If it contradicts a record held, or a position a
+   deleted record held, it forks (§6.4). (EBL `receiveRecordTx`.)
 
 **The counted prefix.** For each sender and book log, the receiver counts records from position
 `1` up: a record counts while it is the only record held at its position and no position at or
 before it holds a conflict. A held record claims its own digest at its position and its
 predecessor's digest at the position before; a position with two different claimed digests is a
 fork, and the counted prefix ends before the lowest such position for good (EBL
-`receivedPrefix`; design §3). When a gap is filled, the stored records after it join the counted
+`receivedPrefix`; design §3), with one exception: in a log holding only unsolicited offers, a
+fork past the offer evidence bounds (§6.4) is not recorded, so it ends the counted prefix only
+while both its records are held. When a gap is filled, the stored records after it join the counted
 prefix up to the next gap or fork.
 
 ### 6.3 The proof part
@@ -399,12 +420,19 @@ A receiver keeps, as evidence, the first conflict it finds at each position or s
 | `checkpoint_records` | a book checkpoint whose root the records held do not recompute, and the digests it was recomputed over |
 
 A fork is kept even when a record involved is later deleted; another record arriving at a
-deleted record's position forks there.
+deleted record's position forks there. The exception is a log holding only unsolicited offers: an
+offer belongs to no matter, so what offers leave behind (the position of each dropped offer, and
+each conflict with its evidence in such a log) is bounded per sender and in total (EBL defaults 16
+and 1024 rows, `ReceiveBounds.MaxOfferEvidencePerSender`, `MaxOfferEvidence`); past the bound
+nothing is kept, and such a position may later be forgotten (EBL `noteConflict`, `vacate`).
 
 ### 6.5 The answers
 
 Each part present in a push gets one answer (EBL `RecordOutcome`, `ProofOutcome`; the member
-names are those of EBL's vectors, `testdata/shelf/receive/script.json`, `expect`):
+names are those of EBL's vectors, `testdata/shelf/receive/script.json`, `expect`). A record's
+answer also carries `digest`, the record's digest, once the profile has read the record and its
+fields pass §6.1 (§6.2 step 2): every answer from step 3 on carries it, a refusal at step 1 or 2
+does not (EBL `receiveRecord`).
 
 | Part | Answer | Members | Meaning |
 |---|---|---|---|
@@ -418,8 +446,9 @@ names are those of EBL's vectors, `testdata/shelf/receive/script.json`, `expect`
 | proof | refused | `refused: <class>` | class `invalid` or `refused`; for a contradiction (§6.3 steps 3 and 4) its evidence is kept |
 
 A held record that is not counted is answered with `ask_for_book: true` too, duplicate or not
-(EBL `receiveRecord`). A record that forks is answered as stored and not counted; the record
-answer carries no member that says it forked (SF-3). EBL returns a part's refusal class also as
+(EBL `receiveRecord`). A record that forks is answered as stored and not counted: "stored" does
+not mean accepted as the sender's one record at that position, and the record answer carries no
+member that says it forked (SF-3). EBL returns a part's refusal class also as
 the call's error, joined over the parts.
 
 **What the receiver learns.** Beside the answers, EBL returns to the receiver's own profile the
@@ -431,9 +460,14 @@ receiver's, for recomputing its own state; this document does not put them in an
 ### 6.6 Bounds and retention
 
 The receiver's bounds are its own settings (EBL `ReceiveBounds`, `DefaultReceiveBounds`). How
-long received records are kept is the holder's setting, by default the life of the shelf, and
-nothing of a matter is deleted before the matter is settled; a deleted record leaves a tombstone,
-so it is reported deleted, not missing (design §3). An offer dropped to make room was never part
+long received records are kept is the holder's setting, by default the life of the shelf (design
+§3). Nothing of a matter is deleted before the matter is settled: every row of it agreed,
+uncontested, or ruled with its remedy done; a matter that is open or contested keeps everything.
+Whether a matter is settled is the receiver's profile's to compute, and a profile MUST NOT report
+a matter settled that does not meet that condition (EBL `Forget` takes the profile's answer). A
+deleted record leaves a tombstone holding its digest, its sender, when it was received and when
+it was deleted, and nothing else of it; a record so deleted is reported deleted, not missing,
+when pushed again (§6.5) and wherever it is cited. An offer dropped to make room was never part
 of a matter and leaves no tombstone.
 
 ## 7. Bindings
@@ -456,7 +490,8 @@ separate one (SF-1).
 - **Proof key.** A stamp proof binds the fact, the book checkpoint and the shelf checkpoint by one
   signing key (§5.3 step 3). Which key a receiver accepts for which sender is the receiver's
   profile's (§6.3 step 2).
-- **Unsolicited pushes.** A receiver bounds what it stores (§6.2 steps 1, 6 and 7). A duplicate
+- **Unsolicited pushes.** A receiver bounds what it stores (§6.2 steps 1, 6 and 7), and what
+  unsolicited offers leave behind (§6.4). A duplicate
   or deleted record is answered before the push rule runs, so a party that has a record's bytes
   can learn from the answer whether the receiver holds or held it (§6.2 steps 3 and 4, SF-6).
 - **Forks.** Evidence is kept once per position or size (§6.4): repeating a fork at a position
@@ -469,8 +504,9 @@ separate one (SF-1).
 | SF-1 | The binding of the record push and the stamp proof to MCP and to A2A: method or skill names, how a record's bytes are carried, and how the answers of §6.5 are carried. EBL has no binding; its design places these entries after this document. |
 | SF-2 | Naming the missing positions in a stored-not-counted answer. EBL answers `ask_for_book` (the whole book), with no positions; the counted prefix's size (EBL `Shelf.CountedPrefix`) would let a receiver name the first missing position, but no answer carries it. |
 | SF-3 | Telling the sender that its record forked. EBL's record answer has no fork member; the fork appears only in the receiver's own changes (`forked`) and evidence (§6.4). |
-| SF-4 | Strictness of the stamp proof's JSON (§5.2): EBL ignores unknown members and reads absent or `null` members as empty, so such a proof fails later. Whether a wire form refuses unknown members outright is not decided. |
+| SF-4 | Strictness of the stamp proof's JSON (§5.2): EBL ignores unknown members and reads absent or `null` members as their zero values before §5.3, so some such proofs still pass. Whether a wire form refuses unknown or `null` members outright is not decided. |
 | SF-5 | Binding the shelf checkpoint to the holder's shelf log: §5.3 checks only that one key signed both checkpoints, not which log the shelf checkpoint is of. A receiver's profile relates the key and book log to a sender (§6.3 step 2); EBL states no rule naming the shelf log id. |
-| SF-6 | The answer to a record already held, or held and deleted, from a sender the push rule would not admit: EBL answers `duplicate` or `deleted` before it applies the push rule (§6.2 steps 3 to 5). Whether a binding should apply the push rule first is not decided. |
-| SF-7 | The handover a holder gives a reader of its whole shelf (every entry up to an anchor, facts with status openings, book checkpoints, consistency proofs and receipts; design §2.7) is out of scope here; its wire form is not specified. |
-| SF-8 | Conformance vectors in this repository. EBL's vectors (`testdata/shelf/facts/vectors.json`, `testdata/shelf/receive/`) are the reference today; this document adds none. |
+| SF-6 | The push rule (§6.2 step 5) is EBL's current rule, not ruled: who may push records to a holder changes what a party can do, so it is a product rule, and a binding (SF-1) MUST NOT fix it before it is ruled. With it, its order: EBL answers `duplicate` or `deleted` before it applies the push rule (§6.2 steps 3 to 5), so a party holding a record's bytes can probe whether the receiver holds or held it (§8). Applying the push rule first is recommended and not decided. |
+| SF-7 | The handover a holder gives a reader of its whole shelf (every entry up to an anchor, facts with status openings, book checkpoints, consistency proofs and receipts; design §2.7) is out of scope here; its wire form is not specified. Whatever form it takes, a handover that cites a deleted record reports it as deleted, not missing (§6.6). |
+| SF-8 | Conformance vectors in this repository. EBL's vectors (`testdata/shelf/facts/vectors.json`, `testdata/shelf/receive/`) are the reference today, and are the vectors this repository adopts for these forms; this document adds none yet. |
+| SF-9 | Who may hold the journal's openings (§4.3 `auditor`), and how the holder appoints them: EBL's current rule (design §2.2), not ruled. |
