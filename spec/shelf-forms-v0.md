@@ -43,7 +43,7 @@ its answers (§6).
 records, §6.1), any profile's status value (§4.2), the cadence and the tree roots a shelf log
 held before its format switch, how a shelf stores what it holds, when a stamp is taken, the
 handover a holder gives a reader of its whole shelf, how a count or card is computed from facts,
-any transport, and any binding of the record push to a protocol (SF-1).
+any transport, and the binding of the record push to a protocol (SF-1, `bindings/record-push-v0.md`).
 
 ## 1. Conventions
 
@@ -333,9 +333,11 @@ A record push carries:
 - `stamp_proof`: OPTIONAL. One stamp proof (§5).
 
 At least one of the two MUST be present; a push with neither is refused as `invalid` (EBL
-`shelf_receive.go` `Receive`). A receiver handles the record part first and then the proof part,
-each on its own: the answer to one part does not depend on the other, so a record sent again
-with a proof it lacked the first time still delivers the proof (design §3).
+`shelf_receive.go` `Receive`). Having no part to answer, a binding carries it as its protocol's
+invalid-params error (`bindings/record-push-v0.md` §2.3 rule 3). A receiver handles the record
+part first and then the proof part, each on its own: the answer to one part does not depend on
+the other, so a record sent again with a proof it lacked the first time still delivers the proof
+(design §3).
 
 This document does not define a record format. A receiver reads a record through its profile,
 which checks the record's signature and gives, for the record (EBL `ReceiveProfile.Read`,
@@ -477,8 +479,9 @@ of a matter and leaves no tombstone.
 
 This document defines the record push as an abstract message and its answers. EBL defines no
 transport for it: its design leaves the MCP and A2A entries for the push and the stamp proof to
-follow this document (design §1 and §5). A binding is a later section of this document or a
-separate one (SF-1).
+follow this document (design §1 and §5). Their binding is a separate document,
+[`bindings/record-push-v0.md`](bindings/record-push-v0.md), which carries §6 over MCP and A2A
+and changes nothing here (SF-1).
 
 ## 8. Security and privacy considerations
 
@@ -504,7 +507,7 @@ separate one (SF-1).
 
 | # | Point |
 |---|---|
-| SF-1 | The binding of the record push and the stamp proof to MCP and to A2A: method or skill names, how a record's bytes are carried, and how the answers of §6.5 are carried. EBL has no binding; its design places these entries after this document. |
+| SF-1 | The binding of the record push and the stamp proof to MCP and to A2A: method or skill names, how a record's bytes are carried, and how the answers of §6.5 are carried. EBL has no binding; its design places these entries after this document. Drafted in [`bindings/record-push-v0.md`](bindings/record-push-v0.md), which leaves SF-2 to SF-9 open. |
 | SF-2 | Naming the missing positions in a stored-not-counted answer. EBL answers `ask_for_book` (the whole book), with no positions; the counted prefix's size (EBL `Shelf.CountedPrefix`) would let a receiver name the first missing position, but no answer carries it. |
 | SF-3 | Telling the sender that its record forked. EBL's record answer has no fork member; the fork appears only in the receiver's own changes (`forked`) and evidence (§6.4). |
 | SF-4 | Strictness of the stamp proof's JSON (§5.2): EBL ignores unknown members and reads absent or `null` members as their zero values before §5.3, so some such proofs still pass. Whether a wire form refuses unknown or `null` members outright is not decided. |
