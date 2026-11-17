@@ -82,7 +82,8 @@
     "not_counted",
     "class_missing",
     "outcomes",
-    "did_not_hold",
+    "remedied",
+    "not_honoured",
     "local_times",
     "bands",
     "unpriced",
@@ -108,17 +109,16 @@
     "outcomes": [
       "of",
       "held",
-      "held_so_far",
       "did_not_hold",
-      "undecided",
-      "ruling_not_honoured"
+      "undecided"
     ],
-    "did_not_hold": [
+    "remedied": [
       "of",
-      "not_remedied",
-      "remedy_pending",
-      "remedied",
-      "other_side"
+      "count"
+    ],
+    "not_honoured": [
+      "of",
+      "count"
     ],
     "local_times": [
       "of",
@@ -129,18 +129,14 @@
       "decade",
       "of",
       "held",
-      "held_so_far",
       "did_not_hold",
-      "undecided",
-      "ruling_not_honoured"
+      "undecided"
     ],
     "unpriced": [
       "of",
       "held",
-      "held_so_far",
       "did_not_hold",
-      "undecided",
-      "ruling_not_honoured"
+      "undecided"
     ],
     "roles": [
       "of",

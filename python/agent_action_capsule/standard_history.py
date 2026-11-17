@@ -38,8 +38,9 @@ __all__ = [
 DERIVATION = "standard_history/1"
 #: SH §4, §5.3: /2 also counts the counted deals with no recorded amount, in ``unpriced``.
 DERIVATION_2 = "standard_history/2"
-#: SH §11: /3 counts each deal's term rows in five lines, splits did_not_hold, and carries the
-#: shelf log's coverage start.
+#: SH §11: /3 counts each deal's outcome from its term rows, counts the deals that did not hold
+#: that the holder remedied or whose ruling it did not honour, and carries the shelf log's coverage
+#: start.
 DERIVATION_3 = "standard_history/3"
 DERIVATIONS = (DERIVATION, DERIVATION_2, DERIVATION_3)
 
@@ -57,10 +58,6 @@ CONTROLLER_CLASSES = {"person": "person_declared", "node": "node_declared"}
 ROLES = ("provided", "bought")
 OUTCOMES = ("held", "did_not_hold", "undecided")
 HAPPENED = ("stamped_by_both", "receipt_only", "no_record")
-#: SH §11.3: /3's outcome lines, in the order the first that applies wins.
-LINES = ("ruling_not_honoured", "undecided", "did_not_hold", "held_so_far", "held")
-#: SH §11.4: the parts of did_not_hold, in the order the first that applies wins.
-SPLIT = ("not_remedied", "remedy_pending", "remedied", "other_side")
 #: SH §11.6: the parts of not_counted, in the order the first that applies wins.
 NOT_COUNTED_3 = ("shop_preauth", "no_witness_time")
 #: SH §11.2: a row result's members' values.
@@ -91,8 +88,8 @@ CARD_MEMBERS = frozenset(("derivation", "holder_kind", "controller_class", "anch
                           "policy", "bands", "disputes") + tuple(TALLIES))
 #: SH §4: the members of each token's card.
 MEMBERS = {DERIVATION: CARD_MEMBERS, DERIVATION_2: CARD_MEMBERS | {"unpriced"},
-           DERIVATION_3: CARD_MEMBERS | {"unpriced", "coverage_start", "not_counted", "did_not_hold",
-                                         "local_times"}}
+           DERIVATION_3: CARD_MEMBERS | {"unpriced", "coverage_start", "not_counted", "remedied",
+                                         "not_honoured", "local_times"}}
 BAND_KEYS = ("currency", "decade")
 MAX_COUNT = 2 ** 53 - 1
 
@@ -105,15 +102,12 @@ VALUE = re.compile(r"0|[1-9][0-9]*")                       # SR "Amounts"
 CURRENCY = re.compile(r"[A-Z]{3}|[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}/[-a-z0-9]{3,8}:[-.%a-zA-Z0-9]{1,128}")
 
 
-def _outcomes(derivation: str) -> tuple:
-    """The parts of ``outcomes``, of each band and of ``unpriced`` under the token."""
-    return LINES if derivation == DERIVATION_3 else OUTCOMES
-
-
 def _tallies(derivation: str) -> dict:
-    t = {**TALLIES, "outcomes": _outcomes(derivation)}
+    t = dict(TALLIES)
     if derivation == DERIVATION_3:
         t["not_counted"] = NOT_COUNTED_3
+        t["remedied"] = ("count",)
+        t["not_honoured"] = ("count",)
         t["local_times"] = ("count",)
     return t
 
@@ -226,32 +220,24 @@ def _check_entry(deal: Mapping[str, Any], derivation: str) -> None:
             raise ValueError(f"deal {deal['deal']}: malformed dispute {d!r}")
 
 
-def line(rows: Sequence[Mapping[str, Any]]) -> tuple[str, str | None]:
-    """SH §11.3 and §11.4: a counted deal's line, and its part of ``did_not_hold`` (None for any
-    other line), the first that applies in each table. A ``not_reached`` row is left out, and a
-    deal with no other row is ``undecided``."""
-    rows = [r for r in rows if r["status"] != "not_reached"]
-    if not rows:
-        return "undecided", None
-    if any(r["status"] == "ruled" and r["remedy"] == "not_honoured" for r in rows):
-        return "ruling_not_honoured", None
+def outcome(rows: Sequence[Mapping[str, Any]]) -> tuple[str, str | None]:
+    """SH §11.3 and §11.4: a counted /3 deal's outcome, the first rule that applies, and for a
+    ``did_not_hold`` deal whether the holder did not honour a ruling (``"not_honoured"``) or
+    remedied its unmet rows (``"remedied"``); None otherwise. Only rows the holder owed can make a
+    deal ``did_not_hold``; the counterparty's unmet rows are read as met."""
+    own = [r for r in rows if r["owed_by"] == "holder"]
+    if any(r["status"] == "ruled" and r["remedy"] == "not_honoured" for r in own):
+        return "did_not_hold", "not_honoured"
     if any(r["status"] in ("in_disagreement", "in_dispute", "no_statement")
            or (r["status"] == "waiting" and r["value"] == "not_met") for r in rows):
         return "undecided", None
-    unmet = [r for r in rows if r["status"] in UNMET_STATUSES + ("ruled",) and r["value"] == "not_met"]
+    unmet = [r for r in own if r["status"] in UNMET_STATUSES + ("ruled",) and r["value"] == "not_met"]
     if unmet:
-        own = [r for r in unmet if r["owed_by"] == "holder"]
-        if not own:
-            return "did_not_hold", "other_side"
-        if any(r["remedy"] == "none" for r in own):
-            return "did_not_hold", "not_remedied"
-        if any(r["remedy"] == "due" for r in own):
-            return "did_not_hold", "remedy_pending"
-        # No own unmet row has remedy none (above) or not_honoured (line 1), and none is due: each
-        # has its remedy made.
-        return "did_not_hold", "remedied"
-    if any(r["status"] in ("not_due", "waiting", "agreed_so_far") for r in rows):
-        return "held_so_far", None
+        # Remedied when every unmet row has its remedy made, by a ruling or without one.
+        return "did_not_hold", "remedied" if all(r["remedy"] == "made" for r in unmet) else None
+    # A row not reached comes after did_not_hold, so it cannot hide an unmet row.
+    if any(r["status"] in ("not_reached", "not_due", "waiting", "agreed_so_far") for r in rows):
+        return "undecided", None
     return "held", None
 
 
@@ -262,12 +248,9 @@ def _zero(parts: Sequence[str]) -> dict:
 def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], anchor_time: datetime,
             derivation: str = DERIVATION) -> dict:
     """The tallies SH §5 derives from the deal entries, for the token's card."""
-    outcomes = _outcomes(derivation)
     t = {name: _zero(parts) for name, parts in _tallies(derivation).items()}
     if derivation != DERIVATION:
-        t["unpriced"] = _zero(outcomes)
-    if derivation == DERIVATION_3:
-        t["did_not_hold"] = _zero(SPLIT)
+        t["unpriced"] = _zero(OUTCOMES)
     bands: dict = {}
     disputes = {side: {"of": 0, "by_outcome": _zero(DISPUTE_OUTCOMES), "by_forum": _zero(FORUMS)}
                 for side in SIDES}
@@ -289,16 +272,17 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
         if "counterparty_class" not in deal:
             t["class_missing"]["count"] += 1
         if derivation == DERIVATION_3:
-            outcome, part = line(deal["rows"])
-            if part is not None:
-                t["did_not_hold"]["of"] += 1
-                t["did_not_hold"][part] += 1
+            result, detail = outcome(deal["rows"])
+            if result == "did_not_hold":
+                for name in ("remedied", "not_honoured"):
+                    t[name]["of"] += 1
+                    t[name]["count"] += int(detail == name)
             t["local_times"]["of"] += 1
             if any(r.get("local") for r in deal["rows"]):
                 t["local_times"]["count"] += 1
         else:
-            outcome = deal["outcome"]
-        for name, value in (("outcomes", outcome), ("roles", deal["role"]), ("happened", deal["happened"])):
+            result = deal["outcome"]
+        for name, value in (("outcomes", result), ("roles", deal["role"]), ("happened", deal["happened"])):
             t[name]["of"] += 1
             t[name][value] += 1
         if "amount" not in deal:
@@ -306,9 +290,9 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
             band = t["unpriced"]
         else:
             key = (deal["amount"]["assetCode"], _decade(deal["amount"]))
-            band = bands.setdefault(key, {"currency": key[0], "decade": key[1], **_zero(outcomes)})
+            band = bands.setdefault(key, {"currency": key[0], "decade": key[1], **_zero(OUTCOMES)})
         band["of"] += 1
-        band[outcome] += 1
+        band[result] += 1
         for d in deal["disputes"]:
             tally = disputes[d["side"]]
             tally["of"] += 1
@@ -393,16 +377,13 @@ def _card_form(card: Any, derivation: str) -> bool:
         return False
     if not _window_form(card["window"]):
         return False
-    outcomes = _outcomes(derivation)
     if not all(_tally_form(card[name], parts) for name, parts in _tallies(derivation).items()):
         return False
-    if derivation != DERIVATION and not _tally_form(card["unpriced"], outcomes):
+    if derivation != DERIVATION and not _tally_form(card["unpriced"], OUTCOMES):
         return False
     if derivation == DERIVATION_3:
         start = card["coverage_start"]
         if not isinstance(start, str) or not MONTH.fullmatch(start) or start < card["since"]:
-            return False
-        if not _tally_form(card["did_not_hold"], SPLIT):
             return False
     bands = card["bands"]
     if not isinstance(bands, list):
@@ -415,7 +396,7 @@ def _card_form(card: Any, derivation: str) -> bool:
             return False
         if band["decade"] is not None and not _is_number(band["decade"]):
             return False
-        if not _tally_form({k: v for k, v in band.items() if k not in BAND_KEYS}, outcomes):
+        if not _tally_form({k: v for k, v in band.items() if k not in BAND_KEYS}, OUTCOMES):
             return False
         keys.append(_band_order((band["currency"], band["decade"])))
     if any(a >= b for a, b in zip(keys, keys[1:])):
@@ -472,12 +453,11 @@ def _partitions(t: Mapping[str, Any], parts: Sequence[str]) -> bool:
 
 def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
     """SH §4 "Denominators" (under /3, §11.6). Run only on a card whose form and counts are PASS."""
-    outcomes = _outcomes(derivation)
     for name, parts in _tallies(derivation).items():
         t = card[name]
         if "of" not in t:
             return False
-        if name in ("class_missing", "local_times"):
+        if name in ("class_missing", "remedied", "not_honoured", "local_times"):
             if t["count"] > t["of"]:
                 return False
         elif not _partitions(t, parts):
@@ -489,20 +469,22 @@ def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
                                        or card["not_counted"]["of"] != card["in_window"]["not_counted"]):
         return False
     for band in card["bands"]:
-        if not _partitions(band, outcomes) or band["of"] < 1:
+        if not _partitions(band, OUTCOMES) or band["of"] < 1:
             return False
     # SH §4: on a /2 card the bands and `unpriced` together partition the outcomes.
     priced = list(card["bands"])
     if "unpriced" in card:
-        if not _partitions(card["unpriced"], outcomes):
+        if not _partitions(card["unpriced"], OUTCOMES):
             return False
         priced.append(card["unpriced"])
-    for o in ("of",) + outcomes:
+    for o in ("of",) + OUTCOMES:
         if sum(band[o] for band in priced) != card["outcomes"][o]:
             return False
     if derivation == DERIVATION_3:
-        split = card["did_not_hold"]
-        if not _partitions(split, SPLIT) or split["of"] != card["outcomes"]["did_not_hold"]:
+        # SH §11.4: a did_not_hold deal is in at most one of the two counts.
+        did_not_hold = card["outcomes"]["did_not_hold"]
+        if (any(card[name]["of"] != did_not_hold for name in ("remedied", "not_honoured"))
+                or card["remedied"]["count"] + card["not_honoured"]["count"] > did_not_hold):
             return False
     for d in card["disputes"].values():
         if "of" not in d:

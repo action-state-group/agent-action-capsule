@@ -22,8 +22,8 @@
       "instance": "standard_history/3",
       "table": "spec/history-frame/standard-history-3-table.json",
       "pack": "spec/history-frame/standard-history-3-pack.json",
-      "table_digest": "b23cd0517568c025637468a0ff92d4d86c9712a9673ee6565c810f382d984444",
-      "pack_digest": "602ce4c54467ebab1a331aa2f68c2ad578b781819a875708ffcdffc30b26b20b"
+      "table_digest": "9672d76a964d863b50596a4c8f0fc8f7823fd157a30f225ec258c724b3d6b670",
+      "pack_digest": "86da7c4ec596e54cd289cd3df857e4cba32af50e1cba313f63bcd05b1d8ed802"
     },
     {
       "instance": "personal_history_basic/1",
@@ -400,8 +400,8 @@
       "inputs": {
         "instance": "standard_history/3",
         "listed": {
-          "table": "b23cd0517568c025637468a0ff92d4d86c9712a9673ee6565c810f382d984444",
-          "pack": "602ce4c54467ebab1a331aa2f68c2ad578b781819a875708ffcdffc30b26b20b"
+          "table": "9672d76a964d863b50596a4c8f0fc8f7823fd157a30f225ec258c724b3d6b670",
+          "pack": "86da7c4ec596e54cd289cd3df857e4cba32af50e1cba313f63bcd05b1d8ed802"
         },
         "table": {
           "document": "counting_table",
@@ -487,7 +487,8 @@
             "not_counted",
             "class_missing",
             "outcomes",
-            "did_not_hold",
+            "remedied",
+            "not_honoured",
             "local_times",
             "bands",
             "unpriced",
@@ -513,17 +514,16 @@
             "outcomes": [
               "of",
               "held",
-              "held_so_far",
               "did_not_hold",
-              "undecided",
-              "ruling_not_honoured"
+              "undecided"
             ],
-            "did_not_hold": [
+            "remedied": [
               "of",
-              "not_remedied",
-              "remedy_pending",
-              "remedied",
-              "other_side"
+              "count"
+            ],
+            "not_honoured": [
+              "of",
+              "count"
             ],
             "local_times": [
               "of",
@@ -534,18 +534,14 @@
               "decade",
               "of",
               "held",
-              "held_so_far",
               "did_not_hold",
-              "undecided",
-              "ruling_not_honoured"
+              "undecided"
             ],
             "unpriced": [
               "of",
               "held",
-              "held_so_far",
               "did_not_hold",
-              "undecided",
-              "ruling_not_honoured"
+              "undecided"
             ],
             "roles": [
               "of",
@@ -612,11 +608,11 @@
             "counts.cover": "the counts cover counted deals in the stated window",
             "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
             "deals.not_counted": "deals in the window not counted",
-            "deals.undecided": "counted deals not decided: a row in disagreement or dispute, or without the statement it needed",
+            "deals.undecided": "counted deals not decided: a row not yet final, not reached, in disagreement or dispute, or without the statement it needed",
             "deals.unpriced": "counted deals without a recorded amount, in no value band",
             "deals.local_times": "counted deals with a row that rests on a record no witness timed",
-            "deals.held_so_far": "counted deals held so far, with a row not yet due or a contest window open",
-            "deals.did_not_hold.split": "of the deals that did not hold, by what became of the unmet rows",
+            "deals.remedied": "of the deals that did not hold, those whose unmet rows the holder remedied",
+            "deals.not_honoured": "of the deals that did not hold, those where the holder did not honour a ruling",
             "deals.not_counted.reasons": "of the deals not counted, by why: a shop purchase paid up front, or no time from a witness the agreement names",
             "coverage.start": "complete from {coverage_start}; before it, the deals the holder carried into its shelf log",
             "level.recomputed": "recounted from the holder's whole shelf",

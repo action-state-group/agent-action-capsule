@@ -111,71 +111,103 @@ def test_every_negative_named_for_v2_is_present() -> None:
 def test_every_negative_named_for_v3_is_present() -> None:
     """SH §11.10: the /3 cases, each negative failing the property named."""
     fails = {c["id"]: c["expected"]["fails"] for c in CASES_3}
-    assert fails["line-not-first"] == ["counts_recompute"]
-    assert fails["left-out-counted"] == ["counts_recompute"]
-    assert fails["split-not-the-line"] == ["denominator"]
+    for cid in ("outcome-not-first", "ruling-not-honoured-undecided", "other-side-did-not-hold",
+                "not-reached-left-out", "not-reached-hides-unmet", "not-honoured-uncounted",
+                "left-out-counted", "local-times-dropped", "refund-not-remedied",
+                "not-counted-wrong-reason"):
+        assert fails[cid] == ["counts_recompute"], cid
+    for cid in ("remedied-not-did-not-hold", "not-honoured-not-did-not-hold", "remedied-and-not-honoured",
+                "not-counted-not-the-window"):
+        assert fails[cid] == ["denominator"], cid
     assert fails["coverage-start-other-month"] == ["as_of"]
-    for cid in ("band-three-outcomes", "v3-card-for-v2-request"):
+    for cid in ("outcomes-five-lines", "band-five-lines", "v3-card-for-v2-request"):
         assert fails[cid] == ["card_form"], cid
     for cid in ("no-coverage-start", "coverage-start-before-since", "v2-card-for-v3-request"):
         assert fails[cid][0] == "card_form", cid
-    for cid in ("lines-and-split", "quiet-deals-later-anchor"):
+    for cid in ("outcomes-from-rows", "quiet-deals-later-anchor"):
         c = next(c for c in CASES_3 if c["id"] == cid)
         assert c["expected"]["standard"] and _derivable(c), cid
 
 
-def test_v3_lines_cover_every_row_result() -> None:
-    """SH §11.3: every combination of row results falls in exactly one line, and a did_not_hold deal
-    in exactly one part (§11.4)."""
+def test_v3_outcomes_cover_every_row_result() -> None:
+    """SH §11.3: every combination of row results has exactly one outcome, and only a
+    did_not_hold deal has a detail (§11.4)."""
     results = [{"status": s} for s in ("not_reached", "not_due", "no_statement", "in_disagreement",
                                        "in_dispute")]
     results += [{"status": "waiting", "value": v} for v in sh.ROW_VALUES]
     results += [{"status": s, "value": "met"} for s in sh.UNMET_STATUSES]
     results += [{"status": s, "value": "not_met", "remedy": r} for s in sh.UNMET_STATUSES
                 for r in sh.UNRULED_REMEDIES]
-    results += [{"status": "not_reached"}]
     results += [{"status": "ruled", "value": v, "remedy": r} for v in sh.ROW_VALUES for r in sh.REMEDIES]
     rows = [{"owed_by": o, **r} for o in sh.OWED_BY for r in results]
     for r in rows:
         sh._check_row("x", r)
-    assert sh.line([{"owed_by": "holder", "status": "not_reached"}]) == ("undecided", None)
     for a in rows:
         for b in rows:
-            line, part = sh.line([a, b])
-            assert line in sh.LINES
-            assert (part in sh.SPLIT) == (line == "did_not_hold")
+            outcome, detail = sh.outcome([a, b])
+            assert outcome in sh.OUTCOMES
+            assert detail in ((None, "remedied", "not_honoured") if outcome == "did_not_hold" else (None,))
 
 
-@pytest.mark.parametrize("remedies, part", [
-    (("none", "due"), "not_remedied"),
-    (("due", "made"), "remedy_pending"),
-    (("made", "made"), "remedied"),
+def _row(owed_by: str, status: str, value: str | None = None, remedy: str | None = None) -> dict:
+    r = {"owed_by": owed_by, "status": status}
+    if value is not None:
+        r["value"] = value
+    if remedy is not None:
+        r["remedy"] = remedy
+    return r
+
+
+@pytest.mark.parametrize("rows, outcome", [
+    ([_row("counterparty", "uncontested", "not_met", "none")], "held"),
+    ([_row("counterparty", "ruled", "not_met", "not_honoured"), _row("holder", "agreed", "met")], "held"),
+    ([_row("counterparty", "agreed_so_far", "not_met", "none")], "undecided"),
+    ([_row("counterparty", "waiting", "not_met")], "undecided"),
+    ([_row("holder", "agreed", "met"), _row("counterparty", "not_reached")], "undecided"),
+    ([_row("holder", "agreed", "not_met", "none"), _row("counterparty", "not_reached")], "did_not_hold"),
+    ([_row("holder", "ruled", "not_met", "not_honoured"), _row("counterparty", "in_dispute")], "did_not_hold"),
+    ([_row("holder", "agreed", "not_met", "none"), _row("counterparty", "in_dispute")], "undecided"),
+    ([_row("holder", "agreed", "not_met", "none"), _row("counterparty", "not_due")], "did_not_hold"),
+    ([_row("holder", "agreed_so_far", "met"), _row("counterparty", "agreed", "met")], "undecided"),
 ])
-def test_v3_split_order(remedies: tuple, part: str) -> None:
-    """SH §11.4: two unmet rows the holder owed, competing for parts; the first part that applies
-    wins, whatever the order of the rows."""
-    rows = [{"owed_by": "holder", "status": "ruled", "value": "not_met", "remedy": r} for r in remedies]
-    assert sh.line(rows) == ("did_not_hold", part)
-    assert sh.line(rows[::-1]) == ("did_not_hold", part)
-    unruled = [{"owed_by": "holder", "status": "agreed", "value": "not_met", "remedy": "made"}]
-    assert sh.line(unruled + rows) == ("did_not_hold", part)
+def test_v3_outcome_rules(rows: list, outcome: str) -> None:
+    """SH §11.3: only rows the holder owed make a deal did_not_hold, a ruling the holder did not
+    honour comes first, and a not_reached row makes the deal undecided unless did_not_hold applies,
+    as does a row not final."""
+    assert sh.outcome(rows)[0] == outcome
+
+
+@pytest.mark.parametrize("remedies, detail", [
+    (("none", "made"), None),
+    (("due", "made"), None),
+    (("made", "made"), "remedied"),
+    (("made", "not_honoured"), "not_honoured"),
+])
+def test_v3_remedied(remedies: tuple, detail: str | None) -> None:
+    """SH §11.4: a did_not_hold deal is remedied only when every unmet row the holder owed has its
+    remedy made, by a ruling or without one, and a ruling not honoured comes first, whatever the
+    order of the rows."""
+    rows = [_row("holder", "ruled", "not_met", r) for r in remedies]
+    unruled = [_row("holder", "agreed", "not_met", "made")]
+    for rs in (rows, rows[::-1], unruled + rows):
+        assert sh.outcome(rs) == ("did_not_hold", detail)
 
 
 def test_v3_as_of_without_anchor_time_raises() -> None:
     """A /3 as_of input without its anchor time is malformed input, never an as_of FAIL."""
-    c = next(c for c in CASES_3 if c["id"] == "lines-without-shelf")
+    c = next(c for c in CASES_3 if c["id"] == "outcomes-without-shelf")
     as_of = {k: v for k, v in c["inputs"]["as_of"].items() if k != "anchor_time"}
     with pytest.raises(ValueError):
         sh.check_card(c["inputs"]["card"], as_of=as_of, derivation=sh.DERIVATION_3)
 
 
-def test_v3_quiet_deal_moves_line_with_the_anchor() -> None:
-    """SH §11.1: the same deal, with no new fact, falls in another line at a later anchor."""
-    a = next(c for c in CASES_3 if c["id"] == "lines-and-split")["inputs"]["deals"]
+def test_v3_quiet_deal_moves_outcome_with_the_anchor() -> None:
+    """SH §11.1: the same deal, with no new fact, has another outcome at a later anchor."""
+    a = next(c for c in CASES_3 if c["id"] == "outcomes-from-rows")["inputs"]["deals"]
     b = next(c for c in CASES_3 if c["id"] == "quiet-deals-later-anchor")["inputs"]["deals"]
-    moved = {x["deal"]: (sh.line(x["rows"])[0], sh.line(y["rows"])[0])
-             for x, y in zip(a, b) if x != y}
-    assert moved == {"deal-302": ("held_so_far", "undecided"), "deal-314": ("held_so_far", "held")}
+    moved = {x["deal"]: (sh.outcome(x["rows"])[0], sh.outcome(y["rows"])[0])
+             for x, y in zip(a, b) if sh.outcome(x["rows"]) != sh.outcome(y["rows"])}
+    assert moved == {"deal-314": ("undecided", "held")}
 
 
 @pytest.mark.parametrize("change", [
@@ -192,7 +224,7 @@ def test_v3_quiet_deal_moves_line_with_the_anchor() -> None:
     {"rows": [{"owed_by": "holder", "status": "not_due", "value": ""}]},
 ])
 def test_malformed_v3_deal_entry_raises(change: dict) -> None:
-    c = next(c for c in CASES_3 if c["id"] == "lines-and-split")
+    c = next(c for c in CASES_3 if c["id"] == "outcomes-from-rows")
     deals = json.loads(json.dumps(c["inputs"]["deals"]))
     deals[0].update(change)
     with pytest.raises(ValueError):
@@ -312,24 +344,38 @@ def _bands_only(card: dict, derivation: str) -> bool:
     return _REAL_DENOMINATOR({k: v for k, v in card.items() if k != "unpriced"}, derivation)
 
 
-def _split_unchecked(card: dict, derivation: str) -> bool:
-    """A denominator check that does not tie the did_not_hold split to its line (SH §11.6)."""
+def _remedied_unchecked(card: dict, derivation: str) -> bool:
+    """A denominator check that does not tie remedied to did_not_hold (SH §11.6)."""
     return _REAL_DENOMINATOR(card, sh.DERIVATION_2 if derivation == sh.DERIVATION_3 else derivation)
 
 
-_REAL_LINE = sh.line
+_REAL_OUTCOME = sh.outcome
 
 
-def _line_in_order(order: tuple):
-    """A line function that takes the lines in another order than SH §11.3."""
-    def line(rows):
-        got = [_REAL_LINE([r]) for r in rows]
-        for name in order:
-            for g in got:
-                if g[0] == name:
-                    return g
-        return _REAL_LINE(rows)
-    return line
+def _did_not_hold_first(rows):
+    """An outcome function that reads the holder's unmet rows before the undecided rule."""
+    if any(r["owed_by"] == "holder" and r["status"] in sh.UNMET_STATUSES + ("ruled",)
+           and r.get("value") == "not_met" for r in rows):
+        return "did_not_hold", None
+    return _REAL_OUTCOME(rows)
+
+
+def _counterparty_blamed(rows):
+    """An outcome function that blames the holder for the counterparty's rows too (SH §11.3)."""
+    return _REAL_OUTCOME([{**r, "owed_by": "holder"} for r in rows])
+
+
+def _not_reached_left_out(rows):
+    """An outcome function that leaves a not_reached row out, as the design's text did."""
+    kept = [r for r in rows if r["status"] != "not_reached"]
+    return _REAL_OUTCOME(kept) if kept else ("undecided", None)
+
+
+def _not_reached_first(rows):
+    """An outcome function where a not_reached row hides an unmet row (SH §11.3)."""
+    if any(r["status"] == "not_reached" for r in rows) and _REAL_OUTCOME(rows)[1] != "not_honoured":
+        return "undecided", None
+    return _REAL_OUTCOME(rows)
 
 
 _REAL_COUNTS = sh._counts
@@ -370,9 +416,13 @@ def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
         "lets a /2 card leave out unpriced": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_2: sh.CARD_MEMBERS}),
         "lets a /1 card carry unpriced": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION: sh.MEMBERS[sh.DERIVATION_2]}),
         "leaves unpriced out of the outcome totals": ("_denominator", _bands_only),
-        "does not tie the split to its line": ("_denominator", _split_unchecked),
-        "takes did_not_hold before undecided": ("line", _line_in_order(
-            ("ruling_not_honoured", "did_not_hold", "undecided", "held_so_far", "held"))),
+        "does not tie remedied to did_not_hold": ("_denominator", _remedied_unchecked),
+        "takes did_not_hold before undecided": ("outcome", _did_not_hold_first),
+        "blames the holder for the counterparty's rows": ("outcome", _counterparty_blamed),
+        "leaves a not_reached row out": ("outcome", _not_reached_left_out),
+        "lets a not_reached row hide an unmet row": ("outcome", _not_reached_first),
+        "does not count a ruling not honoured": ("outcome", lambda rows: (
+            (o := _REAL_OUTCOME(rows))[0], None if o[1] == "not_honoured" else o[1])),
         "counts a deal left out": ("_counts", _counting_left_out),
         "takes left_out before shop_preauth": ("_counts", _counting_left_out_first),
         "lets a /3 card leave out coverage_start": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_3:

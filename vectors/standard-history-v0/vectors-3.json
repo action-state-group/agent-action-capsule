@@ -1,6 +1,6 @@
 {
   "set": "aac-standard-history-v0",
-  "status": "Conformance vectors for the informational Standard History Derivation v0 (spec/standard-history-v0.md), standard_history/3: deals counted from their term rows, in five lines, with the coverage start. Every digest is a label digest for these vectors only.",
+  "status": "Conformance vectors for the informational Standard History Derivation v0 (spec/standard-history-v0.md), standard_history/3: deals counted from their term rows, with the remedied and not-honoured counts and the coverage start. Every digest is a label digest for these vectors only.",
   "spec": "spec/standard-history-v0.md",
   "derivation": "standard_history/3",
   "properties": [
@@ -11,11 +11,11 @@
     "as_of",
     "counts_recompute"
   ],
-  "count": 18,
+  "count": 26,
   "cases": [
     {
-      "id": "lines-and-split",
-      "description": "Every line and every part of the split, a deal where undecided and did_not_hold both apply (the first wins), a ruling not honoured that wins over undecided, a deal left out without a witness time, a shop purchase that also carries left_out (tallied under shop_preauth, the first reason), two unpriced deals and a zero amount",
+      "id": "outcomes-from-rows",
+      "description": "Every outcome, a deal where undecided and did_not_hold both apply (undecided first), a ruling the holder did not honour that comes before undecided, a row not reached (undecided, and after did_not_hold), a deal where only the counterparty failed (held), a remedy made without a ruling, a deal left out without a witness time, a shop purchase that also carries left_out (tallied under shop_preauth, the first reason), two unpriced deals and a zero amount",
       "sections": [
         "§11.2",
         "§11.3",
@@ -52,17 +52,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -74,69 +73,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -287,6 +272,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -360,6 +349,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -571,7 +566,7 @@
     },
     {
       "id": "quiet-deals-later-anchor",
-      "description": "The same deals at a later anchor with no new fact: a row not yet due now has no statement (held_so_far to undecided), a contest window has ended (held_so_far to held)",
+      "description": "The same deals at a later anchor with no new fact: a contest window has ended (undecided to held), a row not yet due now has no statement (undecided still)",
       "sections": [
         "§11.1",
         "§11.3"
@@ -605,17 +600,16 @@
           "outcomes": {
             "of": 11,
             "held": 2,
-            "held_so_far": 0,
             "did_not_hold": 4,
-            "undecided": 4,
-            "ruling_not_honoured": 1
+            "undecided": 5
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -627,69 +621,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 2,
-              "held_so_far": 0,
+              "held": 1,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 2,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -840,6 +820,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -913,6 +897,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -1123,7 +1113,7 @@
       }
     },
     {
-      "id": "lines-without-shelf",
+      "id": "outcomes-without-shelf",
       "description": "The first card, checked without the deal entries: the counts are the holder's statement",
       "sections": [
         "§11.7",
@@ -1158,17 +1148,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -1180,69 +1169,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -1324,7 +1299,7 @@
       }
     },
     {
-      "id": "lines-card-only",
+      "id": "outcomes-card-only",
       "description": "The first card, checked with nothing beside it",
       "sections": [
         "§11.7"
@@ -1358,17 +1333,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -1380,69 +1354,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -1512,8 +1472,8 @@
       }
     },
     {
-      "id": "line-not-first",
-      "description": "deal-307 counted as did_not_hold (not remedied) though undecided applies first, every tally agreeing with the others",
+      "id": "outcome-not-first",
+      "description": "deal-307 counted as did_not_hold though undecided applies first, every tally agreeing with the others",
       "sections": [
         "§11.3",
         "§11.7"
@@ -1547,17 +1507,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 5,
-            "undecided": 2,
-            "ruling_not_honoured": 1
+            "undecided": 5
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 5,
-            "not_remedied": 2,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 5,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -1569,69 +1528,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 1
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -1782,6 +1727,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -1855,6 +1804,2212 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              }
+            ]
+          },
+          {
+            "deal": "deal-307",
+            "agreed_at": "2026-09-25T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 0,
+              "value": "300"
+            },
+            "happened": "no_record",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "network"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "in_dispute"
+              }
+            ]
+          },
+          {
+            "deal": "deal-308",
+            "agreed_at": "2026-10-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "5000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "against",
+                "forum": "external"
+              }
+            ],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "no_statement"
+              }
+            ]
+          },
+          {
+            "deal": "deal-309",
+            "agreed_at": "2026-10-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "0"
+            },
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "waiting",
+                "value": "not_met",
+                "local": true
+              }
+            ]
+          },
+          {
+            "deal": "deal-310",
+            "agreed_at": "2026-10-10T10:00:00Z",
+            "role": "provided",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-311",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-312",
+            "agreed_at": "2026-10-15T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "6000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "shop_preauth",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-313",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              }
+            ]
+          },
+          {
+            "deal": "deal-314",
+            "agreed_at": "2026-10-20T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "2500"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed_so_far",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "properties": {
+          "card_form": "PASS",
+          "counts_integral": "PASS",
+          "denominator": "PASS",
+          "window_from_policy": "PASS",
+          "as_of": "PASS",
+          "counts_recompute": "FAIL"
+        },
+        "standard": false,
+        "fails": [
+          "counts_recompute"
+        ]
+      }
+    },
+    {
+      "id": "ruling-not-honoured-undecided",
+      "description": "deal-308, whose ruling the holder did not honour, counted as undecided for its row with no statement, every tally agreeing with the others",
+      "sections": [
+        "§11.3",
+        "§11.7"
+      ],
+      "inputs": {
+        "card": {
+          "derivation": "standard_history/3",
+          "holder_kind": "person",
+          "controller_class": "person_declared",
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "since": "2026-03",
+          "coverage_start": "2026-04",
+          "window": {
+            "months": 3
+          },
+          "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "in_window": {
+            "of": 13,
+            "counted": 11,
+            "not_counted": 2
+          },
+          "not_counted": {
+            "of": 2,
+            "shop_preauth": 1,
+            "no_witness_time": 1
+          },
+          "class_missing": {
+            "of": 11,
+            "count": 1
+          },
+          "outcomes": {
+            "of": 11,
+            "held": 1,
+            "did_not_hold": 3,
+            "undecided": 7
+          },
+          "remedied": {
+            "of": 3,
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 3,
+            "count": 0
+          },
+          "local_times": {
+            "of": 11,
+            "count": 2
+          },
+          "bands": [
+            {
+              "currency": "BTC",
+              "decade": -7,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 0,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 1,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": null,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": 1,
+              "of": 3,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 2
+            },
+            {
+              "currency": "USD",
+              "decade": 2,
+              "of": 2,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 2
+            }
+          ],
+          "unpriced": {
+            "of": 2,
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
+          },
+          "roles": {
+            "of": 11,
+            "provided": 7,
+            "bought": 4
+          },
+          "happened": {
+            "of": 11,
+            "stamped_by_both": 4,
+            "receipt_only": 4,
+            "no_record": 3
+          },
+          "disputes": {
+            "raised": {
+              "of": 1,
+              "by_outcome": {
+                "of": 1,
+                "open": 0,
+                "for": 1,
+                "against": 0,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 1,
+                "auto": 0,
+                "network": 0,
+                "rail": 1,
+                "external": 0
+              }
+            },
+            "received": {
+              "of": 2,
+              "by_outcome": {
+                "of": 2,
+                "open": 1,
+                "for": 0,
+                "against": 1,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 2,
+                "auto": 0,
+                "network": 1,
+                "rail": 0,
+                "external": 1
+              }
+            }
+          }
+        },
+        "derivation": "standard_history/3",
+        "policy": {
+          "digest": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "window": {
+            "months": 3
+          }
+        },
+        "as_of": {
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "anchor_time": "2026-10-28T12:00:00Z",
+          "first_checkpoint_time": "2026-03-04T09:00:00Z",
+          "coverage_start_time": "2026-04-10T08:00:00Z"
+        },
+        "deals": [
+          {
+            "deal": "deal-301",
+            "agreed_at": "2026-09-02T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met",
+                "local": true
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-302",
+            "agreed_at": "2026-09-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "12000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "raised",
+                "outcome": "for",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-303",
+            "agreed_at": "2026-09-10T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "999"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-304",
+            "agreed_at": "2026-09-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1850"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-305",
+            "agreed_at": "2026-09-15T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "BTC",
+              "assetScale": 11,
+              "value": "21000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          },
+          {
+            "deal": "deal-306",
+            "agreed_at": "2026-09-20T10:00:00Z",
+            "role": "provided",
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              }
+            ]
+          },
+          {
+            "deal": "deal-307",
+            "agreed_at": "2026-09-25T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 0,
+              "value": "300"
+            },
+            "happened": "no_record",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "network"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "in_dispute"
+              }
+            ]
+          },
+          {
+            "deal": "deal-308",
+            "agreed_at": "2026-10-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "5000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "against",
+                "forum": "external"
+              }
+            ],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "no_statement"
+              }
+            ]
+          },
+          {
+            "deal": "deal-309",
+            "agreed_at": "2026-10-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "0"
+            },
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "waiting",
+                "value": "not_met",
+                "local": true
+              }
+            ]
+          },
+          {
+            "deal": "deal-310",
+            "agreed_at": "2026-10-10T10:00:00Z",
+            "role": "provided",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-311",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-312",
+            "agreed_at": "2026-10-15T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "6000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "shop_preauth",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-313",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              }
+            ]
+          },
+          {
+            "deal": "deal-314",
+            "agreed_at": "2026-10-20T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "2500"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed_so_far",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "properties": {
+          "card_form": "PASS",
+          "counts_integral": "PASS",
+          "denominator": "PASS",
+          "window_from_policy": "PASS",
+          "as_of": "PASS",
+          "counts_recompute": "FAIL"
+        },
+        "standard": false,
+        "fails": [
+          "counts_recompute"
+        ]
+      }
+    },
+    {
+      "id": "other-side-did-not-hold",
+      "description": "deal-306, where only the counterparty failed, counted as did_not_hold, every tally agreeing with the others",
+      "sections": [
+        "§11.3",
+        "§11.7"
+      ],
+      "inputs": {
+        "card": {
+          "derivation": "standard_history/3",
+          "holder_kind": "person",
+          "controller_class": "person_declared",
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "since": "2026-03",
+          "coverage_start": "2026-04",
+          "window": {
+            "months": 3
+          },
+          "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "in_window": {
+            "of": 13,
+            "counted": 11,
+            "not_counted": 2
+          },
+          "not_counted": {
+            "of": 2,
+            "shop_preauth": 1,
+            "no_witness_time": 1
+          },
+          "class_missing": {
+            "of": 11,
+            "count": 1
+          },
+          "outcomes": {
+            "of": 11,
+            "held": 0,
+            "did_not_hold": 5,
+            "undecided": 6
+          },
+          "remedied": {
+            "of": 5,
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 5,
+            "count": 1
+          },
+          "local_times": {
+            "of": 11,
+            "count": 2
+          },
+          "bands": [
+            {
+              "currency": "BTC",
+              "decade": -7,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 0,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 1,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "USD",
+              "decade": null,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": 1,
+              "of": 3,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 2
+            },
+            {
+              "currency": "USD",
+              "decade": 2,
+              "of": 2,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 2
+            }
+          ],
+          "unpriced": {
+            "of": 2,
+            "held": 0,
+            "did_not_hold": 1,
+            "undecided": 1
+          },
+          "roles": {
+            "of": 11,
+            "provided": 7,
+            "bought": 4
+          },
+          "happened": {
+            "of": 11,
+            "stamped_by_both": 4,
+            "receipt_only": 4,
+            "no_record": 3
+          },
+          "disputes": {
+            "raised": {
+              "of": 1,
+              "by_outcome": {
+                "of": 1,
+                "open": 0,
+                "for": 1,
+                "against": 0,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 1,
+                "auto": 0,
+                "network": 0,
+                "rail": 1,
+                "external": 0
+              }
+            },
+            "received": {
+              "of": 2,
+              "by_outcome": {
+                "of": 2,
+                "open": 1,
+                "for": 0,
+                "against": 1,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 2,
+                "auto": 0,
+                "network": 1,
+                "rail": 0,
+                "external": 1
+              }
+            }
+          }
+        },
+        "derivation": "standard_history/3",
+        "policy": {
+          "digest": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "window": {
+            "months": 3
+          }
+        },
+        "as_of": {
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "anchor_time": "2026-10-28T12:00:00Z",
+          "first_checkpoint_time": "2026-03-04T09:00:00Z",
+          "coverage_start_time": "2026-04-10T08:00:00Z"
+        },
+        "deals": [
+          {
+            "deal": "deal-301",
+            "agreed_at": "2026-09-02T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met",
+                "local": true
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-302",
+            "agreed_at": "2026-09-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "12000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "raised",
+                "outcome": "for",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-303",
+            "agreed_at": "2026-09-10T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "999"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-304",
+            "agreed_at": "2026-09-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1850"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-305",
+            "agreed_at": "2026-09-15T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "BTC",
+              "assetScale": 11,
+              "value": "21000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          },
+          {
+            "deal": "deal-306",
+            "agreed_at": "2026-09-20T10:00:00Z",
+            "role": "provided",
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              }
+            ]
+          },
+          {
+            "deal": "deal-307",
+            "agreed_at": "2026-09-25T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 0,
+              "value": "300"
+            },
+            "happened": "no_record",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "network"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "in_dispute"
+              }
+            ]
+          },
+          {
+            "deal": "deal-308",
+            "agreed_at": "2026-10-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "5000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "against",
+                "forum": "external"
+              }
+            ],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "no_statement"
+              }
+            ]
+          },
+          {
+            "deal": "deal-309",
+            "agreed_at": "2026-10-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "0"
+            },
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "waiting",
+                "value": "not_met",
+                "local": true
+              }
+            ]
+          },
+          {
+            "deal": "deal-310",
+            "agreed_at": "2026-10-10T10:00:00Z",
+            "role": "provided",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-311",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-312",
+            "agreed_at": "2026-10-15T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "6000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "shop_preauth",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-313",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              }
+            ]
+          },
+          {
+            "deal": "deal-314",
+            "agreed_at": "2026-10-20T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "2500"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed_so_far",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "properties": {
+          "card_form": "PASS",
+          "counts_integral": "PASS",
+          "denominator": "PASS",
+          "window_from_policy": "PASS",
+          "as_of": "PASS",
+          "counts_recompute": "FAIL"
+        },
+        "standard": false,
+        "fails": [
+          "counts_recompute"
+        ]
+      }
+    },
+    {
+      "id": "not-reached-left-out",
+      "description": "deal-301's row not reached left out, so the deal counted as held, every tally agreeing with the others",
+      "sections": [
+        "§11.3",
+        "§11.7"
+      ],
+      "inputs": {
+        "card": {
+          "derivation": "standard_history/3",
+          "holder_kind": "person",
+          "controller_class": "person_declared",
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "since": "2026-03",
+          "coverage_start": "2026-04",
+          "window": {
+            "months": 3
+          },
+          "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "in_window": {
+            "of": 13,
+            "counted": 11,
+            "not_counted": 2
+          },
+          "not_counted": {
+            "of": 2,
+            "shop_preauth": 1,
+            "no_witness_time": 1
+          },
+          "class_missing": {
+            "of": 11,
+            "count": 1
+          },
+          "outcomes": {
+            "of": 11,
+            "held": 2,
+            "did_not_hold": 4,
+            "undecided": 5
+          },
+          "remedied": {
+            "of": 4,
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
+          },
+          "local_times": {
+            "of": 11,
+            "count": 2
+          },
+          "bands": [
+            {
+              "currency": "BTC",
+              "decade": -7,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 0,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 1,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "USD",
+              "decade": null,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": 1,
+              "of": 3,
+              "held": 1,
+              "did_not_hold": 1,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": 2,
+              "of": 2,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 2
+            }
+          ],
+          "unpriced": {
+            "of": 2,
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
+          },
+          "roles": {
+            "of": 11,
+            "provided": 7,
+            "bought": 4
+          },
+          "happened": {
+            "of": 11,
+            "stamped_by_both": 4,
+            "receipt_only": 4,
+            "no_record": 3
+          },
+          "disputes": {
+            "raised": {
+              "of": 1,
+              "by_outcome": {
+                "of": 1,
+                "open": 0,
+                "for": 1,
+                "against": 0,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 1,
+                "auto": 0,
+                "network": 0,
+                "rail": 1,
+                "external": 0
+              }
+            },
+            "received": {
+              "of": 2,
+              "by_outcome": {
+                "of": 2,
+                "open": 1,
+                "for": 0,
+                "against": 1,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 2,
+                "auto": 0,
+                "network": 1,
+                "rail": 0,
+                "external": 1
+              }
+            }
+          }
+        },
+        "derivation": "standard_history/3",
+        "policy": {
+          "digest": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "window": {
+            "months": 3
+          }
+        },
+        "as_of": {
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "anchor_time": "2026-10-28T12:00:00Z",
+          "first_checkpoint_time": "2026-03-04T09:00:00Z",
+          "coverage_start_time": "2026-04-10T08:00:00Z"
+        },
+        "deals": [
+          {
+            "deal": "deal-301",
+            "agreed_at": "2026-09-02T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met",
+                "local": true
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-302",
+            "agreed_at": "2026-09-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "12000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "raised",
+                "outcome": "for",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-303",
+            "agreed_at": "2026-09-10T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "999"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-304",
+            "agreed_at": "2026-09-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1850"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-305",
+            "agreed_at": "2026-09-15T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "BTC",
+              "assetScale": 11,
+              "value": "21000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          },
+          {
+            "deal": "deal-306",
+            "agreed_at": "2026-09-20T10:00:00Z",
+            "role": "provided",
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              }
+            ]
+          },
+          {
+            "deal": "deal-307",
+            "agreed_at": "2026-09-25T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 0,
+              "value": "300"
+            },
+            "happened": "no_record",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "network"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "in_dispute"
+              }
+            ]
+          },
+          {
+            "deal": "deal-308",
+            "agreed_at": "2026-10-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "5000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "against",
+                "forum": "external"
+              }
+            ],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "no_statement"
+              }
+            ]
+          },
+          {
+            "deal": "deal-309",
+            "agreed_at": "2026-10-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "0"
+            },
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "waiting",
+                "value": "not_met",
+                "local": true
+              }
+            ]
+          },
+          {
+            "deal": "deal-310",
+            "agreed_at": "2026-10-10T10:00:00Z",
+            "role": "provided",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-311",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-312",
+            "agreed_at": "2026-10-15T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "6000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "shop_preauth",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-313",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              }
+            ]
+          },
+          {
+            "deal": "deal-314",
+            "agreed_at": "2026-10-20T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "2500"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed_so_far",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "properties": {
+          "card_form": "PASS",
+          "counts_integral": "PASS",
+          "denominator": "PASS",
+          "window_from_policy": "PASS",
+          "as_of": "PASS",
+          "counts_recompute": "FAIL"
+        },
+        "standard": false,
+        "fails": [
+          "counts_recompute"
+        ]
+      }
+    },
+    {
+      "id": "not-reached-hides-unmet",
+      "description": "deal-303, whose holder row was agreed as not met, counted as undecided for its row not reached, every tally agreeing with the others",
+      "sections": [
+        "§11.3",
+        "§11.7"
+      ],
+      "inputs": {
+        "card": {
+          "derivation": "standard_history/3",
+          "holder_kind": "person",
+          "controller_class": "person_declared",
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "since": "2026-03",
+          "coverage_start": "2026-04",
+          "window": {
+            "months": 3
+          },
+          "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "in_window": {
+            "of": 13,
+            "counted": 11,
+            "not_counted": 2
+          },
+          "not_counted": {
+            "of": 2,
+            "shop_preauth": 1,
+            "no_witness_time": 1
+          },
+          "class_missing": {
+            "of": 11,
+            "count": 1
+          },
+          "outcomes": {
+            "of": 11,
+            "held": 1,
+            "did_not_hold": 3,
+            "undecided": 7
+          },
+          "remedied": {
+            "of": 3,
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 3,
+            "count": 1
+          },
+          "local_times": {
+            "of": 11,
+            "count": 2
+          },
+          "bands": [
+            {
+              "currency": "BTC",
+              "decade": -7,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 0,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "EUR",
+              "decade": 1,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "USD",
+              "decade": null,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": 1,
+              "of": 3,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 2
+            },
+            {
+              "currency": "USD",
+              "decade": 2,
+              "of": 2,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 2
+            }
+          ],
+          "unpriced": {
+            "of": 2,
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
+          },
+          "roles": {
+            "of": 11,
+            "provided": 7,
+            "bought": 4
+          },
+          "happened": {
+            "of": 11,
+            "stamped_by_both": 4,
+            "receipt_only": 4,
+            "no_record": 3
+          },
+          "disputes": {
+            "raised": {
+              "of": 1,
+              "by_outcome": {
+                "of": 1,
+                "open": 0,
+                "for": 1,
+                "against": 0,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 1,
+                "auto": 0,
+                "network": 0,
+                "rail": 1,
+                "external": 0
+              }
+            },
+            "received": {
+              "of": 2,
+              "by_outcome": {
+                "of": 2,
+                "open": 1,
+                "for": 0,
+                "against": 1,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 2,
+                "auto": 0,
+                "network": 1,
+                "rail": 0,
+                "external": 1
+              }
+            }
+          }
+        },
+        "derivation": "standard_history/3",
+        "policy": {
+          "digest": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "window": {
+            "months": 3
+          }
+        },
+        "as_of": {
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "anchor_time": "2026-10-28T12:00:00Z",
+          "first_checkpoint_time": "2026-03-04T09:00:00Z",
+          "coverage_start_time": "2026-04-10T08:00:00Z"
+        },
+        "deals": [
+          {
+            "deal": "deal-301",
+            "agreed_at": "2026-09-02T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met",
+                "local": true
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-302",
+            "agreed_at": "2026-09-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "12000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "raised",
+                "outcome": "for",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-303",
+            "agreed_at": "2026-09-10T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "999"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-304",
+            "agreed_at": "2026-09-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1850"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-305",
+            "agreed_at": "2026-09-15T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "BTC",
+              "assetScale": 11,
+              "value": "21000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          },
+          {
+            "deal": "deal-306",
+            "agreed_at": "2026-09-20T10:00:00Z",
+            "role": "provided",
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -2102,17 +4257,16 @@
           "outcomes": {
             "of": 12,
             "held": 2,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 12,
@@ -2124,69 +4278,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 4,
-              "held": 2,
-              "held_so_far": 1,
+              "held": 1,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 12,
@@ -2337,6 +4477,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -2410,6 +4554,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -2658,17 +4808,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -2680,69 +4829,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -2893,6 +5028,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -2966,6 +5105,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -3179,7 +5324,7 @@
     },
     {
       "id": "refund-not-remedied",
-      "description": "deal-305, whose unmet rows are remedied (one by a ruling, one by the holder without one), counted as not remedied",
+      "description": "deal-305, whose unmet rows are remedied (one by a ruling, one by the holder without one), not counted as remedied",
       "sections": [
         "§11.4",
         "§11.7"
@@ -3213,17 +5358,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 2,
-            "remedy_pending": 1,
-            "remedied": 0,
-            "other_side": 1
+            "count": 0
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -3235,69 +5379,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -3448,6 +5578,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -3521,6 +5655,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -3733,10 +5873,10 @@
       }
     },
     {
-      "id": "split-not-the-line",
-      "description": "The split partitions its own of, which is not the did_not_hold line",
+      "id": "not-honoured-uncounted",
+      "description": "deal-308, whose ruling the holder did not honour, left out of not_honoured",
       "sections": [
-        "§11.6",
+        "§11.4",
         "§11.7"
       ],
       "inputs": {
@@ -3768,17 +5908,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
-            "of": 3,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 0
+          "remedied": {
+            "of": 4,
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 0
           },
           "local_times": {
             "of": 11,
@@ -3790,69 +5929,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -4003,6 +6128,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -4076,6 +6205,1663 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              }
+            ]
+          },
+          {
+            "deal": "deal-307",
+            "agreed_at": "2026-09-25T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 0,
+              "value": "300"
+            },
+            "happened": "no_record",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "network"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "in_dispute"
+              }
+            ]
+          },
+          {
+            "deal": "deal-308",
+            "agreed_at": "2026-10-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "5000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "against",
+                "forum": "external"
+              }
+            ],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "no_statement"
+              }
+            ]
+          },
+          {
+            "deal": "deal-309",
+            "agreed_at": "2026-10-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "0"
+            },
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "waiting",
+                "value": "not_met",
+                "local": true
+              }
+            ]
+          },
+          {
+            "deal": "deal-310",
+            "agreed_at": "2026-10-10T10:00:00Z",
+            "role": "provided",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-311",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-312",
+            "agreed_at": "2026-10-15T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "6000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "shop_preauth",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-313",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              }
+            ]
+          },
+          {
+            "deal": "deal-314",
+            "agreed_at": "2026-10-20T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "2500"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed_so_far",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "properties": {
+          "card_form": "PASS",
+          "counts_integral": "PASS",
+          "denominator": "PASS",
+          "window_from_policy": "PASS",
+          "as_of": "PASS",
+          "counts_recompute": "FAIL"
+        },
+        "standard": false,
+        "fails": [
+          "counts_recompute"
+        ]
+      }
+    },
+    {
+      "id": "not-honoured-not-did-not-hold",
+      "description": "not_honoured counted over another of than the did_not_hold deals",
+      "sections": [
+        "§11.6",
+        "§11.7"
+      ],
+      "inputs": {
+        "card": {
+          "derivation": "standard_history/3",
+          "holder_kind": "person",
+          "controller_class": "person_declared",
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "since": "2026-03",
+          "coverage_start": "2026-04",
+          "window": {
+            "months": 3
+          },
+          "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "in_window": {
+            "of": 13,
+            "counted": 11,
+            "not_counted": 2
+          },
+          "not_counted": {
+            "of": 2,
+            "shop_preauth": 1,
+            "no_witness_time": 1
+          },
+          "class_missing": {
+            "of": 11,
+            "count": 1
+          },
+          "outcomes": {
+            "of": 11,
+            "held": 1,
+            "did_not_hold": 4,
+            "undecided": 6
+          },
+          "remedied": {
+            "of": 4,
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 3,
+            "count": 1
+          },
+          "local_times": {
+            "of": 11,
+            "count": 2
+          },
+          "bands": [
+            {
+              "currency": "BTC",
+              "decade": -7,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 0,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 1,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "USD",
+              "decade": null,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": 1,
+              "of": 3,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 2
+            },
+            {
+              "currency": "USD",
+              "decade": 2,
+              "of": 2,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 2
+            }
+          ],
+          "unpriced": {
+            "of": 2,
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
+          },
+          "roles": {
+            "of": 11,
+            "provided": 7,
+            "bought": 4
+          },
+          "happened": {
+            "of": 11,
+            "stamped_by_both": 4,
+            "receipt_only": 4,
+            "no_record": 3
+          },
+          "disputes": {
+            "raised": {
+              "of": 1,
+              "by_outcome": {
+                "of": 1,
+                "open": 0,
+                "for": 1,
+                "against": 0,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 1,
+                "auto": 0,
+                "network": 0,
+                "rail": 1,
+                "external": 0
+              }
+            },
+            "received": {
+              "of": 2,
+              "by_outcome": {
+                "of": 2,
+                "open": 1,
+                "for": 0,
+                "against": 1,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 2,
+                "auto": 0,
+                "network": 1,
+                "rail": 0,
+                "external": 1
+              }
+            }
+          }
+        },
+        "derivation": "standard_history/3",
+        "policy": {
+          "digest": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "window": {
+            "months": 3
+          }
+        },
+        "as_of": {
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "anchor_time": "2026-10-28T12:00:00Z",
+          "first_checkpoint_time": "2026-03-04T09:00:00Z",
+          "coverage_start_time": "2026-04-10T08:00:00Z"
+        },
+        "deals": [
+          {
+            "deal": "deal-301",
+            "agreed_at": "2026-09-02T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met",
+                "local": true
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-302",
+            "agreed_at": "2026-09-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "12000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "raised",
+                "outcome": "for",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-303",
+            "agreed_at": "2026-09-10T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "999"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-304",
+            "agreed_at": "2026-09-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1850"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-305",
+            "agreed_at": "2026-09-15T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "BTC",
+              "assetScale": 11,
+              "value": "21000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          },
+          {
+            "deal": "deal-306",
+            "agreed_at": "2026-09-20T10:00:00Z",
+            "role": "provided",
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              }
+            ]
+          },
+          {
+            "deal": "deal-307",
+            "agreed_at": "2026-09-25T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 0,
+              "value": "300"
+            },
+            "happened": "no_record",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "network"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "in_dispute"
+              }
+            ]
+          },
+          {
+            "deal": "deal-308",
+            "agreed_at": "2026-10-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "5000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "against",
+                "forum": "external"
+              }
+            ],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "no_statement"
+              }
+            ]
+          },
+          {
+            "deal": "deal-309",
+            "agreed_at": "2026-10-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "0"
+            },
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "waiting",
+                "value": "not_met",
+                "local": true
+              }
+            ]
+          },
+          {
+            "deal": "deal-310",
+            "agreed_at": "2026-10-10T10:00:00Z",
+            "role": "provided",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-311",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-312",
+            "agreed_at": "2026-10-15T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "6000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "shop_preauth",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-313",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              }
+            ]
+          },
+          {
+            "deal": "deal-314",
+            "agreed_at": "2026-10-20T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "2500"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed_so_far",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "properties": {
+          "card_form": "PASS",
+          "counts_integral": "PASS",
+          "denominator": "FAIL",
+          "window_from_policy": "PASS",
+          "as_of": "PASS",
+          "counts_recompute": "NOT_CHECKED"
+        },
+        "standard": false,
+        "fails": [
+          "denominator"
+        ]
+      }
+    },
+    {
+      "id": "remedied-and-not-honoured",
+      "description": "A deal counted both remedied and not honoured: the two counts exceed the did_not_hold deals",
+      "sections": [
+        "§11.4",
+        "§11.6",
+        "§11.7"
+      ],
+      "inputs": {
+        "card": {
+          "derivation": "standard_history/3",
+          "holder_kind": "person",
+          "controller_class": "person_declared",
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "since": "2026-03",
+          "coverage_start": "2026-04",
+          "window": {
+            "months": 3
+          },
+          "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "in_window": {
+            "of": 13,
+            "counted": 11,
+            "not_counted": 2
+          },
+          "not_counted": {
+            "of": 2,
+            "shop_preauth": 1,
+            "no_witness_time": 1
+          },
+          "class_missing": {
+            "of": 11,
+            "count": 1
+          },
+          "outcomes": {
+            "of": 11,
+            "held": 1,
+            "did_not_hold": 4,
+            "undecided": 6
+          },
+          "remedied": {
+            "of": 4,
+            "count": 4
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
+          },
+          "local_times": {
+            "of": 11,
+            "count": 2
+          },
+          "bands": [
+            {
+              "currency": "BTC",
+              "decade": -7,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 0,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 1,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "USD",
+              "decade": null,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": 1,
+              "of": 3,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 2
+            },
+            {
+              "currency": "USD",
+              "decade": 2,
+              "of": 2,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 2
+            }
+          ],
+          "unpriced": {
+            "of": 2,
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
+          },
+          "roles": {
+            "of": 11,
+            "provided": 7,
+            "bought": 4
+          },
+          "happened": {
+            "of": 11,
+            "stamped_by_both": 4,
+            "receipt_only": 4,
+            "no_record": 3
+          },
+          "disputes": {
+            "raised": {
+              "of": 1,
+              "by_outcome": {
+                "of": 1,
+                "open": 0,
+                "for": 1,
+                "against": 0,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 1,
+                "auto": 0,
+                "network": 0,
+                "rail": 1,
+                "external": 0
+              }
+            },
+            "received": {
+              "of": 2,
+              "by_outcome": {
+                "of": 2,
+                "open": 1,
+                "for": 0,
+                "against": 1,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 2,
+                "auto": 0,
+                "network": 1,
+                "rail": 0,
+                "external": 1
+              }
+            }
+          }
+        },
+        "derivation": "standard_history/3",
+        "policy": {
+          "digest": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "window": {
+            "months": 3
+          }
+        },
+        "as_of": {
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "anchor_time": "2026-10-28T12:00:00Z",
+          "first_checkpoint_time": "2026-03-04T09:00:00Z",
+          "coverage_start_time": "2026-04-10T08:00:00Z"
+        },
+        "deals": [
+          {
+            "deal": "deal-301",
+            "agreed_at": "2026-09-02T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met",
+                "local": true
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-302",
+            "agreed_at": "2026-09-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "12000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "raised",
+                "outcome": "for",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-303",
+            "agreed_at": "2026-09-10T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "999"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-304",
+            "agreed_at": "2026-09-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1850"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-305",
+            "agreed_at": "2026-09-15T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "BTC",
+              "assetScale": 11,
+              "value": "21000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          },
+          {
+            "deal": "deal-306",
+            "agreed_at": "2026-09-20T10:00:00Z",
+            "role": "provided",
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              }
+            ]
+          },
+          {
+            "deal": "deal-307",
+            "agreed_at": "2026-09-25T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 0,
+              "value": "300"
+            },
+            "happened": "no_record",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "network"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "in_dispute"
+              }
+            ]
+          },
+          {
+            "deal": "deal-308",
+            "agreed_at": "2026-10-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "5000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "against",
+                "forum": "external"
+              }
+            ],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "no_statement"
+              }
+            ]
+          },
+          {
+            "deal": "deal-309",
+            "agreed_at": "2026-10-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "0"
+            },
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "waiting",
+                "value": "not_met",
+                "local": true
+              }
+            ]
+          },
+          {
+            "deal": "deal-310",
+            "agreed_at": "2026-10-10T10:00:00Z",
+            "role": "provided",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-311",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-312",
+            "agreed_at": "2026-10-15T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "6000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "shop_preauth",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-313",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              }
+            ]
+          },
+          {
+            "deal": "deal-314",
+            "agreed_at": "2026-10-20T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "2500"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed_so_far",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "properties": {
+          "card_form": "PASS",
+          "counts_integral": "PASS",
+          "denominator": "FAIL",
+          "window_from_policy": "PASS",
+          "as_of": "PASS",
+          "counts_recompute": "NOT_CHECKED"
+        },
+        "standard": false,
+        "fails": [
+          "denominator"
+        ]
+      }
+    },
+    {
+      "id": "remedied-not-did-not-hold",
+      "description": "remedied counted over another of than the did_not_hold deals",
+      "sections": [
+        "§11.6",
+        "§11.7"
+      ],
+      "inputs": {
+        "card": {
+          "derivation": "standard_history/3",
+          "holder_kind": "person",
+          "controller_class": "person_declared",
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "since": "2026-03",
+          "coverage_start": "2026-04",
+          "window": {
+            "months": 3
+          },
+          "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "in_window": {
+            "of": 13,
+            "counted": 11,
+            "not_counted": 2
+          },
+          "not_counted": {
+            "of": 2,
+            "shop_preauth": 1,
+            "no_witness_time": 1
+          },
+          "class_missing": {
+            "of": 11,
+            "count": 1
+          },
+          "outcomes": {
+            "of": 11,
+            "held": 1,
+            "did_not_hold": 4,
+            "undecided": 6
+          },
+          "remedied": {
+            "of": 3,
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
+          },
+          "local_times": {
+            "of": 11,
+            "count": 2
+          },
+          "bands": [
+            {
+              "currency": "BTC",
+              "decade": -7,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 0,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 1,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "USD",
+              "decade": null,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": 1,
+              "of": 3,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 2
+            },
+            {
+              "currency": "USD",
+              "decade": 2,
+              "of": 2,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 2
+            }
+          ],
+          "unpriced": {
+            "of": 2,
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
+          },
+          "roles": {
+            "of": 11,
+            "provided": 7,
+            "bought": 4
+          },
+          "happened": {
+            "of": 11,
+            "stamped_by_both": 4,
+            "receipt_only": 4,
+            "no_record": 3
+          },
+          "disputes": {
+            "raised": {
+              "of": 1,
+              "by_outcome": {
+                "of": 1,
+                "open": 0,
+                "for": 1,
+                "against": 0,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 1,
+                "auto": 0,
+                "network": 0,
+                "rail": 1,
+                "external": 0
+              }
+            },
+            "received": {
+              "of": 2,
+              "by_outcome": {
+                "of": 2,
+                "open": 1,
+                "for": 0,
+                "against": 1,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 2,
+                "auto": 0,
+                "network": 1,
+                "rail": 0,
+                "external": 1
+              }
+            }
+          }
+        },
+        "derivation": "standard_history/3",
+        "policy": {
+          "digest": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "window": {
+            "months": 3
+          }
+        },
+        "as_of": {
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "anchor_time": "2026-10-28T12:00:00Z",
+          "first_checkpoint_time": "2026-03-04T09:00:00Z",
+          "coverage_start_time": "2026-04-10T08:00:00Z"
+        },
+        "deals": [
+          {
+            "deal": "deal-301",
+            "agreed_at": "2026-09-02T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met",
+                "local": true
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-302",
+            "agreed_at": "2026-09-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "12000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "raised",
+                "outcome": "for",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-303",
+            "agreed_at": "2026-09-10T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "999"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-304",
+            "agreed_at": "2026-09-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1850"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-305",
+            "agreed_at": "2026-09-15T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "BTC",
+              "assetScale": 11,
+              "value": "21000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          },
+          {
+            "deal": "deal-306",
+            "agreed_at": "2026-09-20T10:00:00Z",
+            "role": "provided",
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -4323,17 +8109,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -4345,69 +8130,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -4558,6 +8329,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -4631,6 +8406,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -4878,17 +8659,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -4900,69 +8680,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -5113,6 +8879,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -5186,6 +8956,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -5398,8 +9174,8 @@
       }
     },
     {
-      "id": "band-three-outcomes",
-      "description": "A band counted by the three outcomes of /1 and /2",
+      "id": "outcomes-five-lines",
+      "description": "outcomes counted by five lines, held_so_far and ruling_not_honoured among them",
       "sections": [
         "§11.6",
         "§11.7"
@@ -5433,17 +9209,18 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
+            "held_so_far": 0,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6,
+            "ruling_not_honoured": 0
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -5463,59 +9240,47 @@
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -5666,6 +9431,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -5739,6 +9508,564 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              }
+            ]
+          },
+          {
+            "deal": "deal-307",
+            "agreed_at": "2026-09-25T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 0,
+              "value": "300"
+            },
+            "happened": "no_record",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "network"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "in_dispute"
+              }
+            ]
+          },
+          {
+            "deal": "deal-308",
+            "agreed_at": "2026-10-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "5000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "against",
+                "forum": "external"
+              }
+            ],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "no_statement"
+              }
+            ]
+          },
+          {
+            "deal": "deal-309",
+            "agreed_at": "2026-10-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "0"
+            },
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "waiting",
+                "value": "not_met",
+                "local": true
+              }
+            ]
+          },
+          {
+            "deal": "deal-310",
+            "agreed_at": "2026-10-10T10:00:00Z",
+            "role": "provided",
+            "happened": "no_record",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-311",
+            "agreed_at": "2026-10-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-312",
+            "agreed_at": "2026-10-15T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "6000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "received",
+                "outcome": "open",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "shop_preauth",
+            "rows": [
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              }
+            ],
+            "left_out": "no_witness_time"
+          },
+          {
+            "deal": "deal-313",
+            "agreed_at": "2026-06-01T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              }
+            ]
+          },
+          {
+            "deal": "deal-314",
+            "agreed_at": "2026-10-20T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "2500"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed_so_far",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "properties": {
+          "card_form": "FAIL",
+          "counts_integral": "PASS",
+          "denominator": "NOT_CHECKED",
+          "window_from_policy": "PASS",
+          "as_of": "PASS",
+          "counts_recompute": "NOT_CHECKED"
+        },
+        "standard": false,
+        "fails": [
+          "card_form"
+        ]
+      }
+    },
+    {
+      "id": "band-five-lines",
+      "description": "A band counted by five lines",
+      "sections": [
+        "§11.6",
+        "§11.7"
+      ],
+      "inputs": {
+        "card": {
+          "derivation": "standard_history/3",
+          "holder_kind": "person",
+          "controller_class": "person_declared",
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "since": "2026-03",
+          "coverage_start": "2026-04",
+          "window": {
+            "months": 3
+          },
+          "policy": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "in_window": {
+            "of": 13,
+            "counted": 11,
+            "not_counted": 2
+          },
+          "not_counted": {
+            "of": 2,
+            "shop_preauth": 1,
+            "no_witness_time": 1
+          },
+          "class_missing": {
+            "of": 11,
+            "count": 1
+          },
+          "outcomes": {
+            "of": 11,
+            "held": 1,
+            "did_not_hold": 4,
+            "undecided": 6
+          },
+          "remedied": {
+            "of": 4,
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
+          },
+          "local_times": {
+            "of": 11,
+            "count": 2
+          },
+          "bands": [
+            {
+              "currency": "BTC",
+              "decade": -7,
+              "of": 1,
+              "held": 0,
+              "held_so_far": 0,
+              "did_not_hold": 1,
+              "undecided": 0,
+              "ruling_not_honoured": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 0,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "EUR",
+              "decade": 1,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 0
+            },
+            {
+              "currency": "USD",
+              "decade": null,
+              "of": 1,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 1
+            },
+            {
+              "currency": "USD",
+              "decade": 1,
+              "of": 3,
+              "held": 0,
+              "did_not_hold": 1,
+              "undecided": 2
+            },
+            {
+              "currency": "USD",
+              "decade": 2,
+              "of": 2,
+              "held": 0,
+              "did_not_hold": 0,
+              "undecided": 2
+            }
+          ],
+          "unpriced": {
+            "of": 2,
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
+          },
+          "roles": {
+            "of": 11,
+            "provided": 7,
+            "bought": 4
+          },
+          "happened": {
+            "of": 11,
+            "stamped_by_both": 4,
+            "receipt_only": 4,
+            "no_record": 3
+          },
+          "disputes": {
+            "raised": {
+              "of": 1,
+              "by_outcome": {
+                "of": 1,
+                "open": 0,
+                "for": 1,
+                "against": 0,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 1,
+                "auto": 0,
+                "network": 0,
+                "rail": 1,
+                "external": 0
+              }
+            },
+            "received": {
+              "of": 2,
+              "by_outcome": {
+                "of": 2,
+                "open": 1,
+                "for": 0,
+                "against": 1,
+                "split": 0,
+                "no_finding": 0,
+                "withdrawn": 0
+              },
+              "by_forum": {
+                "of": 2,
+                "auto": 0,
+                "network": 1,
+                "rail": 0,
+                "external": 1
+              }
+            }
+          }
+        },
+        "derivation": "standard_history/3",
+        "policy": {
+          "digest": "2cc796d2069a0ced9a272cb5b15a05d6bef97a4f7599aad5124b1ae88ba770ec",
+          "window": {
+            "months": 3
+          }
+        },
+        "as_of": {
+          "anchor": "0a3a88faf7a2294fa5590ee30ffeaf35182fd22e945cdc2431170de610cb2212",
+          "anchor_time": "2026-10-28T12:00:00Z",
+          "first_checkpoint_time": "2026-03-04T09:00:00Z",
+          "coverage_start_time": "2026-04-10T08:00:00Z"
+        },
+        "deals": [
+          {
+            "deal": "deal-301",
+            "agreed_at": "2026-09-02T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "4500"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met",
+                "local": true
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-302",
+            "agreed_at": "2026-09-05T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "12000"
+            },
+            "happened": "receipt_only",
+            "disputes": [
+              {
+                "side": "raised",
+                "outcome": "for",
+                "forum": "rail"
+              }
+            ],
+            "counterparty_class": "business_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-303",
+            "agreed_at": "2026-09-10T10:00:00Z",
+            "role": "bought",
+            "amount": {
+              "assetCode": "EUR",
+              "assetScale": 2,
+              "value": "999"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
+              }
+            ]
+          },
+          {
+            "deal": "deal-304",
+            "agreed_at": "2026-09-12T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "USD",
+              "assetScale": 2,
+              "value": "1850"
+            },
+            "happened": "receipt_only",
+            "disputes": [],
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "due"
+              }
+            ]
+          },
+          {
+            "deal": "deal-305",
+            "agreed_at": "2026-09-15T10:00:00Z",
+            "role": "provided",
+            "amount": {
+              "assetCode": "BTC",
+              "assetScale": 11,
+              "value": "21000"
+            },
+            "happened": "stamped_by_both",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "not_met",
+                "remedy": "made"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "met"
+              }
+            ]
+          },
+          {
+            "deal": "deal-306",
+            "agreed_at": "2026-09-20T10:00:00Z",
+            "role": "provided",
+            "happened": "receipt_only",
+            "disputes": [],
+            "counterparty_class": "person_agent",
+            "rows": [
+              {
+                "owed_by": "holder",
+                "status": "agreed",
+                "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "uncontested",
+                "value": "not_met",
+                "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -5985,17 +10312,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -6007,69 +10333,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -6220,6 +10532,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -6293,6 +10609,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -6541,17 +10863,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -6563,69 +10884,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -6776,6 +11083,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -6849,6 +11160,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -7097,17 +11414,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -7119,69 +11435,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -7332,6 +11634,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -7405,6 +11711,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -7652,17 +11964,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -7674,69 +11985,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,
@@ -7887,6 +12184,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -7960,6 +12261,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -8392,6 +12699,10 @@
                 "owed_by": "counterparty",
                 "status": "agreed",
                 "value": "met"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "not_reached"
               }
             ]
           },
@@ -8465,6 +12776,12 @@
                 "status": "uncontested",
                 "value": "not_met",
                 "remedy": "none"
+              },
+              {
+                "owed_by": "counterparty",
+                "status": "ruled",
+                "value": "not_met",
+                "remedy": "not_honoured"
               }
             ]
           },
@@ -8712,17 +13029,16 @@
           "outcomes": {
             "of": 11,
             "held": 1,
-            "held_so_far": 2,
             "did_not_hold": 4,
-            "undecided": 3,
-            "ruling_not_honoured": 1
+            "undecided": 6
           },
-          "did_not_hold": {
+          "remedied": {
             "of": 4,
-            "not_remedied": 1,
-            "remedy_pending": 1,
-            "remedied": 1,
-            "other_side": 1
+            "count": 1
+          },
+          "not_honoured": {
+            "of": 4,
+            "count": 1
           },
           "local_times": {
             "of": 11,
@@ -8734,69 +13050,55 @@
               "decade": -7,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 0,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 0
             },
             {
               "currency": "EUR",
               "decade": 1,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
-              "did_not_hold": 0,
-              "undecided": 0,
-              "ruling_not_honoured": 1
+              "did_not_hold": 1,
+              "undecided": 0
             },
             {
               "currency": "USD",
               "decade": null,
               "of": 1,
               "held": 0,
-              "held_so_far": 0,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 1
             },
             {
               "currency": "USD",
               "decade": 1,
               "of": 3,
-              "held": 1,
-              "held_so_far": 1,
+              "held": 0,
               "did_not_hold": 1,
-              "undecided": 0,
-              "ruling_not_honoured": 0
+              "undecided": 2
             },
             {
               "currency": "USD",
               "decade": 2,
               "of": 2,
               "held": 0,
-              "held_so_far": 1,
               "did_not_hold": 0,
-              "undecided": 1,
-              "ruling_not_honoured": 0
+              "undecided": 2
             }
           ],
           "unpriced": {
             "of": 2,
-            "held": 0,
-            "held_so_far": 0,
-            "did_not_hold": 1,
-            "undecided": 1,
-            "ruling_not_honoured": 0
+            "held": 1,
+            "did_not_hold": 0,
+            "undecided": 1
           },
           "roles": {
             "of": 11,

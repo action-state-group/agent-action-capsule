@@ -39,8 +39,9 @@ const Derivation = "standard_history/1"
 const Derivation2 = "standard_history/2"
 
 // Derivation3 is the registered token standard_history/3 (SH §11), whose card
-// counts each deal's term rows in five lines, splits did_not_hold four ways
-// and carries the shelf log's coverage start.
+// counts each deal's outcome from its term rows, counts the deals that did not
+// hold that the holder remedied or whose ruling it did not honour, and carries
+// the shelf log's coverage start.
 const Derivation3 = "standard_history/3"
 
 // Properties are the card properties of SH §6, in the order a verifier
@@ -69,11 +70,7 @@ var (
 	sides           = []string{"raised", "received"}
 	disputeOutcomes = []string{"open", "for", "against", "split", "no_finding", "withdrawn"}
 	forums          = []string{"auto", "network", "rail", "external"}
-	// lines are /3's outcome lines (SH §11.3), in the order the first that
-	// applies wins; split are the parts of did_not_hold (SH §11.4), and
-	// notCounted3 the parts of not_counted (SH §11.6).
-	lines       = []string{"ruling_not_honoured", "undecided", "did_not_hold", "held_so_far", "held"}
-	split       = []string{"not_remedied", "remedy_pending", "remedied", "other_side"}
+	// notCounted3 are the parts of not_counted (SH §11.6).
 	notCounted3 = []string{"shop_preauth", "no_witness_time"}
 	rowStatuses = []string{"not_reached", "not_due", "no_statement", "waiting", "uncontested", "agreed_so_far",
 		"agreed", "in_disagreement", "in_dispute", "ruled"}
@@ -88,32 +85,21 @@ var (
 	leftOut         = []string{"no_witness_time"}
 )
 
-// outcomesOf are the parts of outcomes, of each band and of unpriced under
-// the token.
-func outcomesOf(derivation string) []string {
-	if derivation == Derivation3 {
-		return lines
-	}
-	return outcomes
-}
-
 type tallySpec struct {
 	name  string
 	parts []string
 }
 
-// talliesOf are the token's tallies of SH §4 (under /3, §11.6) with
-// outcomes' parts.
+// talliesOf are the token's tallies of SH §4 (under /3, §11.6).
 func talliesOf(derivation string) []tallySpec {
 	out := make([]tallySpec, len(tallies))
 	for i, t := range tallies {
 		out[i] = tallySpec(t)
-		if t.name == "outcomes" {
-			out[i].parts = outcomesOf(derivation)
-		}
 	}
 	if derivation == Derivation3 {
-		out = append(out, tallySpec{"not_counted", notCounted3}, tallySpec{"local_times", []string{"count"}})
+		out = append(out, tallySpec{"not_counted", notCounted3}, tallySpec{"remedied", []string{"count"}},
+			tallySpec{"not_honoured", []string{"count"}},
+			tallySpec{"local_times", []string{"count"}})
 	}
 	return out
 }
@@ -144,7 +130,7 @@ var cardMembers = []string{
 var members = map[string][]string{
 	Derivation:  cardMembers,
 	Derivation2: append(slices.Clone(cardMembers), "unpriced"),
-	Derivation3: append(slices.Clone(cardMembers), "unpriced", "coverage_start", "not_counted", "did_not_hold",
+	Derivation3: append(slices.Clone(cardMembers), "unpriced", "coverage_start", "not_counted", "remedied", "not_honoured",
 		"local_times"),
 }
 
@@ -521,23 +507,22 @@ func checkEntry(d Deal, derivation string) error {
 	return nil
 }
 
-// Line is SH §11.3 and §11.4: a counted standard_history/3 deal's line, and
-// its part of did_not_hold (empty for any other line), the first that
-// applies in each table. The rows must be well-formed (SH §11.2). A
-// not_reached row is left out, and a deal with no other row is undecided.
-func Line(all []Row) (line, part string) {
-	var rows []Row
-	for _, r := range all {
-		if r.Status != "not_reached" {
-			rows = append(rows, r)
+// Outcome is SH §11.3 and §11.4: a counted standard_history/3 deal's
+// outcome, the first rule that applies, and for a did_not_hold deal whether
+// the holder did not honour a ruling ("not_honoured") or remedied its unmet
+// rows ("remedied"); empty otherwise. The rows must be well-formed (SH §11.2).
+// Only rows the holder owed can make a deal did_not_hold; the counterparty's
+// unmet rows are read as met.
+func Outcome(rows []Row) (outcome, detail string) {
+	var own []Row
+	for _, r := range rows {
+		if r.OwedBy == "holder" {
+			own = append(own, r)
 		}
 	}
-	if len(rows) == 0 {
-		return "undecided", ""
-	}
-	for _, r := range rows {
+	for _, r := range own {
 		if r.Status == "ruled" && r.Remedy == "not_honoured" {
-			return "ruling_not_honoured", ""
+			return "did_not_hold", "not_honoured"
 		}
 	}
 	for _, r := range rows {
@@ -547,36 +532,27 @@ func Line(all []Row) (line, part string) {
 			return "undecided", ""
 		}
 	}
-	var unmet, own []Row
-	for _, r := range rows {
+	unmet := false
+	remedied := true
+	for _, r := range own {
 		if (r.Status == "ruled" || slices.Contains(unmetStatuses, r.Status)) && r.Value == "not_met" {
-			unmet = append(unmet, r)
-			if r.OwedBy == "holder" {
-				own = append(own, r)
-			}
+			unmet = true
+			// Remedied when every unmet row has its remedy made, by a
+			// ruling or without one.
+			remedied = remedied && r.Remedy == "made"
 		}
 	}
-	if len(unmet) > 0 {
-		if len(own) == 0 {
-			return "did_not_hold", "other_side"
+	if unmet {
+		if remedied {
+			return "did_not_hold", "remedied"
 		}
-		for _, r := range own {
-			if r.Remedy == "none" {
-				return "did_not_hold", "not_remedied"
-			}
-		}
-		for _, r := range own {
-			if r.Remedy == "due" {
-				return "did_not_hold", "remedy_pending"
-			}
-		}
-		// Every own unmet row has its remedy made: none is "none"
-		// (above), "not_honoured" (the first line) or "due".
-		return "did_not_hold", "remedied"
+		return "did_not_hold", ""
 	}
+	// A row not reached comes after did_not_hold, so it cannot hide an
+	// unmet row.
 	for _, r := range rows {
-		if slices.Contains([]string{"not_due", "waiting", "agreed_so_far"}, r.Status) {
-			return "held_so_far", ""
+		if slices.Contains([]string{"not_reached", "not_due", "waiting", "agreed_so_far"}, r.Status) {
+			return "undecided", ""
 		}
 	}
 	return "held", ""
@@ -599,16 +575,12 @@ type disputeTally struct {
 // counts are the tallies SH §5 derives from the deal entries, keyed by card
 // member, for the token's card.
 func counts(deals []Deal, w Window, anchor time.Time, derivation string) (map[string]any, error) {
-	outs := outcomesOf(derivation)
 	t := map[string]map[string]int{}
 	for _, x := range talliesOf(derivation) {
 		t[x.name] = zero(x.parts)
 	}
 	if derivation != Derivation {
-		t["unpriced"] = zero(outs)
-	}
-	if derivation == Derivation3 {
-		t["did_not_hold"] = zero(split)
+		t["unpriced"] = zero(outcomes)
 	}
 	// A zero amount's band has no decade (null), and sorts first.
 	type key struct {
@@ -651,11 +623,15 @@ func counts(deals []Deal, w Window, anchor time.Time, derivation string) (map[st
 		}
 		outcome := d.Outcome
 		if derivation == Derivation3 {
-			var part string
-			outcome, part = Line(d.Rows)
-			if part != "" {
-				t["did_not_hold"]["of"]++
-				t["did_not_hold"][part]++
+			var detail string
+			outcome, detail = Outcome(d.Rows)
+			if outcome == "did_not_hold" {
+				for _, name := range []string{"remedied", "not_honoured"} {
+					t[name]["of"]++
+					if detail == name {
+						t[name]["count"]++
+					}
+				}
 			}
 			t["local_times"]["of"]++
 			if slices.ContainsFunc(d.Rows, func(r Row) bool { return r.Local }) {
@@ -684,7 +660,7 @@ func counts(deals []Deal, w Window, anchor time.Time, derivation string) (map[st
 		b, ok := bands[k]
 		if !ok {
 			b = map[string]any{"currency": k.currency, "decade": decadeValue}
-			for p, v := range zero(outs) {
+			for p, v := range zero(outcomes) {
 				b[p] = v
 			}
 			bands[k] = b
@@ -894,21 +870,17 @@ func cardForm(v any, derivation string) bool {
 	if _, ok := windowOf(card["window"]); !ok {
 		return false
 	}
-	outs := outcomesOf(derivation)
 	for _, t := range talliesOf(derivation) {
 		if !tallyForm(card[t.name], t.parts) {
 			return false
 		}
 	}
-	if derivation != Derivation && !tallyForm(card["unpriced"], outs) {
+	if derivation != Derivation && !tallyForm(card["unpriced"], outcomes) {
 		return false
 	}
 	if derivation == Derivation3 {
 		start, ok := str(card["coverage_start"])
 		if !ok || !month.MatchString(start) || start < card["since"].(string) {
-			return false
-		}
-		if !tallyForm(card["did_not_hold"], split) {
 			return false
 		}
 	}
@@ -938,7 +910,7 @@ func cardForm(v any, derivation string) bool {
 				rest[k] = x
 			}
 		}
-		if !tallyForm(rest, outs) {
+		if !tallyForm(rest, outcomes) {
 			return false
 		}
 		has, d := rawDecade != nil, 0.0
@@ -1070,13 +1042,12 @@ func partitions(t any, parts []string) bool {
 // whose form and counts are PASS.
 func denominator(v any, derivation string) bool {
 	card := v.(map[string]any)
-	outs := outcomesOf(derivation)
 	for _, t := range talliesOf(derivation) {
 		x := card[t.name]
 		if !has(x, "of") {
 			return false
 		}
-		if t.name == "class_missing" || t.name == "local_times" {
+		if slices.Contains([]string{"class_missing", "remedied", "not_honoured", "local_times"}, t.name) {
 			if field(x, "count") > field(x, "of") {
 				return false
 			}
@@ -1096,7 +1067,7 @@ func denominator(v any, derivation string) bool {
 	}
 	bands := card["bands"].([]any)
 	for _, b := range bands {
-		if !partitions(b, outs) || field(b, "of") < 1 {
+		if !partitions(b, outcomes) || field(b, "of") < 1 {
 			return false
 		}
 	}
@@ -1104,12 +1075,12 @@ func denominator(v any, derivation string) bool {
 	// outcomes.
 	priced := slices.Clone(bands)
 	if u, ok := card["unpriced"]; ok {
-		if !partitions(u, outs) {
+		if !partitions(u, outcomes) {
 			return false
 		}
 		priced = append(priced, u)
 	}
-	for _, o := range append([]string{"of"}, outs...) {
+	for _, o := range append([]string{"of"}, outcomes...) {
 		sum := 0.0
 		for _, b := range priced {
 			sum += field(b, o)
@@ -1119,8 +1090,10 @@ func denominator(v any, derivation string) bool {
 		}
 	}
 	if derivation == Derivation3 {
-		s := card["did_not_hold"]
-		if !partitions(s, split) || field(s, "of") != field(card["outcomes"], "did_not_hold") {
+		// SH §11.4: a did_not_hold deal is in at most one of the two counts.
+		dnh := field(card["outcomes"], "did_not_hold")
+		if field(card["remedied"], "of") != dnh || field(card["not_honoured"], "of") != dnh ||
+			field(card["remedied"], "count")+field(card["not_honoured"], "count") > dnh {
 			return false
 		}
 	}

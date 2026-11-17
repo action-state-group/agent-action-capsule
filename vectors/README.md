@@ -162,9 +162,10 @@ same-commit files in CI.
   shop purchase, a window not in the policy, among others); and in `vectors-2.json` a `/2` card
   with a deal whose amount is not recorded, counted in every total and in no band, with negatives
   that leave it out, put it in a band or leave it out of the outcomes; and in `vectors-3.json` `/3`
-  cards counted from term rows in five lines with `did_not_hold` split, the same deals at a later
-  anchor, and negatives for a later line than the first, a deal left out counted, the split and the
-  coverage start; `python/scripts/generate_standard_history_v0_vectors.py` regenerates
+  cards counted from term rows, with the remedied and not-honoured counts, the same deals at a
+  later anchor, and negatives for each outcome rule, a deal left out counted, the remedied,
+  not-honoured and not-counted tallies,
+  five-line tallies and the coverage start; `python/scripts/generate_standard_history_v0_vectors.py` regenerates
   them.
 - `inference-service-history-v0/`: the Inference-Service History Profile
   `spec/inference-service-history-profile-v0.md`: a served-only Standard History, the period

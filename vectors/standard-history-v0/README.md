@@ -5,9 +5,9 @@ These vectors exercise `spec/standard-history-v0.md` (`standard_history/1`,
 properties (SH §6), including `counterparty_class` (SH §7) as the input that decides whether a
 deal is counted. `vectors.json` holds the `/1` cases. `vectors-2.json` holds the `/2` cases: a
 deal whose agreed amount the records do not give, counted in every total and in no band.
-`vectors-3.json` holds the `/3` cases (SH §11): deals counted from their term rows in five lines,
-`did_not_hold` split four ways, the deals not counted by reason, and the shelf log's coverage
-start.
+`vectors-3.json` holds the `/3` cases (SH §11): deals counted from their term rows in the three
+outcomes, the remedied and not-honoured counts, the deals not counted by reason, and the shelf
+log's coverage start.
 
 ## Derivation
 
@@ -52,17 +52,23 @@ beside it (`unpriced-card-only`), and a `/2` card whose every deal has an amount
 `v2-without-unpriced`, `unpriced-with-currency`, `v1-card-for-v2-request`,
 `v2-card-for-v1-request` and `v1-card-with-unpriced`.
 
-In `vectors-3.json`, positive: `lines-and-split` (every line and every part of the split; a deal
-where `undecided` and `did_not_hold` both apply, counted `undecided`; a ruling not honoured that
-wins over `undecided`; a deal left out for want
-of a witness time and a shop purchase that also carries `left_out`, `not_counted` under one reason
-each; two unpriced deals and a zero amount), `quiet-deals-later-anchor` (the same deals at
-a later anchor with no new fact: one moves from `held_so_far` to `undecided`, another to `held`),
-and the first card without the deal entries (`lines-without-shelf`) and with nothing beside it
-(`lines-card-only`). Negative: `line-not-first`, `left-out-counted`, `split-not-the-line`,
-`not-counted-wrong-reason`, `not-counted-not-the-window`,
-`band-three-outcomes`, `no-coverage-start`, `coverage-start-before-since`,
-`coverage-start-other-month`, `v2-card-for-v3-request` and `v3-card-for-v2-request`. A `/3` deal
+In `vectors-3.json`, positive: `outcomes-from-rows` (every outcome; a deal where `undecided` and
+`did_not_hold` both apply, counted `undecided`; a ruling the holder did not honour, counted
+`did_not_hold` before `undecided` and counted in `not_honoured`; a row not reached, counted
+`undecided`, and one beside an unmet row, which stays `did_not_hold`; a deal where only the
+counterparty failed, counted `held`; a remedy made without a ruling, counted remedied; a deal left
+out for want of a witness time and a shop purchase that also carries `left_out`, `not_counted` under
+one reason each; two unpriced deals and a zero amount), `quiet-deals-later-anchor` (the same deals
+at a later anchor with no new fact: one moves from `undecided` to `held`), and the first card
+without the deal entries (`outcomes-without-shelf`) and with nothing beside it
+(`outcomes-card-only`). Negative: `outcome-not-first`, `ruling-not-honoured-undecided`,
+`other-side-did-not-hold`, `not-reached-left-out`, `not-reached-hides-unmet`, `left-out-counted`,
+`local-times-dropped`, `refund-not-remedied`, `not-honoured-uncounted`,
+`not-honoured-not-did-not-hold`, `remedied-and-not-honoured`, `remedied-not-did-not-hold`,
+`not-counted-wrong-reason`,
+`not-counted-not-the-window`, `outcomes-five-lines`, `band-five-lines`, `no-coverage-start`,
+`coverage-start-before-since`, `coverage-start-other-month`, `anchor-before-coverage-start`,
+`v2-card-for-v3-request` and `v3-card-for-v2-request`. A `/3` deal
 entry carries row results, not the row statements and dates they are computed from: the rule that
 computes them is EBL's (SH-11), whose own vectors test it.
 

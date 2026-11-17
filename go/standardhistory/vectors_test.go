@@ -263,9 +263,9 @@ func v3Case(t *testing.T, id string) vectorCase {
 	return vectorCase{}
 }
 
-// SH §11.3, §11.4: every pair of well-formed row results falls in exactly one
-// line, and a did_not_hold deal in exactly one part.
-func TestV3LinesCoverEveryRowResult(t *testing.T) {
+// SH §11.3, §11.4: every pair of well-formed row results has exactly one
+// outcome, and only a did_not_hold deal has a detail.
+func TestV3OutcomesCoverEveryRowResult(t *testing.T) {
 	var results []standardhistory.Row
 	for _, s := range []string{"not_reached", "not_due", "no_statement", "in_disagreement", "in_dispute"} {
 		results = append(results, standardhistory.Row{Status: s})
@@ -290,46 +290,74 @@ func TestV3LinesCoverEveryRowResult(t *testing.T) {
 			rows = append(rows, r)
 		}
 	}
-	lines := []string{"ruling_not_honoured", "undecided", "did_not_hold", "held_so_far", "held"}
-	parts := []string{"not_remedied", "remedy_pending", "remedied", "other_side"}
 	for _, a := range rows {
 		for _, b := range rows {
-			line, part := standardhistory.Line([]standardhistory.Row{a, b})
-			assert.Contains(t, lines, line)
-			if line == "did_not_hold" {
-				assert.Contains(t, parts, part)
+			outcome, detail := standardhistory.Outcome([]standardhistory.Row{a, b})
+			assert.Contains(t, []string{"held", "did_not_hold", "undecided"}, outcome)
+			if outcome == "did_not_hold" {
+				assert.Contains(t, []string{"", "remedied", "not_honoured"}, detail)
 			} else {
-				assert.Empty(t, part)
+				assert.Empty(t, detail)
 			}
 		}
+	}
+}
+
+// SH §11.3: only rows the holder owed make a deal did_not_hold, and a
+// not_reached row makes it undecided unless did_not_hold applies.
+func TestV3OutcomeRules(t *testing.T) {
+	holder := func(status, value, remedy string) standardhistory.Row {
+		return standardhistory.Row{OwedBy: "holder", Status: status, Value: value, Remedy: remedy}
+	}
+	other := func(status, value, remedy string) standardhistory.Row {
+		return standardhistory.Row{OwedBy: "counterparty", Status: status, Value: value, Remedy: remedy}
+	}
+	for _, c := range []struct {
+		rows    []standardhistory.Row
+		outcome string
+	}{
+		{[]standardhistory.Row{other("uncontested", "not_met", "none")}, "held"},
+		{[]standardhistory.Row{other("ruled", "not_met", "not_honoured"), holder("agreed", "met", "")}, "held"},
+		{[]standardhistory.Row{other("agreed_so_far", "not_met", "none")}, "undecided"},
+		{[]standardhistory.Row{other("waiting", "not_met", "")}, "undecided"},
+		{[]standardhistory.Row{holder("agreed", "met", ""), other("not_reached", "", "")}, "undecided"},
+		{[]standardhistory.Row{holder("agreed", "not_met", "none"), other("not_reached", "", "")}, "did_not_hold"},
+		{[]standardhistory.Row{holder("ruled", "not_met", "not_honoured"), other("in_dispute", "", "")}, "did_not_hold"},
+		{[]standardhistory.Row{holder("agreed", "not_met", "none"), other("in_dispute", "", "")}, "undecided"},
+		{[]standardhistory.Row{holder("agreed", "not_met", "none"), other("not_due", "", "")}, "did_not_hold"},
+		{[]standardhistory.Row{holder("agreed_so_far", "met", ""), other("agreed", "met", "")}, "undecided"},
+	} {
+		outcome, _ := standardhistory.Outcome(c.rows)
+		assert.Equal(t, c.outcome, outcome, c.rows)
 	}
 }
 
 // A /3 as_of input without its anchor time is malformed input, never an
 // as_of FAIL.
 func TestV3AsOfWithoutAnchorTimeIsAnError(t *testing.T) {
-	tc := v3Case(t, "lines-without-shelf")
+	tc := v3Case(t, "outcomes-without-shelf")
 	asOf := *tc.Inputs.AsOf
 	asOf.AnchorTime = ""
 	_, err := standardhistory.CheckAs(standardhistory.Derivation3, tc.Inputs.Card, nil, &asOf, nil)
 	require.Error(t, err)
 }
 
-// SH §11.4: two unmet rows the holder owed compete for parts; the first part
-// that applies wins, whatever the order of the rows.
-func TestV3SplitOrder(t *testing.T) {
+// SH §11.4: a did_not_hold deal is remedied only when every unmet row the
+// holder owed has its remedy made, and a ruling not honoured comes first,
+// whatever the order of the rows.
+func TestV3Remedied(t *testing.T) {
 	for _, c := range []struct {
 		remedies [2]string
-		part     string
-	}{{[2]string{"none", "due"}, "not_remedied"}, {[2]string{"due", "made"}, "remedy_pending"},
-		{[2]string{"made", "made"}, "remedied"}} {
+		detail   string
+	}{{[2]string{"none", "made"}, ""}, {[2]string{"due", "made"}, ""},
+		{[2]string{"made", "made"}, "remedied"}, {[2]string{"made", "not_honoured"}, "not_honoured"}} {
 		a := standardhistory.Row{OwedBy: "holder", Status: "ruled", Value: "not_met", Remedy: c.remedies[0]}
 		b := standardhistory.Row{OwedBy: "holder", Status: "ruled", Value: "not_met", Remedy: c.remedies[1]}
 		refund := standardhistory.Row{OwedBy: "holder", Status: "agreed", Value: "not_met", Remedy: "made"}
 		for _, rows := range [][]standardhistory.Row{{a, b}, {b, a}, {refund, a, b}} {
-			line, part := standardhistory.Line(rows)
-			assert.Equal(t, "did_not_hold", line)
-			assert.Equal(t, c.part, part, c.remedies)
+			outcome, detail := standardhistory.Outcome(rows)
+			assert.Equal(t, "did_not_hold", outcome)
+			assert.Equal(t, c.detail, detail, c.remedies)
 		}
 	}
 }
@@ -354,25 +382,24 @@ func TestV3MembersDoNotChangeV1Decoding(t *testing.T) {
 	assert.Equal(t, tc.Expected.Properties, got)
 }
 
-// SH §11.1: deals with no new fact move line when the anchor moves.
-func TestV3QuietDealMovesLine(t *testing.T) {
-	a := v3Case(t, "lines-and-split").Inputs.Deals
+// SH §11.1: a deal with no new fact changes outcome when the anchor moves.
+func TestV3QuietDealMovesOutcome(t *testing.T) {
+	a := v3Case(t, "outcomes-from-rows").Inputs.Deals
 	b := v3Case(t, "quiet-deals-later-anchor").Inputs.Deals
 	require.Len(t, b, len(a))
 	moved := map[string][2]string{}
 	for i := range a {
-		la, _ := standardhistory.Line(a[i].Rows)
-		lb, _ := standardhistory.Line(b[i].Rows)
+		la, _ := standardhistory.Outcome(a[i].Rows)
+		lb, _ := standardhistory.Outcome(b[i].Rows)
 		if la != lb {
 			moved[a[i].Deal] = [2]string{la, lb}
 		}
 	}
-	assert.Equal(t, map[string][2]string{"deal-302": {"held_so_far", "undecided"}, "deal-314": {"held_so_far", "held"}},
-		moved)
+	assert.Equal(t, map[string][2]string{"deal-314": {"undecided", "held"}}, moved)
 }
 
 func TestMalformedV3DealEntryIsAnError(t *testing.T) {
-	tc := v3Case(t, "lines-and-split")
+	tc := v3Case(t, "outcomes-from-rows")
 	for _, change := range []string{
 		`{"outcome":"held"}`,
 		`{"rows":[]}`,
