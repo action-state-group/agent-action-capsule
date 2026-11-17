@@ -392,4 +392,4 @@ claims conformance to this binding only once carriage vectors exist.
 
 | # | Point |
 |---|---|
-| RP-1 | Carriage vectors for §3 and §4: a push and its answer over each carriage, and the negative cases (a member that fails strict decoding, a `raw` or `text` part, an answer Artifact on a task not completed). They are to land with the first implementation's MCP and A2A entry for `Receive`, in this repository's `vectors/`. |
+| RP-1 | Carriage vectors for §3 and §4: a push and its answer over each carriage, and the edge cases (a member that fails strict decoding and a `raw` or `text` part, each answered with an error and no answer; an answer Artifact on a task not completed, which is still the answer; a completed task with no such Artifact, a transport condition). They are to land with the first implementation's MCP and A2A entry for `Receive`, in this repository's `vectors/`. |
