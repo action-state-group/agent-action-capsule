@@ -742,8 +742,8 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
   exchange of a cell can still learn the last; the floor limits, and does not remove, what such a
   requester learns.
 - **Verdicts held.** The ask by digest (§5.3) is answered per verdict, outside the period counts
-  and with no floor. It tells a requester that already holds the referee's signed delivery whether
-  the node holds that verdict, and tells a requester without the delivery nothing. Where one
+  and with no floor. It tells a requester that knows the digest whether the node holds that verdict,
+  and no verdict body; who may ask is the host's. Where one
   party's own asks make up a verdict count, that party can infer from the published count that
   the count is of its asks.
 - **Another derivation of the same stream.** §6 bounds only this profile's answers. A
