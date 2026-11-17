@@ -108,3 +108,7 @@ required-features = ["inference-history"]
 [[test]]
 name = "inference_history_verdicts"
 required-features = ["inference-history"]
+
+[[test]]
+name = "inference_history_verdicts_vectors"
+required-features = ["inference-history"]

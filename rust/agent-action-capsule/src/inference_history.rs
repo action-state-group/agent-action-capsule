@@ -851,7 +851,9 @@ pub fn check_artifact(
     let mut want_sorted = want_keys.to_vec();
     want_sorted.sort_unstable();
     if keys != want_sorted || art.get("declared") != Some(&json!(want_declared)) {
-        return Err("the artifact's members are not the ones the definition declares".into());
+        return Err(
+            "artifact_form: the artifact's members are not the ones the definition declares".into(),
+        );
     }
     let anchor_cut = chain.last().ok_or("the card lists no checkpoint")?;
     if art.get("derivation") != Some(&json!(def.digest)) {
@@ -901,7 +903,7 @@ fn check_periods<'a>(
     chain: &[Cut<'_>],
 ) -> Result<Vec<(String, String, &'a Value)>, String> {
     let policy = &def.policy;
-    let malformed = |why: &str| format!("the period counts are malformed: {why}");
+    let malformed = |why: &str| format!("artifact_form: the period counts are malformed: {why}");
     let counts = member
         .as_object()
         .ok_or_else(|| malformed("not an object"))?;
@@ -971,7 +973,7 @@ fn check_verdicts(
     member: &Value,
     chain: &[Cut<'_>],
 ) -> Result<Vec<VerdictPeriod>, String> {
-    let bad = |why: &str| format!("verdict_counts: {why}");
+    let bad = |why: &str| format!("artifact_form: verdict_counts: {why}");
     if member.get("check") != Some(&json!(VERDICT_CHECK))
         || member.get("signed_by") != Some(&json!(VERDICT_SIGNER))
     {
