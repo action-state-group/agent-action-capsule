@@ -380,9 +380,9 @@ A receiver handles the record in this order (EBL `shelf_receive.go` `receiveReco
 before it holds a conflict. A held record claims its own digest at its position and its
 predecessor's digest at the position before; a position with two different claimed digests is a
 fork, and the counted prefix ends before the lowest such position for good (EBL
-`receivedPrefix`; design §3), with one exception: in a log holding only unsolicited offers, a
-fork past the offer evidence bounds (§6.4) is not recorded, so it ends the counted prefix only
-while both its records are held. When a gap is filled, the stored records after it join the counted
+`receivedPrefix`; design §3), with one exception: a fork in a log of offers alone (§6.4) that
+is past the offer evidence bounds is not recorded, so it ends the counted prefix only while both
+its records are held. When a gap is filled, the stored records after it join the counted
 prefix up to the next gap or fork.
 
 ### 6.3 The proof part
@@ -420,11 +420,14 @@ A receiver keeps, as evidence, the first conflict it finds at each position or s
 | `checkpoint_records` | a book checkpoint whose root the records held do not recompute, and the digests it was recomputed over |
 
 A fork is kept even when a record involved is later deleted; another record arriving at a
-deleted record's position forks there. The exception is a log holding only unsolicited offers: an
-offer belongs to no matter, so what offers leave behind (the position of each dropped offer, and
-each conflict with its evidence in such a log) is bounded per sender and in total (EBL defaults 16
-and 1024 rows, `ReceiveBounds.MaxOfferEvidencePerSender`, `MaxOfferEvidence`); past the bound
-nothing is kept, and such a position may later be forgotten (EBL `noteConflict`, `vacate`).
+deleted record's position forks there. The one exception is what unsolicited offers leave
+behind, since an offer belongs to no matter: the position of each dropped offer, and a `fork`
+found when an offer arrives in a **log of offers alone** (one where the sender's log holds no
+record that is not an offer, and no position a deleted such record held). These are bounded per
+sender and in total (EBL defaults 16 and 1024 rows, `ReceiveBounds.MaxOfferEvidencePerSender`,
+`MaxOfferEvidence`); past the bound nothing is kept, and such a position may later be forgotten
+(EBL `receiveRecordTx`, `noteConflict`, `vacate`). A `fork` in any other log, and every
+`checkpoint` and `checkpoint_records` conflict, is kept whatever the bounds.
 
 ### 6.5 The answers
 
