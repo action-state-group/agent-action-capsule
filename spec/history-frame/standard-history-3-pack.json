@@ -13,6 +13,7 @@
     "deals.local_times": "counted deals with a row that rests on a record no witness timed",
     "deals.held_so_far": "counted deals held so far, with a row not yet due or a contest window open",
     "deals.did_not_hold.split": "of the deals that did not hold, by what became of the unmet rows",
+    "deals.not_counted.reasons": "of the deals not counted, by why: a shop purchase paid up front, or no time from a witness the agreement names",
     "coverage.start": "complete from {coverage_start}; before it, the deals the holder carried into its shelf log",
     "level.recomputed": "recounted from the holder's whole shelf",
     "level.form_only": "checked for its form only",

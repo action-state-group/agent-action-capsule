@@ -70,9 +70,11 @@ var (
 	disputeOutcomes = []string{"open", "for", "against", "split", "no_finding", "withdrawn"}
 	forums          = []string{"auto", "network", "rail", "external"}
 	// lines are /3's outcome lines (SH §11.3), in the order the first that
-	// applies wins; split are the parts of did_not_hold (SH §11.4).
+	// applies wins; split are the parts of did_not_hold (SH §11.4), and
+	// notCounted3 the parts of not_counted (SH §11.6).
 	lines       = []string{"ruling_not_honoured", "undecided", "did_not_hold", "held_so_far", "held"}
 	split       = []string{"not_remedied", "remedy_pending", "remedied", "other_side"}
+	notCounted3 = []string{"shop_preauth", "no_witness_time"}
 	rowStatuses = []string{"not_reached", "not_due", "no_statement", "waiting", "uncontested", "agreed_so_far",
 		"agreed", "in_disagreement", "in_dispute", "ruled"}
 	valued    = []string{"waiting", "uncontested", "agreed_so_far", "agreed", "ruled"}
@@ -111,7 +113,7 @@ func talliesOf(derivation string) []tallySpec {
 		}
 	}
 	if derivation == Derivation3 {
-		out = append(out, tallySpec{"local_times", []string{"count"}})
+		out = append(out, tallySpec{"not_counted", notCounted3}, tallySpec{"local_times", []string{"count"}})
 	}
 	return out
 }
@@ -142,7 +144,8 @@ var cardMembers = []string{
 var members = map[string][]string{
 	Derivation:  cardMembers,
 	Derivation2: append(slices.Clone(cardMembers), "unpriced"),
-	Derivation3: append(slices.Clone(cardMembers), "unpriced", "coverage_start", "did_not_hold", "local_times"),
+	Derivation3: append(slices.Clone(cardMembers), "unpriced", "coverage_start", "not_counted", "did_not_hold",
+		"local_times"),
 }
 
 func checkToken(derivation string) error {
@@ -630,6 +633,15 @@ func counts(deals []Deal, w Window, anchor time.Time, derivation string) (map[st
 		// SH §11.2: under /3 a deal left out is not counted either.
 		if d.CounterpartyClass != nil && *d.CounterpartyClass == notCounted || derivation == Derivation3 && d.LeftOut != nil {
 			t["in_window"]["not_counted"]++
+			if derivation == Derivation3 {
+				// SH §11.6: the first reason that applies.
+				reason := "no_witness_time"
+				if d.CounterpartyClass != nil && *d.CounterpartyClass == notCounted {
+					reason = "shop_preauth"
+				}
+				t["not_counted"]["of"]++
+				t["not_counted"][reason]++
+			}
 			continue
 		}
 		t["in_window"]["counted"]++
@@ -1078,7 +1090,8 @@ func denominator(v any, derivation string) bool {
 			return false
 		}
 	}
-	if derivation == Derivation3 && field(card["local_times"], "of") != counted {
+	if derivation == Derivation3 && (field(card["local_times"], "of") != counted ||
+		field(card["not_counted"], "of") != field(card["in_window"], "not_counted")) {
 		return false
 	}
 	bands := card["bands"].([]any)

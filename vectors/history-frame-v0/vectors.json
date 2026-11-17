@@ -22,8 +22,8 @@
       "instance": "standard_history/3",
       "table": "spec/history-frame/standard-history-3-table.json",
       "pack": "spec/history-frame/standard-history-3-pack.json",
-      "table_digest": "b0c70d1323a6ff3dda69af4ce1dfd3c16b040dc64e253a42a94f47b86199dfe9",
-      "pack_digest": "89e47c3eb0658142c5d5a28a6d2c82fea5ed72636bee2bb8a9455b72a65fa0f1"
+      "table_digest": "b23cd0517568c025637468a0ff92d4d86c9712a9673ee6565c810f382d984444",
+      "pack_digest": "602ce4c54467ebab1a331aa2f68c2ad578b781819a875708ffcdffc30b26b20b"
     },
     {
       "instance": "personal_history_basic/1",
@@ -400,8 +400,8 @@
       "inputs": {
         "instance": "standard_history/3",
         "listed": {
-          "table": "b0c70d1323a6ff3dda69af4ce1dfd3c16b040dc64e253a42a94f47b86199dfe9",
-          "pack": "89e47c3eb0658142c5d5a28a6d2c82fea5ed72636bee2bb8a9455b72a65fa0f1"
+          "table": "b23cd0517568c025637468a0ff92d4d86c9712a9673ee6565c810f382d984444",
+          "pack": "602ce4c54467ebab1a331aa2f68c2ad578b781819a875708ffcdffc30b26b20b"
         },
         "table": {
           "document": "counting_table",
@@ -484,6 +484,7 @@
             "window",
             "policy",
             "in_window",
+            "not_counted",
             "class_missing",
             "outcomes",
             "did_not_hold",
@@ -499,6 +500,11 @@
               "of",
               "counted",
               "not_counted"
+            ],
+            "not_counted": [
+              "of",
+              "shop_preauth",
+              "no_witness_time"
             ],
             "class_missing": [
               "of",
@@ -611,6 +617,7 @@
             "deals.local_times": "counted deals with a row that rests on a record no witness timed",
             "deals.held_so_far": "counted deals held so far, with a row not yet due or a contest window open",
             "deals.did_not_hold.split": "of the deals that did not hold, by what became of the unmet rows",
+            "deals.not_counted.reasons": "of the deals not counted, by why: a shop purchase paid up front, or no time from a witness the agreement names",
             "coverage.start": "complete from {coverage_start}; before it, the deals the holder carried into its shelf log",
             "level.recomputed": "recounted from the holder's whole shelf",
             "level.form_only": "checked for its form only",

@@ -61,6 +61,8 @@ HAPPENED = ("stamped_by_both", "receipt_only", "no_record")
 LINES = ("ruling_not_honoured", "undecided", "did_not_hold", "held_so_far", "held")
 #: SH §11.4: the parts of did_not_hold, in the order the first that applies wins.
 SPLIT = ("not_remedied", "remedy_pending", "remedied", "other_side")
+#: SH §11.6: the parts of not_counted, in the order the first that applies wins.
+NOT_COUNTED_3 = ("shop_preauth", "no_witness_time")
 #: SH §11.2: a row result's members' values.
 ROW_STATUSES = ("not_reached", "not_due", "no_statement", "waiting", "uncontested", "agreed_so_far",
                 "agreed", "in_disagreement", "in_dispute", "ruled")
@@ -89,7 +91,8 @@ CARD_MEMBERS = frozenset(("derivation", "holder_kind", "controller_class", "anch
                           "policy", "bands", "disputes") + tuple(TALLIES))
 #: SH §4: the members of each token's card.
 MEMBERS = {DERIVATION: CARD_MEMBERS, DERIVATION_2: CARD_MEMBERS | {"unpriced"},
-           DERIVATION_3: CARD_MEMBERS | {"unpriced", "coverage_start", "did_not_hold", "local_times"}}
+           DERIVATION_3: CARD_MEMBERS | {"unpriced", "coverage_start", "not_counted", "did_not_hold",
+                                         "local_times"}}
 BAND_KEYS = ("currency", "decade")
 MAX_COUNT = 2 ** 53 - 1
 
@@ -110,6 +113,7 @@ def _outcomes(derivation: str) -> tuple:
 def _tallies(derivation: str) -> dict:
     t = {**TALLIES, "outcomes": _outcomes(derivation)}
     if derivation == DERIVATION_3:
+        t["not_counted"] = NOT_COUNTED_3
         t["local_times"] = ("count",)
     return t
 
@@ -275,6 +279,10 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
         # SH §11.2: under /3 a deal left out is not counted either.
         if deal.get("counterparty_class") == NOT_COUNTED or (derivation == DERIVATION_3 and "left_out" in deal):
             t["in_window"]["not_counted"] += 1
+            if derivation == DERIVATION_3:
+                reason = "shop_preauth" if deal.get("counterparty_class") == NOT_COUNTED else "no_witness_time"
+                t["not_counted"]["of"] += 1
+                t["not_counted"][reason] += 1
             continue
         t["in_window"]["counted"] += 1
         t["class_missing"]["of"] += 1
@@ -477,7 +485,8 @@ def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
     counted = card["in_window"]["counted"]
     if any(card[name]["of"] != counted for name in ("class_missing", "outcomes", "roles", "happened")):
         return False
-    if derivation == DERIVATION_3 and card["local_times"]["of"] != counted:
+    if derivation == DERIVATION_3 and (card["local_times"]["of"] != counted
+                                       or card["not_counted"]["of"] != card["in_window"]["not_counted"]):
         return False
     for band in card["bands"]:
         if not _partitions(band, outcomes) or band["of"] < 1:

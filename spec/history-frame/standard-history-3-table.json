@@ -79,6 +79,7 @@
     "window",
     "policy",
     "in_window",
+    "not_counted",
     "class_missing",
     "outcomes",
     "did_not_hold",
@@ -94,6 +95,11 @@
       "of",
       "counted",
       "not_counted"
+    ],
+    "not_counted": [
+      "of",
+      "shop_preauth",
+      "no_witness_time"
     ],
     "class_missing": [
       "of",

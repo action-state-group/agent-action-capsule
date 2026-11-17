@@ -6,7 +6,8 @@ properties (SH §6), including `counterparty_class` (SH §7) as the input that d
 deal is counted. `vectors.json` holds the `/1` cases. `vectors-2.json` holds the `/2` cases: a
 deal whose agreed amount the records do not give, counted in every total and in no band.
 `vectors-3.json` holds the `/3` cases (SH §11): deals counted from their term rows in five lines,
-`did_not_hold` split four ways, and the shelf log's coverage start.
+`did_not_hold` split four ways, the deals not counted by reason, and the shelf log's coverage
+start.
 
 ## Derivation
 
@@ -53,11 +54,13 @@ beside it (`unpriced-card-only`), and a `/2` card whose every deal has an amount
 
 In `vectors-3.json`, positive: `lines-and-split` (every line and every part of the split; a deal
 where `undecided` and `did_not_hold` both apply, counted `undecided`; a ruling not honoured that
-wins over `undecided`; a deal left out for want of a witness time and a shop purchase, both
-`not_counted`; two unpriced deals and a zero amount), `quiet-deals-later-anchor` (the same deals at
+wins over `undecided`; a deal left out for want
+of a witness time and a shop purchase that also carries `left_out`, `not_counted` under one reason
+each; two unpriced deals and a zero amount), `quiet-deals-later-anchor` (the same deals at
 a later anchor with no new fact: one moves from `held_so_far` to `undecided`, another to `held`),
 and the first card without the deal entries (`lines-without-shelf`) and with nothing beside it
 (`lines-card-only`). Negative: `line-not-first`, `left-out-counted`, `split-not-the-line`,
+`not-counted-wrong-reason`, `not-counted-not-the-window`,
 `band-three-outcomes`, `no-coverage-start`, `coverage-start-before-since`,
 `coverage-start-other-month`, `v2-card-for-v3-request` and `v3-card-for-v2-request`. A `/3` deal
 entry carries row results, not the row statements and dates they are computed from: the rule that

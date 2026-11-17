@@ -90,8 +90,8 @@ vector of this document.
   coverage start it carries (§11.5) is a card member, not a coverage kind: `coverage_kind` stays
   `policy_window`, carried as `instance_text`.
 - **`/3`'s documents:** the counting table `spec/history-frame/standard-history-3-table.json`,
-  digest `b0c70d1323a6ff3dda69af4ce1dfd3c16b040dc64e253a42a94f47b86199dfe9`, and the wording pack `spec/history-frame/standard-history-3-pack.json`, digest
-  `89e47c3eb0658142c5d5a28a6d2c82fea5ed72636bee2bb8a9455b72a65fa0f1` (§11).
+  digest `b23cd0517568c025637468a0ff92d4d86c9712a9673ee6565c810f382d984444`, and the wording pack `spec/history-frame/standard-history-3-pack.json`, digest
+  `602ce4c54467ebab1a331aa2f68c2ad578b781819a875708ffcdffc30b26b20b` (§11).
 - **`/2`'s documents:** the counting table `spec/history-frame/standard-history-2-table.json`,
   digest `c18c28b9830440fddb0d2963c6731da698b019d00606e3f3e4205dfb34c48a1a`, which adds to `/1`'s
   table the card member and tally `unpriced` (§4); and the wording pack
@@ -643,8 +643,8 @@ is not ruled excepted, which it fills as SH-16 says; and a host that cannot comp
 row's result from what it holds cannot fill the deal's entry, so it cannot answer `/3`: it refuses
 with reason `no_such_subject`, as §3 says of `/1`. It never leaves the deal or the row out. A deal is
 **counted** under `/3` when it is in the window and neither its `counterparty_class` is
-`shop_preauth` nor it carries `left_out`; `in_window.not_counted` counts both kinds of deal, and
-§5.3's other rules hold unchanged.
+`shop_preauth` nor it carries `left_out`; `in_window.not_counted` counts both kinds of deal, the
+`not_counted` tally says which (§11.6), and §5.3's other rules hold unchanged.
 
 ### 11.3 The outcome lines
 
@@ -701,6 +701,7 @@ A `/3` card is a JSON object with exactly these members, all REQUIRED:
 | `holder_kind`, `controller_class`, `anchor`, `since`, `window`, `policy` | as §4 |
 | `coverage_start` | the year and month of the coverage start (§11.5), `YYYY-MM` |
 | `in_window` | tally: `of` (deals in the window), `counted`, `not_counted` (§11.2) |
+| `not_counted` | tally over the deals in the window not counted: `of`, `shop_preauth` (its `counterparty_class` is `shop_preauth`), `no_witness_time` (any other, so it carries `left_out`) |
 | `class_missing` | as §4 |
 | `outcomes` | tally over counted deals: `of`, `held`, `held_so_far`, `did_not_hold`, `undecided`, `ruling_not_honoured` (§11.3) |
 | `did_not_hold` | tally over counted `did_not_hold` deals: `of`, `not_remedied`, `remedy_pending`, `remedied`, `other_side` (§11.4) |
@@ -710,8 +711,9 @@ A `/3` card is a JSON object with exactly these members, all REQUIRED:
 | `roles`, `happened`, `disputes` | as §4 |
 
 **Denominators.** §4's rules hold with the five lines in place of the three outcomes: the bands and
-`unpriced` together partition `outcomes`, line by line. Also, `did_not_hold`'s parts partition its
-`of`, and its `of` equals `outcomes.did_not_hold`; `local_times.of` equals `in_window.counted`, and
+`unpriced` together partition `outcomes`, line by line. Also, `not_counted`'s parts partition its
+`of`, and its `of` equals `in_window.not_counted`; `did_not_hold`'s parts partition its `of`, and its
+`of` equals `outcomes.did_not_hold`; `local_times.of` equals `in_window.counted`, and
 its `count` is at most its `of`.
 
 No other member is allowed in a `/3` card, at any level. Any change to a member, a value list or a
@@ -730,6 +732,7 @@ counting rule of `/3` is a new token, and `/3` stays as it is.
                            "by_outcome": {"against": 0, "for": 0, "no_finding": 0, "of": 0, "open": 0, "split": 0, "withdrawn": 0}, "of": 0}},
  "happened": {"no_record": 0, "of": 3, "receipt_only": 1, "stamped_by_both": 2}, "holder_kind": "person",
  "in_window": {"counted": 3, "not_counted": 1, "of": 4}, "local_times": {"count": 0, "of": 3},
+ "not_counted": {"no_witness_time": 0, "of": 1, "shop_preauth": 1},
  "outcomes": {"did_not_hold": 1, "held": 1, "held_so_far": 1, "of": 3, "ruling_not_honoured": 0, "undecided": 0},
  "policy": "<64 hex>", "roles": {"bought": 1, "of": 3, "provided": 2}, "since": "2026-03",
  "unpriced": {"did_not_hold": 0, "held": 0, "held_so_far": 0, "of": 0, "ruling_not_honoured": 0, "undecided": 0},
@@ -773,6 +776,7 @@ For a standard `/3` card, §6 "What a verifier shows" holds, with the five lines
 three outcomes and these additions:
 
 - **The split.** `did_not_hold`'s four parts, each with its `of`, beside the `did_not_hold` line.
+- **Why not counted.** `not_counted`'s two parts, each with its `of`, beside `in_window.not_counted`.
 - **The coverage start.** That the counts are complete from `coverage_start` on, and that before it
   they are the deals the holder carried into its shelf log at the switch (§11.5).
 - **The level reached.** Whether the counts were recomputed (`counts_recompute` `PASS`) or are the
@@ -802,7 +806,9 @@ under §6's rules for the bar. `undecided` and `held_so_far` are drawn in tones 
 - **A second date.** `coverage_start` is a year and month, as `since` is: it shows when the holder
   moved its shelf to book facts, and nothing of any deal.
 - **The holder's levers.** Marking a deal `left_out` takes it out of every count but `in_window`, as
-  `shop_preauth` does, and the card shows it as `in_window.not_counted`; a holder can bring that
+  `shop_preauth` does; the card counts it in `in_window.not_counted` and, apart from shop
+  purchases, in `not_counted.no_witness_time`, so a reader sees how many it left out. A holder can
+  bring that
   about by naming only a witness that never registers its checkpoints (SH-12). Never stating on a row
   leaves it `no_statement` after its due date, so `undecided`, never `held`.
 - **Differencing.** As §9. A holder key that serves Standard Histories under
@@ -815,12 +821,14 @@ under §6's rules for the bar. `undecided` and `held_so_far` are drawn in tones 
 
 `vectors/standard-history-v0/vectors-3.json` holds the `/3` cases, each naming its token in
 `inputs.derivation`: a card over deals that fall in every line and every part of the split, with a
-deal whose rows make two lines apply (the first wins), a `not_reached` row left out, a remedy made
-without a ruling, rows that rest on untimed records, a deal left out without a witness time, an
-unpriced deal and two bands; the same deals at a later anchor, where a deal with no new fact moves
+deal whose rows make two lines apply (the first wins), a `not_reached` row left out, a remedy made without a ruling, rows that rest on untimed
+records, a deal left out without a witness time, a shop purchase that also carries `left_out`
+(counted as `shop_preauth`), an unpriced deal and two bands; the same deals at a later anchor, where a deal with no new fact moves
 from `held_so_far` to `held` and another from `held_so_far` to `undecided`; and negatives each
 failing the property named: a deal counted in a later line than the first that applies
-(`counts_recompute`), a deal left out counted (`counts_recompute`), the deals with local results
+(`counts_recompute`), a deal left out counted (`counts_recompute`), the deals not counted tallied under the wrong reason
+(`counts_recompute`), a `not_counted` tally whose `of` is not `in_window.not_counted`
+(`denominator`), the deals with local results
 left out of `local_times` (`counts_recompute`), a remedy made without a ruling counted as not
 remedied (`counts_recompute`), a split that does not sum to the
 `did_not_hold` line (`denominator`), a band that counts by three outcomes (`card_form`), a card

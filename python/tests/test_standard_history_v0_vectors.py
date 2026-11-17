@@ -341,6 +341,18 @@ def _counting_left_out(deals, window, anchor_time, derivation=sh.DERIVATION):
                         derivation)
 
 
+def _counting_left_out_first(deals, window, anchor_time, derivation=sh.DERIVATION):
+    """Counts a deal not counted under no_witness_time whenever it carries left_out, before
+    shop_preauth (SH §11.6 takes shop_preauth first)."""
+    t = _REAL_COUNTS(deals, window, anchor_time, derivation)
+    if "not_counted" in t:
+        both = sum(1 for d in deals if d.get("counterparty_class") == sh.NOT_COUNTED and "left_out" in d
+                   and sh._in_window(sh._time(d["agreed_at"]), window, anchor_time))
+        t["not_counted"]["shop_preauth"] -= both
+        t["not_counted"]["no_witness_time"] += both
+    return t
+
+
 def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
     real_in_window, real_window_start, real_decade = sh._in_window, sh._window_start, sh._decade
     mutants = {
@@ -362,6 +374,7 @@ def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
         "takes did_not_hold before undecided": ("line", _line_in_order(
             ("ruling_not_honoured", "did_not_hold", "undecided", "held_so_far", "held"))),
         "counts a deal left out": ("_counts", _counting_left_out),
+        "takes left_out before shop_preauth": ("_counts", _counting_left_out_first),
         "lets a /3 card leave out coverage_start": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_3:
                                                                 sh.MEMBERS[sh.DERIVATION_3] - {"coverage_start"}}),
     }

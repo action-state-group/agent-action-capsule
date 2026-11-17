@@ -569,9 +569,11 @@ def deals3(later: bool) -> list:
         # Left out: its agreement names witnesses and no time from them is held. Not counted.
         deal3("deal-311", "2026-10-12T10:00:00Z", "provided", amount("1000", "USD", 2),
               [row(H, "agreed", MET)], "stamped_by_both", "person_agent", left_out="no_witness_time"),
-        # A shop purchase paid up front: not counted, its dispute counts nowhere.
+        # A shop purchase paid up front: not counted, its dispute counts nowhere. It also carries
+        # left_out, and is not counted as shop_preauth, the first reason.
         deal3("deal-312", "2026-10-15T10:00:00Z", "bought", amount("6000", "USD", 2),
-              [row(C, "agreed", MET)], "receipt_only", "shop_preauth", (("received", "open", "rail"),)),
+              [row(C, "agreed", MET)], "receipt_only", "shop_preauth", (("received", "open", "rail"),),
+              left_out="no_witness_time"),
         # Before the window at both anchors.
         deal3("deal-313", "2026-06-01T10:00:00Z", "provided", amount("4500", "USD", 2),
               [row(H, "agreed", NOT_MET)], "stamped_by_both", "person_agent"),
@@ -601,13 +603,18 @@ def split(of: int, not_remedied: int = 0, remedy_pending: int = 0, remedied: int
             "other_side": other_side}
 
 
+def reasons(of: int, shop_preauth: int = 0, no_witness_time: int = 0) -> dict:
+    return {"of": of, "shop_preauth": shop_preauth, "no_witness_time": no_witness_time}
+
+
 def card3(*, anchor: str = ANCHOR, outcomes: dict, did_not_hold: dict, bands: list, unpriced: dict) -> dict:
     """A /3 card over DEALS_3 or DEALS_3B (3-month window), in the counting table's member order. Only
     the lines move between the two anchors; every other tally is the same."""
     return {"derivation": SH3, "holder_kind": "person", "controller_class": "person_declared",
             "anchor": anchor, "since": "2026-03", "coverage_start": "2026-04", "window": {"months": 3},
             "policy": POLICY_3M["digest"],
-            "in_window": tally(13, counted=11, not_counted=2), "class_missing": tally(11, count=1),
+            "in_window": tally(13, counted=11, not_counted=2),
+            "not_counted": reasons(2, shop_preauth=1, no_witness_time=1), "class_missing": tally(11, count=1),
             "outcomes": outcomes, "did_not_hold": did_not_hold, "local_times": tally(11, count=2),
             "bands": bands, "unpriced": unpriced,
             "roles": tally(11, provided=7, bought=4),
@@ -645,7 +652,8 @@ def cases_3() -> list:
         # Positive.
         case("lines-and-split", "Every line and every part of the split, a deal where undecided and "
              "did_not_hold both apply (the first wins), a ruling not honoured that wins over undecided, a deal "
-             "left out without a witness time, a shop purchase, two unpriced deals and a zero amount",
+             "left out without a witness time, a shop purchase "
+             "that also carries left_out (tallied under shop_preauth, the first reason), two unpriced deals and a zero amount",
              ["§11.2", "§11.3", "§11.4", "§11.6", "§11.7"], PERSON_3M_3, props(), **FULL_3),
         case("quiet-deals-later-anchor", "The same deals at a later anchor with no new fact: a row not yet "
              "due now has no statement (held_so_far to undecided), a contest window has ended (held_so_far to "
@@ -667,7 +675,8 @@ def cases_3() -> list:
         case("left-out-counted", "deal-311, left out for want of a witness time, counted as held, every tally "
              "agreeing with the others", ["§11.2", "§11.7"],
              mutate(PERSON_3M_3, lambda c: c.update(
-                 in_window=tally(13, counted=12, not_counted=1), class_missing=tally(12, count=1),
+                 in_window=tally(13, counted=12, not_counted=1), not_counted=reasons(1, shop_preauth=1),
+                 class_missing=tally(12, count=1),
                  outcomes=lines(12, held=2, held_so_far=2, did_not_hold=4, undecided=3, ruling_not_honoured=1),
                  bands=c["bands"][:4] + [band3("USD", 1, 4, held=2, held_so_far=1, did_not_hold=1),
                                          c["bands"][5]],
@@ -687,6 +696,14 @@ def cases_3() -> list:
              ["§11.6", "§11.7"],
              mutate(PERSON_3M_3, lambda c: c.update(did_not_hold=split(3, not_remedied=1, remedy_pending=1,
                                                                        remedied=1))),
+             props(denominator="FAIL", counts_recompute=NC), **FULL_3),
+        case("not-counted-wrong-reason", "Both deals not counted tallied as left out for want of a witness "
+             "time, though deal-312 is a shop purchase", ["§11.6", "§11.7"],
+             mutate(PERSON_3M_3, lambda c: c.update(not_counted=reasons(2, no_witness_time=2))),
+             props(counts_recompute="FAIL"), **FULL_3),
+        case("not-counted-not-the-window", "The not_counted tally partitions its own of, which is not "
+             "in_window.not_counted", ["§11.6", "§11.7"],
+             mutate(PERSON_3M_3, lambda c: c.update(not_counted=reasons(1, shop_preauth=1))),
              props(denominator="FAIL", counts_recompute=NC), **FULL_3),
         case("band-three-outcomes", "A band counted by the three outcomes of /1 and /2", ["§11.6", "§11.7"],
              mutate(PERSON_3M_3, lambda c: c["bands"].__setitem__(0, band("BTC", -7, 1, did_not_hold=1))),
@@ -743,6 +760,7 @@ PACK_STRINGS_3 = {
     "deals.local_times": "counted deals with a row that rests on a record no witness timed",
     "deals.held_so_far": "counted deals held so far, with a row not yet due or a contest window open",
     "deals.did_not_hold.split": "of the deals that did not hold, by what became of the unmet rows",
+    "deals.not_counted.reasons": "of the deals not counted, by why: a shop purchase paid up front, or no time from a witness the agreement names",
     "coverage.start": "complete from {coverage_start}; before it, the deals the holder carried into its shelf log",
     "level.recomputed": "recounted from the holder's whole shelf",
     "level.form_only": "checked for its form only",
@@ -824,7 +842,8 @@ def check_frame_3(all_cases: list) -> None:
                    "counterparty_class": COUNTERPARTY_CLASSES, "not_counted": NOT_COUNTED_3,
                    "record_kinds": RECORD_KINDS},
         "card_members": list(model),
-        "tallies": {"in_window": list(model["in_window"]), "class_missing": list(model["class_missing"]),
+        "tallies": {"in_window": list(model["in_window"]), "not_counted": list(model["not_counted"]),
+                    "class_missing": list(model["class_missing"]),
                     "outcomes": list(model["outcomes"]), "did_not_hold": list(model["did_not_hold"]),
                     "local_times": list(model["local_times"]),
                     "band": list(model["bands"][0]), "unpriced": list(model["unpriced"]),
