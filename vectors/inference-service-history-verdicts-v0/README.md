@@ -20,16 +20,17 @@ artifact.
 ## Cases
 
 One positive (`verdict-counts-held`: all four results; a cell under the floor and its total withheld;
-a withheld model beside a published total with another cell withheld with it) and twelve negatives,
-each failing one History property: a published value under the floor, a missing complementary
+a withheld model beside a published total with another cell withheld with it) and fourteen negatives,
+each failing one History property (`artifact_form` failures report no property after it, §8.3): a published value under the floor, a missing complementary
 suppression, a result's table dropped, another unit, a label stronger than the evidence, a count
-signed by the node or of another kind of check, the results added together, models out of order,
+signed by the node or of another kind of check, a withheld cell that states a value or an unknown reason, the results added together, models out of order,
 another period policy, a period left out, and a member the artifact does not declare.
 
 ## Not covered
 
-- The rule for two or more withheld models beside a published total (SH-8 stays open); the Rust
-  library withholds the total there, which these cases do not state.
+- The rule for two or more withheld models beside a published total (SH-8 stays open). The Rust
+  library withholds the total there only when every withheld model is under the floor and the rest
+  of the total is nothing, one each or the most a withheld cell can hold; these cases do not state it.
 - Delivery of a verdict to a node, and the ask by digest that checks omission (SH-15): the host's.
 - The envelope, the card and the other History properties: `vectors/inference-service-history-v0/`.
 - Go, the capsule-engine admission evaluator and the Python library do not read this member yet.

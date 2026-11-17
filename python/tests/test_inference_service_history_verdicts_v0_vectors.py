@@ -69,14 +69,18 @@ def fails(case: dict) -> set[str]:
                                                                        for c in models):
                 out.add("artifact_form")
             if len(totals) != 1 or group[-1] is not totals[0]:
-                out.add("period_floor" if len(totals) != 1 else "artifact_form")
+                out.add("artifact_form")
                 continue
             for c in group:
                 if c["unit"] != "referee_verdicts":
                     out.add("units")
                 if c["label"] != "self_reported":
                     out.add("labels")
-                if c.get("suppressed") is None and (c["value"] is None or c["value"] < floor):
+                if c.get("suppressed") is None:
+                    if c["value"] is None or c["value"] < floor:
+                        out.add("period_floor")
+                elif c["value"] is not None or c["suppressed"] not in ("below_floor", "complementary"):
+                    # §6.2: a withheld cell states no value and one of the two reasons.
                     out.add("period_floor")
             total = totals[0]
             withheld = [c for c in models if c.get("suppressed") is not None]
@@ -92,15 +96,21 @@ def fails(case: dict) -> set[str]:
 
 def test_every_case_agrees_with_the_independent_evaluation():
     data = corpus()
-    assert data["count"] == len(data["cases"]) == 13
+    assert data["count"] == len(data["cases"]) == 15
     for case in data["cases"]:
         expected = set(case["expected"]["fails"])
         got = fails(case)
         assert got == expected, (case["id"], got, expected)
         assert case["expected"]["accepted"] is (not expected), case["id"]
-        listed = [p for p, s in case["expected"]["history_properties"].items() if s == "FAIL"]
-        assert set(listed) == expected, case["id"]
-        assert set(listed) <= set(ORDER)
+        reported = case["expected"]["history_properties"]
+        assert {p for p, s in reported.items() if s == "FAIL"} == expected, case["id"]
+        # §8.3: the properties up to the first failing one in the profile's order are reported when
+        # artifact_form fails (none after it); otherwise every property is.
+        if "artifact_form" in expected:
+            assert list(reported) == gen.g.STANDARD_PROPS[:3], case["id"]
+        else:
+            assert list(reported) == gen.g.STANDARD_PROPS, case["id"]
+        assert expected <= set(ORDER)
 
 
 def test_the_positive_case_withholds_what_the_floor_withholds():
@@ -117,6 +127,8 @@ def test_the_positive_case_withholds_what_the_floor_withholds():
 
 def test_the_directory_is_regenerated_byte_for_byte():
     with tempfile.TemporaryDirectory() as tmp:
+        # The README is written by hand and listed in SHA256SUMS with the generated files.
+        (Path(tmp) / "README.md").write_bytes((DIR / "README.md").read_bytes())
         gen.write(Path(tmp))
         for name in ("vectors.json", "manifest.json", "SHA256SUMS"):
             assert (Path(tmp) / name).read_bytes() == (DIR / name).read_bytes(), name
@@ -125,6 +137,6 @@ def test_the_directory_is_regenerated_byte_for_byte():
 def test_sha256sums_list_every_file():
     sums = dict(line.split("  ")[::-1] for line in (DIR / "SHA256SUMS").read_text().splitlines())
     for path in DIR.iterdir():
-        if path.name in ("SHA256SUMS", "README.md"):
+        if path.name == "SHA256SUMS":
             continue
         assert sums[path.name] == hashlib.sha256(path.read_bytes()).hexdigest()

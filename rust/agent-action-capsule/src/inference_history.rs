@@ -1027,6 +1027,11 @@ fn check_verdicts(
                     "the {result} cells are not the model hashes in order, then the total"
                 )));
             }
+            // Each result's table ends in its one total; a period that lists none, or
+            // lists it elsewhere, is not the artifact's form.
+            if hashes.iter().filter(|h| h.is_none()).count() != 1 {
+                return Err(bad(&format!("the {result} table has no single total")));
+            }
             let cells = check_cells(&Value::Array(plain), def.policy.floor, VERDICT_UNIT, true)
                 .map_err(|e| format!("{e} (in the {result} verdicts)"))?;
             for (cell, hash) in cells.into_iter().zip(hashes) {

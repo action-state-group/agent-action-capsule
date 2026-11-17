@@ -102,6 +102,8 @@ def definition() -> dict:
         "reads": ["record: referee verdict held by this node", "record: model identity hash",
                   "record: committed_at"],
         "units": [{"where": "periods[].cells[]", "unit": UNIT}],
+        "claims": {"asserted_by": "provider", "label": "provider states",
+                   "where": ["periods[].cells[].dimension.model_hash"]},
     }]
     reads: list[str] = []
     for m in d["members"]:
@@ -128,6 +130,10 @@ def cases() -> list[dict]:
 
     def case(cid: str, title: str, cites: list[str], source: str, h: dict, fail: str | None) -> None:
         hprops = g.props(g.STANDARD_PROPS, **({fail: "FAIL"} if fail else {}))
+        if fail == "artifact_form":
+            # §8.3: when artifact_form is FAIL no property after it is reported.
+            keep = g.STANDARD_PROPS[:g.STANDARD_PROPS.index("artifact_form") + 1]
+            hprops = {k: hprops[k] for k in keep}
         cov = g.standard_coverage()
         out.append({"id": cid, "title": title, "cites": cites, "source": source, "kind": "history",
                     "pins": g.pins(), "inputs": h,
@@ -166,8 +172,22 @@ def cases() -> list[dict]:
         v["periods"][1]["cells"] = [c for c in v["periods"][1]["cells"]
                                     if c["dimension"]["result"] != "inconclusive"]
     case("mutant-verdict-result-table-dropped", "A period that lists no inconclusive cells at all",
-         ["§5.3", "§6.3"], "constructed: period 2 without its inconclusive table", tampered(drop_table),
-         "period_floor")
+         ["§5.3", "§8.3"], "constructed: period 2 without its inconclusive table", tampered(drop_table),
+         "artifact_form")
+
+    def withheld_with_a_value(v: dict) -> None:
+        c = next(c for c in v["periods"][0]["cells"] if c.get("suppressed") == "below_floor")
+        c["value"] = 3
+    case("mutant-verdict-withheld-cell-carries-a-value", "A withheld cell that still states its value",
+         ["§6.2", "§6.3"], "constructed: period 1's under-floor contradicted cell with the value 3",
+         tampered(withheld_with_a_value), "period_floor")
+
+    def unknown_reason(v: dict) -> None:
+        c = next(c for c in v["periods"][0]["cells"] if c.get("suppressed") == "below_floor")
+        c["suppressed"] = "because"
+    case("mutant-verdict-withheld-for-an-unknown-reason", "A withheld cell whose reason is not one of the profile's",
+         ["§6.2", "§6.3"], "constructed: period 1's under-floor contradicted cell withheld as 'because'",
+         tampered(unknown_reason), "period_floor")
 
     def another_unit(v: dict) -> None:
         v["periods"][0]["cells"][0]["unit"] = "exchanges_served"
