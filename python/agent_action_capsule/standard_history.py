@@ -228,13 +228,17 @@ def outcome(rows: Sequence[Mapping[str, Any]]) -> tuple[str, str | None]:
     own = [r for r in rows if r["owed_by"] == "holder"]
     if any(r["status"] == "ruled" and r["remedy"] == "not_honoured" for r in own):
         return "did_not_hold", "not_honoured"
+    unmet = [r for r in own if r["status"] in UNMET_STATUSES + ("ruled",) and r["value"] == "not_met"]
+    # Remedied when every unmet row has its remedy made, by a ruling or without one.
+    failed = ("did_not_hold", "remedied" if all(r["remedy"] == "made" for r in unmet) else None)
+    # A final unmet row comes before the rows still open, so a dispute cannot hide it.
+    if any(r["status"] != "agreed_so_far" for r in unmet):
+        return failed
     if any(r["status"] in ("in_disagreement", "in_dispute", "no_statement")
            or (r["status"] == "waiting" and r["value"] == "not_met") for r in rows):
         return "undecided", None
-    unmet = [r for r in own if r["status"] in UNMET_STATUSES + ("ruled",) and r["value"] == "not_met"]
     if unmet:
-        # Remedied when every unmet row has its remedy made, by a ruling or without one.
-        return "did_not_hold", "remedied" if all(r["remedy"] == "made" for r in unmet) else None
+        return failed
     # A row not reached comes after did_not_hold, so it cannot hide an unmet row.
     if any(r["status"] in ("not_reached", "not_due", "waiting", "agreed_so_far") for r in rows):
         return "undecided", None

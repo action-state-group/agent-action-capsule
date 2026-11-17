@@ -655,8 +655,9 @@ A counted deal has one of §5.2's three outcomes, by the first rule in this orde
 | Outcome | When |
 |---|---|
 | `did_not_hold` | a row the holder owed is `ruled` with remedy `not_honoured` |
+| `did_not_hold` | a row the holder owed is `agreed`, `uncontested` or `ruled` with value `not_met` |
 | `undecided` | a row is `in_disagreement`, `in_dispute` or `no_statement`, or is `waiting` with value `not_met` |
-| `did_not_hold` | a row the holder owed is `agreed_so_far`, `agreed`, `uncontested` or `ruled` with value `not_met` |
+| `did_not_hold` | a row the holder owed is `agreed_so_far` with value `not_met` |
 | `undecided` | a row is `not_reached` or `not_due`, or is `waiting` or `agreed_so_far` |
 | `held` | every row is `agreed`, `uncontested` or `ruled` with value `met`, or is a row the counterparty owed that has value `not_met` |
 
@@ -667,6 +668,10 @@ A counted deal has one of §5.2's three outcomes, by the first rule in this orde
   has the outcome the holder's own rows give it, `held` once every row is final.
 - **A ruling not honoured comes first.** A ruling on a row the holder owed whose remedy's date
   passed without one makes the deal `did_not_hold` whatever its other rows are.
+- **A final unmet row comes before a dispute.** A row the holder owed that is final and not met
+  makes the deal `did_not_hold` even when another row is in disagreement or dispute, so a holder
+  cannot hide a failure it conceded by disputing another row. An unmet row still inside its
+  contest window (`agreed_so_far`) can still change, so it comes after those rows.
 - **A row not reached.** A `not_reached` row makes the deal `undecided` unless `did_not_hold`
   applies (evidencebook#482 Q12): its date can no longer be set, so it never becomes due, and
   leaving it out would let a holder drop a row from its card by never timing the record the row's
@@ -829,15 +834,15 @@ For a standard `/3` card, §6 "What a verifier shows" holds, with these addition
 ### 11.10 Vectors
 
 `vectors/standard-history-v0/vectors-3.json` holds the `/3` cases, each naming its token in
-`inputs.derivation`: a card over deals of every outcome, with a deal where `undecided` and
-`did_not_hold` both apply (`undecided` first), a ruling the holder did not honour that comes before
-`undecided`, a row not reached (`undecided`, and after `did_not_hold`), a deal where only the
+`inputs.derivation`: a card over deals of every outcome, with a final unmet row that a row in
+dispute does not hide, an unmet row still in its contest window behind a row waiting on a statement
+of not met, a ruling the holder did not honour that comes before `undecided`, a row not reached (`undecided`, and after `did_not_hold`), a deal where only the
 counterparty failed (`held`), a remedy made
 without a ruling, rows that rest on untimed records, a deal left out without a witness time, a shop
 purchase that also carries `left_out` (counted as `shop_preauth`), two unpriced deals and two bands;
 the same deals at a later anchor, where a deal with no new fact moves from `undecided` to `held`;
 and negatives each failing the property named: a deal counted `did_not_hold` where `undecided`
-applies first, a ruling not honoured counted `undecided`, the deal where only the counterparty
+applies first, a row in dispute hiding a final unmet row, a ruling not honoured counted `undecided`, the deal where only the counterparty
 failed counted `did_not_hold`, a row not reached left out, a row not reached hiding an unmet row, a
 ruling not honoured left out of `not_honoured`, a deal left out counted, the deals with local
 results left out of `local_times`, a remedy made without a ruling not counted as remedied, and the

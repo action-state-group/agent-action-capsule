@@ -52,8 +52,9 @@ beside it (`unpriced-card-only`), and a `/2` card whose every deal has an amount
 `v2-without-unpriced`, `unpriced-with-currency`, `v1-card-for-v2-request`,
 `v2-card-for-v1-request` and `v1-card-with-unpriced`.
 
-In `vectors-3.json`, positive: `outcomes-from-rows` (every outcome; a deal where `undecided` and
-`did_not_hold` both apply, counted `undecided`; a ruling the holder did not honour, counted
+In `vectors-3.json`, positive: `outcomes-from-rows` (every outcome; a final unmet row beside a row
+in dispute, counted `did_not_hold`; an unmet row still in its contest window beside a row waiting on
+a statement of not met, counted `undecided`; a ruling the holder did not honour, counted
 `did_not_hold` before `undecided` and counted in `not_honoured`; a row not reached, counted
 `undecided`, and one beside an unmet row, which stays `did_not_hold`; a deal where only the
 counterparty failed, counted `held`; a remedy made without a ruling, counted remedied; a deal left
@@ -61,7 +62,7 @@ out for want of a witness time and a shop purchase that also carries `left_out`,
 one reason each; two unpriced deals and a zero amount), `quiet-deals-later-anchor` (the same deals
 at a later anchor with no new fact: one moves from `undecided` to `held`), and the first card
 without the deal entries (`outcomes-without-shelf`) and with nothing beside it
-(`outcomes-card-only`). Negative: `outcome-not-first`, `ruling-not-honoured-undecided`,
+(`outcomes-card-only`). Negative: `outcome-not-first`, `dispute-hides-unmet`, `ruling-not-honoured-undecided`,
 `other-side-did-not-hold`, `not-reached-left-out`, `not-reached-hides-unmet`, `left-out-counted`,
 `local-times-dropped`, `refund-not-remedied`, `not-honoured-uncounted`,
 `not-honoured-not-did-not-hold`, `remedied-and-not-honoured`, `remedied-not-did-not-hold`,

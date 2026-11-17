@@ -323,7 +323,9 @@ func TestV3OutcomeRules(t *testing.T) {
 		{[]standardhistory.Row{holder("agreed", "met", ""), other("not_reached", "", "")}, "undecided"},
 		{[]standardhistory.Row{holder("agreed", "not_met", "none"), other("not_reached", "", "")}, "did_not_hold"},
 		{[]standardhistory.Row{holder("ruled", "not_met", "not_honoured"), other("in_dispute", "", "")}, "did_not_hold"},
-		{[]standardhistory.Row{holder("agreed", "not_met", "none"), other("in_dispute", "", "")}, "undecided"},
+		{[]standardhistory.Row{holder("agreed", "not_met", "none"), other("in_dispute", "", "")}, "did_not_hold"},
+		{[]standardhistory.Row{holder("agreed_so_far", "not_met", "none"), other("in_dispute", "", "")}, "undecided"},
+		{[]standardhistory.Row{holder("agreed_so_far", "not_met", "none"), other("not_due", "", "")}, "did_not_hold"},
 		{[]standardhistory.Row{holder("agreed", "not_met", "none"), other("not_due", "", "")}, "did_not_hold"},
 		{[]standardhistory.Row{holder("agreed_so_far", "met", ""), other("agreed", "met", "")}, "undecided"},
 	} {

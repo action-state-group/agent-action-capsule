@@ -111,7 +111,7 @@ def test_every_negative_named_for_v2_is_present() -> None:
 def test_every_negative_named_for_v3_is_present() -> None:
     """SH §11.10: the /3 cases, each negative failing the property named."""
     fails = {c["id"]: c["expected"]["fails"] for c in CASES_3}
-    for cid in ("outcome-not-first", "ruling-not-honoured-undecided", "other-side-did-not-hold",
+    for cid in ("outcome-not-first", "dispute-hides-unmet", "ruling-not-honoured-undecided", "other-side-did-not-hold",
                 "not-reached-left-out", "not-reached-hides-unmet", "not-honoured-uncounted",
                 "left-out-counted", "local-times-dropped", "refund-not-remedied",
                 "not-counted-wrong-reason"):
@@ -166,7 +166,9 @@ def _row(owed_by: str, status: str, value: str | None = None, remedy: str | None
     ([_row("holder", "agreed", "met"), _row("counterparty", "not_reached")], "undecided"),
     ([_row("holder", "agreed", "not_met", "none"), _row("counterparty", "not_reached")], "did_not_hold"),
     ([_row("holder", "ruled", "not_met", "not_honoured"), _row("counterparty", "in_dispute")], "did_not_hold"),
-    ([_row("holder", "agreed", "not_met", "none"), _row("counterparty", "in_dispute")], "undecided"),
+    ([_row("holder", "agreed", "not_met", "none"), _row("counterparty", "in_dispute")], "did_not_hold"),
+    ([_row("holder", "agreed_so_far", "not_met", "none"), _row("counterparty", "in_dispute")], "undecided"),
+    ([_row("holder", "agreed_so_far", "not_met", "none"), _row("counterparty", "not_due")], "did_not_hold"),
     ([_row("holder", "agreed", "not_met", "none"), _row("counterparty", "not_due")], "did_not_hold"),
     ([_row("holder", "agreed_so_far", "met"), _row("counterparty", "agreed", "met")], "undecided"),
 ])
@@ -354,11 +356,21 @@ def _remedied_unchecked(card: dict, derivation: str) -> bool:
 _REAL_OUTCOME = sh.outcome
 
 
-def _did_not_hold_first(rows):
-    """An outcome function that reads the holder's unmet rows before the undecided rule."""
-    if any(r["owed_by"] == "holder" and r["status"] in sh.UNMET_STATUSES + ("ruled",)
-           and r.get("value") == "not_met" for r in rows):
+def _open_unmet_first(rows):
+    """An outcome function that reads an unmet row still in its contest window before the rows
+    in dispute (SH §11.3)."""
+    if any(r["owed_by"] == "holder" and r["status"] == "agreed_so_far" and r.get("value") == "not_met"
+           for r in rows):
         return "did_not_hold", None
+    return _REAL_OUTCOME(rows)
+
+
+def _dispute_first(rows):
+    """An outcome function where a row in dispute hides a final unmet row (SH §11.3)."""
+    if _REAL_OUTCOME(rows)[1] != "not_honoured" and any(
+            r["status"] in ("in_disagreement", "in_dispute", "no_statement")
+            or (r["status"] == "waiting" and r.get("value") == "not_met") for r in rows):
+        return "undecided", None
     return _REAL_OUTCOME(rows)
 
 
@@ -419,7 +431,8 @@ def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
         "lets a /1 card carry unpriced": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION: sh.MEMBERS[sh.DERIVATION_2]}),
         "leaves unpriced out of the outcome totals": ("_denominator", _bands_only),
         "does not tie remedied to did_not_hold": ("_denominator", _remedied_unchecked),
-        "takes did_not_hold before undecided": ("outcome", _did_not_hold_first),
+        "takes an open unmet row before undecided": ("outcome", _open_unmet_first),
+        "lets a dispute hide a final unmet row": ("outcome", _dispute_first),
         "blames the holder for the counterparty's rows": ("outcome", _counterparty_blamed),
         "leaves a not_reached row out": ("outcome", _not_reached_left_out),
         "lets a not_reached row hide an unmet row": ("outcome", _not_reached_first),

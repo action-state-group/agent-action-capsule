@@ -525,6 +525,26 @@ func Outcome(rows []Row) (outcome, detail string) {
 			return "did_not_hold", "not_honoured"
 		}
 	}
+	unmet, final := false, false
+	remedied := true
+	for _, r := range own {
+		if (r.Status == "ruled" || slices.Contains(unmetStatuses, r.Status)) && r.Value == "not_met" {
+			unmet = true
+			final = final || r.Status != "agreed_so_far"
+			// Remedied when every unmet row has its remedy made, by a
+			// ruling or without one.
+			remedied = remedied && r.Remedy == "made"
+		}
+	}
+	failed := ""
+	if remedied {
+		failed = "remedied"
+	}
+	// A final unmet row comes before the rows still open, so a dispute
+	// cannot hide it.
+	if final {
+		return "did_not_hold", failed
+	}
 	for _, r := range rows {
 		switch {
 		case slices.Contains([]string{"in_disagreement", "in_dispute", "no_statement"}, r.Status),
@@ -532,21 +552,8 @@ func Outcome(rows []Row) (outcome, detail string) {
 			return "undecided", ""
 		}
 	}
-	unmet := false
-	remedied := true
-	for _, r := range own {
-		if (r.Status == "ruled" || slices.Contains(unmetStatuses, r.Status)) && r.Value == "not_met" {
-			unmet = true
-			// Remedied when every unmet row has its remedy made, by a
-			// ruling or without one.
-			remedied = remedied && r.Remedy == "made"
-		}
-	}
 	if unmet {
-		if remedied {
-			return "did_not_hold", "remedied"
-		}
-		return "did_not_hold", ""
+		return "did_not_hold", failed
 	}
 	// A row not reached comes after did_not_hold, so it cannot hide an
 	// unmet row.

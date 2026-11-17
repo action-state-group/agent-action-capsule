@@ -555,7 +555,8 @@ def deals3(later: bool) -> list:
         deal3("deal-306", "2026-09-20T10:00:00Z", "provided", None,
               [row(H, "agreed", MET), row(C, "uncontested", NOT_MET), row(C, "ruled", NOT_MET, "not_honoured")],
               "receipt_only", "person_agent"),
-        # undecided wins over did_not_hold: a row in dispute and a row agreed as not met.
+        # did_not_hold: the holder's row agreed as not met is final, so the counterparty's row in
+        # dispute does not hide it.
         deal3("deal-307", "2026-09-25T10:00:00Z", "bought", amount("300", "USD", 0),
               [row(H, "agreed", NOT_MET), row(C, "in_dispute")], "no_record", "business_agent",
               (("received", "open", "network"),)),
@@ -565,9 +566,11 @@ def deals3(later: bool) -> list:
               [row(H, "ruled", NOT_MET, "not_honoured"), row(C, "no_statement")], "stamped_by_both",
               "person_agent", (("received", "against", "external"),)),
         # undecided: waiting for the other side on a statement of not met, resting on an untimed
-        # record. Zero amount.
+        # record, comes before the holder's row agreed as not met inside its contest window. Zero
+        # amount.
         deal3("deal-309", "2026-10-05T10:00:00Z", "bought", amount("0", "USD", 2),
-              [row(C, "waiting", NOT_MET, local=True)], "no_record", "business_agent"),
+              [row(C, "waiting", NOT_MET, local=True), row(H, "agreed_so_far", NOT_MET)], "no_record",
+              "business_agent"),
         # undecided: its only row's date can no longer be set. Unpriced.
         deal3("deal-310", "2026-10-10T10:00:00Z", "provided", None,
               [row(H, "not_reached")], "no_record", "person_agent"),
@@ -612,8 +615,8 @@ def card3(*, anchor: str = ANCHOR, outcomes: dict, bands: list) -> dict:
             "policy": POLICY_3M["digest"],
             "in_window": tally(13, counted=11, not_counted=2),
             "not_counted": reasons(2, shop_preauth=1, no_witness_time=1), "class_missing": tally(11, count=1),
-            "outcomes": outcomes, "remedied": remedied(4, count=1),
-            "not_honoured": not_honoured(4, count=1), "local_times": tally(11, count=2),
+            "outcomes": outcomes, "remedied": remedied(5, count=1),
+            "not_honoured": not_honoured(5, count=1), "local_times": tally(11, count=2),
             "bands": bands, "unpriced": tally(2, held=1, did_not_hold=0, undecided=1),
             "roles": tally(11, provided=7, bought=4),
             "happened": tally(11, stamped_by_both=4, receipt_only=4, no_record=3),
@@ -627,20 +630,20 @@ def outs(of: int, held: int = 0, did_not_hold: int = 0, undecided: int = 0) -> d
 
 # SH §11 by hand over DEALS_3 at the first anchor: deal-313 is out of the window; deal-311 (left out)
 # and deal-312 (shop) are not counted; deal-304 has no class. held: 306; did_not_hold: 303, 304,
-# 305 (remedied), 308; undecided: 301, 302, 307, 309, 310, 314.
+# 305 (remedied), 307, 308 (not honoured); undecided: 301, 302, 309, 310, 314.
 PERSON_3M_3 = card3(
-    outcomes=outs(11, held=1, did_not_hold=4, undecided=6),
+    outcomes=outs(11, held=1, did_not_hold=5, undecided=5),
     bands=[band("BTC", -7, 1, did_not_hold=1), band("EUR", 0, 1, did_not_hold=1),
            band("EUR", 1, 1, did_not_hold=1), band("USD", None, 1, undecided=1),
-           band("USD", 1, 3, did_not_hold=1, undecided=2), band("USD", 2, 2, undecided=2)],
+           band("USD", 1, 3, did_not_hold=1, undecided=2), band("USD", 2, 2, did_not_hold=1, undecided=1)],
 )
 # The same deals at the later anchor: deal-314 is now held; deal-302 is still undecided.
 PERSON_3M_3B = card3(
     anchor=ANCHOR_B,
-    outcomes=outs(11, held=2, did_not_hold=4, undecided=5),
+    outcomes=outs(11, held=2, did_not_hold=5, undecided=4),
     bands=[band("BTC", -7, 1, did_not_hold=1), band("EUR", 0, 1, did_not_hold=1),
            band("EUR", 1, 1, did_not_hold=1), band("USD", None, 1, undecided=1),
-           band("USD", 1, 3, held=1, did_not_hold=1, undecided=1), band("USD", 2, 2, undecided=2)],
+           band("USD", 1, 3, held=1, did_not_hold=1, undecided=1), band("USD", 2, 2, did_not_hold=1, undecided=1)],
 )
 FULL_3 = {"policy": POLICY_3M, "as_of": AS_OF_3, "deals": DEALS_3, "derivation": SH3}
 
@@ -655,8 +658,8 @@ def _five_lines(t: dict) -> dict:
 def cases_3() -> list:
     return [
         # Positive.
-        case("outcomes-from-rows", "Every outcome, a deal where undecided and did_not_hold both apply (undecided "
-             "first), a ruling the holder did not honour that comes before undecided, a row not reached (undecided, "
+        case("outcomes-from-rows", "Every outcome, a final unmet row that a row in dispute does not hide, an unmet "
+             "row still in its contest window that a row waiting on a statement of not met comes before, a ruling the holder did not honour that comes before undecided, a row not reached (undecided, "
              "and after did_not_hold), a deal "
              "where only the counterparty failed (held), a remedy made without a ruling, a deal left out without "
              "a witness time, a shop purchase that also carries left_out (tallied under shop_preauth, the first "
@@ -672,44 +675,52 @@ def cases_3() -> list:
         case("outcomes-card-only", "The first card, checked with nothing beside it", ["§11.7"], PERSON_3M_3,
              props(window_from_policy=NC, as_of=NC, counts_recompute=NC), derivation=SH3),
         # Negative.
-        case("outcome-not-first", "deal-307 counted as did_not_hold though undecided applies first, every "
-             "tally agreeing with the others", ["§11.3", "§11.7"],
+        case("outcome-not-first", "deal-309 counted as did_not_hold for its unmet row still in its contest "
+             "window, though the row waiting on a statement of not met applies first, every tally agreeing with "
+             "the others", ["§11.3", "§11.7"],
              mutate(PERSON_3M_3, lambda c: c.update(
-                 outcomes=outs(11, held=1, did_not_hold=5, undecided=5), remedied=remedied(5, count=1),
-                 not_honoured=not_honoured(5, count=1),
-                 bands=c["bands"][:5] + [band("USD", 2, 2, did_not_hold=1, undecided=1)])),
+                 outcomes=outs(11, held=1, did_not_hold=6, undecided=4), remedied=remedied(6, count=1),
+                 not_honoured=not_honoured(6, count=1),
+                 bands=c["bands"][:3] + [band("USD", None, 1, did_not_hold=1)] + c["bands"][4:])),
+             props(counts_recompute="FAIL"), **FULL_3),
+        case("dispute-hides-unmet", "deal-307, whose holder row was agreed as not met, counted as undecided for "
+             "the counterparty's row in dispute, every tally agreeing with the others", ["§11.3", "§11.7"],
+             mutate(PERSON_3M_3, lambda c: c.update(
+                 outcomes=outs(11, held=1, did_not_hold=4, undecided=6), remedied=remedied(4, count=1),
+                 not_honoured=not_honoured(4, count=1),
+                 bands=c["bands"][:5] + [band("USD", 2, 2, undecided=2)])),
              props(counts_recompute="FAIL"), **FULL_3),
         case("ruling-not-honoured-undecided", "deal-308, whose ruling the holder did not honour, counted as "
              "undecided for its row with no statement, every tally agreeing with the others", ["§11.3", "§11.7"],
              mutate(PERSON_3M_3, lambda c: c.update(
-                 outcomes=outs(11, held=1, did_not_hold=3, undecided=7), remedied=remedied(3, count=1),
-                 not_honoured=not_honoured(3),
+                 outcomes=outs(11, held=1, did_not_hold=4, undecided=6), remedied=remedied(4, count=1),
+                 not_honoured=not_honoured(4),
                  bands=c["bands"][:2] + [band("EUR", 1, 1, undecided=1)] + c["bands"][3:])),
              props(counts_recompute="FAIL"), **FULL_3),
-        case("other-side-did-not-hold", "deal-306, where only the counterparty failed, counted as did_not_hold, "
-             "every tally agreeing with the others", ["§11.3", "§11.7"],
+        case("other-side-did-not-hold", "deal-306, where only the counterparty failed, counted as did_not_hold "
+             "(not honoured), every tally agreeing with the others", ["§11.3", "§11.7"],
              mutate(PERSON_3M_3, lambda c: c.update(
-                 outcomes=outs(11, did_not_hold=5, undecided=6), remedied=remedied(5, count=1),
-                 not_honoured=not_honoured(5, count=1), unpriced=tally(2, held=0, did_not_hold=1, undecided=1))),
+                 outcomes=outs(11, did_not_hold=6, undecided=5), remedied=remedied(6, count=1),
+                 not_honoured=not_honoured(6, count=2), unpriced=tally(2, held=0, did_not_hold=1, undecided=1))),
              props(counts_recompute="FAIL"), **FULL_3),
         case("not-reached-left-out", "deal-301's row not reached left out, so the deal counted as held, every "
              "tally agreeing with the others", ["§11.3", "§11.7"],
              mutate(PERSON_3M_3, lambda c: c.update(
-                 outcomes=outs(11, held=2, did_not_hold=4, undecided=5),
+                 outcomes=outs(11, held=2, did_not_hold=5, undecided=4),
                  bands=c["bands"][:4] + [band("USD", 1, 3, held=1, did_not_hold=1, undecided=1), c["bands"][5]])),
              props(counts_recompute="FAIL"), **FULL_3),
         case("not-reached-hides-unmet", "deal-303, whose holder row was agreed as not met, counted as undecided "
              "for its row not reached, every tally agreeing with the others", ["§11.3", "§11.7"],
              mutate(PERSON_3M_3, lambda c: c.update(
-                 outcomes=outs(11, held=1, did_not_hold=3, undecided=7), remedied=remedied(3, count=1),
-                 not_honoured=not_honoured(3, count=1),
+                 outcomes=outs(11, held=1, did_not_hold=4, undecided=6), remedied=remedied(4, count=1),
+                 not_honoured=not_honoured(4, count=1),
                  bands=c["bands"][:1] + [band("EUR", 0, 1, undecided=1)] + c["bands"][2:])),
              props(counts_recompute="FAIL"), **FULL_3),
         case("left-out-counted", "deal-311, left out for want of a witness time, counted as held, every tally "
              "agreeing with the others", ["§11.2", "§11.7"],
              mutate(PERSON_3M_3, lambda c: c.update(
                  in_window=tally(13, counted=12, not_counted=1), not_counted=reasons(1, shop_preauth=1),
-                 class_missing=tally(12, count=1), outcomes=outs(12, held=2, did_not_hold=4, undecided=6),
+                 class_missing=tally(12, count=1), outcomes=outs(12, held=2, did_not_hold=5, undecided=5),
                  bands=c["bands"][:4] + [band("USD", 1, 4, held=1, did_not_hold=1, undecided=2), c["bands"][5]],
                  local_times=tally(12, count=2), roles=tally(12, provided=8, bought=4),
                  happened=tally(12, stamped_by_both=5, receipt_only=4, no_record=3))),
@@ -720,21 +731,21 @@ def cases_3() -> list:
              props(counts_recompute="FAIL"), **FULL_3),
         case("refund-not-remedied", "deal-305, whose unmet rows are remedied (one by a ruling, one by the "
              "holder without one), not counted as remedied", ["§11.4", "§11.7"],
-             mutate(PERSON_3M_3, lambda c: c.update(remedied=remedied(4, count=0))),
+             mutate(PERSON_3M_3, lambda c: c.update(remedied=remedied(5, count=0))),
              props(counts_recompute="FAIL"), **FULL_3),
         case("not-honoured-uncounted", "deal-308, whose ruling the holder did not honour, left out of "
              "not_honoured", ["§11.4", "§11.7"],
-             mutate(PERSON_3M_3, lambda c: c.update(not_honoured=not_honoured(4))),
+             mutate(PERSON_3M_3, lambda c: c.update(not_honoured=not_honoured(5))),
              props(counts_recompute="FAIL"), **FULL_3),
         case("not-honoured-not-did-not-hold", "not_honoured counted over another of than the did_not_hold "
-             "deals", ["§11.6", "§11.7"], mutate(PERSON_3M_3, lambda c: c.update(not_honoured=not_honoured(3, count=1))),
+             "deals", ["§11.6", "§11.7"], mutate(PERSON_3M_3, lambda c: c.update(not_honoured=not_honoured(4, count=1))),
              props(denominator="FAIL", counts_recompute=NC), **FULL_3),
         case("remedied-and-not-honoured", "A deal counted both remedied and not honoured: the two counts "
              "exceed the did_not_hold deals", ["§11.4", "§11.6", "§11.7"],
-             mutate(PERSON_3M_3, lambda c: c.update(remedied=remedied(4, count=4))),
+             mutate(PERSON_3M_3, lambda c: c.update(remedied=remedied(5, count=5))),
              props(denominator="FAIL", counts_recompute=NC), **FULL_3),
         case("remedied-not-did-not-hold", "remedied counted over another of than the did_not_hold deals",
-             ["§11.6", "§11.7"], mutate(PERSON_3M_3, lambda c: c.update(remedied=remedied(3, count=1))),
+             ["§11.6", "§11.7"], mutate(PERSON_3M_3, lambda c: c.update(remedied=remedied(4, count=1))),
              props(denominator="FAIL", counts_recompute=NC), **FULL_3),
         case("not-counted-wrong-reason", "Both deals not counted tallied as left out for want of a witness "
              "time, though deal-312 is a shop purchase", ["§11.6", "§11.7"],
