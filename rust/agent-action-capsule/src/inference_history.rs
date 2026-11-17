@@ -623,10 +623,16 @@ fn suppress(
 }
 
 /// Whether `n` models withheld under `floor`, together holding `rest`, are
-/// each given away by it: nothing, or every one at the largest count a
-/// withheld cell can hold.
+/// each given away by it: every one holds at least 1 (a model is listed only
+/// when it has a verdict) and under `floor`, so `rest` of nothing, of 1 each
+/// or of the most each can hold fixes them all.
 fn derivable(n: usize, rest: u64, floor: u64) -> bool {
-    n >= 2 && (rest == 0 || rest == n as u64 * (floor - 1))
+    let (n, rest, most) = (
+        n as u128,
+        u128::from(rest),
+        u128::from(floor.saturating_sub(1)),
+    );
+    n >= 2 && (rest == 0 || rest == n || rest == n * most)
 }
 
 fn cell_json(dimension: Value, unit: &str, n: u64, why: Option<&str>) -> Value {

@@ -340,6 +340,39 @@ fn a_tampered_verdict_member_does_not_check() {
             }),
         ),
         (
+            "a result's whole table dropped from a period",
+            Box::new(|a| {
+                let cells = vperiods(a)[1]["cells"].as_array_mut().unwrap();
+                cells.retain(|c| c["dimension"]["result"] != json!("inconclusive"));
+            }),
+        ),
+        (
+            "models swapped within a result",
+            Box::new(|a| {
+                let cells = vperiods(a)[1]["cells"].as_array_mut().unwrap();
+                let i = cells
+                    .iter()
+                    .position(|c| c["dimension"]["result"] == json!("corroborated"))
+                    .unwrap();
+                cells.swap(i, i + 1);
+            }),
+        ),
+        (
+            "a result's total before its models",
+            Box::new(|a| {
+                let cells = vperiods(a)[1]["cells"].as_array_mut().unwrap();
+                let i = cells
+                    .iter()
+                    .position(|c| c["dimension"]["result"] == json!("corroborated"))
+                    .unwrap();
+                let j = cells
+                    .iter()
+                    .rposition(|c| c["dimension"]["result"] == json!("corroborated"))
+                    .unwrap();
+                cells[i..=j].rotate_right(1);
+            }),
+        ),
+        (
             "a cell labelled as another label",
             Box::new(|a| {
                 vperiods(a)[0]["cells"][0]["label"] = json!("verified");
@@ -448,4 +481,34 @@ fn v_four_four(d: &Definition, chain: &[Cut<'_>]) -> Value {
         ))
     })
     .unwrap()
+}
+
+#[test]
+fn five_models_of_one_each_are_given_away_by_a_total_of_five() {
+    let d = def();
+    let chain = vec![
+        Cut {
+            timestamp: "2026-01-07T10:00:00Z",
+            leaves: 5,
+        },
+        Cut {
+            timestamp: WEEK_1,
+            leaves: 5,
+        },
+    ];
+    let v = verdict_counts(&d, &chain, &|i| {
+        Some((format!("h{i}"), "contradicted".into()))
+    })
+    .unwrap();
+    let p = &v["periods"][0];
+    assert_eq!(
+        cell(p, "contradicted", None)["suppressed"],
+        json!("complementary")
+    );
+    for i in 0..5 {
+        assert_eq!(
+            cell(p, "contradicted", Some(&format!("h{i}")))["suppressed"],
+            json!("below_floor")
+        );
+    }
 }
