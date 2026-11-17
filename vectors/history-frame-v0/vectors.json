@@ -22,8 +22,8 @@
       "instance": "standard_history/3",
       "table": "spec/history-frame/standard-history-3-table.json",
       "pack": "spec/history-frame/standard-history-3-pack.json",
-      "table_digest": "71e38ed61fbe928ff535aa851e4bc4f86bd7ee039a2a80707cb54a493340cc00",
-      "pack_digest": "bd5f940e4b541d2a91fe7532cde65b3c94004f5958b2d3d573eaabcacf6f55ac"
+      "table_digest": "b0c70d1323a6ff3dda69af4ce1dfd3c16b040dc64e253a42a94f47b86199dfe9",
+      "pack_digest": "89e47c3eb0658142c5d5a28a6d2c82fea5ed72636bee2bb8a9455b72a65fa0f1"
     },
     {
       "instance": "personal_history_basic/1",
@@ -400,8 +400,8 @@
       "inputs": {
         "instance": "standard_history/3",
         "listed": {
-          "table": "71e38ed61fbe928ff535aa851e4bc4f86bd7ee039a2a80707cb54a493340cc00",
-          "pack": "bd5f940e4b541d2a91fe7532cde65b3c94004f5958b2d3d573eaabcacf6f55ac"
+          "table": "b0c70d1323a6ff3dda69af4ce1dfd3c16b040dc64e253a42a94f47b86199dfe9",
+          "pack": "89e47c3eb0658142c5d5a28a6d2c82fea5ed72636bee2bb8a9455b72a65fa0f1"
         },
         "table": {
           "document": "counting_table",
@@ -423,7 +423,8 @@
               "owed_by",
               "status",
               "value",
-              "remedy"
+              "remedy",
+              "local"
             ],
             "row_status": [
               "not_reached",
@@ -446,6 +447,10 @@
               "due",
               "made",
               "not_honoured"
+            ],
+            "unruled_remedy": [
+              "none",
+              "made"
             ],
             "owed_by": [
               "holder",
@@ -482,6 +487,7 @@
             "class_missing",
             "outcomes",
             "did_not_hold",
+            "local_times",
             "bands",
             "unpriced",
             "roles",
@@ -512,6 +518,10 @@
               "remedy_pending",
               "remedied",
               "other_side"
+            ],
+            "local_times": [
+              "of",
+              "count"
             ],
             "band": [
               "currency",
@@ -596,14 +606,16 @@
             "counts.cover": "the counts cover counted deals in the stated window",
             "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
             "deals.not_counted": "deals in the window not counted",
-            "deals.undecided": "counted deals whose outcome cannot be decided yet",
+            "deals.undecided": "counted deals not decided: a row in disagreement or dispute, or without the statement it needed",
             "deals.unpriced": "counted deals without a recorded amount, in no value band",
+            "deals.local_times": "counted deals with a row that rests on a record no witness timed",
             "deals.held_so_far": "counted deals held so far, with a row not yet due or a contest window open",
             "deals.did_not_hold.split": "of the deals that did not hold, by what became of the unmet rows",
             "coverage.start": "complete from {coverage_start}; before it, the deals the holder carried into its shelf log",
             "level.recomputed": "recounted from the holder's whole shelf",
             "level.form_only": "checked for its form only",
-            "anchor.unwitnessed": "unwitnessed: no witness receipt for this snapshot"
+            "anchor.unwitnessed": "unwitnessed: no witness receipt for this snapshot",
+            "anchor.witnessed_only": "the witness timed this snapshot, not the records the counts rest on"
           }
         }
       },

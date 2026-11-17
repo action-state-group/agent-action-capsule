@@ -18,7 +18,8 @@
       "owed_by",
       "status",
       "value",
-      "remedy"
+      "remedy",
+      "local"
     ],
     "row_status": [
       "not_reached",
@@ -41,6 +42,10 @@
       "due",
       "made",
       "not_honoured"
+    ],
+    "unruled_remedy": [
+      "none",
+      "made"
     ],
     "owed_by": [
       "holder",
@@ -77,6 +82,7 @@
     "class_missing",
     "outcomes",
     "did_not_hold",
+    "local_times",
     "bands",
     "unpriced",
     "roles",
@@ -107,6 +113,10 @@
       "remedy_pending",
       "remedied",
       "other_side"
+    ],
+    "local_times": [
+      "of",
+      "count"
     ],
     "band": [
       "currency",

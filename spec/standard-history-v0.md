@@ -90,8 +90,8 @@ vector of this document.
   coverage start it carries (§11.5) is a card member, not a coverage kind: `coverage_kind` stays
   `policy_window`, carried as `instance_text`.
 - **`/3`'s documents:** the counting table `spec/history-frame/standard-history-3-table.json`,
-  digest `71e38ed61fbe928ff535aa851e4bc4f86bd7ee039a2a80707cb54a493340cc00`, and the wording pack `spec/history-frame/standard-history-3-pack.json`, digest
-  `bd5f940e4b541d2a91fe7532cde65b3c94004f5958b2d3d573eaabcacf6f55ac` (§11).
+  digest `b0c70d1323a6ff3dda69af4ce1dfd3c16b040dc64e253a42a94f47b86199dfe9`, and the wording pack `spec/history-frame/standard-history-3-pack.json`, digest
+  `89e47c3eb0658142c5d5a28a6d2c82fea5ed72636bee2bb8a9455b72a65fa0f1` (§11).
 - **`/2`'s documents:** the counting table `spec/history-frame/standard-history-2-table.json`,
   digest `c18c28b9830440fddb0d2963c6731da698b019d00606e3f3e4205dfb34c48a1a`, which adds to `/1`'s
   table the card member and tally `unpriced` (§4); and the wording pack
@@ -575,9 +575,11 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-9 | Handing a recipient the policy, or the two members of it the card reads (§5.1), so that `window_from_policy` can run. Until a carriage is defined, a recipient's verifier reports it `NOT_CHECKED`, and the window is the holder's statement. |
 | SH-10 | A disclosed, checkable form of the set of logs an anchor commits, for an anchor that commits them through a salted or sparse tree, such as a batching tree whose root is a parent log's entry. Without it, coverage (b) of §6 "Handing the material" cannot be shown for such an anchor, and `counts_recompute` stays `NOT_CHECKED`. |
 | SH-11 | Restating, in this repository, the rule that computes a term row's status (§11.2). `/3` cites EBL's rule (`rowstatus/rowstatus.go` at the commit the dependency table pins) and does not restate it; until it is restated, a second implementation of a host computes row results to EBL's vectors (`testdata/row-status/`). |
-| SH-12 | Counting the deals whose line rests on a row result computed from a record with no time (a local result, EBL `rowstatus` `Local`). `/3` carries no such count: a verifier shows a card whose anchor has no passing Receipt as unwitnessed (§11.8), and no count says how many of its rows are local. |
+| SH-12 | Which deals are left out for want of a witness time (§11.2 `left_out`). evidencebook#461 acceptance 9 leaves out a deal whose records have no time from the witnesses its agreement names; the target design (§4.1, "a deal with no witness that both accept ... a card tallies it as not counted") also leaves out a deal whose agreement names none, while acceptance 3 still gives a shelf with no witness a card whose statuses are local. `/3` leaves out a deal only when its agreement names a witness and the holder holds no time from one, and counts a deal whose agreement names none, its rows local (§11.6 `local_times`). |
 | SH-13 | A window membership rule that a reader without status openings can check, such as the first witnessed time of a book's first fact in place of `agreed_at`, with a check of a window alone instead of a whole shelf (the target design's proposal of 2026-11-16 for evidencebook#461, not adopted). `/3` keeps `agreed_at` (§5.1, §11.2). |
 | SH-14 | The wire form of the whole-shelf handover `/3`'s `counts_recompute` reads (§11.7), as SF-7. Until it is defined, the handover is EBL's form, and a verifier that does not read it reports `counts_recompute` `NOT_CHECKED`. |
+| SH-15 | A coverage start earlier than the format switch. EBL lets a reader that checks the old ticks' material against the genesis facts take the shelf log's first entry as the coverage start (its design §4); a `/3` card always carries the switch's month (§11.5), so such a holder's card understates its coverage. |
+| SH-16 | A remedy made without a ruling. EBL's row rule carries a remedy only for a `ruled` row; the remedy of an unmet row that is not ruled (§11.2) is the host profile's, read from the holder's own remedy record of the row, such as a refund (SH-2). |
 
 ## 11. `standard_history/3`
 
@@ -612,16 +614,17 @@ A `/3` deal entry has `/2`'s members (§5.2), with `amount` OPTIONAL as under `/
 |---|---|---|---|
 | `outcome` | absent | | `/3` reads no outcome claim |
 | `rows` | REQUIRED | a non-empty array of row results (below) | each term row of the deal, as of `T` |
-| `left_out` | OPTIONAL | `"no_witness_time"` | present when the deal's agreement names witnesses and the holder holds no registration time from any of them for the deal's records (EBL `RecordTime`) |
+| `left_out` | OPTIONAL | `"no_witness_time"` | present when the deal's agreement names witnesses and the holder holds no registration time from any of them for the deal's records (EBL `RecordTime`; SH-12) |
 
-A **row result** is `{"owed_by", "status", "value", "remedy"}`:
+A **row result** is `{"owed_by", "status", "value", "remedy", "local"}`:
 
 | Member | Presence | Value |
 |---|---|---|
 | `owed_by` | REQUIRED | `holder` when the holder owed the row, `counterparty` when the other side did |
 | `status` | REQUIRED | one of the ten statuses of EBL's rule, below |
 | `value` | exactly when `status` is `waiting`, `uncontested`, `agreed_so_far`, `agreed` or `ruled` | `met` or `not_met`: the value the status carries (for `ruled`, the ruling's) |
-| `remedy` | exactly when `status` is `ruled` | `none`, `due`, `made` or `not_honoured`: the remedy the ruling ordered and its state |
+| `remedy` | exactly when `status` is `ruled`, or is `agreed_so_far`, `agreed` or `uncontested` with value `not_met` | for `ruled`: `none`, `due`, `made` or `not_honoured`, the remedy the ruling ordered and its state; otherwise `none`, or `made` when the holder's book holds its own remedy of the row, such as a refund, made without a ruling (SH-16) |
+| `local` | OPTIONAL | `true` when the result rests on a record that has no time from a witness the agreement names (EBL's rule calls the result local); absent otherwise |
 
 The statuses, as EBL's rule computes them from both sides' statements on the row and its dates
 (SH-11): `not_reached` (a date of the row hangs on a record whose time was not known by that
@@ -648,14 +651,16 @@ A counted deal falls in exactly one of five lines, the first in this order that 
 | Line | When |
 |---|---|
 | `ruling_not_honoured` | a row is `ruled` with remedy `not_honoured` |
-| `undecided` | a row is `in_disagreement`, `in_dispute`, `no_statement` or `not_reached`, or is `waiting` with value `not_met` |
+| `undecided` | a row is `in_disagreement`, `in_dispute` or `no_statement`, or is `waiting` with value `not_met`; or no row is left (below) |
 | `did_not_hold` | a row is `agreed_so_far`, `agreed`, `uncontested` or `ruled` with value `not_met` |
 | `held_so_far` | a row is `not_due`, or is `waiting` or `agreed_so_far` (with value `met`, since the lines above did not apply) |
 | `held` | every row is `agreed`, `uncontested` or `ruled` with value `met` |
 
-The lines cover every deal: a deal no line above `held` applies to has only rows that `held` names.
-A `not_reached` row is `undecided`: its date can no longer be set, so whether it was met cannot be
-decided, as §5.2 counts a deal it cannot classify.
+A `not_reached` row is left out before the lines are applied: its date can no longer be set, so it
+never becomes due, and the design leaves it out when a card is counted (evidencebook#461 target
+design §4.2, "A latest date"); the deal's other rows decide its line. A deal whose every row is
+`not_reached` has no row left and is `undecided`, as §5.2 counts a deal it cannot classify. The
+lines cover every deal: a deal no line above `held` applies to has only rows that `held` names.
 
 ### 11.4 The split of `did_not_hold`
 
@@ -665,9 +670,9 @@ A `did_not_hold` deal is in exactly one of four parts, the first in this order t
 
 | Part | When |
 |---|---|
-| `not_remedied` | an unmet row is owed by the holder and is not `ruled`, or is `ruled` with remedy `none`: no remedy is made or ordered |
+| `not_remedied` | an unmet row is owed by the holder and has remedy `none`: no remedy is made or ordered |
 | `remedy_pending` | an unmet row is owed by the holder and is `ruled` with remedy `due` |
-| `remedied` | the unmet rows owed by the holder, one or more, are all `ruled` with remedy `made` |
+| `remedied` | the unmet rows owed by the holder, one or more, all have remedy `made`, by a ruling or without one |
 | `other_side` | every unmet row is owed by the counterparty |
 
 ### 11.5 The coverage start
@@ -697,13 +702,15 @@ A `/3` card is a JSON object with exactly these members, all REQUIRED:
 | `class_missing` | as §4 |
 | `outcomes` | tally over counted deals: `of`, `held`, `held_so_far`, `did_not_hold`, `undecided`, `ruling_not_honoured` (§11.3) |
 | `did_not_hold` | tally over counted `did_not_hold` deals: `of`, `not_remedied`, `remedy_pending`, `remedied`, `other_side` (§11.4) |
+| `local_times` | tally: `of` (counted deals), `count` (counted deals with a row result that is `local`) |
 | `bands` | an array of band tallies: `{"currency", "decade", "of"}` and the five lines, as §4 orders them |
 | `unpriced` | tally over counted unpriced deals: `of` and the five lines |
 | `roles`, `happened`, `disputes` | as §4 |
 
 **Denominators.** §4's rules hold with the five lines in place of the three outcomes: the bands and
 `unpriced` together partition `outcomes`, line by line. Also, `did_not_hold`'s parts partition its
-`of`, and its `of` equals `outcomes.did_not_hold`.
+`of`, and its `of` equals `outcomes.did_not_hold`; `local_times.of` equals `in_window.counted`, and
+its `count` is at most its `of`.
 
 No other member is allowed in a `/3` card, at any level. Any change to a member, a value list or a
 counting rule of `/3` is a new token, and `/3` stays as it is.
@@ -720,7 +727,7 @@ counting rule of `/3` is a new token, and `/3` stays as it is.
               "received": {"by_forum": {"auto": 0, "external": 0, "network": 0, "of": 0, "rail": 0},
                            "by_outcome": {"against": 0, "for": 0, "no_finding": 0, "of": 0, "open": 0, "split": 0, "withdrawn": 0}, "of": 0}},
  "happened": {"no_record": 0, "of": 3, "receipt_only": 1, "stamped_by_both": 2}, "holder_kind": "person",
- "in_window": {"counted": 3, "not_counted": 1, "of": 4},
+ "in_window": {"counted": 3, "not_counted": 1, "of": 4}, "local_times": {"count": 0, "of": 3},
  "outcomes": {"did_not_hold": 1, "held": 1, "held_so_far": 1, "of": 3, "ruling_not_honoured": 0, "undecided": 0},
  "policy": "<64 hex>", "roles": {"bought": 1, "of": 3, "provided": 2}, "since": "2026-03",
  "unpriced": {"did_not_hold": 0, "held": 0, "held_so_far": 0, "of": 0, "ruling_not_honoured": 0, "undecided": 0},
@@ -736,7 +743,8 @@ A verifier reports §6's six properties of a `/3` card, with these changes:
   answering a `/3` request, fails `card_form`.
 - **`denominator`** checks §11.6 "Denominators".
 - **`as_of`** also checks that `coverage_start` is the year and month of the coverage start's
-  time; it needs that time beside the anchor's and the first checkpoint's.
+  time, and that this time is not after the anchor's (§11.1); it needs that time beside the
+  anchor's and the first checkpoint's.
 - **`counts_recompute`** checks every count against the count §11 derives, over the card's own
   window, from the deal entries of every deal of the shelf log at the anchor, shown complete. For
   `/3`, complete is shown by the whole-shelf handover (EBL design §2.7; SH-14), not by §6's
@@ -770,7 +778,11 @@ three outcomes and these additions:
   with a registration time) or not. A card whose anchor has no passing Receipt is shown as
   **unwitnessed**: a shelf with no witness is a supported default, and its card is still a standard
   card. A card neither recomputed nor witnessed is shown as checked for its form only. A Receipt
-  says nothing of the counts (§6 "The witness line").
+  says nothing of the counts (§6 "The witness line"): "witnessed" is said of the anchor only, never
+  of the deals' rows.
+- **Local results.** `local_times.count` of `local_times.of`: how many counted deals have a row whose
+  result rests on a record no named witness timed, shown beside the level reached, whether or not
+  the anchor is witnessed. Such a row is never shown as witnessed.
 
 **The outcome bar.** A verifier MAY draw the `outcomes` tally as one bar (HF §4.6), with five
 segments in the order `held`, `held_so_far`, `did_not_hold`, `undecided`, `ruling_not_honoured`,
@@ -788,23 +800,29 @@ under §6's rules for the bar. `undecided` and `held_so_far` are drawn in tones 
 - **A second date.** `coverage_start` is a year and month, as `since` is: it shows when the holder
   moved its shelf to book facts, and nothing of any deal.
 - **The holder's levers.** Marking a deal `left_out` takes it out of every count but `in_window`, as
-  `shop_preauth` does, and the card shows it as `in_window.not_counted`. Never stating on a row
+  `shop_preauth` does, and the card shows it as `in_window.not_counted`; a holder can bring that
+  about by naming only a witness that never registers its checkpoints (SH-12). Never stating on a row
   leaves it `no_statement` after its due date, so `undecided`, never `held`.
 - **Differencing.** As §9. A holder key that serves Standard Histories under
-  `inference-service-history/0` serves no `standard_history/3` card either, for the reason §9
-  gives.
+  `inference-service-history/0` MUST NOT serve a `standard_history/3` card. This is this document's
+  own rule, since ISH §6.1 item 8 names only `/1` and `/2`; its reason is ISH's: two cards at
+  consecutive anchors could be subtracted to isolate one exchange the periods protect (HF §4.8).
 - **No grading.** As §9: the lines are counts, never a rate, and a verifier ranks no holder by them.
 
 ### 11.10 Vectors
 
 `vectors/standard-history-v0/vectors-3.json` holds the `/3` cases, each naming its token in
 `inputs.derivation`: a card over deals that fall in every line and every part of the split, with a
-deal whose rows make two lines apply (the first wins), a deal left out without a witness time, an
+deal whose rows make two lines apply (the first wins), a `not_reached` row left out, a remedy made
+without a ruling, rows that rest on untimed records, a deal left out without a witness time, an
 unpriced deal and two bands; the same deals at a later anchor, where a deal with no new fact moves
 from `held_so_far` to `held` and another from `held_so_far` to `undecided`; and negatives each
 failing the property named: a deal counted in a later line than the first that applies
-(`counts_recompute`), a deal left out counted (`counts_recompute`), a split that does not sum to the
+(`counts_recompute`), a deal left out counted (`counts_recompute`), the deals with local results
+left out of `local_times` (`counts_recompute`), a remedy made without a ruling counted as not
+remedied (`counts_recompute`), a split that does not sum to the
 `did_not_hold` line (`denominator`), a band that counts by three outcomes (`card_form`), a card
 without `coverage_start` (`card_form`), a `coverage_start` before `since` (`card_form`), a
-`coverage_start` that is not the coverage start's month (`as_of`), a `/2` card answering a `/3`
+`coverage_start` that is not the coverage start's month (`as_of`), an anchor before the coverage
+start (`as_of`), a `/2` card answering a `/3`
 request and the reverse (`card_form`).

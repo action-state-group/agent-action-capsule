@@ -270,10 +270,13 @@ func TestV3LinesCoverEveryRowResult(t *testing.T) {
 	for _, s := range []string{"not_reached", "not_due", "no_statement", "in_disagreement", "in_dispute"} {
 		results = append(results, standardhistory.Row{Status: s})
 	}
-	for _, s := range []string{"waiting", "uncontested", "agreed_so_far", "agreed"} {
-		for _, v := range []string{"met", "not_met"} {
-			results = append(results, standardhistory.Row{Status: s, Value: v})
-		}
+	for _, v := range []string{"met", "not_met"} {
+		results = append(results, standardhistory.Row{Status: "waiting", Value: v})
+	}
+	for _, s := range []string{"uncontested", "agreed_so_far", "agreed"} {
+		results = append(results, standardhistory.Row{Status: s, Value: "met"},
+			standardhistory.Row{Status: s, Value: "not_met", Remedy: "none"},
+			standardhistory.Row{Status: s, Value: "not_met", Remedy: "made"})
 	}
 	for _, v := range []string{"met", "not_met"} {
 		for _, r := range []string{"none", "due", "made", "not_honoured"} {
@@ -300,6 +303,45 @@ func TestV3LinesCoverEveryRowResult(t *testing.T) {
 			}
 		}
 	}
+}
+
+// SH §11.4: two unmet rows the holder owed compete for parts; the first part
+// that applies wins, whatever the order of the rows.
+func TestV3SplitOrder(t *testing.T) {
+	for _, c := range []struct {
+		remedies [2]string
+		part     string
+	}{{[2]string{"none", "due"}, "not_remedied"}, {[2]string{"due", "made"}, "remedy_pending"},
+		{[2]string{"made", "made"}, "remedied"}} {
+		a := standardhistory.Row{OwedBy: "holder", Status: "ruled", Value: "not_met", Remedy: c.remedies[0]}
+		b := standardhistory.Row{OwedBy: "holder", Status: "ruled", Value: "not_met", Remedy: c.remedies[1]}
+		refund := standardhistory.Row{OwedBy: "holder", Status: "agreed", Value: "not_met", Remedy: "made"}
+		for _, rows := range [][]standardhistory.Row{{a, b}, {b, a}, {refund, a, b}} {
+			line, part := standardhistory.Line(rows)
+			assert.Equal(t, "did_not_hold", line)
+			assert.Equal(t, c.part, part, c.remedies)
+		}
+	}
+}
+
+// A /1 or /2 entry reads as it always has: members that only /3 reads do not
+// stop it, whatever their values.
+func TestV3MembersDoNotChangeV1Decoding(t *testing.T) {
+	tc := baseCase(t)
+	octets, err := json.Marshal(tc.Inputs.Deals[0])
+	require.NoError(t, err)
+	var entry map[string]any
+	require.NoError(t, json.Unmarshal(octets, &entry))
+	entry["left_out"] = nil
+	entry["rows"] = "opaque"
+	octets, err = json.Marshal(entry)
+	require.NoError(t, err)
+	var d standardhistory.Deal
+	require.NoError(t, json.Unmarshal(octets, &d))
+	deals := append([]standardhistory.Deal{d}, tc.Inputs.Deals[1:]...)
+	got, err := standardhistory.Check(tc.Inputs.Card, tc.Inputs.Policy, tc.Inputs.AsOf, deals)
+	require.NoError(t, err)
+	assert.Equal(t, tc.Expected.Properties, got)
 }
 
 // SH §11.1: deals with no new fact move line when the anchor moves.
@@ -330,6 +372,12 @@ func TestMalformedV3DealEntryIsAnError(t *testing.T) {
 		`{"rows":[{"owed_by":"holder","status":"ruled","value":"met"}]}`,
 		`{"rows":[{"owed_by":"seller","status":"not_due"}]}`,
 		`{"left_out":"late"}`,
+		`{"rows":[{"owed_by":"holder","status":"agreed","value":"not_met"}]}`,
+		`{"rows":[{"owed_by":"holder","status":"agreed","value":"not_met","remedy":"due"}]}`,
+		`{"rows":[{"owed_by":"holder","status":"not_due","local":false}]}`,
+		`{"rows":[{"owed_by":"holder","status":"not_due","value":""}]}`,
+		`{"rows":[{"owed_by":"holder","status":"agreed","value":"met","remedy":""}]}`,
+		`{"outcome":""}`,
 	} {
 		octets, err := json.Marshal(tc.Inputs.Deals[0])
 		require.NoError(t, err)

@@ -67,6 +67,10 @@ ROW_STATUSES = ("not_reached", "not_due", "no_statement", "waiting", "unconteste
 VALUED = frozenset(("waiting", "uncontested", "agreed_so_far", "agreed", "ruled"))
 ROW_VALUES = ("met", "not_met")
 REMEDIES = ("none", "due", "made", "not_honoured")
+#: SH §11.2: the remedy states of an unmet row that is not ruled: none, or made by the holder's own
+#: remedy record, with no ruling.
+UNRULED_REMEDIES = ("none", "made")
+UNMET_STATUSES = ("agreed_so_far", "agreed", "uncontested")
 OWED_BY = ("holder", "counterparty")
 LEFT_OUT = ("no_witness_time",)
 SIDES = ("raised", "received")
@@ -85,7 +89,7 @@ CARD_MEMBERS = frozenset(("derivation", "holder_kind", "controller_class", "anch
                           "policy", "bands", "disputes") + tuple(TALLIES))
 #: SH §4: the members of each token's card.
 MEMBERS = {DERIVATION: CARD_MEMBERS, DERIVATION_2: CARD_MEMBERS | {"unpriced"},
-           DERIVATION_3: CARD_MEMBERS | {"unpriced", "coverage_start", "did_not_hold"}}
+           DERIVATION_3: CARD_MEMBERS | {"unpriced", "coverage_start", "did_not_hold", "local_times"}}
 BAND_KEYS = ("currency", "decade")
 MAX_COUNT = 2 ** 53 - 1
 
@@ -104,7 +108,10 @@ def _outcomes(derivation: str) -> tuple:
 
 
 def _tallies(derivation: str) -> dict:
-    return {**TALLIES, "outcomes": _outcomes(derivation)}
+    t = {**TALLIES, "outcomes": _outcomes(derivation)}
+    if derivation == DERIVATION_3:
+        t["local_times"] = ("count",)
+    return t
 
 
 def _is_number(v: Any) -> bool:
@@ -153,11 +160,12 @@ def _decade(amount: Mapping[str, Any]) -> int | None:
 #: SH §11.2: the members a /3 deal entry may carry. /1 and /2 entries are read as SH §5.2 says.
 ENTRY_MEMBERS_3 = frozenset(("deal", "agreed_at", "counterparty_class", "left_out", "role", "amount",
                              "rows", "happened", "disputes"))
-ROW_MEMBERS = frozenset(("owed_by", "status", "value", "remedy"))
+ROW_MEMBERS = frozenset(("owed_by", "status", "value", "remedy", "local"))
 
 
 def _check_row(ref: str, row: Any) -> None:
-    """SH §11.2: a row result, with ``value`` and ``remedy`` exactly where the status carries them."""
+    """SH §11.2: a row result, with ``value`` and ``remedy`` exactly where the status carries them,
+    and ``local`` only as ``true``."""
     if not isinstance(row, Mapping) or not set(row) <= ROW_MEMBERS:
         raise ValueError(f"deal {ref}: malformed row result {row!r}")
     status = row.get("status")
@@ -165,8 +173,12 @@ def _check_row(ref: str, row: Any) -> None:
         raise ValueError(f"deal {ref}: malformed row result {row!r}")
     if ("value" in row) != (status in VALUED) or ("value" in row and row["value"] not in ROW_VALUES):
         raise ValueError(f"deal {ref}: row value {row!r}")
-    if ("remedy" in row) != (status == "ruled") or ("remedy" in row and row["remedy"] not in REMEDIES):
+    unmet = status in UNMET_STATUSES and row.get("value") == "not_met"
+    allowed = REMEDIES if status == "ruled" else UNRULED_REMEDIES if unmet else ()
+    if ("remedy" in row) != bool(allowed) or ("remedy" in row and row["remedy"] not in allowed):
         raise ValueError(f"deal {ref}: row remedy {row!r}")
+    if "local" in row and row["local"] is not True:
+        raise ValueError(f"deal {ref}: row local {row!r}")
 
 
 def _check_entry(deal: Mapping[str, Any], derivation: str) -> None:
@@ -212,24 +224,27 @@ def _check_entry(deal: Mapping[str, Any], derivation: str) -> None:
 
 def line(rows: Sequence[Mapping[str, Any]]) -> tuple[str, str | None]:
     """SH §11.3 and §11.4: a counted deal's line, and its part of ``did_not_hold`` (None for any
-    other line), the first that applies in each table."""
+    other line), the first that applies in each table. A ``not_reached`` row is left out, and a
+    deal with no other row is ``undecided``."""
+    rows = [r for r in rows if r["status"] != "not_reached"]
+    if not rows:
+        return "undecided", None
     if any(r["status"] == "ruled" and r["remedy"] == "not_honoured" for r in rows):
         return "ruling_not_honoured", None
-    if any(r["status"] in ("in_disagreement", "in_dispute", "no_statement", "not_reached")
+    if any(r["status"] in ("in_disagreement", "in_dispute", "no_statement")
            or (r["status"] == "waiting" and r["value"] == "not_met") for r in rows):
         return "undecided", None
-    unmet = [r for r in rows if r["status"] in ("agreed_so_far", "agreed", "uncontested", "ruled")
-             and r["value"] == "not_met"]
+    unmet = [r for r in rows if r["status"] in UNMET_STATUSES + ("ruled",) and r["value"] == "not_met"]
     if unmet:
         own = [r for r in unmet if r["owed_by"] == "holder"]
         if not own:
             return "did_not_hold", "other_side"
-        if any(r["status"] != "ruled" or r["remedy"] == "none" for r in own):
+        if any(r["remedy"] == "none" for r in own):
             return "did_not_hold", "not_remedied"
         if any(r["remedy"] == "due" for r in own):
             return "did_not_hold", "remedy_pending"
-        # Every own unmet row is ruled; none has remedy none (above) or not_honoured (line 1), and
-        # none is due: each has its remedy made.
+        # No own unmet row has remedy none (above) or not_honoured (line 1), and none is due: each
+        # has its remedy made.
         return "did_not_hold", "remedied"
     if any(r["status"] in ("not_due", "waiting", "agreed_so_far") for r in rows):
         return "held_so_far", None
@@ -270,6 +285,9 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
             if part is not None:
                 t["did_not_hold"]["of"] += 1
                 t["did_not_hold"][part] += 1
+            t["local_times"]["of"] += 1
+            if any(r.get("local") for r in deal["rows"]):
+                t["local_times"]["count"] += 1
         else:
             outcome = deal["outcome"]
         for name, value in (("outcomes", outcome), ("roles", deal["role"]), ("happened", deal["happened"])):
@@ -321,8 +339,8 @@ def derive_card(*, holder_kind: str, controller_class: str, anchor: str, anchor_
             "policy": policy["digest"]}
     if derivation == DERIVATION_3:
         _time(coverage_start_time)
-        if coverage_start_time < first_checkpoint_time:
-            raise ValueError("the coverage start is before the first checkpoint")
+        if not first_checkpoint_time <= coverage_start_time <= anchor_time:
+            raise ValueError("the coverage start is not between the first checkpoint and the anchor")
         card["coverage_start"] = coverage_start_time[:7]
     card.update(_counts(deals, window, _time(anchor_time), derivation))
     return card
@@ -451,13 +469,15 @@ def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
         t = card[name]
         if "of" not in t:
             return False
-        if name == "class_missing":
+        if name in ("class_missing", "local_times"):
             if t["count"] > t["of"]:
                 return False
         elif not _partitions(t, parts):
             return False
     counted = card["in_window"]["counted"]
     if any(card[name]["of"] != counted for name in ("class_missing", "outcomes", "roles", "happened")):
+        return False
+    if derivation == DERIVATION_3 and card["local_times"]["of"] != counted:
         return False
     for band in card["bands"]:
         if not _partitions(band, outcomes) or band["of"] < 1:
@@ -532,7 +552,9 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
               and card.get("since") == as_of["first_checkpoint_time"][:7])
         if derivation == DERIVATION_3:
             _time(as_of.get("coverage_start_time"))
-            ok = ok and card.get("coverage_start") == as_of["coverage_start_time"][:7]
+            # SH §11.1: the anchor is at or after the coverage start.
+            ok = (ok and card.get("coverage_start") == as_of["coverage_start_time"][:7]
+                  and as_of["coverage_start_time"] <= as_of.get("anchor_time", ""))
         p["as_of"] = _status(ok)
     ready = (deals is not None and as_of is not None
              and all(p[k] == "PASS" for k in ("card_form", "counts_integral", "denominator")))

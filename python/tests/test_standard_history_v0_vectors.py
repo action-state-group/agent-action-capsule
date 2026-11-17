@@ -129,15 +129,36 @@ def test_v3_lines_cover_every_row_result() -> None:
     in exactly one part (§11.4)."""
     results = [{"status": s} for s in ("not_reached", "not_due", "no_statement", "in_disagreement",
                                        "in_dispute")]
-    results += [{"status": s, "value": v} for s in ("waiting", "uncontested", "agreed_so_far", "agreed")
-                for v in sh.ROW_VALUES]
+    results += [{"status": "waiting", "value": v} for v in sh.ROW_VALUES]
+    results += [{"status": s, "value": "met"} for s in sh.UNMET_STATUSES]
+    results += [{"status": s, "value": "not_met", "remedy": r} for s in sh.UNMET_STATUSES
+                for r in sh.UNRULED_REMEDIES]
+    results += [{"status": "not_reached"}]
     results += [{"status": "ruled", "value": v, "remedy": r} for v in sh.ROW_VALUES for r in sh.REMEDIES]
     rows = [{"owed_by": o, **r} for o in sh.OWED_BY for r in results]
+    for r in rows:
+        sh._check_row("x", r)
+    assert sh.line([{"owed_by": "holder", "status": "not_reached"}]) == ("undecided", None)
     for a in rows:
         for b in rows:
             line, part = sh.line([a, b])
             assert line in sh.LINES
             assert (part in sh.SPLIT) == (line == "did_not_hold")
+
+
+@pytest.mark.parametrize("remedies, part", [
+    (("none", "due"), "not_remedied"),
+    (("due", "made"), "remedy_pending"),
+    (("made", "made"), "remedied"),
+])
+def test_v3_split_order(remedies: tuple, part: str) -> None:
+    """SH §11.4: two unmet rows the holder owed, competing for parts; the first part that applies
+    wins, whatever the order of the rows."""
+    rows = [{"owed_by": "holder", "status": "ruled", "value": "not_met", "remedy": r} for r in remedies]
+    assert sh.line(rows) == ("did_not_hold", part)
+    assert sh.line(rows[::-1]) == ("did_not_hold", part)
+    unruled = [{"owed_by": "holder", "status": "agreed", "value": "not_met", "remedy": "made"}]
+    assert sh.line(unruled + rows) == ("did_not_hold", part)
 
 
 def test_v3_quiet_deal_moves_line_with_the_anchor() -> None:
@@ -157,6 +178,10 @@ def test_v3_quiet_deal_moves_line_with_the_anchor() -> None:
     {"rows": [{"owed_by": "holder", "status": "ruled", "value": "met"}]},   # ruled carries a remedy
     {"rows": [{"owed_by": "seller", "status": "not_due"}]},
     {"left_out": "late"},
+    {"rows": [{"owed_by": "holder", "status": "agreed", "value": "not_met"}]},   # unmet: remedy required
+    {"rows": [{"owed_by": "holder", "status": "agreed", "value": "not_met", "remedy": "due"}]},
+    {"rows": [{"owed_by": "holder", "status": "not_due", "local": False}]},
+    {"rows": [{"owed_by": "holder", "status": "not_due", "value": ""}]},
 ])
 def test_malformed_v3_deal_entry_raises(change: dict) -> None:
     c = next(c for c in CASES_3 if c["id"] == "lines-and-split")

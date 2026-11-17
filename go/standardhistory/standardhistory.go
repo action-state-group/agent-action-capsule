@@ -78,8 +78,12 @@ var (
 	valued    = []string{"waiting", "uncontested", "agreed_so_far", "agreed", "ruled"}
 	rowValues = []string{"met", "not_met"}
 	remedies  = []string{"none", "due", "made", "not_honoured"}
-	owedBy    = []string{"holder", "counterparty"}
-	leftOut   = []string{"no_witness_time"}
+	// unruledRemedies are the remedy states of an unmet row that is not
+	// ruled (SH §11.2): none, or made by the holder's own remedy record.
+	unruledRemedies = []string{"none", "made"}
+	unmetStatuses   = []string{"agreed_so_far", "agreed", "uncontested"}
+	owedBy          = []string{"holder", "counterparty"}
+	leftOut         = []string{"no_witness_time"}
 )
 
 // outcomesOf are the parts of outcomes, of each band and of unpriced under
@@ -105,6 +109,9 @@ func talliesOf(derivation string) []tallySpec {
 		if t.name == "outcomes" {
 			out[i].parts = outcomesOf(derivation)
 		}
+	}
+	if derivation == Derivation3 {
+		out = append(out, tallySpec{"local_times", []string{"count"}})
 	}
 	return out
 }
@@ -135,7 +142,7 @@ var cardMembers = []string{
 var members = map[string][]string{
 	Derivation:  cardMembers,
 	Derivation2: append(slices.Clone(cardMembers), "unpriced"),
-	Derivation3: append(slices.Clone(cardMembers), "unpriced", "coverage_start", "did_not_hold"),
+	Derivation3: append(slices.Clone(cardMembers), "unpriced", "coverage_start", "did_not_hold", "local_times"),
 }
 
 func checkToken(derivation string) error {
@@ -206,12 +213,43 @@ type AsOf struct {
 
 // Row is a row result of a standard_history/3 deal entry (SH §11.2): who
 // owed the row and its status as of the anchor's time, with the value and
-// the remedy where the status carries them (empty when absent).
+// the remedy where the row carries them (empty when absent), and Local when
+// the result rests on a record with no witnessed time.
 type Row struct {
 	OwedBy string `json:"owed_by"`
 	Status string `json:"status"`
 	Value  string `json:"value,omitempty"`
 	Remedy string `json:"remedy,omitempty"`
+	Local  bool   `json:"local,omitempty"`
+}
+
+// UnmarshalJSON refuses a local member that is not true: SH §11.2 writes a
+// row that is not local without the member.
+func (r *Row) UnmarshalJSON(data []byte) error {
+	type plain Row
+	var p plain
+	if err := json.Unmarshal(data, &p); err != nil {
+		return err
+	}
+	var raw struct {
+		Local  json.RawMessage `json:"local"`
+		Value  json.RawMessage `json:"value"`
+		Remedy json.RawMessage `json:"remedy"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if raw.Local != nil && !bytes.Equal(raw.Local, []byte("true")) {
+		return fmt.Errorf("row local is not true: %s", raw.Local)
+	}
+	// An empty value or remedy would read as an absent one (SH §11.2).
+	for _, m := range []json.RawMessage{raw.Value, raw.Remedy} {
+		if m != nil && (bytes.Equal(m, []byte(`""`)) || bytes.Equal(m, []byte("null"))) {
+			return fmt.Errorf("row value or remedy is empty: %s", data)
+		}
+	}
+	*r = Row(p)
+	return nil
 }
 
 // Amount is the settlement-records amount triple.
@@ -246,6 +284,12 @@ type Deal struct {
 	Rows              []Row     `json:"rows,omitempty"`
 	Happened          string    `json:"happened"`
 	Disputes          []Dispute `json:"disputes"`
+	// hasOutcome records an outcome member read from JSON, which a /3
+	// entry may not carry even empty; v3Err a left_out or rows member that
+	// does not read as SH §11.2 says. Both matter only under /3, so that /1
+	// and /2 read an entry as they always have.
+	hasOutcome bool
+	v3Err      error
 }
 
 // UnmarshalJSON refuses a counterparty_class of null, which would otherwise
@@ -255,14 +299,20 @@ type Deal struct {
 func (d *Deal) UnmarshalJSON(data []byte) error {
 	type plain Deal
 	var p plain
-	if err := json.Unmarshal(data, &p); err != nil {
+	// left_out and rows are read below, so that a value /3 refuses never
+	// stops a /1 or /2 entry from reading.
+	w := struct {
+		*plain
+		LeftOut json.RawMessage `json:"left_out"`
+		Rows    json.RawMessage `json:"rows"`
+	}{plain: &p}
+	if err := json.Unmarshal(data, &w); err != nil {
 		return err
 	}
 	var raw struct {
 		Class   json.RawMessage `json:"counterparty_class"`
-		LeftOut json.RawMessage `json:"left_out"`
 		Amount  json.RawMessage `json:"amount"`
-		Rows    json.RawMessage `json:"rows"`
+		Outcome json.RawMessage `json:"outcome"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -270,12 +320,24 @@ func (d *Deal) UnmarshalJSON(data []byte) error {
 	if raw.Class != nil && p.CounterpartyClass == nil {
 		return fmt.Errorf("deal %s: counterparty_class is not a string", p.Deal)
 	}
-	if raw.LeftOut != nil && p.LeftOut == nil {
-		return fmt.Errorf("deal %s: left_out is not a string", p.Deal)
+	p.hasOutcome = raw.Outcome != nil
+	if w.LeftOut != nil {
+		var s *string
+		if json.Unmarshal(w.LeftOut, &s) != nil || s == nil {
+			p.v3Err = fmt.Errorf("deal %s: left_out is not a string", p.Deal)
+		}
+		p.LeftOut = s
 	}
-	if raw.Rows != nil && p.Rows == nil {
-		// null, or an empty array that a /3 entry may not carry either.
-		p.Rows = []Row{}
+	if w.Rows != nil {
+		var rows []Row
+		if err := json.Unmarshal(w.Rows, &rows); err != nil {
+			p.v3Err = fmt.Errorf("deal %s: rows: %w", p.Deal, err)
+		}
+		if rows == nil {
+			// null, or an empty array that a /3 entry may not carry either.
+			rows = []Row{}
+		}
+		p.Rows = rows
 	}
 	if raw.Amount == nil {
 		p.Unpriced = true
@@ -374,7 +436,14 @@ func checkRow(ref string, r Row) error {
 	if (r.Value != "") != slices.Contains(valued, r.Status) || (r.Value != "" && !slices.Contains(rowValues, r.Value)) {
 		return fmt.Errorf("deal %s: row value %+v", ref, r)
 	}
-	if (r.Remedy != "") != (r.Status == "ruled") || (r.Remedy != "" && !slices.Contains(remedies, r.Remedy)) {
+	var allowed []string
+	switch {
+	case r.Status == "ruled":
+		allowed = remedies
+	case slices.Contains(unmetStatuses, r.Status) && r.Value == "not_met":
+		allowed = unruledRemedies
+	}
+	if (r.Remedy != "") != (allowed != nil) || (r.Remedy != "" && !slices.Contains(allowed, r.Remedy)) {
 		return fmt.Errorf("deal %s: row remedy %+v", ref, r)
 	}
 	return nil
@@ -407,7 +476,10 @@ func checkEntry(d Deal, derivation string) error {
 		}
 	}
 	if v3 {
-		if d.Outcome != "" {
+		if d.v3Err != nil {
+			return d.v3Err
+		}
+		if d.Outcome != "" || d.hasOutcome {
 			return fmt.Errorf("deal %s: a /3 entry carries no outcome", d.Deal)
 		}
 		if d.LeftOut != nil && !slices.Contains(leftOut, *d.LeftOut) {
@@ -448,8 +520,18 @@ func checkEntry(d Deal, derivation string) error {
 
 // Line is SH §11.3 and §11.4: a counted standard_history/3 deal's line, and
 // its part of did_not_hold (empty for any other line), the first that
-// applies in each table. The rows must be well-formed (SH §11.2).
-func Line(rows []Row) (line, part string) {
+// applies in each table. The rows must be well-formed (SH §11.2). A
+// not_reached row is left out, and a deal with no other row is undecided.
+func Line(all []Row) (line, part string) {
+	var rows []Row
+	for _, r := range all {
+		if r.Status != "not_reached" {
+			rows = append(rows, r)
+		}
+	}
+	if len(rows) == 0 {
+		return "undecided", ""
+	}
 	for _, r := range rows {
 		if r.Status == "ruled" && r.Remedy == "not_honoured" {
 			return "ruling_not_honoured", ""
@@ -457,14 +539,14 @@ func Line(rows []Row) (line, part string) {
 	}
 	for _, r := range rows {
 		switch {
-		case slices.Contains([]string{"in_disagreement", "in_dispute", "no_statement", "not_reached"}, r.Status),
+		case slices.Contains([]string{"in_disagreement", "in_dispute", "no_statement"}, r.Status),
 			r.Status == "waiting" && r.Value == "not_met":
 			return "undecided", ""
 		}
 	}
 	var unmet, own []Row
 	for _, r := range rows {
-		if slices.Contains([]string{"agreed_so_far", "agreed", "uncontested", "ruled"}, r.Status) && r.Value == "not_met" {
+		if (r.Status == "ruled" || slices.Contains(unmetStatuses, r.Status)) && r.Value == "not_met" {
 			unmet = append(unmet, r)
 			if r.OwedBy == "holder" {
 				own = append(own, r)
@@ -476,7 +558,7 @@ func Line(rows []Row) (line, part string) {
 			return "did_not_hold", "other_side"
 		}
 		for _, r := range own {
-			if r.Status != "ruled" || r.Remedy == "none" {
+			if r.Remedy == "none" {
 				return "did_not_hold", "not_remedied"
 			}
 		}
@@ -485,8 +567,8 @@ func Line(rows []Row) (line, part string) {
 				return "did_not_hold", "remedy_pending"
 			}
 		}
-		// Every own unmet row is ruled with its remedy made: none is
-		// "none" (above), "not_honoured" (the first line) or "due".
+		// Every own unmet row has its remedy made: none is "none"
+		// (above), "not_honoured" (the first line) or "due".
 		return "did_not_hold", "remedied"
 	}
 	for _, r := range rows {
@@ -562,6 +644,10 @@ func counts(deals []Deal, w Window, anchor time.Time, derivation string) (map[st
 			if part != "" {
 				t["did_not_hold"]["of"]++
 				t["did_not_hold"][part]++
+			}
+			t["local_times"]["of"]++
+			if slices.ContainsFunc(d.Rows, func(r Row) bool { return r.Local }) {
+				t["local_times"]["count"]++
 			}
 		}
 		for _, x := range []struct{ name, value string }{
@@ -661,8 +747,8 @@ func DeriveAs(derivation, holderKind, controllerClass string, asOf AsOf, policy 
 		if _, err := parseTime(asOf.CoverageStartTime); err != nil {
 			return nil, err
 		}
-		if asOf.CoverageStartTime < asOf.FirstCheckpointTime {
-			return nil, errors.New("the coverage start is before the first checkpoint")
+		if asOf.CoverageStartTime < asOf.FirstCheckpointTime || asOf.CoverageStartTime > asOf.AnchorTime {
+			return nil, errors.New("the coverage start is not between the first checkpoint and the anchor")
 		}
 		card["coverage_start"] = asOf.CoverageStartTime[:7]
 	}
@@ -978,7 +1064,7 @@ func denominator(v any, derivation string) bool {
 		if !has(x, "of") {
 			return false
 		}
-		if t.name == "class_missing" {
+		if t.name == "class_missing" || t.name == "local_times" {
 			if field(x, "count") > field(x, "of") {
 				return false
 			}
@@ -991,6 +1077,9 @@ func denominator(v any, derivation string) bool {
 		if field(card[name], "of") != counted {
 			return false
 		}
+	}
+	if derivation == Derivation3 && field(card["local_times"], "of") != counted {
+		return false
 	}
 	bands := card["bands"].([]any)
 	for _, b := range bands {
@@ -1119,7 +1208,8 @@ func CheckAs(derivation string, card []byte, policy *Policy, asOf *AsOf, deals [
 			if _, err := parseTime(asOf.CoverageStartTime); err != nil {
 				return nil, err
 			}
-			ok = ok && m["coverage_start"] == asOf.CoverageStartTime[:7]
+			// SH §11.1: the anchor is at or after the coverage start.
+			ok = ok && m["coverage_start"] == asOf.CoverageStartTime[:7] && asOf.CoverageStartTime <= asOf.AnchorTime
 		}
 		p["as_of"] = status(ok)
 	}
