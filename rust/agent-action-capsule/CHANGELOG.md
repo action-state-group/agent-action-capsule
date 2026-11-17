@@ -2,7 +2,16 @@
 
 ## Unreleased
 
-- The optional `evidence-request` dependency accepts `>=0.4.0, <0.7.0` (it was `0.4.0`), so the workspace builds against `evidence-request` 0.5.0 and 0.6.0. No code change.
+## 0.11.0 — 2026-11-17
+
+Tag `crates/agent-action-capsule-v0.11.0`.
+
+- Breaking for consumers of the `bundle` feature (and `strict`, which turns it on): `checkpointed-local-log` moves from 0.5.0 to 0.6.0 (CLL -02: the checkpoint CWT `sub` is the bare log id; readers still accept the old `<log_id>#<mmr_size>` form; action-state-group/agent-action-capsule#611), so the CLL types in the public API are 0.6.0's. Upgrade `checkpointed-local-log` alongside this crate.
+- The optional `evidence-request` dependency accepts `>=0.4.0, <0.7.0` (it was `0.4.0`), so the workspace builds against `evidence-request` 0.5.0 and 0.6.0 (first widened to `<0.6.0` in commit c46c174b, to `<0.7.0` in action-state-group/agent-action-capsule#618). No code change.
+- `inference_history` derives and checks the optional `verdict_counts` member of a Standard definition (ISH §4.3, §5.3): `Definition::has_verdict_counts`, `verdict_counts`, `artifact_with_verdicts` and `VERDICT_RESULTS`, with `Counts::verdicts` and the checks `period_alignment` and `period_floor` over each result's table. `artifact` refuses a definition that carries the member. A definition without it, and its artifacts, are unchanged. `Counts` gains a field. Cross-language vectors for verdict counts follow the spec text (action-state-group/agent-action-capsule#615; spec #614).
+- `inference_history::check_artifact` names the History property (`artifact_form`) in the errors it returned unnamed (action-state-group/agent-action-capsule#617).
+- Registry data only, no code change: the embedded `cpb_provisional.json` is re-vendored, dropping the withdrawn `jcs-n` context and the `mesh-inference-exchange` field values it no longer needs (action-state-group/agent-action-capsule#601, #605).
+- `envelope::verify_record_signature` recomputes a record's Capsule ID under `jcs` only. A record with no `canonicalization_id`, a `null` one, or the withdrawn `jcs-n` is `invalid`; before, all three were read as `jcs-n` and could be `authored`. Breaking for records signed over a `jcs-n` Capsule ID. `canonical::normalize` stays as a public helper. The shared strict-Bundle vectors change as the root changelog says. ([capsule-emit#447](https://github.com/action-state-group/capsule-emit/issues/447))
 
 ## 0.10.0 — 2026-11-06
 
