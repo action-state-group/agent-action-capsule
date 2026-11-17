@@ -339,22 +339,23 @@ about one of the node's exchanges counts only when [SH-10]:
    selected, the referee is party to neither half, and it served the model and weights the two
    halves state.
 
-The node counts every verdict that qualifies and that its own log holds, sealed when the node
-received it or issued it. It does not count from a list it keeps apart from its log, and a
-verdict it received is counted whoever asked for it [SH-15].
+The node counts every verdict that qualifies and that its own log holds, in the period that
+committed it (§6.1). It does not count from a list it keeps apart from its log, and a verdict it
+received is counted whether the node or the other party to the exchange asked for it [SH-15].
 
 Verdict counts stay four separate counts, `corroborated`, `contradicted`, `inconclusive` and
 `not_comparable`, each in the unit `referee_verdicts`, with "not adjudicated" and its reason shown
 apart and counted against no one. A verdict in a History is the node's held record, labelled with
 whose ask it was: the node's own, or the other party's. A History carries no verdict about another
 node's exchanges. A verdict says nothing about the node's other or later answers. Verdict counts
-at the Standard level are period counts (§6), floor included, so a count never identifies a single
-asker.
+at the Standard level are period counts (§6), floor included. The floor limits small counts; it
+does not hide who asked when one party's own asks make up a count (§12).
 
-A verdict a node holds can be named by its digest, which a host's derivation can ask the node to
-confirm or deny holding, so that a verdict the node left out of its counts can be found by whoever
-holds the referee's signed delivery. The ask carries digests and no record body, and the host's
-definition states it.
+A verdict a node holds can be named by the digest of the referee's signed delivery, in the form the
+host's definition states. A host's derivation can ask the node to confirm or deny holding a
+verdict so named, so that a verdict the node confirms holding but left out of its counts can be
+found by whoever holds the delivery. The ask carries digests and no record body. What follows from
+a denial is the host's [SH-15].
 
 A verdict count is the count of one kind of check, a referee verdict (§5.3), whose result is
 signed by the checker and never by the node it concerns. A count of another kind of check, such as
@@ -740,6 +741,11 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
   with its exact log size. A requester who already knows all but one
   exchange of a cell can still learn the last; the floor limits, and does not remove, what such a
   requester learns.
+- **Verdicts held.** The ask by digest (§5.3) is answered per verdict, outside the period counts
+  and with no floor. It tells a requester that already holds the referee's signed delivery whether
+  the node holds that verdict, and tells a requester without the delivery nothing. Where one
+  party's own asks make up a verdict count, that party can infer from the published count that
+  the count is of its asks.
 - **Another derivation of the same stream.** §6 bounds only this profile's answers. A
   `standard_history/1` or `standard_history/2` card counts the holder's deals over a window ending
   at any anchor, with no floor: two such cards under the node key, at consecutive checkpoints, differ by what was
