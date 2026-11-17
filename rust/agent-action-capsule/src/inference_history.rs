@@ -24,6 +24,14 @@
 //! `period_anchor` and `period_floor` (ISH §6.3). `period_fixed` compares two
 //! Histories and is the caller's, over two [`Counts`].
 //!
+//! **Verdict counts.** A definition may carry the optional `verdict_counts`
+//! member (ISH §4.3, §5.3), counting `referee_verdicts` over the same periods:
+//! [`verdict_counts`] derives it, [`artifact_with_verdicts`] builds the artifact
+//! that declares it, and [`check_artifact`] checks it, each result of
+//! [`VERDICT_RESULTS`] as a floor table of its own, one cell per model hash and
+//! a total. The member names its kind of check (`referee_verdict`) and that the
+//! checker signs it. Which verdicts qualify is the caller's, from its own log.
+//!
 //! **Which period a record is in.** The one the first checkpoint covering it
 //! commits into (ISH §6.1). A checkpoint commits into the period holding its
 //! time, except the first checkpoint at a boundary, which commits into the
@@ -142,8 +150,25 @@ const COUNTS: &str = "period_counts";
 const UNIT: &str = "exchanges_served";
 const LABEL: &str = "self_reported";
 
-/// The members every artifact declares, sorted.
+/// The optional verdict counts member (ISH §4.3, §5.3), its unit and the one
+/// kind of check it counts today.
+const VERDICTS: &str = "verdict_counts";
+const VERDICT_UNIT: &str = "referee_verdicts";
+const VERDICT_CHECK: &str = "referee_verdict";
+const VERDICT_SIGNER: &str = "checker";
+/// The four results of a referee verdict, in the order cells are listed
+/// (ISH §5.3).
+pub const VERDICT_RESULTS: [&str; 4] = [
+    "corroborated",
+    "contradicted",
+    "inconclusive",
+    "not_comparable",
+];
+
+/// The members an artifact declares, sorted: with or without the verdict
+/// counts its definition carries.
 const DECLARED: [&str; 2] = ["history_card", COUNTS];
+const DECLARED_WITH_VERDICTS: [&str; 3] = ["history_card", COUNTS, VERDICTS];
 
 /// The keys of every artifact, sorted.
 const KEYS: [&str; 9] = [
@@ -157,6 +182,18 @@ const KEYS: [&str; 9] = [
     COUNTS,
     "subject",
 ];
+const KEYS_WITH_VERDICTS: [&str; 10] = [
+    "anchor",
+    "coverage_declaration",
+    "declared",
+    "derivation",
+    "evidence_stream",
+    "history_card",
+    "history_card_digest",
+    COUNTS,
+    "subject",
+    VERDICTS,
+];
 
 /// The most periods one answer lists: over 190 years of weeks. A stream
 /// whose first checkpoint is older is refused, never answered in part.
@@ -166,6 +203,7 @@ const MAX_PERIODS: i64 = 10_000;
 /// policy.
 #[derive(Debug)]
 pub struct Definition {
+    verdicts: bool,
     policy: Policy,
     digest: String,
     policy_digest: String,
@@ -246,14 +284,26 @@ impl Definition {
         let mut sorted = names.clone();
         sorted.sort_unstable();
         let counts_unit = json!([{"where": "periods[].cells[]", "unit": UNIT}]);
-        if sorted != ["history_card", COUNTS]
+        let verdicts = sorted == ["history_card", COUNTS, VERDICTS];
+        if !(verdicts || sorted == ["history_card", COUNTS])
             || members
                 .iter()
                 .find(|m| m["name"] == json!(COUNTS))
                 .is_none_or(|m| m["units"] != counts_unit || m["required"] != json!(true))
         {
             return Err(bad(
-                "members are not a required history_card and a required period_counts counting exchanges_served",
+                "members are not a required history_card and a required period_counts counting exchanges_served, with an optional verdict_counts",
+            ));
+        }
+        if verdicts
+            && !members.iter().any(|m| {
+                m["name"] == json!(VERDICTS)
+                    && m["required"] == json!(true)
+                    && m["units"] == json!([{"where": "periods[].cells[]", "unit": VERDICT_UNIT}])
+            })
+        {
+            return Err(bad(
+                "verdict_counts is not a required member counting referee_verdicts",
             ));
         }
         let history_card = members.iter().find(|m| m["name"] == json!("history_card"));
@@ -272,6 +322,7 @@ impl Definition {
                 .map_err(|_| bad("not canonicalizable"))
         };
         Ok(Definition {
+            verdicts,
             policy,
             digest: digest_of(document)?,
             policy_digest: digest_of(&document["period_policy"])?,
@@ -288,6 +339,11 @@ impl Definition {
     /// The digest that names the definition on the wire.
     pub fn digest(&self) -> &str {
         &self.digest
+    }
+
+    /// Whether the definition carries the `verdict_counts` member (ISH §4.3).
+    pub fn has_verdict_counts(&self) -> bool {
+        self.verdicts
     }
 
     /// The digest of the definition's `period_policy`, which the counts name.
@@ -373,6 +429,59 @@ pub fn period_counts(
     chain: &[Cut<'_>],
     model: &dyn Fn(u64) -> Option<String>,
 ) -> Result<Value, Refusal> {
+    let (first_period, counted) = count_periods(def, chain, model)?;
+    let rows = counted
+        .iter()
+        .map(|by_model| cells(by_model, def.policy.floor))
+        .collect();
+    period_list(def, first_period, rows)
+}
+
+/// The `verdict_counts` member at the anchor `chain.last()` (ISH §5.3), over
+/// the same periods as [`period_counts`]. `verdict(i)` is the `(model_hash,
+/// result)` the verdict held at leaf `i` gives, `None` for a record that is
+/// no qualifying verdict; `result` is one of [`VERDICT_RESULTS`], and
+/// a record naming another is not counted. Each result is its own table of
+/// one cell per model hash and one total, suppressed under ISH §6.2; no
+/// total across results is listed. The member names the one kind of check it
+/// counts and that its result is signed by the checker.
+pub fn verdict_counts(
+    def: &Definition,
+    chain: &[Cut<'_>],
+    verdict: &dyn Fn(u64) -> Option<(String, String)>,
+) -> Result<Value, Refusal> {
+    let keyed = |leaf: u64| verdict(leaf).filter(|(_, r)| VERDICT_RESULTS.contains(&r.as_str()));
+    let (first_period, counted) = count_periods(def, chain, &keyed)?;
+    let rows = counted
+        .iter()
+        .map(|by| {
+            VERDICT_RESULTS
+                .iter()
+                .flat_map(|result| {
+                    let models: std::collections::BTreeMap<String, u64> = by
+                        .iter()
+                        .filter(|((_, r), _)| r == result)
+                        .map(|((m, _), &n)| (m.clone(), n))
+                        .collect();
+                    verdict_cells(&models, def.policy.floor, result)
+                })
+                .collect()
+        })
+        .collect();
+    let mut member = period_list(def, first_period, rows)?;
+    member["check"] = json!(VERDICT_CHECK);
+    member["signed_by"] = json!(VERDICT_SIGNER);
+    Ok(member)
+}
+
+/// Per counted period, the number of records for each key `key(leaf)` gives.
+/// Returns the first counted period too. `policy_declined` and
+/// `capacity_exceeded` as [`period_counts`] states.
+fn count_periods<K: Ord>(
+    def: &Definition,
+    chain: &[Cut<'_>],
+    key: &dyn Fn(u64) -> Option<K>,
+) -> Result<(i64, Vec<std::collections::BTreeMap<K, u64>>), Refusal> {
     let policy = &def.policy;
     let anchor = chain.last().ok_or(Refusal::CapacityExceeded)?;
     if !policy.is_boundary(anchor.timestamp) {
@@ -388,29 +497,39 @@ pub fn period_counts(
     if last_counted - first_period >= MAX_PERIODS {
         return Err(Refusal::CapacityExceeded);
     }
-    // Per counted period, the served exchanges per model.
     let periods = (first_period..=last_counted).count();
-    let mut counted: Vec<std::collections::BTreeMap<String, u64>> =
-        vec![Default::default(); periods];
+    let mut counted: Vec<std::collections::BTreeMap<K, u64>> =
+        (0..periods).map(|_| Default::default()).collect();
     let mut from_leaf = 0u64;
     for (cut, &k) in chain.iter().zip(&commits) {
         for leaf in from_leaf..cut.leaves {
             if k > last_counted {
                 break;
             }
-            if let Some(m) = model(leaf) {
+            if let Some(m) = key(leaf) {
                 *counted[(k - first_period) as usize].entry(m).or_default() += 1;
             }
         }
         from_leaf = from_leaf.max(cut.leaves);
     }
-    let mut list = Vec::with_capacity(periods);
-    for (i, by_model) in counted.iter().enumerate() {
+    Ok((first_period, counted))
+}
+
+/// `{policy, periods}` over the periods from `first_period`, `rows[i]` the
+/// cells of the i-th.
+fn period_list(
+    def: &Definition,
+    first_period: i64,
+    rows: Vec<Vec<Value>>,
+) -> Result<Value, Refusal> {
+    let policy = &def.policy;
+    let mut list = Vec::with_capacity(rows.len());
+    for (i, row) in rows.into_iter().enumerate() {
         let k = first_period + i as i64;
         let (Some(from), Some(to)) = (period_time(policy, k), period_time(policy, k + 1)) else {
             return Err(Refusal::CapacityExceeded);
         };
-        list.push(json!({"from": from, "to": to, "cells": cells(by_model, policy.floor)}));
+        list.push(json!({"from": from, "to": to, "cells": row}));
     }
     Ok(json!({"policy": def.policy_digest, "periods": list}))
 }
@@ -450,11 +569,15 @@ fn first_record_period(chain: &[Cut<'_>], commits: &[i64]) -> Option<i64> {
         .map(|(_, &k)| k)
 }
 
-/// One period's cells: one per model, by name, then the total, each
-/// suppressed under ISH §6.2.
-fn cells(by_model: &std::collections::BTreeMap<String, u64>, floor: u64) -> Vec<Value> {
+/// Each model's count, then the total, with what is withheld and why
+/// (ISH §6.2): below the floor, and complementary where a published total
+/// beside exactly one suppressed model would give that model away.
+fn suppress(
+    by_model: &std::collections::BTreeMap<String, u64>,
+    floor: u64,
+) -> Vec<(Option<&str>, u64, Option<&'static str>)> {
     let total: u64 = by_model.values().sum();
-    let mut values: Vec<(Option<&str>, u64, Option<&str>)> = by_model
+    let mut values: Vec<(Option<&str>, u64, Option<&'static str>)> = by_model
         .iter()
         .map(|(m, &n)| (Some(m.as_str()), n, (n < floor).then_some("below_floor")))
         .collect();
@@ -473,18 +596,52 @@ fn cells(by_model: &std::collections::BTreeMap<String, u64>, floor: u64) -> Vec<
         }
     }
     values
+}
+
+fn cell_json(dimension: Value, unit: &str, n: u64, why: Option<&str>) -> Value {
+    let mut cell = json!({
+        "dimension": dimension,
+        "label": LABEL,
+        "unit": unit,
+        "value": if why.is_some() { Value::Null } else { json!(n) },
+    });
+    if let Some(why) = why {
+        cell["suppressed"] = json!(why);
+    }
+    cell
+}
+
+/// One period's cells: one per model, by name, then the total, each
+/// suppressed under ISH §6.2.
+fn cells(by_model: &std::collections::BTreeMap<String, u64>, floor: u64) -> Vec<Value> {
+    suppress(by_model, floor)
         .into_iter()
         .map(|(model, n, why)| {
-            let mut cell = json!({
-                "dimension": model.map(|m| json!({"model": m})),
-                "label": LABEL,
-                "unit": UNIT,
-                "value": if why.is_some() { Value::Null } else { json!(n) },
-            });
-            if let Some(why) = why {
-                cell["suppressed"] = json!(why);
-            }
-            cell
+            cell_json(
+                model.map(|m| json!({"model": m})).unwrap_or(Value::Null),
+                UNIT,
+                n,
+                why,
+            )
+        })
+        .collect()
+}
+
+/// One result's cells in a verdict period: one per model hash, then the
+/// result's total (`dimension` `{"result": r}`), suppressed as [`cells`] are.
+fn verdict_cells(
+    by_model: &std::collections::BTreeMap<String, u64>,
+    floor: u64,
+    result: &str,
+) -> Vec<Value> {
+    suppress(by_model, floor)
+        .into_iter()
+        .map(|(model, n, why)| {
+            let dimension = match model {
+                Some(m) => json!({"model_hash": m, "result": result}),
+                None => json!({"result": result}),
+            };
+            cell_json(dimension, VERDICT_UNIT, n, why)
         })
         .collect()
 }
@@ -502,6 +659,40 @@ pub fn artifact(
     stream: &str,
     log_size: u64,
 ) -> Result<Vec<u8>, Refusal> {
+    if def.verdicts {
+        return Err(Refusal::CapacityExceeded);
+    }
+    build_artifact(def, card, counts, None, anchor, stream, log_size)
+}
+
+/// [`artifact`] for a definition that carries `verdict_counts`: `verdicts` is
+/// that member (see [`verdict_counts`]). `capacity_exceeded` when the
+/// definition carries no such member, so one artifact never declares a member
+/// its definition does not.
+pub fn artifact_with_verdicts(
+    def: &Definition,
+    card: &[u8],
+    counts: Value,
+    verdicts: Value,
+    anchor: &str,
+    stream: &str,
+    log_size: u64,
+) -> Result<Vec<u8>, Refusal> {
+    if !def.verdicts {
+        return Err(Refusal::CapacityExceeded);
+    }
+    build_artifact(def, card, counts, Some(verdicts), anchor, stream, log_size)
+}
+
+fn build_artifact(
+    def: &Definition,
+    card: &[u8],
+    counts: Value,
+    verdicts: Option<Value>,
+    anchor: &str,
+    stream: &str,
+    log_size: u64,
+) -> Result<Vec<u8>, Refusal> {
     let card_value: Value = serde_json::from_slice(card).map_err(|_| Refusal::CapacityExceeded)?;
     if jcs_text(&card_value)
         .map_err(|_| Refusal::CapacityExceeded)?
@@ -511,10 +702,15 @@ pub fn artifact(
         return Err(Refusal::CapacityExceeded);
     }
     let card_text = jcs_text(&card_value).map_err(|_| Refusal::CapacityExceeded)?;
-    let art = json!({
+    let declared: &[&str] = if verdicts.is_some() {
+        &DECLARED_WITH_VERDICTS
+    } else {
+        &DECLARED
+    };
+    let mut art = json!({
         "anchor": anchor,
         "coverage_declaration": coverage_declaration(anchor, stream, log_size),
-        "declared": DECLARED,
+        "declared": declared,
         "derivation": def.digest(),
         "evidence_stream": stream,
         "history_card": card_value,
@@ -522,6 +718,9 @@ pub fn artifact(
         COUNTS: counts,
         "subject": {"full_history": null},
     });
+    if let Some(verdicts) = verdicts {
+        art[VERDICTS] = verdicts;
+    }
     jcs_text(&art)
         .map(String::into_bytes)
         .map_err(|_| Refusal::CapacityExceeded)
@@ -559,10 +758,32 @@ pub struct Period {
     pub cells: Vec<Cell>,
 }
 
+/// One checked verdict cell: a result and, but for the result's total, the
+/// model hash it counts.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VerdictCell {
+    /// One of [`VERDICT_RESULTS`].
+    pub result: String,
+    /// The model hash the verdicts state, `None` for the result's total.
+    pub model_hash: Option<String>,
+    /// The count, or why it is suppressed.
+    pub value: Result<u64, String>,
+}
+
+/// One checked period of verdict counts.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VerdictPeriod {
+    pub from: String,
+    pub to: String,
+    pub cells: Vec<VerdictCell>,
+}
+
 /// What a checked History counts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Counts {
     pub periods: Vec<Period>,
+    /// The verdict counts, when the definition carries them.
+    pub verdicts: Option<Vec<VerdictPeriod>>,
 }
 
 /// Check a Service History artifact `art` against its embedded card, already
@@ -585,7 +806,14 @@ pub fn check_artifact(
 ) -> Result<Counts, String> {
     let mut keys: Vec<&str> = art.keys().map(String::as_str).collect();
     keys.sort_unstable();
-    if keys != KEYS || art.get("declared") != Some(&json!(DECLARED)) {
+    let (want_keys, want_declared): (&[&str], &[&str]) = if def.verdicts {
+        (&KEYS_WITH_VERDICTS, &DECLARED_WITH_VERDICTS)
+    } else {
+        (&KEYS, &DECLARED)
+    };
+    let mut want_sorted = want_keys.to_vec();
+    want_sorted.sort_unstable();
+    if keys != want_sorted || art.get("declared") != Some(&json!(want_declared)) {
         return Err("the artifact's members are not the ones the definition declares".into());
     }
     let anchor_cut = chain.last().ok_or("the card lists no checkpoint")?;
@@ -617,19 +845,35 @@ pub fn check_artifact(
     if !def.policy.is_boundary(anchor_cut.timestamp) {
         return Err("period_anchor: the anchor's time is not a period boundary".into());
     }
-    check_counts(def, &art[COUNTS], chain)
+    let mut counts = check_counts(def, &art[COUNTS], chain)?;
+    if def.verdicts {
+        counts.verdicts = Some(check_verdicts(def, &art[VERDICTS], chain)?);
+    }
+    Ok(counts)
 }
 
-/// `period_alignment` and `period_floor` over the counts member.
-fn check_counts(def: &Definition, counts: &Value, chain: &[Cut<'_>]) -> Result<Counts, String> {
+/// `period_alignment` over a counts member whose own keys are `own` besides
+/// `periods` and `policy`: the policy digest, and every closed period from the
+/// one holding the stream's first record to the one the anchor closes, each
+/// once, in order, none where no checkpoint commits a record (ISH §6.1 item
+/// 3). Returns each period's `from`, `to` and `cells`.
+fn check_periods<'a>(
+    def: &Definition,
+    member: &'a Value,
+    own: &[&str],
+    chain: &[Cut<'_>],
+) -> Result<Vec<(String, String, &'a Value)>, String> {
     let policy = &def.policy;
     let malformed = |why: &str| format!("the period counts are malformed: {why}");
-    let counts = counts
+    let counts = member
         .as_object()
         .ok_or_else(|| malformed("not an object"))?;
     let mut keys: Vec<&str> = counts.keys().map(String::as_str).collect();
     keys.sort_unstable();
-    if keys != ["periods", "policy"] {
+    let mut want: Vec<&str> = own.to_vec();
+    want.extend(["periods", "policy"]);
+    want.sort_unstable();
+    if keys != want {
         return Err(malformed("unexpected members"));
     }
     if counts["policy"] != json!(def.policy_digest) {
@@ -638,9 +882,6 @@ fn check_counts(def: &Definition, counts: &Value, chain: &[Cut<'_>]) -> Result<C
     let listed = counts["periods"]
         .as_array()
         .ok_or_else(|| malformed("periods is not a list"))?;
-    // Every closed period, from the one holding the stream's first record to
-    // the one the anchor closes, each once, in order; none where no
-    // checkpoint commits a record (ISH §6.1 item 3).
     let commits = commit_periods(policy, chain).ok_or_else(|| malformed("a checkpoint time"))?;
     let anchor =
         unix_time(chain[chain.len() - 1].timestamp).ok_or_else(|| malformed("the anchor time"))?;
@@ -659,27 +900,124 @@ fn check_counts(def: &Definition, counts: &Value, chain: &[Cut<'_>]) -> Result<C
         {
             return Err("period_alignment: a period is not the policy's next closed one".into());
         }
+        out.push((
+            from.unwrap_or_default(),
+            to.unwrap_or_default(),
+            &period["cells"],
+        ));
+    }
+    Ok(out)
+}
+
+/// `period_alignment` and `period_floor` over the counts member.
+fn check_counts(def: &Definition, counts: &Value, chain: &[Cut<'_>]) -> Result<Counts, String> {
+    let mut out = Vec::new();
+    for (from, to, cells) in check_periods(def, counts, &[], chain)? {
         out.push(Period {
-            from: from.unwrap_or_default(),
-            to: to.unwrap_or_default(),
-            cells: check_cells(&period["cells"], policy.floor)?,
+            from,
+            to,
+            cells: check_cells(cells, def.policy.floor, UNIT)?,
         });
     }
-    Ok(Counts { periods: out })
+    Ok(Counts {
+        periods: out,
+        verdicts: None,
+    })
+}
+
+/// The same checks over `verdict_counts`: it names the one kind of check and
+/// its signer; each period lists, for each result of [`VERDICT_RESULTS`] in
+/// order, its cells (one per model hash, then the result's total), each result
+/// under `period_floor` as a table of its own, in the unit `referee_verdicts`.
+fn check_verdicts(
+    def: &Definition,
+    member: &Value,
+    chain: &[Cut<'_>],
+) -> Result<Vec<VerdictPeriod>, String> {
+    let bad = |why: &str| format!("verdict_counts: {why}");
+    if member.get("check") != Some(&json!(VERDICT_CHECK))
+        || member.get("signed_by") != Some(&json!(VERDICT_SIGNER))
+    {
+        return Err(bad("not a count of referee verdicts signed by the checker"));
+    }
+    let mut out = Vec::new();
+    for (from, to, cells) in check_periods(def, member, &["check", "signed_by"], chain)? {
+        let list = cells.as_array().ok_or_else(|| bad("cells is not a list"))?;
+        let mut checked = Vec::with_capacity(list.len());
+        for result in VERDICT_RESULTS {
+            // This result's cells as the plain counts' cells, which the one
+            // floor check reads; a cell with another dimension shape is
+            // not one of its results' and fails the result's own check.
+            let mut plain = Vec::new();
+            let mut hashes = Vec::new();
+            for cell in list {
+                let dim = cell.get("dimension").and_then(Value::as_object);
+                let (Some(d), Some(c)) = (dim, cell.as_object()) else {
+                    return Err(bad("a cell is malformed"));
+                };
+                if d.get("result").and_then(Value::as_str) != Some(result) {
+                    continue;
+                }
+                let hash = match d.len() {
+                    1 => None,
+                    2 => Some(
+                        d.get("model_hash")
+                            .and_then(Value::as_str)
+                            .ok_or_else(|| bad("a dimension is malformed"))?
+                            .to_string(),
+                    ),
+                    _ => return Err(bad("a dimension is malformed")),
+                };
+                let mut c = c.clone();
+                c.insert(
+                    "dimension".into(),
+                    hash.as_ref().map_or(Value::Null, |h| json!({ "model": h })),
+                );
+                hashes.push(hash);
+                plain.push(Value::Object(c));
+            }
+            let cells = check_cells(&Value::Array(plain), def.policy.floor, VERDICT_UNIT)
+                .map_err(|e| format!("{e} (in the {result} verdicts)"))?;
+            for (cell, hash) in cells.into_iter().zip(hashes) {
+                checked.push(VerdictCell {
+                    result: result.to_string(),
+                    model_hash: hash,
+                    value: cell.value,
+                });
+            }
+        }
+        // Every cell is in some result's table, listed result by result.
+        if checked.len() != list.len()
+            || checked
+                .iter()
+                .zip(list)
+                .any(|(c, raw)| raw["dimension"]["result"] != json!(c.result))
+        {
+            return Err(bad(
+                "a cell is for no result of a referee verdict, or out of order",
+            ));
+        }
+        out.push(VerdictPeriod {
+            from,
+            to,
+            cells: checked,
+        });
+    }
+    Ok(out)
 }
 
 /// `period_floor` over one period's cells: each in the counts unit and
 /// label, a model at most once and exactly one total, every value at least
 /// the floor, every suppressed cell without a value and with a reason, and
 /// complementary suppression where it is due.
-fn check_cells(cells: &Value, floor: u64) -> Result<Vec<Cell>, String> {
+fn check_cells(cells: &Value, floor: u64, unit: &str) -> Result<Vec<Cell>, String> {
     let bad = |why: &str| format!("period_floor: {why}");
     let cells = cells.as_array().ok_or_else(|| bad("cells is not a list"))?;
     let mut out: Vec<Cell> = Vec::with_capacity(cells.len());
     for cell in cells {
         let c = cell.as_object().ok_or_else(|| bad("a cell is malformed"))?;
-        if c.get("unit").and_then(Value::as_str) != Some(UNIT) {
-            return Err(format!("units: a cell counts in another unit than {UNIT}"));
+        if c.get("unit").and_then(Value::as_str) != Some(unit) {
+            return Err(format!("units: a cell counts in another unit than {unit}"));
         }
         if c.get("label").and_then(Value::as_str) != Some(LABEL) {
             return Err(format!("labels: a count is labelled other than {LABEL}"));
