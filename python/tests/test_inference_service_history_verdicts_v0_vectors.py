@@ -61,7 +61,7 @@ def fails(case: dict) -> set[str]:
         if -1 in position or position != sorted(position):
             out.add("artifact_form")
             continue
-        for index, result in enumerate(RESULTS):
+        for index, _result in enumerate(RESULTS):
             group = [c for c, p in zip(cells, position) if p == index]
             models = [c for c in group if "model_hash" in c["dimension"]]
             totals = [c for c in group if "model_hash" not in c["dimension"]]

@@ -22,7 +22,6 @@ Output: ``vectors/inference-service-history-verdicts-v0/`` (or ``--out DIR``). D
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 from pathlib import Path
 from typing import Any
