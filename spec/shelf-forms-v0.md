@@ -333,7 +333,8 @@ A record push carries:
 - `stamp_proof`: OPTIONAL. One stamp proof (§5).
 
 At least one of the two MUST be present; a push with neither is refused as `invalid` (EBL
-`shelf_receive.go` `Receive`). A receiver handles the record part first and then the proof part,
+`shelf_receive.go` `Receive`). Having no part to answer, a binding carries it as its protocol's
+invalid-params error (`bindings/record-push-v0.md` §2.3 rule 3). A receiver handles the record part first and then the proof part,
 each on its own: the answer to one part does not depend on the other, so a record sent again
 with a proof it lacked the first time still delivers the proof (design §3).
 

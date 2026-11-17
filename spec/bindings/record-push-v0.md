@@ -42,7 +42,8 @@ described in BCP 14 (RFC 2119, RFC 8174) when, and only when, they appear in all
 
 The **sender** pushes; the **receiver** holds a shelf and answers (SF §6). A **transport
 condition** is anything other than an answer in the answer position: the sender learns nothing
-about what the receiver did with the push.
+about what the receiver did with the push, which may have been handled in whole, in part or not
+at all (§2.3 rule 4).
 
 ## 2. The push and the answer
 
@@ -89,7 +90,7 @@ The record answer has exactly these seven members, all always present (EBL
 | `deleted` | boolean | held once and deleted under the receiver's retention; not stored again |
 | `counted` | boolean | within the sender's counted prefix |
 | `ask_for_book` | boolean | held and not counted: the receiver asks the sender for its book |
-| `refused` | string | `""`, or the refusal class: `invalid`, `refused`, `over_limit` or `busy` |
+| `refused` | string | `""` when the record was not refused, or the refusal class: `invalid`, `refused`, `over_limit` or `busy` |
 
 The proof answer has exactly these three members, all always present (EBL `expect.proof`; EBL
 `ProofOutcome`):
@@ -98,7 +99,7 @@ The proof answer has exactly these three members, all always present (EBL `expec
 |---|---|---|
 | `accepted` | boolean | kept (SF §6.3 step 6) |
 | `duplicate` | boolean | already held; not stored again |
-| `refused` | string | `""`, or the refusal class: `invalid` or `refused` |
+| `refused` | string | `""` when the proof was not refused, or the refusal class: `invalid` or `refused` |
 
 The values are those of SF §6.5 and nothing else: every answer a receiver writes is one row of
 the SF §6.5 table, with every member that row does not name `false` or `""`, except `digest` as
@@ -108,8 +109,7 @@ receiver's own changes (SF §6.5, "What the receiver learns").
 
 The answer is an acknowledgment. It is not signed, it is not evidence of what the receiver holds,
 and `stored` does not mean the record was accepted as the sender's one record at its position
-(SF §6.5). A sender MUST NOT present an answer to a third party as proof that the receiver holds a
-record.
+(SF §6.5). An answer is not proof, to anyone, that the receiver holds a record.
 
 ### 2.3 Rules for both carriages
 
@@ -129,9 +129,9 @@ record.
    so the `invalid` of SF §6.1 is carried as the invalid-params error of §3.2 and §4.2.
 4. **No answer on a receiver fault.** When the receiver cannot complete a push for a reason of its
    own (its store or its profile fails), it sends a JSON-RPC internal error (`-32603`) and no
-   answer, even when one part was already handled. Sending the push again is safe: a record
-   already stored is answered `duplicate`, a proof already kept `duplicate` (SF §6.2 step 4, §6.3
-   step 5).
+   answer, even when one part was already handled. The sender concludes nothing about either
+   part until it pushes again. Sending the push again is safe: a record already stored is
+   answered `duplicate`, a proof already kept `duplicate` (SF §6.2 step 4, §6.3 step 5).
 5. **The sender classifies by the answer alone.** An answer object in the answer position, of the
    form of §2.2 with one member per part pushed, is the answer, whatever `isError` or a task state
    says. Anything else is a transport condition. A sender MAY push again after a transport
@@ -228,9 +228,9 @@ The push is one `tools/call` with `name` `record_push` whose `arguments` are the
 alphabet) and handles the push by SF §6.
 
 A call whose `arguments` do not satisfy the input schema (no member, an extra member, a member
-that is not base64url or decodes to no octets) carries no push. The receiver MUST NOT answer it
-with an answer object, and SHOULD answer with a JSON-RPC error with code `-32602` (invalid
-params), as IP §11.4.5 does for `evidence_request`.
+that is not base64url), or with a member that does not strictly decode to at least one octet,
+carries no push. The receiver MUST NOT answer it with an answer object. It SHOULD answer with a
+JSON-RPC error with code `-32602` (invalid params), as IP §11.4.5 does for `evidence_request`.
 
 ### 3.3 The result
 
@@ -306,9 +306,16 @@ The sender sends one `SendMessage` with `A2A-Version` `1.0` and the extension UR
 
 If the sender sets `acceptedOutputModes`, it MUST include `application/json`.
 
+This differs on purpose from the evidence request carriage, which puts its request octets in one
+`raw` part (IP §11.4.4). A push has two optional parts, so a single opaque octet string cannot
+hold it without a wrapper. The `data` part holds the same push object as the MCP arguments
+(§3.2), and the octets inside it still travel as opaque base64url strings (§2.3 rule 1), so both
+carriages hand the receiver the same octets.
+
 A `Message` of any other shape carries no push: the push object anywhere other than one `data`
 part, in `metadata`, as `text` or as `raw`, or a `data` value that is not a push object under the
-input schema of §3.1. The receiver MUST NOT answer it with an answer object. It answers with a
+input schema of §3.1 or that has a member that does not strictly decode to at least one octet
+(as in §3.2). The receiver MUST NOT answer it with an answer object. It answers with a
 JSON-RPC error `-32602` (invalid params), or an A2A error, such as `ContentTypeNotSupportedError`
 for another `mediaType`, which is a transport condition to the sender. A receiver MAY answer
 `SendStreamingMessage` with `UnsupportedOperationError`, as EBL's evidence request carriage does.
@@ -318,8 +325,11 @@ for another `mediaType`, which is a transport condition to the sender. A receive
 The receiver MUST return a `Task`, not a direct `Message`, in `TASK_STATE_COMPLETED`, holding one
 `Artifact` whose `extensions` contain the extension URI, with exactly one `Part` whose content is
 `data`, holding the answer object (§2.2), and whose `mediaType` is `application/json`. A refused
-part is an answer: the task still completes. A task in any other state, or with no such Artifact,
-is a transport condition (§2.3 rule 5).
+part is an answer: the task still completes.
+
+The sender looks for that Artifact by the extension URI, whatever the task state, as IP §11.4.4
+does: an Artifact of that form is the answer (§2.3 rule 5). No such Artifact, a task with no
+Artifact, an A2A error or a direct `Message` is a transport condition.
 
 The receiver keeps no task: `GetTask` and `CancelTask` find nothing, and `ListTasks` lists none.
 The identifiers it mints (`id`, `contextId`, `artifactId`) MUST be unpredictable and MUST NOT
@@ -374,5 +384,12 @@ change an answer.
 ## 7. Conformance
 
 This document adds no vectors. The answer objects of §2.2 are those of EBL's receive vectors
-(`testdata/shelf/receive/script.json`), which SF-8 adopts for SF §6; carriage vectors for this
-binding would follow EBL's MCP and A2A entry for `Receive`.
+(`testdata/shelf/receive/script.json`), which SF-8 adopts for SF §6. The MCP and A2A message
+shapes of §3 and §4 have no vectors yet: they are open point RP-1, and an implementation's entry
+claims conformance to this binding only once carriage vectors exist.
+
+## 8. Open points
+
+| # | Point |
+|---|---|
+| RP-1 | Carriage vectors for §3 and §4: a push and its answer over each carriage, and the negative cases (a member that fails strict decoding, a `raw` or `text` part, an answer Artifact on a task not completed). They are to land with the first implementation's MCP and A2A entry for `Receive`, in this repository's `vectors/`. |
