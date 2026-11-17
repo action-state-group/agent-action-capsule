@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-11-17
+
+Tag `crates/evidence-request-v0.6.0`.
+
+- Breaking for consumers of the `cll` feature: `checkpointed-local-log` moves from 0.5.0 to 0.6.0 (CLL -02 checkpoint `sub`; action-state-group/agent-action-capsule#611), so the CLL types in the public API are 0.6.0's. No other API or behavior change.
+
 ## 0.5.0 — 2026-11-09
 
 Tag `crates/evidence-request-v0.5.0`.
