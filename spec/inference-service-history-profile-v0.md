@@ -262,7 +262,7 @@ that completeness is not established because the counts were not checked against
 |---|---|---|
 | `history_card` | yes | the `history_card/1` artifact for the same subject and anchor (§5.2) |
 | counts | at least one | one or more members of period counts (§6), each declaring its units |
-| verdict counts | no | referee verdicts about the node's own exchanges, under §5.3 |
+| verdict counts | no | referee verdicts about the node's own exchanges, whoever asked, under §5.3 |
 
 The counts members' shapes are the host's. Their rules are §5 to §7, §10 and §5.3. The vectors fix
 one shape for themselves only (§9).
@@ -333,18 +333,37 @@ carried, a verifier applies the same rules under the relying party's policy. A r
 about one of the node's exchanges counts only when [SH-10]:
 
 1. it is signed by the referee under a key the policy accepts;
-2. it cites the request the node itself made of that referee, and the exact pair of halves it
-   compares; and
+2. it cites a request made of that referee by the node or by the other party to the exchange, and
+   the exact pair of halves it compares; and
 3. the referee was eligible: the referee's own signed statement in the verdict names how it was
    selected, the referee is party to neither half, and it served the model and weights the two
    halves state.
 
+The node counts every verdict that qualifies and that its own log holds, in the period that
+committed it (§6.1). It does not count from a list it keeps apart from its log, and a verdict it
+received is counted whether the node or the other party to the exchange asked for it [SH-15].
+A host definition fixed before this rule conforms as that definition, by its digest (§4.1,
+SH-13); the rule binds a definition fixed after it.
+
 Verdict counts stay four separate counts, `corroborated`, `contradicted`, `inconclusive` and
 `not_comparable`, each in the unit `referee_verdicts`, with "not adjudicated" and its reason shown
-apart and counted against no one. A verdict in a History is the node's held record of its own ask,
-labelled with whose ask it was. A History carries no verdict about another node's exchanges. A
-verdict says nothing about the node's other or later answers. Verdict counts at the Standard level
-are period counts (§6), floor included.
+apart and counted against no one. A verdict in a History is the node's held record, labelled with
+whose ask it was: the node's own, or the other party's. A History carries no verdict about another
+node's exchanges. A verdict says nothing about the node's other or later answers. Verdict counts
+at the Standard level are period counts (§6), floor included. The floor limits small counts; it
+does not hide who asked when one party's own asks make up a count (§12).
+
+A verdict a node holds can be named by the digest of the referee's signed delivery, in the form the
+host's definition states. A host's derivation can ask the node to confirm or deny holding a
+verdict so named, so that a verdict the node confirms holding but left out of its counts can be
+found by whoever holds the delivery. The ask carries digests and no record body. What follows from
+a denial is the host's [SH-15].
+
+A verdict count is the count of one kind of check, a referee verdict (§5.3), whose result is
+signed by the checker and never by the node it concerns. A count of another kind of check, such as
+an audit result signed by its auditor, is carried in the same member, labelled by its kind of
+check and its signer, counted separately and never added to these; the rules for such a kind come
+in a later revision.
 
 ## 6. Period counts
 
@@ -725,6 +744,11 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
   with its exact log size. A requester who already knows all but one
   exchange of a cell can still learn the last; the floor limits, and does not remove, what such a
   requester learns.
+- **Verdicts held.** The ask by digest (§5.3) is answered per verdict, outside the period counts
+  and with no floor. It tells a requester that knows the digest whether the node holds that verdict,
+  and no verdict body; who may ask is the host's. Where one
+  party's own asks make up a verdict count, that party can infer from the published count that
+  the count is of its asks.
 - **Another derivation of the same stream.** §6 bounds only this profile's answers. A
   `standard_history/1` or `standard_history/2` card counts the holder's deals over a window ending
   at any anchor, with no floor: two such cards under the node key, at consecutive checkpoints, differ by what was
@@ -769,3 +793,4 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-12 | The vector-only formats of §9. |
 | SH-13 | A host's definition conforms by its digest (§4.1). A host definition fixed before it carries `profile`, `coverage_declaration` and `period_policy` conforms only as a new version. |
 | SH-14 | No vectors in this revision for: verdict counts and session coverage (§5.3, §10); `definition_form`, `definition_binding`, `artifact_form`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both; a stream whose card commits no record. |
+| SH-15 | Verdicts the node received without asking (§5.3): the delivery that puts such a verdict in the node's log, and the ask by digest, are the host's; this profile fixes only what counts and that the count is over the node's own log. Because the ask is the host's, one implementation cannot yet check another's omissions; interoperable omission checking is open. |
