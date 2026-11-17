@@ -17,6 +17,12 @@ result is a table of its own, with the floor and complementary suppression of §
 results is listed (§5.1). Whether the node or the other party asked the referee is not in the
 artifact.
 
+A shape other than this one is another format, not a violation of the profile: `artifact_form` failing
+here means this set's fixed format, which §4.3 leaves to the host (SH-12). Two choices are the plugin's
+that wrote them, not the profile's: the cells are keyed by the model identity hash the referee compared
+(a stated claim, declared in `claims`, never the weights digest), and a count of who asked the referee, the node
+or the other party, is not in the artifact; a split by asker would be a new shape, not an extension of this one.
+
 ## Cases
 
 One positive (`verdict-counts-held`: all four results; a cell under the floor and its total withheld;

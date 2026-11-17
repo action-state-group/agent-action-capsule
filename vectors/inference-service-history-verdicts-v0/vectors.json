@@ -1943,7 +1943,8 @@
       "id": "mutant-verdict-counts-signed-by-the-node",
       "title": "A verdict count that names the node itself as the signer",
       "cites": [
-        "§5.3"
+        "§5.3",
+        "§13 SH-12"
       ],
       "source": "constructed: signed_by node",
       "kind": "history",
@@ -2171,7 +2172,8 @@
       "id": "mutant-verdict-counts-of-another-check",
       "title": "A verdict count that names another kind of check",
       "cites": [
-        "§5.3"
+        "§5.3",
+        "§13 SH-12"
       ],
       "source": "constructed: check audit_result",
       "kind": "history",
@@ -2400,7 +2402,8 @@
       "title": "A cell adding the results into one figure",
       "cites": [
         "§5.1",
-        "§5.3"
+        "§5.3",
+        "§13 SH-12"
       ],
       "source": "constructed: a cell with the dimension {result: all} and the value 34",
       "kind": "history",
@@ -3327,7 +3330,8 @@
       "id": "mutant-verdict-counts-undeclared",
       "title": "A verdict_counts member the artifact does not declare",
       "cites": [
-        "§8.2"
+        "§8.2",
+        "§13 SH-12"
       ],
       "source": "constructed: declared lists only history_card and period_counts",
       "kind": "history",

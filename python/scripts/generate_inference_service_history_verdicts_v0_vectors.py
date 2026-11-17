@@ -201,17 +201,17 @@ def cases() -> list[dict]:
     def by_node(v: dict) -> None:
         v["signed_by"] = "node"
     case("mutant-verdict-counts-signed-by-the-node", "A verdict count that names the node itself as the signer",
-         ["§5.3"], "constructed: signed_by node", tampered(by_node), "artifact_form")
+         ["§5.3", "§13 SH-12"], "constructed: signed_by node", tampered(by_node), "artifact_form")
 
     def other_check(v: dict) -> None:
         v["check"] = "audit_result"
     case("mutant-verdict-counts-of-another-check", "A verdict count that names another kind of check",
-         ["§5.3"], "constructed: check audit_result", tampered(other_check), "artifact_form")
+         ["§5.3", "§13 SH-12"], "constructed: check audit_result", tampered(other_check), "artifact_form")
 
     def blended(v: dict) -> None:
         v["periods"][0]["cells"].append(vcell("all", None, 34))
     case("mutant-verdict-results-added-together", "A cell adding the results into one figure",
-         ["§5.1", "§5.3"], "constructed: a cell with the dimension {result: all} and the value 34",
+         ["§5.1", "§5.3", "§13 SH-12"], "constructed: a cell with the dimension {result: all} and the value 34",
          tampered(blended), "artifact_form")
 
     def swapped(v: dict) -> None:
@@ -232,7 +232,7 @@ def cases() -> list[dict]:
          ["§6.1", "§6.3"], "constructed: period 2 removed", tampered(dropped_period), "period_alignment")
 
     case("mutant-verdict-counts-undeclared", "A verdict_counts member the artifact does not declare",
-         ["§8.2"], "constructed: declared lists only history_card and period_counts",
+         ["§8.2", "§13 SH-12"], "constructed: declared lists only history_card and period_counts",
          history(declare=False), "artifact_form")
     return out
 
