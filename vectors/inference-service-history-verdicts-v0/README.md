@@ -20,14 +20,15 @@ artifact.
 ## Cases
 
 One positive (`verdict-counts-held`: all four results; a cell under the floor and its total withheld;
-a withheld model beside a published total with another cell withheld with it) and fifteen negatives,
+a withheld model beside a published total with another cell withheld with it) and fourteen negatives,
 each failing one History property (`artifact_form` failures report no property after it, §8.3): a published value under the floor, a missing complementary
 suppression, a result's table dropped, another unit, a label stronger than the evidence, a count
-signed by the node or of another kind of check, a withheld cell that states a value or an unknown reason, a published total its cells do not add up to, the results added together, models out of order,
+signed by the node or of another kind of check, a withheld cell that states a value or an unknown reason, the results added together, models out of order,
 another period policy, a period left out, and a member the artifact does not declare.
 
 ## Not covered
 
+- That a published total equals its published cells (the checkers refuse a mismatch; the profile text does not fix the property it fails, so no case states it).
 - The rule for two or more models withheld under the floor beside a published total (SH-8 stays open). The Rust
   library withholds the total there only when every withheld model is under the floor and the rest
   of the total is nothing, one each or the most a withheld cell can hold; these cases do not state it.

@@ -189,14 +189,6 @@ def cases() -> list[dict]:
          ["§6.2", "§6.3"], "constructed: period 1's under-floor contradicted cell withheld as 'because'",
          tampered(unknown_reason), "period_floor")
 
-    def wrong_total(v: dict) -> None:
-        c = next(c for c in v["periods"][0]["cells"]
-                 if c["dimension"] == {"result": "corroborated"})
-        c["value"] = 14  # the published cells (9 and 6) add up to 15
-    case("mutant-verdict-total-is-not-its-cells-sum", "A published total that its published cells do not add up to",
-         ["§6.2", "§6.3"], "constructed: period 1's corroborated total published as 14 beside 9 and 6",
-         tampered(wrong_total), "period_floor")
-
     def another_unit(v: dict) -> None:
         v["periods"][0]["cells"][0]["unit"] = "exchanges_served"
     case("mutant-verdict-cell-in-another-unit", "A verdict cell counted in exchanges_served",
