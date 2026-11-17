@@ -128,6 +128,7 @@ COUNTERS = {
                                              + cases("vectors/standard-history-v0/vectors-2.json")),
     "vectors/inference-service-history-v0/": lambda: cases("vectors/inference-service-history-v0/vectors.json"),
     "vectors/inference-service-history-v0-interop-v1/": lambda: cases("vectors/inference-service-history-v0-interop-v1/vectors.json"),
+    "vectors/inference-service-history-verdicts-v0/": lambda: cases("vectors/inference-service-history-verdicts-v0/vectors.json"),
     "vectors/history-frame-v0/": lambda: cases("vectors/history-frame-v0/vectors.json"),
     "vectors/profiles/": profile_count,
     "vectors/registry-conformance/": lambda: cases("vectors/registry-conformance/vectors.json"),

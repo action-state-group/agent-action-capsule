@@ -1,0 +1,52 @@
+# Inference-Service History v0: verdict counts vectors
+
+These vectors exercise the optional `verdict_counts` member of
+`spec/inference-service-history-profile-v0.md` (§4.3, §5.3, with the period rules of §6) on the
+Standard History of `vectors/inference-service-history-v0/`: the same node stream, card and period
+policy (floor 5, complementary suppression), with a third member counting the referee verdicts the
+node holds about itself.
+
+## The member (a format fixed for these vectors, SH-12)
+
+`{"check": "referee_verdict", "signed_by": "checker", "policy": <policy digest>, "periods": [...]}`.
+Each period (the same closed periods as `period_counts`) lists, for each result in the order
+`corroborated`, `contradicted`, `inconclusive`, `not_comparable`, one cell per model hash in hash
+order and then the result's total, `{"dimension": {"model_hash": ..., "result": ...}}` or
+`{"dimension": {"result": ...}}`, in the unit `referee_verdicts`, labelled `self_reported`. Each
+result is a table of its own, with the floor and complementary suppression of §6.2; no total across
+results is listed (§5.1). Whether the node or the other party asked the referee is not in the
+artifact.
+
+A shape other than this one is another format, not a violation of the profile: `artifact_form` failing
+here means this set's fixed format, which §4.3 leaves to the host (SH-12; the shape is listed in §9). §5.3's rules that the result being counted is signed by the checker, that a count is of one kind of check and that the four results stay separate counts have no History property in §8.3, so three cases (`mutant-verdict-counts-signed-by-the-node`, `mutant-verdict-counts-of-another-check`, `mutant-verdict-results-added-together`) pin them through the shape only (SH-16). Two choices are this format's, not the profile's: the cells are keyed by the model
+identity hash a verdict states (a claim of the provider, declared in `claims`), and a count of who asked the referee,
+the node or the other party, is not in the artifact; a split by asker would be a new shape, not an extension of this one.
+
+## Cases
+
+One positive (`verdict-counts-held`: all four results; a cell under the floor and its total withheld;
+a withheld model beside a published total with another cell withheld with it) and fourteen negatives,
+each failing one History property (`artifact_form` failures report no property after it, §8.3): a published value under the floor, a missing complementary
+suppression, a result's table dropped, another unit, a label stronger than the evidence, a count
+signed by the node or of another kind of check, a withheld cell that states a value or an unknown reason, the results added together, models out of order,
+another period policy, a period left out, and a member the artifact does not declare.
+
+## Not covered
+
+- That a published total equals its published cells (the checkers refuse a mismatch; the profile text does not fix the property it fails, so no case states it).
+- The rule for two or more models withheld under the floor beside a published total (SH-8 stays open). The Rust
+  library withholds the total there only when every withheld model is under the floor and the rest
+  of the total is nothing, one each or the most a withheld cell can hold; these cases do not state it.
+- Delivery of a verdict to a node, and the ask by digest that checks omission (SH-15): the host's.
+- The envelope, the card and the other History properties: `vectors/inference-service-history-v0/`.
+- Go, the capsule-engine admission evaluator and the Python library do not read this member yet.
+
+## Derivation
+
+`python/scripts/generate_inference_service_history_verdicts_v0_vectors.py` writes every file except
+this README, on the generator of the base set. It states every expected status by hand from the
+profile text. `python/tests/test_inference_service_history_verdicts_v0_vectors.py` evaluates every
+case from its inputs alone with its own code, requires the result to equal the case's `expected`
+block, and regenerates the directory byte for byte. The Rust test
+`rust/agent-action-capsule/tests/inference_history_verdicts_vectors.rs` checks every case with
+`agent_action_capsule::inference_history`.
