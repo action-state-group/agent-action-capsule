@@ -121,7 +121,16 @@ FIXTURES = {
 
 # Further positives: record_version -> [(vectors subdir, name)].
 EXTRA_POSITIVES = {
-    "evaluation-report/v1": [("evaluation-report", "pos-example-org-evaluation-report-out-of-scope")],
+    "evaluation-report/v1": [
+        ("evaluation-report", "pos-example-org-evaluation-report-out-of-scope"),
+        ("evaluation-report", "pos-example-org-evaluation-report-clause-ref"),
+    ],
+}
+
+# Further negatives, each of which the schema must reject:
+# record_version -> [(vectors subdir, name)].
+EXTRA_NEGATIVES = {
+    "evaluation-report/v1": [("evaluation-report", "neg-empty-clause-ref")],
 }
 
 # Superseded vectors kept byte-for-byte: record_version -> [(vectors subdir,
@@ -312,6 +321,23 @@ def main() -> int:
                 refused["cases"][-1]["verdict"] = "not_applicable"
                 if not list(validator.iter_errors(refused)):
                     findings.append(f"VERDICT-NOT-CLOSED {record_version}: a not_applicable case verdict validates")
+
+        for extra_subdir, extra_name in EXTRA_NEGATIVES.get(record_version, []):
+            extra_neg = _load_fixture(VECTORS_DIR / extra_subdir / f"{extra_name}.json")
+            if list(validator.iter_errors(extra_neg)):
+                print(f"OK  {record_version:<28} {extra_name}.json correctly REJECTED")
+                if extra_name == "neg-empty-clause-ref":
+                    # Load-bearing proof: without Case.clause_ref's minLength the
+                    # same fixture validates, so that rule is what rejected it.
+                    clause_ref_mutant = copy.deepcopy(schema)
+                    del clause_ref_mutant["$defs"]["Case"]["properties"]["clause_ref"]["minLength"]
+                    _mutant_check(
+                        f"{record_version}/{extra_name}", schema, clause_ref_mutant, extra_neg
+                    )
+            else:
+                findings.append(
+                    f"NEGATIVE-DID-NOT-FAIL {record_version}/{extra_name}: validated clean"
+                )
 
         neg_instance = _load_fixture(vec_dir / f"{neg_name}.json")
         neg_errors = list(validator.iter_errors(neg_instance))

@@ -218,6 +218,18 @@ evaluation_report_out_of_scope["cases"].append({
 })
 write("evaluation-report", "pos-example-org-evaluation-report-out-of-scope", evaluation_report_out_of_scope)
 
+# A case that names the clause of the pinned contract it answers (optional; the
+# first positive above shows the member absent).
+evaluation_report_clause_ref = copy.deepcopy(evaluation_report_pos)
+evaluation_report_clause_ref["record_id"] = "er-example-org-3"
+evaluation_report_clause_ref["cases"][0]["clause_ref"] = "req-claim-1"
+write("evaluation-report", "pos-example-org-evaluation-report-clause-ref", evaluation_report_clause_ref)
+
+# clause_ref is a key, never free text: an empty one is refused.
+evaluation_report_empty_clause_ref = copy.deepcopy(evaluation_report_clause_ref)
+evaluation_report_empty_clause_ref["cases"][0]["clause_ref"] = ""
+write("evaluation-report", "neg-empty-clause-ref", evaluation_report_empty_clause_ref)
+
 evaluation_report_neg = copy.deepcopy(evaluation_report_pos)
 del evaluation_report_neg["cases"][0]["method"]
 write("evaluation-report", "neg-case-without-method", evaluation_report_neg)

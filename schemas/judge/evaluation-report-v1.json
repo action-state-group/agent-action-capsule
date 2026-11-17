@@ -79,7 +79,12 @@
           "minItems": 1,
           "items": { "$ref": "#/$defs/ActCitation" }
         },
-        "method": { "$ref": "#/$defs/MethodCitation" }
+        "method": { "$ref": "#/$defs/MethodCitation" },
+        "clause_ref": {
+          "description": "Optional. The clause id, in the pinned contract_ref, this case answers: a plain grouping key, never free text and never the judge's words (those belong in a separate cited record under the share gate). That the id exists in the pinned contract is a verifier check, not a schema one (spec section 2).",
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "EvaluationReport": {

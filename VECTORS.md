@@ -140,7 +140,7 @@ its 11 `record_signatures`.
 | `vectors/evidence-result/` | `spec/evidence-result-v0.md` (including `plan_ref` and `dataset_ref`) | evaluate, report | 84 |
 | `vectors/evidence-dataset/` | `spec/evidence-plan-ir-v0.md` §5.1, §6.2 (dataset plans and datasets) | evaluate | 32 |
 | `vectors/deal-reconcile-v0/` | `spec/deal-reconcile-contract-v0.md` (`ec:deal-reconcile@1`) | evaluate | 14 |
-| `vectors/judge/` | `spec/judge-record-family-v1.md` | record, evaluate | 18 |
+| `vectors/judge/` | `spec/judge-record-family-v1.md` | record, evaluate | 20 |
 | `vectors/profiles/` | host-principal and Evidence Contract profiles (illustrative) | record, evaluate | 10 |
 | `vectors/viewer-core-text/` | `spec/verification-display-v0.md` §6.1, §6.2 | report | 22 |
 | `vectors/adapters/x402/` | `spec/adapters/x402-v0.md` | verify | 2 |

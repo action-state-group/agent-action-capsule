@@ -136,7 +136,18 @@ evaluation-report:
       verdict: met | not_met | not_evaluable | out_of_scope   # owned by the Evidence Contract
       acts: [citation, ...]         # citation_purpose: grounds, >=1
       method: citation              # citation_purpose: method — REQUIRED
+      clause_ref?: string           # the clause id, in the pinned contract_ref, this case answers
 ```
+
+**`clause_ref` (optional).** A grouping key: the id of the clause, within the Evidence Contract
+`contract_ref` pins, that the case answers. It is a non-empty string, never free text, and never carries the
+judge's or an adjudicator's words: words can quote conversation content, so any such record is a
+separate cited record under the share gate, not a member of the `Case`. Absent, the case names no
+clause. A verifier on a schema that predates this member refuses a report that carries it, since
+`Case` is closed to unknown members. **Normative, not schema-enforced in v1:** that the id exists
+in the pinned contract needs the contract, which JSON Schema cannot see; a conforming verifier that holds the contract MUST
+reject a report whose `clause_ref` is not a clause of it, in addition to schema validation. A
+verifier without the contract cannot check it and MUST NOT treat the value as verified.
 
 **`out_of_scope` (Result v0 §4.2).** A case is `out_of_scope` when the judge found that the situation
 its criterion describes did not arise. A judge answers it only for a requirement whose contract

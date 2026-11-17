@@ -22,6 +22,7 @@ names a company.
 | `adjudication-response-v1.json` | `pos-example-org-delivery-receipt` | `neg-delivery-receipt-with-verdict` | `kind: delivery_receipt` prohibits `verdict`/`basis` — a delivery receipt is sealed before any decision (section 7) |
 | `evaluation-report-v1.json` | `pos-example-org-evaluation-report` | `neg-case-without-method` | `Case` requires `method` — a case with no cited rubric is not legal |
 | `evaluation-report-v1.json` | `pos-example-org-evaluation-report-out-of-scope` | (checker: the same report with a `not_applicable` case verdict is refused) | a second case judged `out_of_scope` beside a `met` one; the switch is the requirement's, shown by the claim that cites the case, not by the record |
+| `evaluation-report-v1.json` | `pos-example-org-evaluation-report-clause-ref` | `neg-empty-clause-ref` | `Case.clause_ref`, when present, is a non-empty string; an unknown clause id is a verifier check against the pinned contract, not a schema one (spec section 2) |
 | `close-v1.json` | `pos-example-org-close-linked` | `neg-reconcile-without-peer-close` | a Close with `reconcile` requires `x-evidence-links` with exactly one `cites` link to the peer's Close (sections 0a, 3) |
 | `sample-manifest-v1.json` | `pos-example-org-sample-manifest` | `neg-cases-empty` | `cases` requires `minItems: 1` — a manifest naming zero cases is not a sample |
 | `human-rating-v1.json` | `pos-example-org-human-rating` | `neg-blind-false` | `blind` is fixed `true` (section 5) — a non-blind rating is not this schema |
