@@ -283,14 +283,15 @@ A receiver that takes pushes over A2A MUST list one `AgentExtension` in its Agen
 
 | Field | Value |
 |---|---|
-| `uri` | exactly `https://github.com/action-state-group/agent-action-capsule/blob/main/spec/bindings/record-push-v0.md` |
+| `uri` | exactly `https://datatracker.ietf.org/doc/draft-mih-agent-record-push/` |
 | `description` | fixed text within §2.3 rule 7 |
 | `required` | `false` |
 | `params` | absent |
 
-As in IP §11.4.4, the extension entry is what advertises the push, and no `AgentSkill` is
-needed. `required` is `false` because a push is opted into per message. A receiver MUST NOT
-advertise this binding under any other URI. The Agent Card SHOULD list `application/json` in
+As in IP §11.4.4, the URI names the datatracker page of the Internet-Draft meant to carry this
+binding, the extension entry is what advertises the push, and no `AgentSkill` is needed.
+`required` is `false` because a push is opted into per message. A receiver MUST NOT advertise
+this binding under any other URI. The Agent Card SHOULD list `application/json` in
 `defaultInputModes` and `defaultOutputModes`.
 
 ### 4.2 The message
@@ -344,18 +345,18 @@ The same push as §3.4:
 POST /rpc HTTP/1.1
 Content-Type: application/json
 A2A-Version: 1.0
-A2A-Extensions: https://github.com/action-state-group/agent-action-capsule/blob/main/spec/bindings/record-push-v0.md
+A2A-Extensions: https://datatracker.ietf.org/doc/draft-mih-agent-record-push/
 
 {"jsonrpc": "2.0", "id": 7, "method": "SendMessage", "params": {"message": {
   "messageId": "m-7", "role": "ROLE_USER",
-  "extensions": ["https://github.com/action-state-group/agent-action-capsule/blob/main/spec/bindings/record-push-v0.md"],
+  "extensions": ["https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"],
   "parts": [{"mediaType": "application/json", "data": {
     "record": "<the record octets, base64url>",
     "stamp_proof": "<the stamp proof's JSON octets, base64url>"}}]}}}
 ```
 
 The completed task carries one Artifact
-`{"artifactId": "…", "extensions": ["https://github.com/action-state-group/agent-action-capsule/blob/main/spec/bindings/record-push-v0.md"], "parts": [{"mediaType": "application/json", "data": <the answer object of §3.4>}]}`.
+`{"artifactId": "…", "extensions": ["https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"], "parts": [{"mediaType": "application/json", "data": <the answer object of §3.4>}]}`.
 
 ## 5. Both carriages, one push
 
