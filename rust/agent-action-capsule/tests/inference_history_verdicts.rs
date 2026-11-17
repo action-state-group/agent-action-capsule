@@ -353,3 +353,99 @@ fn a_tampered_verdict_member_does_not_check() {
     }
     assert!(check(&art, &chain, &anchor).is_ok());
 }
+
+#[test]
+fn two_models_withheld_at_the_largest_count_a_total_gives_away_are_withheld_with_it() {
+    // h1 and h2 each hold 4 (floor 5): a published total 8 would give both
+    // away, so the total is withheld too. The same for nothing held beside a
+    // published model, which the complementary rule already covers.
+    let d = def();
+    let chain = vec![
+        Cut {
+            timestamp: "2026-01-07T10:00:00Z",
+            leaves: 8,
+        },
+        Cut {
+            timestamp: WEEK_1,
+            leaves: 8,
+        },
+    ];
+    let v = verdict_counts(&d, &chain, &|i| {
+        Some((
+            if i < 4 { "h1" } else { "h2" }.into(),
+            "contradicted".into(),
+        ))
+    })
+    .unwrap();
+    let p = &v["periods"][0];
+    assert_eq!(
+        cell(p, "contradicted", Some("h1"))["suppressed"],
+        json!("below_floor")
+    );
+    assert_eq!(
+        cell(p, "contradicted", Some("h2"))["suppressed"],
+        json!("below_floor")
+    );
+    assert_eq!(
+        cell(p, "contradicted", None)["suppressed"],
+        json!("complementary")
+    );
+    // 3 and 4 do not give each other away: the total 7 is published.
+    let v = verdict_counts(&d, &chain, &|i| {
+        (i < 7).then(|| {
+            (
+                (if i < 3 { "h1" } else { "h2" }).into(),
+                "contradicted".into(),
+            )
+        })
+    })
+    .unwrap();
+    assert_eq!(
+        cell(&v["periods"][0], "contradicted", None)["value"],
+        json!(7)
+    );
+    // A checker refuses the table that publishes 8 beside both.
+    let anchor = "ab".repeat(32);
+    let card = json!({
+        "anchor": anchor, "derivation": "history_card/1", "evidence_stream": STREAM,
+        "history": chain.iter().map(|c| json!({"checkpoint": {"timestamp": c.timestamp, "log_size": c.leaves}})).collect::<Vec<_>>(),
+        "subject": {"full_history": null},
+    });
+    let counts = period_counts(&d, &chain, &|_| Some("a".to_string())).unwrap();
+    let octets = artifact_with_verdicts(
+        &d,
+        &jcs(&card).unwrap(),
+        counts,
+        v_four_four(&d, &chain),
+        &anchor,
+        STREAM,
+        8,
+    )
+    .unwrap();
+    let mut a: Map<String, Value> = serde_json::from_slice::<Value>(&octets)
+        .unwrap()
+        .as_object()
+        .unwrap()
+        .clone();
+    assert!(check(&a, &chain, &anchor).is_ok());
+    let total = a["verdict_counts"]["periods"][0]["cells"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .find(|c| c["dimension"] == json!({"result": "contradicted"}))
+        .unwrap();
+    *total = json!({"dimension": {"result": "contradicted"}, "label": "self_reported", "unit": "referee_verdicts", "value": 8});
+    assert!(check(&a, &chain, &anchor)
+        .unwrap_err()
+        .contains("derived from the total"));
+}
+
+fn v_four_four(d: &Definition, chain: &[Cut<'_>]) -> Value {
+    verdict_counts(d, chain, &|i| {
+        Some((
+            if i < 4 { "h1" } else { "h2" }.into(),
+            "contradicted".into(),
+        ))
+    })
+    .unwrap()
+}

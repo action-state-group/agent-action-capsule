@@ -575,6 +575,7 @@ fn first_record_period(chain: &[Cut<'_>], commits: &[i64]) -> Option<i64> {
 fn suppress(
     by_model: &std::collections::BTreeMap<String, u64>,
     floor: u64,
+    strict: bool,
 ) -> Vec<(Option<&str>, u64, Option<&'static str>)> {
     let total: u64 = by_model.values().sum();
     let mut values: Vec<(Option<&str>, u64, Option<&'static str>)> = by_model
@@ -595,7 +596,37 @@ fn suppress(
             smallest.2 = Some("complementary");
         }
     }
+    // Strict (the verdict tables): two or more models withheld under the
+    // floor beside a published total, whose rest is nothing or every one at
+    // the largest count a withheld cell can hold, are each given away by the
+    // total, so the total goes too.
+    if strict && values[models].2.is_none() {
+        let hidden: Vec<u64> = values[..models]
+            .iter()
+            .filter(|c| c.2.is_some())
+            .map(|c| c.1)
+            .collect();
+        let all_below = values[..models]
+            .iter()
+            .all(|c| c.2.is_none() || c.2 == Some("below_floor"));
+        let rest = values[models].1
+            - values[..models]
+                .iter()
+                .filter(|c| c.2.is_none())
+                .map(|c| c.1)
+                .sum::<u64>();
+        if all_below && derivable(hidden.len(), rest, floor) {
+            values[models].2 = Some("complementary");
+        }
+    }
     values
+}
+
+/// Whether `n` models withheld under `floor`, together holding `rest`, are
+/// each given away by it: nothing, or every one at the largest count a
+/// withheld cell can hold.
+fn derivable(n: usize, rest: u64, floor: u64) -> bool {
+    n >= 2 && (rest == 0 || rest == n as u64 * (floor - 1))
 }
 
 fn cell_json(dimension: Value, unit: &str, n: u64, why: Option<&str>) -> Value {
@@ -614,7 +645,7 @@ fn cell_json(dimension: Value, unit: &str, n: u64, why: Option<&str>) -> Value {
 /// One period's cells: one per model, by name, then the total, each
 /// suppressed under ISH §6.2.
 fn cells(by_model: &std::collections::BTreeMap<String, u64>, floor: u64) -> Vec<Value> {
-    suppress(by_model, floor)
+    suppress(by_model, floor, false)
         .into_iter()
         .map(|(model, n, why)| {
             cell_json(
@@ -634,7 +665,7 @@ fn verdict_cells(
     floor: u64,
     result: &str,
 ) -> Vec<Value> {
-    suppress(by_model, floor)
+    suppress(by_model, floor, true)
         .into_iter()
         .map(|(model, n, why)| {
             let dimension = match model {
@@ -916,7 +947,7 @@ fn check_counts(def: &Definition, counts: &Value, chain: &[Cut<'_>]) -> Result<C
         out.push(Period {
             from,
             to,
-            cells: check_cells(cells, def.policy.floor, UNIT)?,
+            cells: check_cells(cells, def.policy.floor, UNIT, false)?,
         });
     }
     Ok(Counts {
@@ -976,7 +1007,19 @@ fn check_verdicts(
                 hashes.push(hash);
                 plain.push(Value::Object(c));
             }
-            let cells = check_cells(&Value::Array(plain), def.policy.floor, VERDICT_UNIT)
+            // As derived: the model hashes in increasing order, then the total.
+            let models = hashes.iter().flatten().collect::<Vec<_>>();
+            if !models.windows(2).all(|w| w[0] < w[1])
+                || hashes
+                    .iter()
+                    .position(Option::is_none)
+                    .is_some_and(|i| i + 1 != hashes.len())
+            {
+                return Err(bad(&format!(
+                    "the {result} cells are not the model hashes in order, then the total"
+                )));
+            }
+            let cells = check_cells(&Value::Array(plain), def.policy.floor, VERDICT_UNIT, true)
                 .map_err(|e| format!("{e} (in the {result} verdicts)"))?;
             for (cell, hash) in cells.into_iter().zip(hashes) {
                 checked.push(VerdictCell {
@@ -1010,7 +1053,7 @@ fn check_verdicts(
 /// label, a model at most once and exactly one total, every value at least
 /// the floor, every suppressed cell without a value and with a reason, and
 /// complementary suppression where it is due.
-fn check_cells(cells: &Value, floor: u64, unit: &str) -> Result<Vec<Cell>, String> {
+fn check_cells(cells: &Value, floor: u64, unit: &str, strict: bool) -> Result<Vec<Cell>, String> {
     let bad = |why: &str| format!("period_floor: {why}");
     let cells = cells.as_array().ok_or_else(|| bad("cells is not a list"))?;
     let mut out: Vec<Cell> = Vec::with_capacity(cells.len());
@@ -1066,6 +1109,13 @@ fn check_cells(cells: &Value, floor: u64, unit: &str) -> Result<Vec<Cell>, Strin
         let all_published = models.iter().all(|c| c.value.is_ok());
         if published > total || (all_published && published != total) {
             return Err(bad("the models do not add up to the total"));
+        }
+        let hidden = models.iter().filter(|c| c.value.is_err()).count();
+        let all_below = models
+            .iter()
+            .all(|c| !matches!(&c.value, Err(why) if why != "below_floor"));
+        if strict && all_below && derivable(hidden, total - published, floor) {
+            return Err(bad("a suppressed cell can be derived from the total"));
         }
     }
     Ok(out)
