@@ -1,0 +1,335 @@
+{
+  "draft": "draft-mih-agent-evidence-request-03",
+  "provenance": "spec-derived",
+  "corpus": "checkpoints-range",
+  "description": "The ranged checkpoints subject and history_card/2 resolution: request validation (request_cases) and the most specific refusal reason against the -03 responder (cases).",
+  "responder": {
+    "evidence_stream": "stream-a",
+    "log_size": 42,
+    "positional_ordering": true,
+    "issues_new_commitments": false,
+    "anchors": [
+      {
+        "digest": "4d4c877328c2f5cdf12523841fbc41cb9b8ef490578ca3a13b93d6bf20faeb6d",
+        "size": 40,
+        "issued_at": "2026-09-26T00:00:00Z"
+      },
+      {
+        "digest": "6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202",
+        "size": 42,
+        "issued_at": "2026-09-27T12:00:00Z"
+      }
+    ],
+    "records": [
+      "2ab350895f867d54a5cfdc1dd1aa214cbc723c659663460e7511dff16a5ccc85",
+      "f48813fbdedec3190e0d81469723c07b4f665b0e18399d2a265d933ecc19b183",
+      "ef53392288cd922e52ce6d54c30196a2f33af60ba87885b89cd34ed3d17a35d1"
+    ],
+    "correlations": {
+      "c-7d1e9a40": [
+        "2ab350895f867d54a5cfdc1dd1aa214cbc723c659663460e7511dff16a5ccc85",
+        "f48813fbdedec3190e0d81469723c07b4f665b0e18399d2a265d933ecc19b183"
+      ]
+    },
+    "exchange_citations": {
+      "e2c78557e239cd93cf344c2e435158367deac1d3b525deb6e09c23d1a8139227": [
+        "ef53392288cd922e52ce6d54c30196a2f33af60ba87885b89cd34ed3d17a35d1"
+      ]
+    },
+    "supported_derivations": {
+      "history_card/1": [
+        "full_history",
+        "checkpoints"
+      ],
+      "history_card/2": [
+        "full_history",
+        "checkpoints"
+      ]
+    },
+    "uniform_policy_declined": false
+  },
+  "checkpoint_positions": {
+    "4d4c877328c2f5cdf12523841fbc41cb9b8ef490578ca3a13b93d6bf20faeb6d": 0,
+    "6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202": 1
+  },
+  "derivations": {
+    "history_card/1": {
+      "declared_fields": []
+    },
+    "history_card/2": {
+      "declared_fields": []
+    }
+  },
+  "request_cases": [
+    {
+      "id": "pos-checkpoints-range",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "checkpoints at positions 0 through 1.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0301\",\"subject\":{\"checkpoints\":[0,1]}}",
+      "request_json_digest": "65a9595135f9254a23f51ef9c97031958b43ebe24c98754d97739249301fb065",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333031677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "bed47c6fbe014bf2e8e9e22cae55bbdbb64a29c8484b5bce808bf9949ac42eac",
+      "expect": {
+        "well_formed": true
+      }
+    },
+    {
+      "id": "pos-checkpoints-range-one",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "a range of one checkpoint, a = b.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0302\",\"subject\":{\"checkpoints\":[1,1]}}",
+      "request_json_digest": "1a8be6e2107f2f076a3e608675b3a444dc014f46445a5ea1b76be558af0bfcd0",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333032677375626a656374a16b636865636b706f696e747382010168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "55680d9def65e11c04e50b8f87569e6ff6165a5a2aae4e6a57cd977dddacadea",
+      "expect": {
+        "well_formed": true
+      }
+    },
+    {
+      "id": "pos-checkpoints-unranged",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "checkpoints with null content, as in -02.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0303\",\"subject\":{\"checkpoints\":null}}",
+      "request_json_digest": "1346ad16d35e7b57f638b5c1515ec9730ad33efcd7e582b10e420e8daefac88f",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333033677375626a656374a16b636865636b706f696e7473f668636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "af12b1438706ffa8e8a9d62467bc22ef7b16524dd1423c0e92c1bc534db22288",
+      "expect": {
+        "well_formed": true
+      }
+    },
+    {
+      "id": "neg-checkpoints-range-reversed",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "a exceeds b.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0304\",\"subject\":{\"checkpoints\":[1,0]}}",
+      "request_json_digest": "8e159cc9f9adeed1a76988699712c8cd36f638b177237dc9829298b312862762",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333034677375626a656374a16b636865636b706f696e747382010068636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "a3311452a54d90fca33a1c33b26e6d14cec74f1ca5d138ee4d011304e1a6c00b",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      }
+    },
+    {
+      "id": "neg-checkpoints-range-negative",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "a negative bound.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0305\",\"subject\":{\"checkpoints\":[-1,1]}}",
+      "request_json_digest": "32b24cf34671f93f03026de7dbc0d75ce7688794becc8557e25b47a7a74bafc9",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333035677375626a656374a16b636865636b706f696e747382200168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "30c557a6e38a1f4f05c5fbe0f9c5fd0009697696424411e6a6a297faa5776722",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      }
+    },
+    {
+      "id": "neg-checkpoints-range-text",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "a bound given as text.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0306\",\"subject\":{\"checkpoints\":[\"0\",1]}}",
+      "request_json_digest": "6f60862d4748fb948890983776905d1fb1e66d47e0d7bcfe3c9b2e01378c554a",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333036677375626a656374a16b636865636b706f696e74738261300168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "84328078429134c4775864e3748c11314c4ed148f930c368f10666e447de8428",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      }
+    },
+    {
+      "id": "neg-checkpoints-range-one-bound",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "one bound only.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0307\",\"subject\":{\"checkpoints\":[0]}}",
+      "request_json_digest": "cde500aa7c1a9d3ccf94ce0162982dde7d3b5071a5d209153ebd448ec95de1bb",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333037677375626a656374a16b636865636b706f696e7473810068636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "fb45c1dd025ff606ff9ac52977b6e51db44f6ae365fa30ce6604db12d303eb04",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      }
+    },
+    {
+      "id": "neg-checkpoints-range-three-bounds",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "three bounds.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0308\",\"subject\":{\"checkpoints\":[0,1,2]}}",
+      "request_json_digest": "1346d033bbd91bcac7b4a99efb93ea9a1906f4a3460353e36574bec981194ed5",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333038677375626a656374a16b636865636b706f696e74738300010268636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "d49dfb1eac4c2c653db56851784355c32b5f080414c88c507cf37001a962fad4",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      }
+    },
+    {
+      "id": "neg-checkpoints-content-text",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "content that is neither null nor two bounds.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0309\",\"subject\":{\"checkpoints\":\"all\"}}",
+      "request_json_digest": "81e8fc9c54e322aed63ffe063f7ff1430ea7a249c6701f7fb57c2ff42b6d0e73",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333039677375626a656374a16b636865636b706f696e747363616c6c68636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "fae2eaa2f6253ca4279168c8565aa348cc211e41125493a0180edb8b02e296bf",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      }
+    }
+  ],
+  "count": 9,
+  "cases": [
+    {
+      "id": "res-checkpoints-range-served",
+      "section": [
+        "§3.1 Subject",
+        "§8.1.3 Checkpoints Between Listed Entries"
+      ],
+      "description": "positions 0 through 1 under the anchor at position 1: served.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0311\",\"subject\":{\"checkpoints\":[0,1]}}",
+      "request_json_digest": "f5763ea25b2aa4eb4155e173ffebae065f303d2ca0dd92a68ebb281aeb403b1e",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333131677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "ce1c968ead68cc44d766dcfcf50ac18ef3b38ce6706349815c3cb6054e81b17f",
+      "expect": {
+        "answer": "artifact"
+      }
+    },
+    {
+      "id": "res-checkpoints-range-past-anchor",
+      "section": [
+        "§8.1.3 Checkpoints Between Listed Entries"
+      ],
+      "description": "position 1 is past the anchor at position 0.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"4d4c877328c2f5cdf12523841fbc41cb9b8ef490578ca3a13b93d6bf20faeb6d\"},\"nonce\":\"n-0312\",\"subject\":{\"checkpoints\":[0,1]}}",
+      "request_json_digest": "944b19fb0df0311ebb7c30eb110d94c780b4e0437df72a18f80b96df9e15fa08",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333132677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e784034643463383737333238633266356364663132353233383431666263343163623962386566343930353738636133613133623933643662663230666165623664",
+      "request_cbor_digest": "b9a1ce291c5a5219295399b71a6b79b35aff20e30666bac4de896fff2de0f589",
+      "expect": {
+        "answer": "refusal",
+        "reason": "coverage_unsatisfiable"
+      }
+    },
+    {
+      "id": "res-checkpoints-range-at-anchor",
+      "section": [
+        "§8.1.3 Checkpoints Between Listed Entries"
+      ],
+      "description": "position 0 under the anchor at position 0: served.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"4d4c877328c2f5cdf12523841fbc41cb9b8ef490578ca3a13b93d6bf20faeb6d\"},\"nonce\":\"n-0313\",\"subject\":{\"checkpoints\":[0,0]}}",
+      "request_json_digest": "d104b42dfb7214488e1412d236b8b9a061ef183da4056d8467e3d8ec5ef9d810",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333133677375626a656374a16b636865636b706f696e747382000068636f766572616765a16c65787065637465645f70696e784034643463383737333238633266356364663132353233383431666263343163623962386566343930353738636133613133623933643662663230666165623664",
+      "request_cbor_digest": "3cd07cb5aa8847c7dfeead8ee2c098ad639e3a0fdb4e7cedcb27408efa1345db",
+      "expect": {
+        "answer": "artifact"
+      }
+    },
+    {
+      "id": "res-checkpoints-range-beyond-stream",
+      "section": [
+        "§8.1.3 Checkpoints Between Listed Entries"
+      ],
+      "description": "position 2: no checkpoint there yet, past every anchor.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0314\",\"subject\":{\"checkpoints\":[0,2]}}",
+      "request_json_digest": "091a4465a4aee04a0c3289ff74be87fd336d6e23528f260b5fff9e6e780cc3ae",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333134677375626a656374a16b636865636b706f696e747382000268636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "bff4e017873b9e2abea97a5ec1a070a3a5d87a1c3f1a6fd3e2a56b8d2c0ff440",
+      "expect": {
+        "answer": "refusal",
+        "reason": "coverage_unsatisfiable"
+      }
+    },
+    {
+      "id": "res-history-card-2",
+      "section": [
+        "§3.3 Derivation",
+        "§8.1.2 history_card/2"
+      ],
+      "description": "history_card/2 over checkpoints: served.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"derivation\":\"history_card/2\",\"nonce\":\"n-0315\",\"subject\":{\"checkpoints\":null}}",
+      "request_json_digest": "2a507715589380cb254d9c3a4cc750204658a01155bece54050cde703f9d4094",
+      "request_cbor_hex": "a4656e6f6e6365666e2d30333135677375626a656374a16b636865636b706f696e7473f668636f766572616765a16c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326a64657269766174696f6e6e686973746f72795f636172642f32",
+      "request_cbor_digest": "ba4baf36606fd684d266665adac3c358f2299541b14e5633a3edd3aa72fb6953",
+      "expect": {
+        "answer": "artifact"
+      }
+    },
+    {
+      "id": "res-history-card-2-full-history",
+      "section": [
+        "§3.3 Derivation",
+        "§8.1.2 history_card/2"
+      ],
+      "description": "history_card/2 over full_history: served.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"derivation\":\"history_card/2\",\"nonce\":\"n-0316\",\"subject\":{\"full_history\":null}}",
+      "request_json_digest": "7850881ce906fd4b6b26d460ca9295c0760d192d7108f15e50867cacd27d8584",
+      "request_cbor_hex": "a4656e6f6e6365666e2d30333136677375626a656374a16c66756c6c5f686973746f7279f668636f766572616765a16c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326a64657269766174696f6e6e686973746f72795f636172642f32",
+      "request_cbor_digest": "73c33f463577c760610a133da260dfc4b5b26b346d30665710ae90923f773337",
+      "expect": {
+        "answer": "artifact"
+      }
+    },
+    {
+      "id": "res-history-card-2-record",
+      "section": [
+        "§3.3 Derivation",
+        "§8.1.2 history_card/2"
+      ],
+      "description": "history_card/2 is not defined for a record.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"derivation\":\"history_card/2\",\"nonce\":\"n-0317\",\"subject\":{\"record\":\"2ab350895f867d54a5cfdc1dd1aa214cbc723c659663460e7511dff16a5ccc85\"}}",
+      "request_json_digest": "c5666680868a141368ecff26e9c1811891ac4e2e710410b4a1349b582178bb10",
+      "request_cbor_hex": "a4656e6f6e6365666e2d30333137677375626a656374a1667265636f726478403261623335303839356638363764353461356366646331646431616132313463626337323363363539363633343630653735313164666631366135636363383568636f766572616765a16c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326a64657269766174696f6e6e686973746f72795f636172642f32",
+      "request_cbor_digest": "83a20f2b6b2508ba8c0a535f4ff28b2675342e3f26965bc1a4b015ff01ccd574",
+      "expect": {
+        "answer": "refusal",
+        "reason": "no_such_subject"
+      }
+    },
+    {
+      "id": "res-history-card-2-ranged",
+      "section": [
+        "§8.1.3 Checkpoints Between Listed Entries"
+      ],
+      "description": "history_card/2 over a ranged checkpoints subject.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"derivation\":\"history_card/2\",\"nonce\":\"n-0318\",\"subject\":{\"checkpoints\":[0,1]}}",
+      "request_json_digest": "e2409ed792fd61864a167a1634ba54d51d2562e642750c6ac00f5697331f3665",
+      "request_cbor_hex": "a4656e6f6e6365666e2d30333138677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326a64657269766174696f6e6e686973746f72795f636172642f32",
+      "request_cbor_digest": "1b3a7f66220cb8393b5f533f9df4dc7f7c76585e3fc15e3fa371866151e2b131",
+      "expect": {
+        "answer": "refusal",
+        "reason": "no_such_subject"
+      }
+    },
+    {
+      "id": "res-history-card-1-ranged",
+      "section": [
+        "§8.1.3 Checkpoints Between Listed Entries"
+      ],
+      "description": "history_card/1 over a ranged checkpoints subject.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"derivation\":\"history_card/1\",\"nonce\":\"n-0319\",\"subject\":{\"checkpoints\":[0,1]}}",
+      "request_json_digest": "55dbde0508065f5ece245f2f7e2fe6d53dfc79b41b0b2066a8ac326629d3f55b",
+      "request_cbor_hex": "a4656e6f6e6365666e2d30333139677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326a64657269766174696f6e6e686973746f72795f636172642f31",
+      "request_cbor_digest": "6c8809b4798c764df295c4a704a2350780383768ee24ad55e3cca0ee25e68be4",
+      "expect": {
+        "answer": "refusal",
+        "reason": "no_such_subject"
+      }
+    }
+  ]
+}

@@ -84,19 +84,27 @@ var RefusalReasons = []string{
 
 // Subject names what is asked for, in one of the six forms. Digest serves
 // record and exchange, Range serves range (two zero-based log positions,
-// a <= b), Correlation serves correlation. On the wire it is a map with
-// exactly one member named by the form (ERV A1).
+// a <= b), Correlation serves correlation. A checkpoints subject with
+// Ranged set names the checkpoints at positions Range[0] through Range[1]
+// (ER -03 §3.1, §8.1.3). On the wire it is a map with exactly one member
+// named by the form (ERV A1).
 type Subject struct {
 	Kind        SubjectKind
 	Digest      string
 	Range       [2]uint64
+	Ranged      bool
 	Correlation string
 }
 
 // Value is the subject's wire value (profile §5.2).
 func (s Subject) Value() map[string]any {
 	switch s.Kind {
-	case SubjectFullHistory, SubjectCheckpoints:
+	case SubjectCheckpoints:
+		if s.Ranged {
+			return map[string]any{string(s.Kind): []any{s.Range[0], s.Range[1]}}
+		}
+		return map[string]any{string(s.Kind): nil}
+	case SubjectFullHistory:
 		return map[string]any{string(s.Kind): nil}
 	case SubjectRecord, SubjectExchange:
 		return map[string]any{string(s.Kind): s.Digest}
@@ -111,8 +119,16 @@ func (s Subject) Value() map[string]any {
 // Valid reports whether s is one of the six forms with conforming content
 // and nothing another form would carry.
 func (s Subject) Valid() bool {
+	if s.Ranged && s.Kind != SubjectCheckpoints {
+		return false
+	}
 	switch s.Kind {
-	case SubjectFullHistory, SubjectCheckpoints:
+	case SubjectCheckpoints:
+		if s.Ranged {
+			return s.Range[0] <= s.Range[1] && s.Range[1] <= MaxSafeInteger && s.Digest == "" && s.Correlation == ""
+		}
+		return s.Digest == "" && s.Correlation == "" && s.Range == [2]uint64{}
+	case SubjectFullHistory:
 		return s.Digest == "" && s.Correlation == "" && s.Range == [2]uint64{}
 	case SubjectRecord, SubjectExchange:
 		return IsDigest(s.Digest) && s.Correlation == "" && s.Range == [2]uint64{}
@@ -122,6 +138,17 @@ func (s Subject) Valid() bool {
 		return s.Correlation != "" && s.Digest == "" && s.Range == [2]uint64{}
 	}
 	return false
+}
+
+// positionPair reads [a, b]: two unsigned integers with a <= b (ERV A6).
+func positionPair(content any) (uint64, uint64, bool) {
+	pair, ok := content.([]any)
+	if !ok || len(pair) != 2 {
+		return 0, 0, false
+	}
+	a, okA := UintValue(pair[0])
+	b, okB := UintValue(pair[1])
+	return a, b, okA && okB && a <= b
 }
 
 // ParseSubject reads a decoded wire subject: a map with exactly one member,
@@ -134,21 +161,23 @@ func ParseSubject(v any) (Subject, bool) {
 	for name, content := range m {
 		s := Subject{Kind: SubjectKind(name)}
 		switch s.Kind {
-		case SubjectFullHistory, SubjectCheckpoints:
+		case SubjectCheckpoints:
+			if content == nil {
+				return s, true
+			}
+			a, b, ok := positionPair(content)
+			s.Range, s.Ranged = [2]uint64{a, b}, true
+			return s, ok
+		case SubjectFullHistory:
 			return s, content == nil
 		case SubjectRecord, SubjectExchange:
 			digest, ok := content.(string)
 			s.Digest = digest
 			return s, ok && IsDigest(digest)
 		case SubjectRange:
-			pair, ok := content.([]any)
-			if !ok || len(pair) != 2 {
-				return Subject{}, false
-			}
-			a, okA := UintValue(pair[0])
-			b, okB := UintValue(pair[1])
+			a, b, ok := positionPair(content)
 			s.Range = [2]uint64{a, b}
-			return s, okA && okB && a <= b
+			return s, ok
 		case SubjectCorrelation:
 			id, ok := content.(string)
 			s.Correlation = id

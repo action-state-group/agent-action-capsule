@@ -19,7 +19,9 @@ type AnchorView struct {
 // zero-based log positions. Resolution matches exactly: a View never
 // matches by prefix or case folding.
 type View interface {
-	// Anchors are the anchors issued, oldest first.
+	// Anchors are the anchors issued, oldest first. For a ranged checkpoints
+	// subject they are every checkpoint, so an anchor's index is its
+	// checkpoint position (ER -03 §8.1.3).
 	Anchors() []AnchorView
 	// LogEntries is the number of entries the log holds now, covered or not.
 	LogEntries() uint64
@@ -143,6 +145,11 @@ func ResolveSubject(view View, req Request, r Resolution, now time.Time) Resolut
 	covered := anchors[r.Anchor].Entries
 	switch req.Subject.Kind {
 	case SubjectCheckpoints:
+		// Anchors are the checkpoints oldest first, so an anchor's index is
+		// its checkpoint position (ER -03 §8.1.3).
+		if req.Subject.Ranged && req.Subject.Range[1] > uint64(r.Anchor) {
+			return Resolution{Reason: ReasonCoverageUnsatisfiable}
+		}
 		return r
 	case SubjectFullHistory:
 		for leaf := uint64(0); leaf < covered; leaf++ {
@@ -278,7 +285,8 @@ func Decide(view View, req Request, p Policy, now time.Time) Resolution {
 	registered := false
 	switch {
 	case req.Derivation == DerivationHistoryCard:
-		if req.Subject.Kind != SubjectFullHistory && req.Subject.Kind != SubjectCheckpoints {
+		// A history card answers checkpoints only without a range (ER -03 §8.1).
+		if req.Subject.Kind != SubjectFullHistory && req.Subject.Kind != SubjectCheckpoints || req.Subject.Ranged {
 			return refuse(ReasonNoSuchSubject)
 		}
 	case req.Derivation != "":
@@ -292,7 +300,7 @@ func Decide(view View, req Request, p Policy, now time.Time) Resolution {
 	if p.Authorize != nil && !p.Authorize(req) {
 		return refuse(p.Disclose(ReasonNotAuthorized))
 	}
-	if registered && !slices.Contains(forms, req.Subject.Kind) {
+	if registered && (!slices.Contains(forms, req.Subject.Kind) || req.Derivation == DerivationHistoryCard2 && req.Subject.Ranged) {
 		return refuse(p.Disclose(ReasonNoSuchSubject))
 	}
 	if p.Unanchored || p.Unpositioned && req.Subject.Kind == SubjectRange {

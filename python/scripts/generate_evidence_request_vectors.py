@@ -1556,6 +1556,398 @@ def registry() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# history-card-2.json: history_card/2 (-03 §8.1.2) in Checkpointed Local Log form
+# ---------------------------------------------------------------------------
+#
+# The stream is a CLL: checkpoint p covers entries 0..p, so it is the MMR of p + 1 leaves, and its
+# log_size is that MMR's node count, as the consistency proofs count it. Checkpoints are the
+# profile's COSE_Sign1 cll-checkpoint statements (interop profile §6.2.1 step 7) and proofs are
+# cll-consistency-proof octets (MMR -02 §7.1), both as lowercase hex. Receipts use a form fixed for
+# these vectors only (HC2_NOTES).
+
+DRAFT_03 = "draft-mih-agent-evidence-request-03"
+S_HC2 = "§8.1.2 history_card/2"
+S_HCR = "§8.1.3 Checkpoints Between Listed Entries"
+HC2_MAX_WINDOW = 64
+HC2_CHECKPOINTS = 1100  # positions 0..1099: more than 1024 checkpoints
+HC2_WINDOW = 8
+HC2_START = 1793491200  # 2026-11-01T00:00:00Z; checkpoint p is issued 300 s after p - 1
+
+
+def _hc2_key(label: str) -> tuple[Ed25519PrivateKey, str]:
+    return _key(hashlib.sha256(f"{DRAFT_03} history_card/2 vectors: {label}".encode()).digest())
+
+
+HC2_LOG, HC2_LOG_PUB = _hc2_key("log key")
+HC2_OTHER_LOG, HC2_OTHER_LOG_PUB = _hc2_key("a log key the requester does not accept")
+HC2_WITNESS, HC2_WITNESS_PUB = _hc2_key("witness key")
+
+
+def hc2_positions(n: int, window: int) -> list[int]:
+    """P(n, W) of -03 §8.1.2, written from the text: {0}, n - 2^k for every 2^k <= n, and
+    max(0, n - W + 1) .. n, ascending, each once."""
+    out = {0}
+    k = 0
+    while (1 << k) <= n:
+        out.add(n - (1 << k))
+        k += 1
+    out.update(range(max(0, n - window + 1), n + 1))
+    return sorted(out)
+
+
+def _mmr_all_ones(pos: int) -> bool:
+    return pos != 0 and pos & (pos + 1) == 0
+
+
+def _mmr_height(i: int) -> int:
+    pos = i + 1
+    while not _mmr_all_ones(pos):
+        pos = pos - (1 << (pos.bit_length() - 1)) + 1
+    return pos.bit_length() - 1
+
+
+def _mmr_pair(pos: int, a: bytes, b: bytes) -> bytes:
+    return hashlib.sha256(pos.to_bytes(8, "big") + a + b).digest()
+
+
+def _mmr_peaks(i: int) -> list[int]:
+    out, peak, size = [], 0, i + 1
+    while size:
+        highest = (1 << ((size + 1).bit_length() - 1)) - 1
+        peak += highest
+        out.append(peak - 1)
+        size -= highest
+    return out
+
+
+def _mmr_path(i: int, last: int) -> list[int]:
+    path, g = [], _mmr_height(i)
+    while True:
+        off = 2 << g
+        if _mmr_height(i + 1) > g:
+            sib = i - off + 1
+            i += 1
+        else:
+            sib = i + off - 1
+            i += off
+        if sib > last:
+            return path
+        path.append(sib)
+        g += 1
+
+
+def _mmr_root(i: int, node: bytes, proof: list[bytes]) -> bytes:
+    root, g = node, _mmr_height(i)
+    for sib in proof:
+        if _mmr_height(i + 1) > g:
+            i += 1
+            root = _mmr_pair(i + 1, sib, root)
+        else:
+            i += 2 << g
+            root = _mmr_pair(i + 1, root, sib)
+        g += 1
+    return root
+
+
+class _Hc2Log:
+    """The MMR over HC2_CHECKPOINTS entries, with the node count after each leaf."""
+
+    def __init__(self, leaves: int) -> None:
+        self.db: list[bytes] = []
+        self.sizes: list[int] = []
+        for n in range(leaves):
+            entry = hashlib.sha256(f"{DRAFT_03} history_card/2 vectors: entry {n}".encode()).digest()
+            self.db.append(hashlib.sha256(b"\x00" + entry).digest())
+            g = 0
+            while _mmr_height(len(self.db)) > g:
+                i = len(self.db)
+                self.db.append(_mmr_pair(i + 1, self.db[i - (2 << g)], self.db[i - 1]))
+                g += 1
+            self.sizes.append(len(self.db))
+
+    def peaks(self, size: int) -> list[bytes]:
+        return [self.db[p] for p in _mmr_peaks(size - 1)]
+
+    def consistency(self, old: int, new: int) -> bytes:
+        paths, roots = [], []
+        for p in _mmr_peaks(old - 1):
+            path = [self.db[j] for j in _mmr_path(p, new - 1)]
+            paths.append(path)
+            root = _mmr_root(p, self.db[p], path)
+            if not roots or roots[-1] != root:
+                roots.append(root)
+        new_peaks = self.peaks(new)
+        assert new_peaks[:len(roots)] == roots
+        return cbor([old, new, paths, new_peaks[len(roots):]])
+
+
+HC2_STREAM = _Hc2Log(HC2_CHECKPOINTS)
+
+
+def _hc2_time(position: int) -> str:
+    from datetime import datetime, timezone
+    return datetime.fromtimestamp(HC2_START + 300 * position, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def hc2_checkpoint(position: int, key: Ed25519PrivateKey = HC2_LOG, pub: str = HC2_LOG_PUB) -> bytes:
+    """The cll-checkpoint statement at ``position``: COSE_Sign1 (tag 18) over the claims, with
+    prev_size the node count of the checkpoint before it (0 for the first)."""
+    size = HC2_STREAM.sizes[position]
+    prev = HC2_STREAM.sizes[position - 1] if position else 0
+    protected = cbor({1: -8, 4: bytes.fromhex(pub), 15: {1: "https://log.example", 2: "stream-a"}})
+    payload = cbor({
+        "kind": "cll-checkpoint", "log_size": size, "prev_size": prev, "issued_at": _hc2_time(position),
+        "commitment": cbor(HC2_STREAM.peaks(size)),
+        "prev_commitment": cbor(HC2_STREAM.peaks(prev)) if prev else b"",
+    })
+    signature = key.sign(cbor(["Signature1", protected, b"", payload]))
+    return b"\xd2" + cbor([protected, {}, payload, signature])
+
+
+def hc2_receipt(checkpoint: bytes, key: Ed25519PrivateKey = HC2_WITNESS, pub: str = HC2_WITNESS_PUB) -> dict:
+    body = {"checkpoint": sha256_hex(checkpoint), "witness": pub}
+    return {**body, "sig": key.sign(jcs(body).encode("utf-8")).hex()}
+
+
+def hc2_entry(position: int, previous: int | None, *, receipt: bool = True) -> dict:
+    checkpoint = hc2_checkpoint(position)
+    proof = None
+    if previous is not None:
+        proof = HC2_STREAM.consistency(HC2_STREAM.sizes[previous], HC2_STREAM.sizes[position]).hex()
+    return {"position": position, "checkpoint": checkpoint.hex(),
+            "receipts": [hc2_receipt(checkpoint)] if receipt else [], "consistency_from_previous": proof}
+
+
+def hc2_history(positions: list[int]) -> list[dict]:
+    """Entries at ``positions`` in order, each with the proof from the one listed before it."""
+    return [hc2_entry(p, positions[i - 1] if i else None) for i, p in enumerate(positions)]
+
+
+def hc2_card(n: int, window: int) -> dict:
+    return {"window": window, "history": hc2_history(hc2_positions(n, window))}
+
+
+def hc2_anchor(position: int) -> str:
+    return sha256_hex(hc2_checkpoint(position))
+
+
+HC2_FINDINGS = [
+    "card_malformed", "window_out_of_range", "positions_not_increasing_from_zero", "position_missing",
+    "position_unexpected", "checkpoint_invalid", "checkpoint_shrinks", "proof_invalid",
+    "receipt_invalid", "anchor_mismatch",
+]
+
+HC2_NOTES = {
+    "inputs": "Each case gives a card (the result map of §8.1.2), the anchor the response resolved (SHA-256 "
+              "of the anchor checkpoint's octets, 64 lowercase hex) and the log keys the requester accepts "
+              "for the stream (log_keys at the top of the file).",
+    "result": "expect.valid is true when every check of §8.1.2 'Verifying' passes. Otherwise expect.finding "
+              "is the first check that fails, in the order of HC2_FINDINGS: card_malformed (the result or an "
+              "entry is not the maps and types of §8.1.2), then checks 1 to 7. These finding names are fixed "
+              "for these vectors only.",
+    "checks": "card_malformed: the card is not a map; window is not an unsigned integer; history is not a "
+              "list; an entry is not a map with position (unsigned integer), checkpoint (hex text), receipts "
+              "(a list) and consistency_from_previous (hex text or null). Members a profile adds are "
+              "ignored. 1 window_out_of_range: window outside 1..64. 2 "
+              "positions_not_increasing_from_zero: history is empty, the first position is not 0, or the "
+              "positions do not strictly increase. 3 position_missing / position_unexpected: with n the last "
+              "position, a position of P(n, window) is not listed (missing is checked first) or a listed "
+              "position is not in P(n, window). 4 checkpoint_invalid: a checkpoint is not a well-formed "
+              "cll-checkpoint (interop profile §6.2.1 step 7), its kid is not in log_keys, or its COSE_Sign1 "
+              "signature does not verify; checkpoint_shrinks: its log_size is smaller than the previous "
+              "entry's. 5 proof_invalid: the first entry carries a proof, a later entry carries none, the "
+              "proof is not cll-consistency-proof octets whose tree sizes are the two checkpoints' log_size "
+              "values, or it does not prove the entry's commitment extends the previous entry's (MMR -02 "
+              "§7.1). 6 receipt_invalid: a receipt is not {checkpoint, witness, sig}, its checkpoint is not "
+              "SHA-256 of its own entry's checkpoint octets, or sig is not an Ed25519 signature by witness "
+              "over UTF-8 of JCS of {checkpoint, witness}. 7 anchor_mismatch: SHA-256 of the last "
+              "checkpoint's octets is not the anchor.",
+    "log_size": "log_size counts MMR nodes, as the consistency proofs' tree sizes do and as known "
+                "implementations write it (interop profile v1 open point on the unit of log_size).",
+    "receipts": "The receipt form {checkpoint, witness, sig} is fixed for these vectors only and is not "
+                "registered; -03 leaves receipt encodings to the evidence mechanism. Which witnesses count "
+                "is requester policy; these vectors only check that each receipt covers its checkpoint.",
+}
+
+
+def _hc2_case(case_id: str, description: str, card: Any, anchor: str, expect_finding: str | None,
+              section: list[str] | None = None) -> dict:
+    return {"id": case_id, "section": section or [S_HC2], "description": description, "card": card,
+            "anchor": anchor,
+            "expect": {"valid": True, "finding": None} if expect_finding is None
+            else {"valid": False, "finding": expect_finding}}
+
+
+def hc2_position_cases() -> list[dict]:
+    out = []
+    for n in (0, 1, 2, 3, 7, 8, 9, 63, 64, 65, 1023, 1024, 1099, 1000000):
+        for window in (1, 8, 64):
+            out.append({"n": n, "window": window, "positions": hc2_positions(n, window)})
+    return out
+
+
+def hc2_cases() -> list[dict]:
+    n, w = HC2_CHECKPOINTS - 1, HC2_WINDOW
+    anchor = hc2_anchor(n)
+    good = hc2_card(n, w)
+    listed = [e["position"] for e in good["history"]]
+    cases = [
+        _hc2_case("valid-1100-checkpoints", f"A card over {HC2_CHECKPOINTS} checkpoints (anchor position {n}), "
+                  f"window {w}: {len(listed)} entries.", good, anchor, None),
+        _hc2_case("valid-single-checkpoint", "A stream of one checkpoint: the card lists position 0 only.",
+                  hc2_card(0, 1), hc2_anchor(0), None),
+        _hc2_case("valid-window-covers-stream", "Window 64 over a stream of six checkpoints: every position "
+                  "is listed.", hc2_card(5, 64), hc2_anchor(5), None),
+        _hc2_case("valid-window-cap", "Window 64, the cap, over 1100 checkpoints.", hc2_card(n, 64), anchor,
+                  None),
+        _hc2_case("valid-no-receipts", "Entries with no receipts verify: receipts may be empty.",
+                  {"window": w, "history": [{**e, "receipts": []} for e in good["history"]]}, anchor, None),
+        _hc2_case("valid-profile-members", "Members a deployment profile adds to the result are ignored.",
+                  {**good, "anchor": anchor, "evidence_stream": "stream-a"}, anchor, None),
+    ]
+
+    def neg(case_id: str, description: str, card: Any, finding: str, the_anchor: str = anchor) -> None:
+        cases.append(_hc2_case(case_id, description, card, the_anchor, finding))
+
+    def at(position: int) -> int:
+        return listed.index(position)
+
+    def replaced(index: int, **members: Any) -> dict:
+        history = [dict(e) for e in good["history"]]
+        history[index] = {**history[index], **members}
+        return {"window": w, "history": history}
+
+    neg("malformed-card-not-a-map", "The result is a list, not a map.", good["history"], "card_malformed")
+    neg("malformed-entry-missing-receipts", "An entry without receipts.",
+        {"window": w, "history": [{k: v for k, v in e.items() if k != "receipts"} if i == 3 else e
+                                  for i, e in enumerate(good["history"])]}, "card_malformed")
+    neg("malformed-position-text", "A position given as text.", replaced(2, position=str(listed[2])),
+        "card_malformed")
+    neg("window-zero", "Window 0 is outside 1 to 64.", {**good, "window": 0}, "window_out_of_range")
+    neg("window-over-cap", "Window 65 is over the cap, even with the positions P(n, 65) gives.",
+        {"window": 65, "history": hc2_history(hc2_positions(n, 65))}, "window_out_of_range")
+    neg("history-empty", "No entries.", {"window": w, "history": []}, "positions_not_increasing_from_zero")
+    first_dropped = hc2_history(listed[1:])
+    neg("first-checkpoint-missing", "The card starts at position 1, not 0.",
+        {"window": w, "history": first_dropped}, "positions_not_increasing_from_zero")
+    neg("positions-repeat", "A position listed twice.",
+        {"window": w, "history": good["history"][:5] + [good["history"][4]] + good["history"][5:]},
+        "positions_not_increasing_from_zero")
+    sample = n - 512
+    missing = [p for p in listed if p != sample]
+    neg("sample-position-missing", f"The sample at position {sample} (512 back from the anchor) is left out; "
+        "the proofs still chain.", {"window": w, "history": hc2_history(missing)}, "position_missing")
+    window_gap = [p for p in listed if p != n - 3]
+    neg("window-position-missing", f"Position {n - 3} inside the window is left out; the proofs still chain.",
+        {"window": w, "history": hc2_history(window_gap)}, "position_missing")
+    extra = sorted(listed + [500])
+    neg("extra-position", "Position 500, not in P(n, W), is listed; the proofs still chain.",
+        {"window": w, "history": hc2_history(extra)}, "position_unexpected")
+    neg("window-mismatch", "The positions are P(n, 8) but the card states window 4.", {**good, "window": 4},
+        "position_unexpected")
+    other_key = hc2_checkpoint(listed[5], HC2_OTHER_LOG, HC2_OTHER_LOG_PUB)
+    neg("checkpoint-unaccepted-key", "One checkpoint is signed by a log key the requester does not accept.",
+        replaced(5, checkpoint=other_key.hex()), "checkpoint_invalid")
+    good_cp = bytearray(bytes.fromhex(good["history"][5]["checkpoint"]))
+    good_cp[-1] ^= 0x01
+    neg("checkpoint-bad-signature", "One checkpoint's COSE_Sign1 signature does not verify.",
+        replaced(5, checkpoint=bytes(good_cp).hex()), "checkpoint_invalid")
+    neg("checkpoint-not-cose", "One checkpoint is not a cll-checkpoint statement.",
+        replaced(5, checkpoint="a0"), "checkpoint_invalid")
+    neg("checkpoint-shrinks", f"The entry at position {listed[6]} carries the checkpoint of position "
+        f"{listed[4]}, which covers fewer entries than the one before it.",
+        replaced(6, checkpoint=hc2_checkpoint(listed[4]).hex()), "checkpoint_shrinks")
+    broken = HC2_STREAM.consistency(HC2_STREAM.sizes[listed[3]], HC2_STREAM.sizes[listed[5]]).hex()
+    neg("proof-broken", f"The proof into position {listed[5]} is a valid proof from position {listed[3]}, not "
+        f"from {listed[4]}, the entry before it.", replaced(5, consistency_from_previous=broken),
+        "proof_invalid")
+    tampered = bytearray(bytes.fromhex(good["history"][7]["consistency_from_previous"]))
+    tampered[-1] ^= 0x01
+    neg("proof-tampered", "One proof's last peak has a flipped bit.",
+        replaced(7, consistency_from_previous=bytes(tampered).hex()), "proof_invalid")
+    neg("proof-absent", "A later entry carries no proof.", replaced(4, consistency_from_previous=None),
+        "proof_invalid")
+    neg("first-entry-has-proof", "The first entry carries a proof.",
+        replaced(0, consistency_from_previous=good["history"][1]["consistency_from_previous"]), "proof_invalid")
+    other_receipt = hc2_receipt(hc2_checkpoint(listed[3]))
+    neg("receipt-other-checkpoint", "A receipt covers another entry's checkpoint.",
+        replaced(4, receipts=[other_receipt]), "receipt_invalid")
+    bad_sig = dict(good["history"][4]["receipts"][0])
+    bad_sig["sig"] = ("0" if bad_sig["sig"][0] != "0" else "1") + bad_sig["sig"][1:]
+    neg("receipt-bad-signature", "A receipt's signature does not verify.", replaced(4, receipts=[bad_sig]),
+        "receipt_invalid")
+    neg("anchor-mismatch", f"The card ends at position {n}, but the response resolved the checkpoint at "
+        f"position {n - 1}.", good, "anchor_mismatch", hc2_anchor(n - 1))
+    return cases
+
+
+# ---------------------------------------------------------------------------
+# checkpoints-range.json: the ranged checkpoints subject (-03 §3.1, §8.1.3)
+# ---------------------------------------------------------------------------
+
+# The -03 responder: RESPONDER's state, whose two anchors are its two checkpoints, at checkpoint
+# positions 0 (size 40) and 1 (size 42) in the order listed, and which also supports history_card/2.
+RESPONDER_03 = {**RESPONDER, "supported_derivations": {
+    "history_card/1": ["full_history", "checkpoints"], "history_card/2": ["full_history", "checkpoints"]}}
+PIN_40 = {"expected_pin": ANCHOR_40}
+
+
+def checkpoints_range_request_cases() -> list[dict]:
+    c = request_case
+    return [
+        c("pos-checkpoints-range", [S_SUBJ], "checkpoints at positions 0 through 1.",
+          _req({"checkpoints": [0, 1]}, PIN_42, nonce="n-0301"), WELL_FORMED),
+        c("pos-checkpoints-range-one", [S_SUBJ], "a range of one checkpoint, a = b.",
+          _req({"checkpoints": [1, 1]}, PIN_42, nonce="n-0302"), WELL_FORMED),
+        c("pos-checkpoints-unranged", [S_SUBJ], "checkpoints with null content, as in -02.",
+          _req({"checkpoints": None}, PIN_42, nonce="n-0303"), WELL_FORMED),
+        c("neg-checkpoints-range-reversed", [S_SUBJ], "a exceeds b.",
+          _req({"checkpoints": [1, 0]}, PIN_42, nonce="n-0304"), MALFORMED("request_malformed")),
+        c("neg-checkpoints-range-negative", [S_SUBJ], "a negative bound.",
+          _req({"checkpoints": [-1, 1]}, PIN_42, nonce="n-0305"), MALFORMED("request_malformed")),
+        c("neg-checkpoints-range-text", [S_SUBJ], "a bound given as text.",
+          _req({"checkpoints": ["0", 1]}, PIN_42, nonce="n-0306"), MALFORMED("request_malformed")),
+        c("neg-checkpoints-range-one-bound", [S_SUBJ], "one bound only.",
+          _req({"checkpoints": [0]}, PIN_42, nonce="n-0307"), MALFORMED("request_malformed")),
+        c("neg-checkpoints-range-three-bounds", [S_SUBJ], "three bounds.",
+          _req({"checkpoints": [0, 1, 2]}, PIN_42, nonce="n-0308"), MALFORMED("request_malformed")),
+        c("neg-checkpoints-content-text", [S_SUBJ], "content that is neither null nor two bounds.",
+          _req({"checkpoints": "all"}, PIN_42, nonce="n-0309"), MALFORMED("request_malformed")),
+    ]
+
+
+def checkpoints_range_resolution_cases() -> list[dict]:
+    art = {"answer": "artifact"}
+
+    def ref(reason: str) -> dict:
+        return {"answer": "refusal", "reason": reason}
+
+    c = request_case
+    return [
+        c("res-checkpoints-range-served", [S_SUBJ, S_HCR], "positions 0 through 1 under the anchor at "
+          "position 1: served.", _req({"checkpoints": [0, 1]}, PIN_42, nonce="n-0311"), art),
+        c("res-checkpoints-range-past-anchor", [S_HCR], "position 1 is past the anchor at position 0.",
+          _req({"checkpoints": [0, 1]}, PIN_40, nonce="n-0312"), ref("coverage_unsatisfiable")),
+        c("res-checkpoints-range-at-anchor", [S_HCR], "position 0 under the anchor at position 0: served.",
+          _req({"checkpoints": [0, 0]}, PIN_40, nonce="n-0313"), art),
+        c("res-checkpoints-range-beyond-stream", [S_HCR], "position 2: no checkpoint there yet, past every "
+          "anchor.", _req({"checkpoints": [0, 2]}, PIN_42, nonce="n-0314"), ref("coverage_unsatisfiable")),
+        c("res-history-card-2", [S_DER, S_HC2], "history_card/2 over checkpoints: served.",
+          _req({"checkpoints": None}, PIN_42, derivation="history_card/2", nonce="n-0315"), art),
+        c("res-history-card-2-full-history", [S_DER, S_HC2], "history_card/2 over full_history: served.",
+          _req({"full_history": None}, PIN_42, derivation="history_card/2", nonce="n-0316"), art),
+        c("res-history-card-2-record", [S_DER, S_HC2], "history_card/2 is not defined for a record.",
+          _req({"record": R1}, PIN_42, derivation="history_card/2", nonce="n-0317"), ref("no_such_subject")),
+        c("res-history-card-2-ranged", [S_HCR], "history_card/2 over a ranged checkpoints subject.",
+          _req({"checkpoints": [0, 1]}, PIN_42, derivation="history_card/2", nonce="n-0318"),
+          ref("no_such_subject")),
+        c("res-history-card-1-ranged", [S_HCR], "history_card/1 over a ranged checkpoints subject.",
+          _req({"checkpoints": [0, 1]}, PIN_42, derivation="history_card/1", nonce="n-0319"),
+          ref("no_such_subject")),
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Writing
 # ---------------------------------------------------------------------------
 
@@ -1624,6 +2016,18 @@ def build() -> dict[str, bytes]:
             "cover an absence, and how the reader shows a covered absence.", unavailable_window_cases(),
             draft=DRAFT_02, notes=UW_NOTES, reason_classes=UW_CLASSES, shown_as=UW_SHOWN,
             signature_profile=UW_SIGNATURE_PROFILE)),
+        "history-card-2.json": _dump(_corpus(
+            "history-card-2", "history_card/2 in Checkpointed Local Log form: the positions P(n, W), and "
+            "whether a card verifies or the first check it fails.", hc2_cases(), draft=DRAFT_03,
+            notes=HC2_NOTES, findings=HC2_FINDINGS, max_window=HC2_MAX_WINDOW, log_keys=[HC2_LOG_PUB],
+            positions=hc2_position_cases())),
+        "checkpoints-range.json": _dump(_corpus(
+            "checkpoints-range", "The ranged checkpoints subject and history_card/2 resolution: request "
+            "validation (request_cases) and the most specific refusal reason against the -03 responder "
+            "(cases).", checkpoints_range_resolution_cases(), draft=DRAFT_03, responder=RESPONDER_03,
+            checkpoint_positions={ANCHOR_40: 0, ANCHOR_42: 1},
+            derivations={"history_card/1": {"declared_fields": []}, "history_card/2": {"declared_fields": []}},
+            request_cases=checkpoints_range_request_cases())),
     }
     if sha256_hex(files["refusal-imported.json"]) != IMPORTED_REFUSAL_SHA256:
         raise SystemExit("imported refusal vector bytes drifted")

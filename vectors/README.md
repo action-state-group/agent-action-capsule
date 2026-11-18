@@ -29,7 +29,7 @@ same-commit files in CI.
   cases the witness receipt tests of every
   implementation run.
 - `interop/`: established composition and run-under interoperability suites.
-- `evidence-request/`: draft-mih-agent-evidence-request-00, -01 and -02 cases
+- `evidence-request/`: draft-mih-agent-evidence-request-00 to -03 cases
   (request map, subject forms, which record members carry a correlation
   identifier or cite an exchange half, request digest, signed refusal,
   outcomes, caller invariance, retention, the `categories` field, A2A and MCP
