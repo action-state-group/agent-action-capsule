@@ -5,20 +5,21 @@
 use std::collections::BTreeSet;
 
 /// The bounded history card (§8.1.2).
-pub const DERIVATION_HISTORY_CARD_2: &str = "history_card/2";
+pub use crate::registry::DERIVATION_HISTORY_CARD_2;
 
 /// The largest window a card may state (§8.1.2).
 pub const MAX_WINDOW: u64 = 64;
 
 /// The findings of `cll_material::check_history_card_2`, in check order,
 /// as `vectors/evidence-request/history-card-2.json` names them.
-pub const FINDINGS: [&str; 10] = [
+pub const FINDINGS: [&str; 11] = [
     "card_malformed",
     "window_out_of_range",
     "positions_not_increasing_from_zero",
     "position_missing",
     "position_unexpected",
     "checkpoint_invalid",
+    "first_checkpoint_has_predecessor",
     "checkpoint_shrinks",
     "proof_invalid",
     "receipt_invalid",

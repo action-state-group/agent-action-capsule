@@ -229,9 +229,10 @@ func withRetention(view View, req Request, now time.Time, r Resolution) Resoluti
 // what its evidence mechanism can do.
 type Policy struct {
 	// Derivation reports the subject forms a derivation other than
-	// history_card/1 is registered for, and false when the responder does
-	// not support it. Nil supports none. history_card/1 is always supported,
-	// over full_history and checkpoints (ER §8.1).
+	// history_card/1 and history_card/2 is registered for, and false when
+	// the responder does not support it. Nil supports none. Both history
+	// cards are always supported, over full_history and unranged
+	// checkpoints (ER -03 §8.1).
 	Derivation func(name string) (forms []SubjectKind, ok bool)
 	// Authorize reports whether the requester may have req answered. It is
 	// asked once the derivation is known to be supported; it decides whether
@@ -284,8 +285,9 @@ func Decide(view View, req Request, p Policy, now time.Time) Resolution {
 	var forms []SubjectKind
 	registered := false
 	switch {
-	case req.Derivation == DerivationHistoryCard:
-		// A history card answers checkpoints only without a range (ER -03 §8.1).
+	case req.Derivation == DerivationHistoryCard || req.Derivation == DerivationHistoryCard2:
+		// Both history cards are built in, and answer checkpoints only
+		// without a range (ER -03 §8.1).
 		if req.Subject.Kind != SubjectFullHistory && req.Subject.Kind != SubjectCheckpoints || req.Subject.Ranged {
 			return refuse(ReasonNoSuchSubject)
 		}
@@ -300,7 +302,7 @@ func Decide(view View, req Request, p Policy, now time.Time) Resolution {
 	if p.Authorize != nil && !p.Authorize(req) {
 		return refuse(p.Disclose(ReasonNotAuthorized))
 	}
-	if registered && (!slices.Contains(forms, req.Subject.Kind) || req.Derivation == DerivationHistoryCard2 && req.Subject.Ranged) {
+	if registered && !slices.Contains(forms, req.Subject.Kind) {
 		return refuse(p.Disclose(ReasonNoSuchSubject))
 	}
 	if p.Unanchored || p.Unpositioned && req.Subject.Kind == SubjectRange {

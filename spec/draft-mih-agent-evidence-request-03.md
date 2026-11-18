@@ -1060,7 +1060,9 @@ request naming either derivation over any other subject, a ranged
 
 `history_card/2` is the default first question. It is the thing a
 stranger checks before deciding whether to ask for anything else. Either
-card is safe to serve to anyone under the digests-only tier, and either is
+card is safe to serve to anyone under the digests-only tier, and a
+responder SHOULD answer `history_card/2` to any requester unless it
+declines it for every requester alike ({{privacy}}). Either card is
 sufficient to verify any individual record the responder later serves, by
 inclusion proof against a checkpoint the requester already holds: every
 card lists the checkpoint resolved by `coverage`. A card that fails to
@@ -1091,7 +1093,10 @@ checkpoints and is independent of the number of records.
 
 **Positions.** Let n be the checkpoint position ({{terms}}) of the
 checkpoint resolved by `coverage`, and W the window: an integer the
-responder chooses, from 1 to 64. The card lists the checkpoints at the
+responder chooses, from 1 to 64. The cap of 64 is this document's; it
+bounds a card at W + floor(log2(n)) + 2 entries. W is not an input of the
+request, so under caller invariance ({{invariance}}) a responder lists the
+same W in every card it serves at the same anchor. The card lists the checkpoints at the
 positions
 
 ~~~
@@ -1109,8 +1114,11 @@ stream of a million checkpoints gives at most W + 21.
 checkpoint, receipts for that checkpoint, consistency proof from the
 checkpoint of the entry listed before it). The entry at position 0 carries
 no proof. A proof between two listed entries spans every checkpoint
-between them, so the card shows that the stream never forked without
-listing those checkpoints.
+between them, so the card shows that each listed checkpoint extends the
+one listed before it, without listing those between. It does not show
+that a checkpoint not listed, or one served to another requester, lies on
+the same history; receipts from witnesses the requester accepts are what
+bring that into reach ({{security}}).
 
 The result is a map with these members:
 
@@ -1142,9 +1150,11 @@ as the anchor's digest or the stream's identifier.
    P(n, `window`): a position of P(n, `window`) that is missing, or a
    position not in it, fails.
 4. Every checkpoint verifies under the deployment's evidence mechanism (a
-   signed checkpoint under a key the requester accepts for the stream),
-   and none commits to a smaller body of evidence than the checkpoint of
-   the entry before it.
+   signed checkpoint under a key the requester accepts for the stream).
+   The checkpoint at position 0 commits to no earlier checkpoint, as the
+   mechanism shows it (for a Checkpointed Local Log, a `prev_size` of 0),
+   and no later checkpoint commits to a smaller body of evidence than the
+   checkpoint of the entry before it.
 5. The first entry carries no proof, and the proof of every later entry
    verifies that its checkpoint extends the checkpoint of the entry
    before it.
@@ -1159,7 +1169,9 @@ A card that fails any check is an unverifiable artifact ({{discipline}}).
 checkpoint need not commit to its own position. Misnumbering cannot make
 checkpoints that do not extend one another verify; it can only misstate
 how many checkpoints lie between two listed entries. A requester that
-needs to know fetches them ({{history-card-range}}).
+needs to know fetches them ({{history-card-range}}). A deployment profile
+whose checkpoints commit to their own position SHOULD require a verifier
+to check each `position` against it.
 
 ### Checkpoints Between Listed Entries {#history-card-range}
 
@@ -1177,6 +1189,11 @@ own checkpoint. The receipts then date each checkpoint in the gap: for
 example, to show when a disputed record was first covered. The record's
 own inclusion proof is a separate request.
 
+A requester that cannot fetch a whole gap in one answer fetches it in
+parts, starting each part at the last position of the part before it: the
+first entry of every part then carries a checkpoint the requester already
+holds, and the last part ends at a position its card lists.
+
 A ranged `checkpoints` request is refused with reason:
 
 - `request_malformed`, when the bounds are not two unsigned integers or
@@ -1188,6 +1205,9 @@ A ranged `checkpoints` request is refused with reason:
   responder serves in one answer, whoever asks;
 - `no_such_subject`, when the request names `history_card/1` or
   `history_card/2` ({{history-card}}).
+
+The other reasons of {{refusal}} apply as to any request, and a responder
+that answers `policy_declined` uniformly ({{privacy}}) may do so here too.
 
 # Retention Commitments {#retention}
 
@@ -1811,12 +1831,14 @@ that the two can cite each other without either defining the other.
   in the card. Each entry carries its position, receipts and the
   consistency proof from the entry before it. The positions are a function
   of the anchor's position and W alone, and the verification steps are
-  ordered. Its size grows with the logarithm of the number of checkpoints,
+  ordered; the first checkpoint must commit to no earlier one. A responder
+  SHOULD answer it to any requester. Its size grows with the logarithm of the number of checkpoints,
   where `history_card/1`'s grows linearly. `history_card/1` is unchanged
   and stays registered ({{history-card-1}}).
 - New term "checkpoint position" ({{terms}}). The `checkpoints` subject
   ({{subject}}) takes an optional range of checkpoint positions, answered
-  as {{history-card-range}} says, with its refusal reasons. A history card
+  as {{history-card-range}} says, in parts when a gap is long, with its
+  refusal reasons. A history card
   over a ranged `checkpoints` subject is refused `no_such_subject`.
 - {{iana}}: a row for `history_card/2` in the derivations registry.
 

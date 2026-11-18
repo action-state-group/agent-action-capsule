@@ -27,6 +27,7 @@ const (
 	FindingPositionMissing    = "position_missing"
 	FindingPositionUnexpected = "position_unexpected"
 	FindingCheckpointInvalid  = "checkpoint_invalid"
+	FindingNotFirstCheckpoint = "first_checkpoint_has_predecessor"
 	FindingCheckpointShrinks  = "checkpoint_shrinks"
 	FindingProofInvalid       = "proof_invalid"
 	FindingReceiptInvalid     = "receipt_invalid"
@@ -36,7 +37,7 @@ const (
 // HistoryCardFindings lists the findings in check order.
 var HistoryCardFindings = []string{
 	FindingCardMalformed, FindingWindowOutOfRange, FindingPositionsOrder, FindingPositionMissing,
-	FindingPositionUnexpected, FindingCheckpointInvalid, FindingCheckpointShrinks, FindingProofInvalid,
+	FindingPositionUnexpected, FindingCheckpointInvalid, FindingNotFirstCheckpoint, FindingCheckpointShrinks, FindingProofInvalid,
 	FindingReceiptInvalid, FindingAnchorMismatch,
 }
 
@@ -189,6 +190,9 @@ func CheckHistoryCard2(card any, anchor string, logKeys []string) string {
 		cp, err := DecodeCLLCheckpoint(e.checkpoint)
 		if err != nil || !slices.Contains(logKeys, hex.EncodeToString(cp.Key)) || cp.VerifySignature() != nil {
 			return FindingCheckpointInvalid
+		}
+		if i == 0 && cp.cp.prevSize != 0 {
+			return FindingNotFirstCheckpoint
 		}
 		if i > 0 && cp.LogSize < checkpoints[i-1].LogSize {
 			return FindingCheckpointShrinks

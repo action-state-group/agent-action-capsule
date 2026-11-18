@@ -1188,7 +1188,9 @@ request naming either derivation over any other subject, a ranged
 <tt>checkpoints</tt> subject included, is refused with reason <tt>no_such_subject</tt>.</t>
         <t><tt>history_card/2</tt> is the default first question. It is the thing a
 stranger checks before deciding whether to ask for anything else. Either
-card is safe to serve to anyone under the digests-only tier, and either is
+card is safe to serve to anyone under the digests-only tier, and a
+responder <bcp14>SHOULD</bcp14> answer <tt>history_card/2</tt> to any requester unless it
+declines it for every requester alike (<xref target="privacy"/>). Either card is
 sufficient to verify any individual record the responder later serves, by
 inclusion proof against a checkpoint the requester already holds: every
 card lists the checkpoint resolved by <tt>coverage</tt>. A card that fails to
@@ -1216,7 +1218,10 @@ the latest ones in full. Its size grows with the logarithm of the number of
 checkpoints and is independent of the number of records.</t>
           <t><strong>Positions.</strong> Let n be the checkpoint position (<xref target="terms"/>) of the
 checkpoint resolved by <tt>coverage</tt>, and W the window: an integer the
-responder chooses, from 1 to 64. The card lists the checkpoints at the
+responder chooses, from 1 to 64. The cap of 64 is this document's; it
+bounds a card at W + floor(log2(n)) + 2 entries. W is not an input of the
+request, so under caller invariance (<xref target="invariance"/>) a responder lists the
+same W in every card it serves at the same anchor. The card lists the checkpoints at the
 positions</t>
           <artwork><![CDATA[
 P(n, W) = {0}
@@ -1231,8 +1236,11 @@ stream of a million checkpoints gives at most W + 21.</t>
 checkpoint, receipts for that checkpoint, consistency proof from the
 checkpoint of the entry listed before it). The entry at position 0 carries
 no proof. A proof between two listed entries spans every checkpoint
-between them, so the card shows that the stream never forked without
-listing those checkpoints.</t>
+between them, so the card shows that each listed checkpoint extends the
+one listed before it, without listing those between. It does not show
+that a checkpoint not listed, or one served to another requester, lies on
+the same history; receipts from witnesses the requester accepts are what
+bring that into reach (<xref target="security"/>).</t>
           <t>The result is a map with these members:</t>
           <table>
             <thead>
@@ -1304,9 +1312,11 @@ position not in it, fails.</t>
             </li>
             <li>
               <t>Every checkpoint verifies under the deployment's evidence mechanism (a
-signed checkpoint under a key the requester accepts for the stream),
-and none commits to a smaller body of evidence than the checkpoint of
-the entry before it.</t>
+signed checkpoint under a key the requester accepts for the stream).
+The checkpoint at position 0 commits to no earlier checkpoint, as the
+mechanism shows it (for a Checkpointed Local Log, a <tt>prev_size</tt> of 0),
+and no later checkpoint commits to a smaller body of evidence than the
+checkpoint of the entry before it.</t>
             </li>
             <li>
               <t>The first entry carries no proof, and the proof of every later entry
@@ -1327,7 +1337,9 @@ count is requester policy (<xref target="artifact"/> item 3).</t>
 checkpoint need not commit to its own position. Misnumbering cannot make
 checkpoints that do not extend one another verify; it can only misstate
 how many checkpoints lie between two listed entries. A requester that
-needs to know fetches them (<xref target="history-card-range"/>).</t>
+needs to know fetches them (<xref target="history-card-range"/>). A deployment profile
+whose checkpoints commit to their own position <bcp14>SHOULD</bcp14> require a verifier
+to check each <tt>position</tt> against it.</t>
         </section>
         <section anchor="history-card-range">
           <name>Checkpoints Between Listed Entries</name>
@@ -1343,6 +1355,10 @@ positions, that every proof verifies, and that every receipt covers its
 own checkpoint. The receipts then date each checkpoint in the gap: for
 example, to show when a disputed record was first covered. The record's
 own inclusion proof is a separate request.</t>
+          <t>A requester that cannot fetch a whole gap in one answer fetches it in
+parts, starting each part at the last position of the part before it: the
+first entry of every part then carries a checkpoint the requester already
+holds, and the last part ends at a position its card lists.</t>
           <t>A ranged <tt>checkpoints</tt> request is refused with reason:</t>
           <ul spacing="normal">
             <li>
@@ -1363,6 +1379,8 @@ responder serves in one answer, whoever asks;</t>
 <tt>history_card/2</tt> (<xref target="history-card"/>).</t>
             </li>
           </ul>
+          <t>The other reasons of <xref target="refusal"/> apply as to any request, and a responder
+that answers <tt>policy_declined</tt> uniformly (<xref target="privacy"/>) may do so here too.</t>
         </section>
       </section>
     </section>
@@ -2113,7 +2131,7 @@ action.</t>
         </reference>
       </references>
     </references>
-    <?line 1711?>
+    <?line 1731?>
 
 <section anchor="field-evidence">
       <name>Example Deployments</name>
@@ -2264,14 +2282,16 @@ from the anchor, and the latest W checkpoints, W from 1 to 64 and stated
 in the card. Each entry carries its position, receipts and the
 consistency proof from the entry before it. The positions are a function
 of the anchor's position and W alone, and the verification steps are
-ordered. Its size grows with the logarithm of the number of checkpoints,
+ordered; the first checkpoint must commit to no earlier one. A responder
+<bcp14>SHOULD</bcp14> answer it to any requester. Its size grows with the logarithm of the number of checkpoints,
 where <tt>history_card/1</tt>'s grows linearly. <tt>history_card/1</tt> is unchanged
 and stays registered (<xref target="history-card-1"/>).</t>
         </li>
         <li>
           <t>New term "checkpoint position" (<xref target="terms"/>). The <tt>checkpoints</tt> subject
 (<xref target="subject"/>) takes an optional range of checkpoint positions, answered
-as <xref target="history-card-range"/> says, with its refusal reasons. A history card
+as <xref target="history-card-range"/> says, in parts when a gap is long, with its
+refusal reasons. A history card
 over a ranged <tt>checkpoints</tt> subject is refused <tt>no_such_subject</tt>.</t>
         </li>
         <li>

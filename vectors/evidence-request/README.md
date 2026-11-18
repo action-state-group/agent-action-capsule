@@ -396,7 +396,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `r02-deadline-missed-under-load` | 3.4, 11 | `capacity_exceeded`, never `deadline_unmet` |
 | `r02-map-capacity_exceeded` | 4.6 | status unknown; not withheld by policy, not evidence of non-satisfaction |
 | `r02-map-request_unauthenticated` | 4.6 | status unknown; not withheld by policy, not evidence of non-satisfaction |
-### `history-card-2.json` (29 cases)
+### `history-card-2.json` (36 cases)
 
 | Case | Expect |
 |---|---|
@@ -428,6 +428,13 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `first-entry-has-proof` | `proof_invalid` |
 | `receipt-other-checkpoint` | `receipt_invalid` |
 | `receipt-bad-signature` | `receipt_invalid` |
+| `hex-with-spaces` | `card_malformed` |
+| `hex-uppercase` | `card_malformed` |
+| `first-checkpoint-has-predecessor` | `first_checkpoint_has_predecessor` |
+| `issued-at-lowercase` | valid |
+| `issued-at-offset` | valid |
+| `issued-at-not-a-date` | `checkpoint_invalid` |
+| `checkpoint-tag-long-form` | valid |
 | `anchor-mismatch` | `anchor_mismatch` |
 
 `positions` holds 42 rows: n in 0, 1, 2, 3, 7, 8, 9, 63, 64, 65, 1023, 1024, 1099 and 1000000, each with window 1, 8 and 64.

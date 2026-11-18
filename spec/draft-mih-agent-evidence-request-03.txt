@@ -104,7 +104,7 @@ Table of Contents
    7.  Recording the Exchange  . . . . . . . . . . . . . . . . . . .  27
    8.  Derivation-Scoped Disclosure  . . . . . . . . . . . . . . . .  27
      8.1.  The History Card  . . . . . . . . . . . . . . . . . . . .  28
-       8.1.1.  history_card/1  . . . . . . . . . . . . . . . . . . .  28
+       8.1.1.  history_card/1  . . . . . . . . . . . . . . . . . . .  29
        8.1.2.  history_card/2  . . . . . . . . . . . . . . . . . . .  29
 
 
@@ -115,11 +115,11 @@ Internet-Draft              Evidence Request               November 2026
 
 
        8.1.3.  Checkpoints Between Listed Entries  . . . . . . . . .  31
-   9.  Retention Commitments . . . . . . . . . . . . . . . . . . . .  31
+   9.  Retention Commitments . . . . . . . . . . . . . . . . . . . .  32
    10. Transport Bindings  . . . . . . . . . . . . . . . . . . . . .  33
      10.1.  Carriage Rules . . . . . . . . . . . . . . . . . . . . .  34
      10.2.  A2A Binding  . . . . . . . . . . . . . . . . . . . . . .  35
-     10.3.  MCP Binding  . . . . . . . . . . . . . . . . . . . . . .  36
+     10.3.  MCP Binding  . . . . . . . . . . . . . . . . . . . . . .  37
    11. Security Considerations . . . . . . . . . . . . . . . . . . .  37
    12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  41
    13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  42
@@ -1542,16 +1542,33 @@ Internet-Draft              Evidence Request               November 2026
    history_card/2 is the default first question.  It is the thing a
    stranger checks before deciding whether to ask for anything else.
    Either card is safe to serve to anyone under the digests-only tier,
-   and either is sufficient to verify any individual record the
-   responder later serves, by inclusion proof against a checkpoint the
-   requester already holds: every card lists the checkpoint resolved by
-   coverage.  A card that fails to verify is treated as an unverifiable
-   artifact (Section 4.5).
+   and a responder SHOULD answer history_card/2 to any requester unless
+   it declines it for every requester alike (Section 12).  Either card
+   is sufficient to verify any individual record the responder later
+   serves, by inclusion proof against a checkpoint the requester already
+   holds: every card lists the checkpoint resolved by coverage.  A card
+   that fails to verify is treated as an unverifiable artifact
+   (Section 4.5).
 
    The derivation registry and definition format for other computations
    are expected to grow in a subsequent version.  [[EDITOR: open:
    whether to register a second derivation, the result of a sampled
    recomputation of a subject by a third party.]]
+
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 28]
+
+Internet-Draft              Evidence Request               November 2026
+
 
 8.1.1.  history_card/1
 
@@ -1562,14 +1579,6 @@ Internet-Draft              Evidence Request               November 2026
    checkpoints and independent of the number of records.  A
    history_card/1 that fails to verify (a consistency proof that does
    not chain, a receipt that does not cover its checkpoint) is treated
-
-
-
-Mih                        Expires 21 May 2027                 [Page 28]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    as an unverifiable artifact (Section 4.5).
 
 8.1.2.  history_card/2
@@ -1582,8 +1591,11 @@ Internet-Draft              Evidence Request               November 2026
 
    *Positions.* Let n be the checkpoint position (Section 2) of the
    checkpoint resolved by coverage, and W the window: an integer the
-   responder chooses, from 1 to 64.  The card lists the checkpoints at
-   the positions
+   responder chooses, from 1 to 64.  The cap of 64 is this document's;
+   it bounds a card at W + floor(log2(n)) + 2 entries.  W is not an
+   input of the request, so under caller invariance (Section 5) a
+   responder lists the same W in every card it serves at the same
+   anchor.  The card lists the checkpoints at the positions
 
    P(n, W) = {0}
              union { n - 2^k : k = 0, 1, 2, ... and 2^k <= n }
@@ -1598,10 +1610,21 @@ Internet-Draft              Evidence Request               November 2026
    checkpoint, receipts for that checkpoint, consistency proof from the
    checkpoint of the entry listed before it).  The entry at position 0
    carries no proof.  A proof between two listed entries spans every
-   checkpoint between them, so the card shows that the stream never
-   forked without listing those checkpoints.
+   checkpoint between them, so the card shows that each listed
+   checkpoint extends the one listed before it, without listing those
+   between.  It does not show that a checkpoint not listed, or one
+   served to another requester, lies on the same history; receipts from
+   witnesses the requester accepts are what bring that into reach
+   (Section 11).
 
    The result is a map with these members:
+
+
+
+Mih                        Expires 21 May 2027                 [Page 29]
+
+Internet-Draft              Evidence Request               November 2026
+
 
          +=========+=============================================+
          | Member  | Content                                     |
@@ -1614,17 +1637,6 @@ Internet-Draft              Evidence Request               November 2026
                                   Table 6
 
    Each entry is a map with these members:
-
-
-
-
-
-
-
-Mih                        Expires 21 May 2027                 [Page 29]
-
-Internet-Draft              Evidence Request               November 2026
-
 
     +===========================+=====================================+
     | Member                    | Content                             |
@@ -1661,18 +1673,6 @@ Internet-Draft              Evidence Request               November 2026
        P(n, window): a position of P(n, window) that is missing, or a
        position not in it, fails.
 
-   4.  Every checkpoint verifies under the deployment's evidence
-       mechanism (a signed checkpoint under a key the requester accepts
-       for the stream), and none commits to a smaller body of evidence
-       than the checkpoint of the entry before it.
-
-   5.  The first entry carries no proof, and the proof of every later
-       entry verifies that its checkpoint extends the checkpoint of the
-       entry before it.
-
-   6.  Every receipt covers the checkpoint of its own entry.  Which
-       receipts count is requester policy (Section 4.1 item 3).
-
 
 
 
@@ -1681,6 +1681,21 @@ Mih                        Expires 21 May 2027                 [Page 30]
 
 Internet-Draft              Evidence Request               November 2026
 
+
+   4.  Every checkpoint verifies under the deployment's evidence
+       mechanism (a signed checkpoint under a key the requester accepts
+       for the stream).  The checkpoint at position 0 commits to no
+       earlier checkpoint, as the mechanism shows it (for a Checkpointed
+       Local Log, a prev_size of 0), and no later checkpoint commits to
+       a smaller body of evidence than the checkpoint of the entry
+       before it.
+
+   5.  The first entry carries no proof, and the proof of every later
+       entry verifies that its checkpoint extends the checkpoint of the
+       entry before it.
+
+   6.  Every receipt covers the checkpoint of its own entry.  Which
+       receipts count is requester policy (Section 4.1 item 3).
 
    7.  The checkpoint of the last entry is the anchor the response
        resolved (Section 4.1 item 2).
@@ -1692,7 +1707,9 @@ Internet-Draft              Evidence Request               November 2026
    checkpoint need not commit to its own position.  Misnumbering cannot
    make checkpoints that do not extend one another verify; it can only
    misstate how many checkpoints lie between two listed entries.  A
-   requester that needs to know fetches them (Section 8.1.3).
+   requester that needs to know fetches them (Section 8.1.3).  A
+   deployment profile whose checkpoints commit to their own position
+   SHOULD require a verifier to check each position against it.
 
 8.1.3.  Checkpoints Between Listed Entries
 
@@ -1710,6 +1727,22 @@ Internet-Draft              Evidence Request               November 2026
    the gap: for example, to show when a disputed record was first
    covered.  The record's own inclusion proof is a separate request.
 
+
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 31]
+
+Internet-Draft              Evidence Request               November 2026
+
+
+   A requester that cannot fetch a whole gap in one answer fetches it in
+   parts, starting each part at the last position of the part before it:
+   the first entry of every part then carries a checkpoint the requester
+   already holds, and the last part ends at a position its card lists.
+
    A ranged checkpoints request is refused with reason:
 
    *  request_malformed, when the bounds are not two unsigned integers
@@ -1725,18 +1758,15 @@ Internet-Draft              Evidence Request               November 2026
    *  no_such_subject, when the request names history_card/1 or
       history_card/2 (Section 8.1).
 
+   The other reasons of Section 4.2 apply as to any request, and a
+   responder that answers policy_declined uniformly (Section 12) may do
+   so here too.
+
 9.  Retention Commitments
 
    A responder MAY issue a *retention commitment*: a signed statement
    that a named subject will remain answerable under this interaction
    until a stated time.  It carries:
-
-
-
-Mih                        Expires 21 May 2027                 [Page 31]
-
-Internet-Draft              Evidence Request               November 2026
-
 
    1.  the subject, in one of the forms of Section 3.1, and the evidence
        stream it belongs to;
@@ -1755,6 +1785,14 @@ Internet-Draft              Evidence Request               November 2026
    interaction_. It says nothing about whether the bytes exist anywhere
    else, and it does not make the subject available; it makes a later
    failure to answer attributable to the party that promised.
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 32]
+
+Internet-Draft              Evidence Request               November 2026
+
 
    A commitment MAY be carried alongside an artifact response
    (Section 4.1), published with the responder's checkpoints, or placed
@@ -1787,13 +1825,6 @@ Internet-Draft              Evidence Request               November 2026
    promises.  The digest keeps the second.  The commitment, when
    present, names who is answerable for the first, and for how long.
 
-
-
-Mih                        Expires 21 May 2027                 [Page 32]
-
-Internet-Draft              Evidence Request               November 2026
-
-
 10.  Transport Bindings
 
    The interaction is transport-agnostic; a binding maps the request
@@ -1811,6 +1842,14 @@ Internet-Draft              Evidence Request               November 2026
    stream closed or timed out without a response frame.  The subprotocol
    identifier is what lets any two peers implementing it interoperate
    without prior arrangement; a peer that does not offer it has not
+
+
+
+Mih                        Expires 21 May 2027                 [Page 33]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    refused — it has not answered, and the requester records that as
    absence, not as policy_declined.  Message-oriented agent protocols
    bind the same way, with the request as a named message type and the
@@ -1837,19 +1876,6 @@ Internet-Draft              Evidence Request               November 2026
    transport exchange carrying a refusal answer.  Bindings MUST NOT
    conflate transport-level errors with refusals (Section 4.5).
 
-
-
-
-
-
-
-
-
-Mih                        Expires 21 May 2027                 [Page 33]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    *Registry query.* A registry or query service exposing stored claims
    can expose this same interaction over its query path, so that a query
    answer arrives as an anchored artifact, a signed refusal, or a
@@ -1872,6 +1898,14 @@ Internet-Draft              Evidence Request               November 2026
        those decoded octets as received, never over the text and never
        over a re-serialization.
 
+
+
+
+Mih                        Expires 21 May 2027                 [Page 34]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    2.  *One request, one digest.* The same request bytes therefore have
        the same digest over every carriage.  A requester that may send
        one request over more than one carriage SHOULD encode it in
@@ -1891,20 +1925,6 @@ Internet-Draft              Evidence Request               November 2026
        messages in an interrupted task, and any client identification.
        None of it is covered by a signature this document defines, and
        none of it may influence the artifact (Section 5).
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 21 May 2027                 [Page 34]
-
-Internet-Draft              Evidence Request               November 2026
-
 
    5.  *Errors are not refusals.* Authentication or authorization in the
        carriage decides whether a responder answers, never what a given
@@ -1934,26 +1954,6 @@ Internet-Draft              Evidence Request               November 2026
    A2A's JSON bindings write the bytes of a raw part as base64 with
    padding (Section 4 of [RFC4648]).
 
-   *Declaration.* A responder that carries this interaction over A2A
-   lists one extension in its Agent Card's capabilities.extensions, with
-   uri exactly https://datatracker.ietf.org/doc/draft-mih-agent-
-   evidence-request/, required set to false, and the responder's
-   manifest (Section 10) as params.  A responder MUST NOT advertise this
-   binding under any other URI.  The Agent Card SHOULD list application/
-   cbor and application/json among its default input and output modes.
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1961,6 +1961,14 @@ Mih                        Expires 21 May 2027                 [Page 35]
 
 Internet-Draft              Evidence Request               November 2026
 
+
+   *Declaration.* A responder that carries this interaction over A2A
+   lists one extension in its Agent Card's capabilities.extensions, with
+   uri exactly https://datatracker.ietf.org/doc/draft-mih-agent-
+   evidence-request/, required set to false, and the responder's
+   manifest (Section 10) as params.  A responder MUST NOT advertise this
+   binding under any other URI.  The Agent Card SHOULD list application/
+   cbor and application/json among its default input and output modes.
 
    *Request.* The request is one Message with role user, whose parts
    hold exactly one Part whose raw is the request bytes and whose
@@ -2003,20 +2011,17 @@ Internet-Draft              Evidence Request               November 2026
       failed, or canceled, an A2A error, and a direct Message are the
       responder sending no reply.  None of them is a refusal.
 
-10.3.  MCP Binding
-
-   This binding uses MCP revision 2026-07-28 ([MCP]).  Field names are
-   MCP's.
-
-
-
-
 
 
 Mih                        Expires 21 May 2027                 [Page 36]
 
 Internet-Draft              Evidence Request               November 2026
 
+
+10.3.  MCP Binding
+
+   This binding uses MCP revision 2026-07-28 ([MCP]).  Field names are
+   MCP's.
 
    *Listing.* A responder that carries this interaction over MCP lists
    two tools under exactly these names: evidence_manifest, which takes
@@ -2062,11 +2067,6 @@ Internet-Draft              Evidence Request               November 2026
    responses inherit only whatever independence the responder-selected
    anchor has from its own witnessing or publication.
 
-   *Split views: per-requester anchor forks defeat invariance.* Caller
-   invariance binds the artifact to (subject, anchor), not the anchor to
-   a single history: a responder that maintains divergent histories and
-   steers each requester to an anchor on "its" fork — a split-view
-
 
 
 Mih                        Expires 21 May 2027                 [Page 37]
@@ -2074,6 +2074,10 @@ Mih                        Expires 21 May 2027                 [Page 37]
 Internet-Draft              Evidence Request               November 2026
 
 
+   *Split views: per-requester anchor forks defeat invariance.* Caller
+   invariance binds the artifact to (subject, anchor), not the anchor to
+   a single history: a responder that maintains divergent histories and
+   steers each requester to an anchor on "its" fork — a split-view
    (equivocation) attack — serves individually verifiable, per-anchor-
    invariant answers while defeating invariance in substance.  The
    anchor-consistency rule of Section 5 makes any fork a provable
@@ -2118,10 +2122,6 @@ Internet-Draft              Evidence Request               November 2026
    returned for categories (Section 3.9) is the responder's signed
    statement of what it offers in each category.  It is attributable,
    and a counterparty's records can contradict it (Section 6), but it is
-   no more complete than anything else the responder chose to record.  A
-   requester SHOULD NOT treat a declared "absent" as proof that nothing
-   of that category exists.
-
 
 
 
@@ -2129,6 +2129,10 @@ Mih                        Expires 21 May 2027                 [Page 38]
 
 Internet-Draft              Evidence Request               November 2026
 
+
+   no more complete than anything else the responder chose to record.  A
+   requester SHOULD NOT treat a declared "absent" as proof that nothing
+   of that category exists.
 
    *A principal reference is not authenticated by this document.* Where
    a deployment binds a request or a commitment to a principal reference
@@ -2172,10 +2176,6 @@ Internet-Draft              Evidence Request               November 2026
    breached.  The interaction records the breach; it does not prevent
    it, and deployments SHOULD NOT present a retention commitment as a
    guarantee that the evidence will be there.
-
-
-
-
 
 
 
@@ -2701,16 +2701,17 @@ Changes from -02
       from 1 to 64 and stated in the card.  Each entry carries its
       position, receipts and the consistency proof from the entry before
       it.  The positions are a function of the anchor's position and W
-      alone, and the verification steps are ordered.  Its size grows
-      with the logarithm of the number of checkpoints, where
-      history_card/1's grows linearly. history_card/1 is unchanged and
-      stays registered (Section 8.1.1).
+      alone, and the verification steps are ordered; the first
+      checkpoint must commit to no earlier one.  A responder SHOULD
+      answer it to any requester.  Its size grows with the logarithm of
+      the number of checkpoints, where history_card/1's grows linearly.
+      history_card/1 is unchanged and stays registered (Section 8.1.1).
 
    *  New term "checkpoint position" (Section 2).  The checkpoints
       subject (Section 3.1) takes an optional range of checkpoint
-      positions, answered as Section 8.1.3 says, with its refusal
-      reasons.  A history card over a ranged checkpoints subject is
-      refused no_such_subject.
+      positions, answered as Section 8.1.3 says, in parts when a gap is
+      long, with its refusal reasons.  A history card over a ranged
+      checkpoints subject is refused no_such_subject.
 
    *  Section 13: a row for history_card/2 in the derivations registry.
 
@@ -2736,8 +2737,7 @@ Changes from -01
       responder's word; it discloses operational state; its reason
       classes are not a registry.
 
-   *  Appendix A: a worked example of a responder flooded during a
-      dispute window.
+
 
 
 
@@ -2745,6 +2745,9 @@ Mih                        Expires 21 May 2027                 [Page 49]
 
 Internet-Draft              Evidence Request               November 2026
 
+
+   *  Appendix A: a worked example of a responder flooded during a
+      dispute window.
 
    *  Two refusal reasons (Section 4.2, Section 13): capacity_exceeded,
       for a responder's own load, size limits and transient faults, and
@@ -2788,9 +2791,6 @@ Changes from -00
 
    *  Security and Privacy Considerations: a category declaration
       declares and does not prove; carriage metadata reveals the ask.
-
-
-
 
 
 

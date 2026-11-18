@@ -110,7 +110,7 @@ pub fn resolve(request: &Request, responder: &dyn Responder) -> Resolution {
                 if matches!(request.subject, Subject::CheckpointRange(..))
                     && matches!(derivation, Derivation::Token(t)
                         if t == crate::registry::DERIVATION_HISTORY_CARD
-                            || t == crate::history_card::DERIVATION_HISTORY_CARD_2) =>
+                            || t == crate::registry::DERIVATION_HISTORY_CARD_2) =>
             {
                 return no_such_subject()
             }

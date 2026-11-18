@@ -190,3 +190,57 @@ func TestCheckpointsRangeResolutionVectors(t *testing.T) {
 		})
 	}
 }
+
+// A ranged checkpoints subject (ER -03 §3.1) is signed as its range and
+// read back the same from either encoding; changing the range breaks the
+// signature.
+func TestEnvelopeSignsACheckpointRange(t *testing.T) {
+	s, keyID := signer(t, 3)
+	artifact := []byte(`{"history":[]}`)
+	ranged := er.Subject{Kind: er.SubjectCheckpoints, Range: [2]uint64{2, 5}, Ranged: true}
+	require.True(t, ranged.Valid())
+	assert.Equal(t, map[string]any{"checkpoints": []any{uint64(2), uint64(5)}}, ranged.Value())
+	unsigned := er.Envelope{
+		Profile: er.ProfileID, RequestDigest: digestOf("req"), Subject: ranged,
+		Anchor: er.Anchor{Digest: digestOf("anchor")}, ArtifactDigest: er.Digest(artifact),
+		Responder: keyID, IssuedAt: "2026-11-17T00:00:00Z", Artifact: artifact,
+	}
+	e, err := unsigned.Sign(t.Context(), s)
+	require.NoError(t, err)
+	for _, mediaType := range []string{er.MediaTypeJSON, er.MediaTypeCBOR} {
+		reply, err := er.EncodeReply(mediaType, &e, nil)
+		require.NoError(t, err)
+		parsed, err := er.ParseReply(reply.Message)
+		require.NoError(t, err)
+		require.NotNil(t, parsed.Envelope)
+		assert.Equal(t, e, *parsed.Envelope)
+		assert.NoError(t, parsed.Envelope.Verify())
+	}
+	widened := e
+	widened.Subject.Range[1] = 6
+	assert.Error(t, widened.Verify(), "the range is signed")
+	unranged := e
+	unranged.Subject = er.Subject{Kind: er.SubjectCheckpoints}
+	assert.Error(t, unranged.Verify(), "a range is not an unranged subject")
+}
+
+// Both history cards are built in: Decide accepts history_card/2 with no
+// Policy.Derivation, over unranged checkpoints and full_history only.
+func TestDecideHistoryCard2IsBuiltIn(t *testing.T) {
+	issued := time.Date(2026, 9, 27, 0, 0, 0, 0, time.UTC)
+	view := vectorView{logSize: 3, records: []string{digestOf("r")}, anchorList: []er.AnchorView{{Digest: digestOf("a0"), Entries: 1, IssuedAt: issued}, {Digest: digestOf("a1"), Entries: 3, IssuedAt: issued.Add(time.Hour)}}}
+	now := issued.Add(24 * time.Hour)
+	pin := er.Coverage{ExpectedPin: digestOf("a1")}
+	for _, tc := range []struct {
+		subject er.Subject
+		reason  string
+	}{
+		{er.Subject{Kind: er.SubjectCheckpoints}, ""},
+		{er.Subject{Kind: er.SubjectFullHistory}, ""},
+		{er.Subject{Kind: er.SubjectCheckpoints, Range: [2]uint64{0, 1}, Ranged: true}, er.ReasonNoSuchSubject},
+		{er.Subject{Kind: er.SubjectRecord, Digest: digestOf("r")}, er.ReasonNoSuchSubject},
+	} {
+		d := er.Decide(view, er.Request{Subject: tc.subject, Coverage: pin, Derivation: er.DerivationHistoryCard2}, er.Policy{}, now)
+		assert.Equal(t, tc.reason, d.Reason, "%v", tc.subject)
+	}
+}

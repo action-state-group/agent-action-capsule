@@ -19,6 +19,7 @@ witness}``, where ``checkpoint`` is SHA-256 of the checkpoint octets.
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Collection, Mapping
 from typing import Any
 
@@ -33,11 +34,13 @@ MAX_WINDOW = 64
 #: The findings of :func:`check_history_card_2`, in the order the checks run.
 FINDINGS = (
     "card_malformed", "window_out_of_range", "positions_not_increasing_from_zero", "position_missing",
-    "position_unexpected", "checkpoint_invalid", "checkpoint_shrinks", "proof_invalid",
+    "position_unexpected", "checkpoint_invalid", "first_checkpoint_has_predecessor", "checkpoint_shrinks",
+    "proof_invalid",
     "receipt_invalid", "anchor_mismatch",
 )
 
 _ENTRY_MEMBERS = ("position", "checkpoint", "receipts", "consistency_from_previous")
+_LOWER_HEX = re.compile(r"(?:[0-9a-f]{2})*")
 
 
 def positions(n: int, window: int) -> list[int]:
@@ -55,12 +58,10 @@ def positions(n: int, window: int) -> list[int]:
 
 
 def _hex(value: Any) -> bytes | None:
-    if not isinstance(value, str) or len(value) % 2 or value != value.lower():
+    # fullmatch, not bytes.fromhex alone, which skips whitespace
+    if not isinstance(value, str) or not _LOWER_HEX.fullmatch(value):
         return None
-    try:
-        return bytes.fromhex(value)
-    except ValueError:
-        return None
+    return bytes.fromhex(value)
 
 
 def _well_formed(card: Any) -> bool:
@@ -131,6 +132,8 @@ def check_history_card_2(card: Any, anchor: str, log_keys: Collection[str]) -> s
         if cp.alg != -8 or cp.crit or len(kid) != 32 or kid.hex() not in log_keys or \
                 not ed25519_verify(kid, cp.signature, _sig_structure(cp.protected, cp.payload)):
             return "checkpoint_invalid"
+        if not decoded and cp.claims["prev_size"] != 0:
+            return "first_checkpoint_has_predecessor"
         if decoded and cp.claims["log_size"] < decoded[-1][1].claims["log_size"]:
             return "checkpoint_shrinks"
         decoded.append((octets, cp))

@@ -913,6 +913,9 @@ pub fn check_history_card_2(
         if !accepted {
             return Some("checkpoint_invalid");
         }
+        if checkpoints.is_empty() && cp.prev_size != 0 {
+            return Some("first_checkpoint_has_predecessor");
+        }
         if checkpoints
             .last()
             .is_some_and(|prev| cp.log_size < prev.log_size)

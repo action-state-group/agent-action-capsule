@@ -1689,14 +1689,16 @@ def _hc2_time(position: int) -> str:
     return datetime.fromtimestamp(HC2_START + 300 * position, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def hc2_checkpoint(position: int, key: Ed25519PrivateKey = HC2_LOG, pub: str = HC2_LOG_PUB) -> bytes:
+def hc2_checkpoint(position: int, key: Ed25519PrivateKey = HC2_LOG, pub: str = HC2_LOG_PUB,
+                   issued_at: str | None = None) -> bytes:
     """The cll-checkpoint statement at ``position``: COSE_Sign1 (tag 18) over the claims, with
     prev_size the node count of the checkpoint before it (0 for the first)."""
     size = HC2_STREAM.sizes[position]
     prev = HC2_STREAM.sizes[position - 1] if position else 0
     protected = cbor({1: -8, 4: bytes.fromhex(pub), 15: {1: "https://log.example", 2: "stream-a"}})
     payload = cbor({
-        "kind": "cll-checkpoint", "log_size": size, "prev_size": prev, "issued_at": _hc2_time(position),
+        "kind": "cll-checkpoint", "log_size": size, "prev_size": prev,
+        "issued_at": issued_at if issued_at is not None else _hc2_time(position),
         "commitment": cbor(HC2_STREAM.peaks(size)),
         "prev_commitment": cbor(HC2_STREAM.peaks(prev)) if prev else b"",
     })
@@ -1733,7 +1735,8 @@ def hc2_anchor(position: int) -> str:
 
 HC2_FINDINGS = [
     "card_malformed", "window_out_of_range", "positions_not_increasing_from_zero", "position_missing",
-    "position_unexpected", "checkpoint_invalid", "checkpoint_shrinks", "proof_invalid",
+    "position_unexpected", "checkpoint_invalid", "first_checkpoint_has_predecessor", "checkpoint_shrinks",
+    "proof_invalid",
     "receipt_invalid", "anchor_mismatch",
 ]
 
@@ -1754,8 +1757,9 @@ HC2_NOTES = {
               "position, a position of P(n, window) is not listed (missing is checked first) or a listed "
               "position is not in P(n, window). 4 checkpoint_invalid: a checkpoint is not a well-formed "
               "cll-checkpoint (interop profile §6.2.1 step 7), its kid is not in log_keys, or its COSE_Sign1 "
-              "signature does not verify; checkpoint_shrinks: its log_size is smaller than the previous "
-              "entry's. 5 proof_invalid: the first entry carries a proof, a later entry carries none, the "
+              "signature does not verify; first_checkpoint_has_predecessor: the checkpoint at position 0 "
+              "has a prev_size other than 0; checkpoint_shrinks: its log_size is smaller than the previous "
+              "entry's. Entries are checked in order, each fully, before the next. 5 proof_invalid: the first entry carries a proof, a later entry carries none, the "
               "proof is not cll-consistency-proof octets whose tree sizes are the two checkpoints' log_size "
               "values, or it does not prove the entry's commitment extends the previous entry's (MMR -02 "
               "§7.1). 6 receipt_invalid: a receipt is not {checkpoint, witness, sig}, its checkpoint is not "
@@ -1876,6 +1880,35 @@ def hc2_cases() -> list[dict]:
     bad_sig["sig"] = ("0" if bad_sig["sig"][0] != "0" else "1") + bad_sig["sig"][1:]
     neg("receipt-bad-signature", "A receipt's signature does not verify.", replaced(4, receipts=[bad_sig]),
         "receipt_invalid")
+    hex_space = replaced(2, checkpoint="  " + good["history"][2]["checkpoint"])
+    neg("hex-with-spaces", "A checkpoint's hex text with two leading spaces.", hex_space, "card_malformed")
+    neg("hex-uppercase", "A checkpoint's hex text in upper case.",
+        replaced(2, checkpoint=good["history"][2]["checkpoint"].upper()), "card_malformed")
+    late = hc2_checkpoint(5)
+    neg("first-checkpoint-has-predecessor", "A one-entry card whose position 0 carries the checkpoint of stream "
+        "position 5, which commits to an earlier checkpoint (prev_size not 0).",
+        {"window": 1, "history": [{"position": 0, "checkpoint": late.hex(), "receipts": [],
+                                   "consistency_from_previous": None}]}, "first_checkpoint_has_predecessor",
+        sha256_hex(late))
+    for case_id, description, issued, finding in (
+        ("issued-at-lowercase", "The first checkpoint's issued_at in lower-case t and z, an RFC 3339 form.",
+         "2026-11-01t00:00:00z", None),
+        ("issued-at-offset", "The first checkpoint's issued_at with a numeric offset.",
+         "2026-10-31T19:00:00-05:00", None),
+        ("issued-at-not-a-date", "The first checkpoint's issued_at names 30 February.",
+         "2026-02-30T00:00:00Z", "checkpoint_invalid"),
+    ):
+        cp = hc2_checkpoint(0, issued_at=issued)
+        card = {"window": 1, "history": [{"position": 0, "checkpoint": cp.hex(), "receipts": [],
+                                          "consistency_from_previous": None}]}
+        cases.append(_hc2_case(case_id, description, card, sha256_hex(cp), finding))
+    long_tag = b"\xd8\x12" + hc2_checkpoint(0)[1:]
+    cases.append(_hc2_case("checkpoint-tag-long-form", "The first checkpoint's tag 18 written in two octets "
+                           "(d8 12), not one: still a well-formed cll-checkpoint, whose signature covers only "
+                           "the protected header and payload.",
+                           {"window": 1, "history": [{"position": 0, "checkpoint": long_tag.hex(), "receipts": [],
+                                                      "consistency_from_previous": None}]},
+                           sha256_hex(long_tag), None))
     neg("anchor-mismatch", f"The card ends at position {n}, but the response resolved the checkpoint at "
         f"position {n - 1}.", good, "anchor_mismatch", hc2_anchor(n - 1))
     return cases

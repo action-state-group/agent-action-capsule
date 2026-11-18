@@ -10,6 +10,7 @@ import {
   CborMap,
   CborTag,
   decodeReceiptItem,
+  decodeWellFormedItem,
   type CborValue,
 } from "./cose-receipt.js";
 import { verifyEd25519Strict } from "./ed25519-strict.js";
@@ -28,6 +29,7 @@ export const HISTORY_CARD_FINDINGS = [
   "position_missing",
   "position_unexpected",
   "checkpoint_invalid",
+  "first_checkpoint_has_predecessor",
   "checkpoint_shrinks",
   "proof_invalid",
   "receipt_invalid",
@@ -201,12 +203,36 @@ function consistencyHolds(
 interface Checkpoint {
   key: Uint8Array;
   logSize: bigint;
+  prevSize: bigint;
   commitment: Uint8Array[];
   verified: boolean;
 }
 
+// RFC 3339 date-time, read as the profile's other checkers read issued_at:
+// T and Z in either case, a real calendar date, hours below 24, minutes
+// below 60 and seconds up to 60 (a leap second).
 const RFC3339 =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/u;
+  /^(\d{4})-(\d\d)-(\d\d)[Tt](\d\d):(\d\d):(\d\d)(\.\d+)?([Zz]|[+-]\d\d:\d\d)$/u;
+
+function isRfc3339(value: string): boolean {
+  const m = RFC3339.exec(value);
+  if (m === null) return false;
+  const [year, month, day, hour, minute, second] = m
+    .slice(1, 7)
+    .map(Number) as [number, number, number, number, number, number];
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return (
+    year >= 1 &&
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    day <= days[month - 1]! &&
+    hour < 24 &&
+    minute < 60 &&
+    second <= 60
+  );
+}
 
 function peakList(v: CborValue): Uint8Array[] | undefined {
   if (!(v instanceof Uint8Array)) return undefined;
@@ -264,7 +290,7 @@ async function readCheckpoint(
 ): Promise<Checkpoint | undefined> {
   let outer: CborValue;
   try {
-    outer = decodeReceiptItem(octets, true);
+    outer = decodeWellFormedItem(octets);
   } catch {
     return undefined;
   }
@@ -287,8 +313,8 @@ async function readCheckpoint(
     return undefined;
   let header: CborValue, claims: CborValue;
   try {
-    header = decodeReceiptItem(protectedHeader, false);
-    claims = decodeReceiptItem(payload, false);
+    header = decodeWellFormedItem(protectedHeader);
+    claims = decodeWellFormedItem(payload);
   } catch {
     return undefined;
   }
@@ -318,7 +344,7 @@ async function readCheckpoint(
     prevSize > logSize ||
     logSize > BigInt(MAX_SAFE) ||
     typeof issuedAt !== "string" ||
-    !RFC3339.test(issuedAt)
+    !isRfc3339(issuedAt)
   )
     return undefined;
   const commitment = peakList(claims.get("commitment"));
@@ -340,7 +366,7 @@ async function readCheckpoint(
   } catch {
     verified = false;
   }
-  return { key: kid, logSize, commitment, verified };
+  return { key: kid, logSize, prevSize, commitment, verified };
 }
 
 async function receiptCovers(
@@ -452,6 +478,8 @@ export async function checkHistoryCard2(
     if (cp === undefined || !cp.verified || !logKeys.includes(toHex(cp.key)))
       return "checkpoint_invalid";
     const prev = checkpoints[checkpoints.length - 1];
+    if (prev === undefined && cp.prevSize !== 0n)
+      return "first_checkpoint_has_predecessor";
     if (prev !== undefined && cp.logSize < prev.logSize)
       return "checkpoint_shrinks";
     checkpoints.push(cp);
