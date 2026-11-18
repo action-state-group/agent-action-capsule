@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: nothing after `go/v0.19.0`, `python/v0.15.0` and `ts/v0.14.0`. The Rust crates keep their own
+Not in a `ts` tag yet: everything after `ts/v0.14.0`. The Go and Python entries up to `go/v0.22.0` and `python/v0.17.0` are also listed under those tags. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
@@ -171,6 +171,203 @@ has not yet.
 - Examples: `examples/erc8183-base-sepolia/` runs ERC-8183 jobs under `spec/adapters/erc-8183-v0.md` on Base Sepolia, with the recorded run of one `complete` job and one `not_evaluable` refund job, and a resolver that prints each hop and the seven checks (AAC#583).
 
 - TypeScript: the package and browser entries export `verifyRetainedHead` and the types `LogHead` and `RetainedHeadResult` (AAC#513): checkpoint consistency, meaning whether a log's current head extends a head the reader kept from an earlier look, given a consistency proof. The retained head is a verifier input, not a Bundle member; with none supplied the result is `not_present`, never `pass`. Additive; no spec or Bundle change. Vectors in `vectors/checkpoint-consistency/`.
+
+- **Breaking** for pins: AAC adopts checkpointed-local-log 0.9.0 (CLL -02: the checkpoint CWT `sub` is the bare log id, constant per log; readers still accept the old `<log_id>#<mmr_size>` form). The Go dependency moves to CLL `go/v0.4.0`, the TypeScript dev and peer pin to `@action-state-group/cll` 0.4.0, the Rust crates to `checkpointed-local-log` 0.6.0, and the Python `bundle` extra to `checkpointed-local-log>=0.9.0`; upgrade CLL alongside AAC. The 24 bundle vector files are regenerated with the new subject, and Python, Go, TypeScript and Rust agree on them in the cross-language interlock. The `<0.9` CI cap (#609) is removed.
+
+- The vendored CPB provisional snapshot (`cpb_provisional.json` in Python, Go, TypeScript and Rust) no longer lists the `mesh-inference-exchange` capsule field values `effect.type=inference_completion`, `effect_attestation=host_served_observed` and `chain.relation=follows`. They are registered as of the -05 revision, so check 8 already resolved them as seeded and never consulted the entries; verifier output does not change. `vendor_cpb_registry.py` drops the curated entry. ([#602](https://github.com/action-state-group/agent-action-capsule/issues/602))
+
+- The `examples/erc8004-base-sepolia` README and `resolve` docstring now say a clean commitment staple exits 3 (verdict still `NOT_ACCEPTED`), a failed check or missing evidence exits 1 and the top-level `findings` repeats a staple's findings, as capsule-cli v0.1.0-rc36 or later (capsule-cli#549) reports. The example's minimum capsulectl is now v0.1.0-rc36. ([#591](https://github.com/action-state-group/agent-action-capsule/issues/591))
+
+- `evaluation-report/v1` `Case` gains an optional `clause_ref`: the clause id, in the pinned contract, that the case answers. It is a grouping key only; judge or adjudicator words stay out of the `Case` (they belong in a separate cited record under the share gate). A validator on the earlier v1 schema refuses a report that carries it (`Case` is closed); this lands in place in `evaluation-report/v1`, as `out_of_scope` did (Steven confirmed, 2026-11-16), so producers emit `clause_ref` only to verifiers on the new schema. Adds a positive and a negative vector. ([#512](https://github.com/action-state-group/agent-action-capsule/issues/512))
+
+- Spec: Evidence Request -03 (`spec/draft-mih-agent-evidence-request-03`, #629) registers
+  `history_card/2`, the default first question, beside `history_card/1`, which is unchanged. A
+  `/2` card lists the stream's first checkpoint, checkpoints 1, 2, 4, 8 and so on positions back
+  from the anchor, and the latest W checkpoints (W from 1 to 64, stated in the card), each with its
+  position, receipts and the consistency proof from the entry before it, so its size grows with
+  the logarithm of the number of checkpoints. The `checkpoints` subject takes an optional range of
+  checkpoint positions, so a requester can fetch the checkpoints between two listed entries. The
+  derivation's row is in `spec/REGISTRY.md` §16.
+- Vectors: `vectors/evidence-request/history-card-2.json` (37 cases and 42 position rows: a valid
+  card over 1,100 checkpoints, a broken proof, a missing sample position, and a case for each
+  check) and `vectors/evidence-request/checkpoints-range.json` (9 request and 9 resolution
+  cases), both written from -03.
+- Python, Go and TypeScript check a `history_card/2` card in Checkpointed Local Log form and give
+  its positions: `agent_action_capsule.history_card` (`positions`, `check_history_card_2`);
+  `evidencerequest.HistoryPositions` and `CheckHistoryCard2`; and `historyPositions` and
+  `checkHistoryCard2`. The Python and Go request readers accept a ranged `checkpoints` subject,
+  and a reply envelope signs and reads back the range: Go's `Subject` gains `Ranged`. Go's
+  `Decide` has `history_card/2` built in beside `history_card/1` (`DerivationHistoryCard2`).
+  TypeScript adds `decodeWellFormedItem`, the CBOR reader for a checkpoint's own octets. A history card over a ranged subject is refused
+  `no_such_subject`, and a range that ends past the anchor's checkpoint position is refused
+  `coverage_unsatisfiable`.
+
+- New conformance set `vectors/inference-service-history-verdicts-v0/` (15 cases) for the optional `verdict_counts` member of the inference-service history profile (§4.3, §5.3; SH-14): one positive and fourteen negatives, built on the base set's Standard History, stated by hand and evaluated by an independent Python evaluator and by the Rust `inference_history` module. `check_artifact` now names the History property (`artifact_form`) in the errors it returned unnamed. Go, the Python library and capsule-engine do not read the member yet.
+
+- The inference-service history profile's referee-verdict rules (§5.3) count a verdict about the node's exchange whoever asked the referee, the node or the other party, labelled with whose ask it was. The node counts every qualifying verdict its own log holds, not a list it keeps apart; a verdict held can be named by its digest so an omission can be found; and a verdict count is the count of one kind of check, signed by the checker. Adds open point SH-15.
+
+- `spec/cpb-provisional-registry.md` now opens with a banner marking it historical and non-normative: CPB defines no artifact-type registry, so nothing in the file is registered or usable for verification. The rest of the file is unchanged ([#424](https://github.com/action-state-group/agent-action-capsule/pull/424)).
+
+- **ts:** the outcome-report model no longer parses a benchmark pipeline's conversation-id layout (`benchmark:domain:<model>:task-N:trial-T`). With the reports withheld, a case record matches a conversation when it declares `urn:<conversation id>`, or when its own disclosed input states the case fields (`case.benchmark`, `domain`, `task_id`, `trial`, `agent_model`) that produce the conversation id and the action id it declares. A model-named id whose case input is not disclosed no longer resolves from the id alone (action-state-group/agent-action-capsule#343).
+
+- Test vectors: `vectors/personal-history-basic-v0` is regenerated for the CLL 0.9 checkpoint format, where the checkpoint `sub` is the bare log id (`holder-stream-1`, `holder-tick-log`) instead of `<log id>#<MMR size>`. `producer/main.go` now writes the bare `sub`, moves to evidencebook's `Originals` API, pins `RefusalPolicySpecific` (the new library default is uniform) and gains a `-correlated` mode for evidencebook#453 that is not the corpus run, and the corpus pins evidencebook at `b2605f7f`, the CLL 0.9 adoption head (#622). Every `expected_pin`, anchor, reply signature and tick checkpoint in the corpus changes, as do the two derived corpora that read its `responder-run.json`, `personal-history-outcome-v0` and `coverage-declaration-v0`. Changed released files: `vectors/personal-history-basic-v0/` (all files), `vectors/personal-history-outcome-v0/{manifest.json,vectors.json}`, `vectors/coverage-declaration-v0/{manifest.json,vectors.json}`. Case ids and expected statuses are unchanged.
+
+- Spec: `spec/bindings/record-push-v0.md` (Informational, pre-Internet-Draft) binds the record push of `spec/shelf-forms-v0.md` §6 to MCP (the tool `record_push`) and to A2A (an Agent Card extension and a `data` part): one push object carrying the record and the stamp proof as opaque base64url octets, and one answer object with the members of the evidencebook library's receive vectors. It fills open point SF-1 and leaves SF-2 to SF-9 open.
+
+- Go, Python, TypeScript: producer-signature verification (`envelope.VerifyRecordSignature`, `verify_record_signature`, `verifyRecordSignature`, and strict Bundle verification through them) recomputes a record's Capsule ID under `jcs` only. A record with no `canonicalization_id`, a `null` one, or the withdrawn `jcs-n` is `invalid`; before, all three read it as `jcs-n` (chain dropped, null and empty members removed) and could grade it `authored`. Records signed over a `jcs-n` Capsule ID no longer verify. The spec already withdraws `jcs-n` (`draft-mih-scitt-agent-action-capsule-06`); the pinned vectors `authored-jcs-n` and `authored-jcs-n-declared` in `vectors/bundle/strict/` become `invalid-no-canonicalization` and `invalid-jcs-n-declared`, expecting `invalid`. `normalize` stays as a public helper. Maintainer decision: Ethan, 2026-11-13, "放弃" (give up). ([capsule-emit#447](https://github.com/action-state-group/capsule-emit/issues/447))
+
+- The vendored CPB registry snapshots (`cpb_registry.json`, and `cpb_provisional.json` in Python, Go, TypeScript and Rust) are re-vendored from `scitt-payload-binding@fa57e7c`. The `agent-action-capsule` artifact type now lists only its `jcs` identifier context; the withdrawn `jcs-n` context (withdrawn 2026-08-18) is gone from the snapshot, and the type's status is `provisional` as the owner repository records it. `jcs-n` itself stays in the algorithm table as `withdrawn`. ([#600](https://github.com/action-state-group/agent-action-capsule/issues/600))
+
+- Spec: `spec/shelf-forms-v0.md` (Informational, pre-Internet-Draft) writes down the shelf log forms the evidencebook library uses: the entry documents of a shelf log after its format switch (book fact, journal fact, stamp entry, format-switch marker), the salted commitments and openings a fact carries and which audience may have which opening, the stamp proof with its JSON encoding and the verifier's checks in order, and the record push with its answers. No binding to a protocol yet; open points SF-1 to SF-8.
+
+- Spec: a new derivation token `standard_history/3` (`spec/standard-history-v0.md` §11, #620),
+  beside `standard_history/1` and `/2`, which are unchanged in every member, rule, document and
+  vector. A `/3` card counts the deals of a shelf log of book facts (`spec/shelf-forms-v0.md`) from
+  each deal's term rows as of the anchor's time, in the three outcomes: only rows the holder owed
+  make a deal `did_not_hold`, a ruling the holder did not honour comes first, a final unmet row
+  comes before a dispute, and a row not reached or not yet final makes the deal `undecided` only
+  after `did_not_hold`. It counts,
+  among the deals that did not hold, those the holder remedied (`remedied`, a remedy made without a
+  ruling included) and those where it did not honour a ruling (`not_honoured`), leaves out a deal
+  whose agreement names witnesses with no time from them, tallies the deals not counted by reason,
+  and carries the shelf log's `coverage_start`. Its counting table and wording pack are in `spec/history-frame/`
+  (History frame §6.1), its row in `spec/REGISTRY.md` §16, and its 27 vectors in
+  `vectors/standard-history-v0/vectors-3.json`.
+- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
+  `standard_history/3` cards (`DERIVATION_3` and `outcome`; `Derivation3`, `Outcome`, `Deal.Rows`,
+  `Deal.LeftOut` and `AsOf.CoverageStartTime`).
+
+- `python/scripts/vendor_cpb_registry.py` now reads a hard-wrapped `**Reference:**` field in the CPB provisional registry in full (continuation lines up to the next label, blank line or heading) instead of only its first line, so a wrapped entry no longer vendors a truncated reference. ([scitt-payload-binding#111](https://github.com/action-state-group/scitt-payload-binding/issues/111))
+
+## python 0.17.0 — 2026-11-17
+
+Tag `python/v0.17.0`. The pull requests that changed `python/` since `python/v0.16.0`:
+
+- feat(spec): Evidence Request -03, history_card/2 and a checkpoints range (#630)
+- feat(spec): standard_history/3, the card counted from a shelf's book facts (#626)
+- test(vectors): regenerate personal-history-basic-v0 for the CLL 0.9 checkpoint sub (#623)
+- test(vectors): conformance vectors for the verdict counts member (SH-14) (#617)
+- feat: adopt checkpointed-local-log 0.9.0 (CLL -02 checkpoint sub) across four languages (#611)
+- fix(python): vendor script reads a hard-wrapped CPB Reference field in full (#606)
+- chore: drop the stale mesh-inference-exchange capsule_field_values from the CPB snapshots (#602) (#605)
+- chore: re-vendor the CPB registry snapshots; drop the withdrawn jcs-n context (#600) (#601)
+- fix!: verify producer signatures under jcs only; the withdrawn jcs-n is invalid (capsule-emit#447) (#599)
+
+The changes, from the changelog fragments folded in this release:
+
+- **Breaking** for pins: AAC adopts checkpointed-local-log 0.9.0 (CLL -02: the checkpoint CWT `sub` is the bare log id, constant per log; readers still accept the old `<log_id>#<mmr_size>` form). The Go dependency moves to CLL `go/v0.4.0`, the TypeScript dev and peer pin to `@action-state-group/cll` 0.4.0, the Rust crates to `checkpointed-local-log` 0.6.0, and the Python `bundle` extra to `checkpointed-local-log>=0.9.0`; upgrade CLL alongside AAC. The 24 bundle vector files are regenerated with the new subject, and Python, Go, TypeScript and Rust agree on them in the cross-language interlock. The `<0.9` CI cap (#609) is removed.
+- The vendored CPB provisional snapshot (`cpb_provisional.json` in Python, Go, TypeScript and Rust) no longer lists the `mesh-inference-exchange` capsule field values `effect.type=inference_completion`, `effect_attestation=host_served_observed` and `chain.relation=follows`. They are registered as of the -05 revision, so check 8 already resolved them as seeded and never consulted the entries; verifier output does not change. `vendor_cpb_registry.py` drops the curated entry. ([#602](https://github.com/action-state-group/agent-action-capsule/issues/602))
+- The `examples/erc8004-base-sepolia` README and `resolve` docstring now say a clean commitment staple exits 3 (verdict still `NOT_ACCEPTED`), a failed check or missing evidence exits 1 and the top-level `findings` repeats a staple's findings, as capsule-cli v0.1.0-rc36 or later (capsule-cli#549) reports. The example's minimum capsulectl is now v0.1.0-rc36. ([#591](https://github.com/action-state-group/agent-action-capsule/issues/591))
+- `evaluation-report/v1` `Case` gains an optional `clause_ref`: the clause id, in the pinned contract, that the case answers. It is a grouping key only; judge or adjudicator words stay out of the `Case` (they belong in a separate cited record under the share gate). A validator on the earlier v1 schema refuses a report that carries it (`Case` is closed); this lands in place in `evaluation-report/v1`, as `out_of_scope` did (Steven confirmed, 2026-11-16), so producers emit `clause_ref` only to verifiers on the new schema. Adds a positive and a negative vector. ([#512](https://github.com/action-state-group/agent-action-capsule/issues/512))
+- Spec: Evidence Request -03 (`spec/draft-mih-agent-evidence-request-03`, #629) registers
+  `history_card/2`, the default first question, beside `history_card/1`, which is unchanged. A
+  `/2` card lists the stream's first checkpoint, checkpoints 1, 2, 4, 8 and so on positions back
+  from the anchor, and the latest W checkpoints (W from 1 to 64, stated in the card), each with its
+  position, receipts and the consistency proof from the entry before it, so its size grows with
+  the logarithm of the number of checkpoints. The `checkpoints` subject takes an optional range of
+  checkpoint positions, so a requester can fetch the checkpoints between two listed entries. The
+  derivation's row is in `spec/REGISTRY.md` §16.
+- Vectors: `vectors/evidence-request/history-card-2.json` (37 cases and 42 position rows: a valid
+  card over 1,100 checkpoints, a broken proof, a missing sample position, and a case for each
+  check) and `vectors/evidence-request/checkpoints-range.json` (9 request and 9 resolution
+  cases), both written from -03.
+- Python, Go and TypeScript check a `history_card/2` card in Checkpointed Local Log form and give
+  its positions: `agent_action_capsule.history_card` (`positions`, `check_history_card_2`);
+  `evidencerequest.HistoryPositions` and `CheckHistoryCard2`; and `historyPositions` and
+  `checkHistoryCard2`. The Python and Go request readers accept a ranged `checkpoints` subject,
+  and a reply envelope signs and reads back the range: Go's `Subject` gains `Ranged`. Go's
+  `Decide` has `history_card/2` built in beside `history_card/1` (`DerivationHistoryCard2`).
+  TypeScript adds `decodeWellFormedItem`, the CBOR reader for a checkpoint's own octets. A history card over a ranged subject is refused
+  `no_such_subject`, and a range that ends past the anchor's checkpoint position is refused
+  `coverage_unsatisfiable`.
+- New conformance set `vectors/inference-service-history-verdicts-v0/` (15 cases) for the optional `verdict_counts` member of the inference-service history profile (§4.3, §5.3; SH-14): one positive and fourteen negatives, built on the base set's Standard History, stated by hand and evaluated by an independent Python evaluator and by the Rust `inference_history` module. `check_artifact` now names the History property (`artifact_form`) in the errors it returned unnamed. Go, the Python library and capsule-engine do not read the member yet.
+- The inference-service history profile's referee-verdict rules (§5.3) count a verdict about the node's exchange whoever asked the referee, the node or the other party, labelled with whose ask it was. The node counts every qualifying verdict its own log holds, not a list it keeps apart; a verdict held can be named by its digest so an omission can be found; and a verdict count is the count of one kind of check, signed by the checker. Adds open point SH-15.
+- `spec/cpb-provisional-registry.md` now opens with a banner marking it historical and non-normative: CPB defines no artifact-type registry, so nothing in the file is registered or usable for verification. The rest of the file is unchanged ([#424](https://github.com/action-state-group/agent-action-capsule/pull/424)).
+- Test vectors: `vectors/personal-history-basic-v0` is regenerated for the CLL 0.9 checkpoint format, where the checkpoint `sub` is the bare log id (`holder-stream-1`, `holder-tick-log`) instead of `<log id>#<MMR size>`. `producer/main.go` now writes the bare `sub`, moves to evidencebook's `Originals` API, pins `RefusalPolicySpecific` (the new library default is uniform) and gains a `-correlated` mode for evidencebook#453 that is not the corpus run, and the corpus pins evidencebook at `b2605f7f`, the CLL 0.9 adoption head (#622). Every `expected_pin`, anchor, reply signature and tick checkpoint in the corpus changes, as do the two derived corpora that read its `responder-run.json`, `personal-history-outcome-v0` and `coverage-declaration-v0`. Changed released files: `vectors/personal-history-basic-v0/` (all files), `vectors/personal-history-outcome-v0/{manifest.json,vectors.json}`, `vectors/coverage-declaration-v0/{manifest.json,vectors.json}`. Case ids and expected statuses are unchanged.
+- Spec: `spec/bindings/record-push-v0.md` (Informational, pre-Internet-Draft) binds the record push of `spec/shelf-forms-v0.md` §6 to MCP (the tool `record_push`) and to A2A (an Agent Card extension and a `data` part): one push object carrying the record and the stamp proof as opaque base64url octets, and one answer object with the members of the evidencebook library's receive vectors. It fills open point SF-1 and leaves SF-2 to SF-9 open.
+- Go, Python, TypeScript: producer-signature verification (`envelope.VerifyRecordSignature`, `verify_record_signature`, `verifyRecordSignature`, and strict Bundle verification through them) recomputes a record's Capsule ID under `jcs` only. A record with no `canonicalization_id`, a `null` one, or the withdrawn `jcs-n` is `invalid`; before, all three read it as `jcs-n` (chain dropped, null and empty members removed) and could grade it `authored`. Records signed over a `jcs-n` Capsule ID no longer verify. The spec already withdraws `jcs-n` (`draft-mih-scitt-agent-action-capsule-06`); the pinned vectors `authored-jcs-n` and `authored-jcs-n-declared` in `vectors/bundle/strict/` become `invalid-no-canonicalization` and `invalid-jcs-n-declared`, expecting `invalid`. `normalize` stays as a public helper. Maintainer decision: Ethan, 2026-11-13, "放弃" (give up). ([capsule-emit#447](https://github.com/action-state-group/capsule-emit/issues/447))
+- The vendored CPB registry snapshots (`cpb_registry.json`, and `cpb_provisional.json` in Python, Go, TypeScript and Rust) are re-vendored from `scitt-payload-binding@fa57e7c`. The `agent-action-capsule` artifact type now lists only its `jcs` identifier context; the withdrawn `jcs-n` context (withdrawn 2026-08-18) is gone from the snapshot, and the type's status is `provisional` as the owner repository records it. `jcs-n` itself stays in the algorithm table as `withdrawn`. ([#600](https://github.com/action-state-group/agent-action-capsule/issues/600))
+- Spec: `spec/shelf-forms-v0.md` (Informational, pre-Internet-Draft) writes down the shelf log forms the evidencebook library uses: the entry documents of a shelf log after its format switch (book fact, journal fact, stamp entry, format-switch marker), the salted commitments and openings a fact carries and which audience may have which opening, the stamp proof with its JSON encoding and the verifier's checks in order, and the record push with its answers. No binding to a protocol yet; open points SF-1 to SF-8.
+- Spec: a new derivation token `standard_history/3` (`spec/standard-history-v0.md` §11, #620),
+  beside `standard_history/1` and `/2`, which are unchanged in every member, rule, document and
+  vector. A `/3` card counts the deals of a shelf log of book facts (`spec/shelf-forms-v0.md`) from
+  each deal's term rows as of the anchor's time, in the three outcomes: only rows the holder owed
+  make a deal `did_not_hold`, a ruling the holder did not honour comes first, a final unmet row
+  comes before a dispute, and a row not reached or not yet final makes the deal `undecided` only
+  after `did_not_hold`. It counts,
+  among the deals that did not hold, those the holder remedied (`remedied`, a remedy made without a
+  ruling included) and those where it did not honour a ruling (`not_honoured`), leaves out a deal
+  whose agreement names witnesses with no time from them, tallies the deals not counted by reason,
+  and carries the shelf log's `coverage_start`. Its counting table and wording pack are in `spec/history-frame/`
+  (History frame §6.1), its row in `spec/REGISTRY.md` §16, and its 27 vectors in
+  `vectors/standard-history-v0/vectors-3.json`.
+- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
+  `standard_history/3` cards (`DERIVATION_3` and `outcome`; `Derivation3`, `Outcome`, `Deal.Rows`,
+  `Deal.LeftOut` and `AsOf.CoverageStartTime`).
+- `python/scripts/vendor_cpb_registry.py` now reads a hard-wrapped `**Reference:**` field in the CPB provisional registry in full (continuation lines up to the next label, blank line or heading) instead of only its first line, so a wrapped entry no longer vendors a truncated reference. ([scitt-payload-binding#111](https://github.com/action-state-group/scitt-payload-binding/issues/111))
+
+## go 0.22.0 — 2026-11-17
+
+Tag `go/v0.22.0`. The pull requests that changed `go/` since `go/v0.21.0`:
+
+- feat(spec): Evidence Request -03, history_card/2 and a checkpoints range (#630)
+- feat(spec): standard_history/3, the card counted from a shelf's book facts (#626)
+- feat: adopt checkpointed-local-log 0.9.0 (CLL -02 checkpoint sub) across four languages (#611)
+- chore: drop the stale mesh-inference-exchange capsule_field_values from the CPB snapshots (#602) (#605)
+- chore: re-vendor the CPB registry snapshots; drop the withdrawn jcs-n context (#600) (#601)
+- fix!: verify producer signatures under jcs only; the withdrawn jcs-n is invalid (capsule-emit#447) (#599)
+
+The changes, from the changelog fragments folded in this release:
+
+- **Breaking** for pins: AAC adopts checkpointed-local-log 0.9.0 (CLL -02: the checkpoint CWT `sub` is the bare log id, constant per log; readers still accept the old `<log_id>#<mmr_size>` form). The Go dependency moves to CLL `go/v0.4.0`, the TypeScript dev and peer pin to `@action-state-group/cll` 0.4.0, the Rust crates to `checkpointed-local-log` 0.6.0, and the Python `bundle` extra to `checkpointed-local-log>=0.9.0`; upgrade CLL alongside AAC. The 24 bundle vector files are regenerated with the new subject, and Python, Go, TypeScript and Rust agree on them in the cross-language interlock. The `<0.9` CI cap (#609) is removed.
+- The vendored CPB provisional snapshot (`cpb_provisional.json` in Python, Go, TypeScript and Rust) no longer lists the `mesh-inference-exchange` capsule field values `effect.type=inference_completion`, `effect_attestation=host_served_observed` and `chain.relation=follows`. They are registered as of the -05 revision, so check 8 already resolved them as seeded and never consulted the entries; verifier output does not change. `vendor_cpb_registry.py` drops the curated entry. ([#602](https://github.com/action-state-group/agent-action-capsule/issues/602))
+- The `examples/erc8004-base-sepolia` README and `resolve` docstring now say a clean commitment staple exits 3 (verdict still `NOT_ACCEPTED`), a failed check or missing evidence exits 1 and the top-level `findings` repeats a staple's findings, as capsule-cli v0.1.0-rc36 or later (capsule-cli#549) reports. The example's minimum capsulectl is now v0.1.0-rc36. ([#591](https://github.com/action-state-group/agent-action-capsule/issues/591))
+- `evaluation-report/v1` `Case` gains an optional `clause_ref`: the clause id, in the pinned contract, that the case answers. It is a grouping key only; judge or adjudicator words stay out of the `Case` (they belong in a separate cited record under the share gate). A validator on the earlier v1 schema refuses a report that carries it (`Case` is closed); this lands in place in `evaluation-report/v1`, as `out_of_scope` did (Steven confirmed, 2026-11-16), so producers emit `clause_ref` only to verifiers on the new schema. Adds a positive and a negative vector. ([#512](https://github.com/action-state-group/agent-action-capsule/issues/512))
+- Spec: Evidence Request -03 (`spec/draft-mih-agent-evidence-request-03`, #629) registers
+  `history_card/2`, the default first question, beside `history_card/1`, which is unchanged. A
+  `/2` card lists the stream's first checkpoint, checkpoints 1, 2, 4, 8 and so on positions back
+  from the anchor, and the latest W checkpoints (W from 1 to 64, stated in the card), each with its
+  position, receipts and the consistency proof from the entry before it, so its size grows with
+  the logarithm of the number of checkpoints. The `checkpoints` subject takes an optional range of
+  checkpoint positions, so a requester can fetch the checkpoints between two listed entries. The
+  derivation's row is in `spec/REGISTRY.md` §16.
+- Vectors: `vectors/evidence-request/history-card-2.json` (37 cases and 42 position rows: a valid
+  card over 1,100 checkpoints, a broken proof, a missing sample position, and a case for each
+  check) and `vectors/evidence-request/checkpoints-range.json` (9 request and 9 resolution
+  cases), both written from -03.
+- Python, Go and TypeScript check a `history_card/2` card in Checkpointed Local Log form and give
+  its positions: `agent_action_capsule.history_card` (`positions`, `check_history_card_2`);
+  `evidencerequest.HistoryPositions` and `CheckHistoryCard2`; and `historyPositions` and
+  `checkHistoryCard2`. The Python and Go request readers accept a ranged `checkpoints` subject,
+  and a reply envelope signs and reads back the range: Go's `Subject` gains `Ranged`. Go's
+  `Decide` has `history_card/2` built in beside `history_card/1` (`DerivationHistoryCard2`).
+  TypeScript adds `decodeWellFormedItem`, the CBOR reader for a checkpoint's own octets. A history card over a ranged subject is refused
+  `no_such_subject`, and a range that ends past the anchor's checkpoint position is refused
+  `coverage_unsatisfiable`.
+- New conformance set `vectors/inference-service-history-verdicts-v0/` (15 cases) for the optional `verdict_counts` member of the inference-service history profile (§4.3, §5.3; SH-14): one positive and fourteen negatives, built on the base set's Standard History, stated by hand and evaluated by an independent Python evaluator and by the Rust `inference_history` module. `check_artifact` now names the History property (`artifact_form`) in the errors it returned unnamed. Go, the Python library and capsule-engine do not read the member yet.
+- The inference-service history profile's referee-verdict rules (§5.3) count a verdict about the node's exchange whoever asked the referee, the node or the other party, labelled with whose ask it was. The node counts every qualifying verdict its own log holds, not a list it keeps apart; a verdict held can be named by its digest so an omission can be found; and a verdict count is the count of one kind of check, signed by the checker. Adds open point SH-15.
+- `spec/cpb-provisional-registry.md` now opens with a banner marking it historical and non-normative: CPB defines no artifact-type registry, so nothing in the file is registered or usable for verification. The rest of the file is unchanged ([#424](https://github.com/action-state-group/agent-action-capsule/pull/424)).
+- Test vectors: `vectors/personal-history-basic-v0` is regenerated for the CLL 0.9 checkpoint format, where the checkpoint `sub` is the bare log id (`holder-stream-1`, `holder-tick-log`) instead of `<log id>#<MMR size>`. `producer/main.go` now writes the bare `sub`, moves to evidencebook's `Originals` API, pins `RefusalPolicySpecific` (the new library default is uniform) and gains a `-correlated` mode for evidencebook#453 that is not the corpus run, and the corpus pins evidencebook at `b2605f7f`, the CLL 0.9 adoption head (#622). Every `expected_pin`, anchor, reply signature and tick checkpoint in the corpus changes, as do the two derived corpora that read its `responder-run.json`, `personal-history-outcome-v0` and `coverage-declaration-v0`. Changed released files: `vectors/personal-history-basic-v0/` (all files), `vectors/personal-history-outcome-v0/{manifest.json,vectors.json}`, `vectors/coverage-declaration-v0/{manifest.json,vectors.json}`. Case ids and expected statuses are unchanged.
+- Spec: `spec/bindings/record-push-v0.md` (Informational, pre-Internet-Draft) binds the record push of `spec/shelf-forms-v0.md` §6 to MCP (the tool `record_push`) and to A2A (an Agent Card extension and a `data` part): one push object carrying the record and the stamp proof as opaque base64url octets, and one answer object with the members of the evidencebook library's receive vectors. It fills open point SF-1 and leaves SF-2 to SF-9 open.
+- Go, Python, TypeScript: producer-signature verification (`envelope.VerifyRecordSignature`, `verify_record_signature`, `verifyRecordSignature`, and strict Bundle verification through them) recomputes a record's Capsule ID under `jcs` only. A record with no `canonicalization_id`, a `null` one, or the withdrawn `jcs-n` is `invalid`; before, all three read it as `jcs-n` (chain dropped, null and empty members removed) and could grade it `authored`. Records signed over a `jcs-n` Capsule ID no longer verify. The spec already withdraws `jcs-n` (`draft-mih-scitt-agent-action-capsule-06`); the pinned vectors `authored-jcs-n` and `authored-jcs-n-declared` in `vectors/bundle/strict/` become `invalid-no-canonicalization` and `invalid-jcs-n-declared`, expecting `invalid`. `normalize` stays as a public helper. Maintainer decision: Ethan, 2026-11-13, "放弃" (give up). ([capsule-emit#447](https://github.com/action-state-group/capsule-emit/issues/447))
+- The vendored CPB registry snapshots (`cpb_registry.json`, and `cpb_provisional.json` in Python, Go, TypeScript and Rust) are re-vendored from `scitt-payload-binding@fa57e7c`. The `agent-action-capsule` artifact type now lists only its `jcs` identifier context; the withdrawn `jcs-n` context (withdrawn 2026-08-18) is gone from the snapshot, and the type's status is `provisional` as the owner repository records it. `jcs-n` itself stays in the algorithm table as `withdrawn`. ([#600](https://github.com/action-state-group/agent-action-capsule/issues/600))
+- Spec: `spec/shelf-forms-v0.md` (Informational, pre-Internet-Draft) writes down the shelf log forms the evidencebook library uses: the entry documents of a shelf log after its format switch (book fact, journal fact, stamp entry, format-switch marker), the salted commitments and openings a fact carries and which audience may have which opening, the stamp proof with its JSON encoding and the verifier's checks in order, and the record push with its answers. No binding to a protocol yet; open points SF-1 to SF-8.
+- Spec: a new derivation token `standard_history/3` (`spec/standard-history-v0.md` §11, #620),
+  beside `standard_history/1` and `/2`, which are unchanged in every member, rule, document and
+  vector. A `/3` card counts the deals of a shelf log of book facts (`spec/shelf-forms-v0.md`) from
+  each deal's term rows as of the anchor's time, in the three outcomes: only rows the holder owed
+  make a deal `did_not_hold`, a ruling the holder did not honour comes first, a final unmet row
+  comes before a dispute, and a row not reached or not yet final makes the deal `undecided` only
+  after `did_not_hold`. It counts,
+  among the deals that did not hold, those the holder remedied (`remedied`, a remedy made without a
+  ruling included) and those where it did not honour a ruling (`not_honoured`), leaves out a deal
+  whose agreement names witnesses with no time from them, tallies the deals not counted by reason,
+  and carries the shelf log's `coverage_start`. Its counting table and wording pack are in `spec/history-frame/`
+  (History frame §6.1), its row in `spec/REGISTRY.md` §16, and its 27 vectors in
+  `vectors/standard-history-v0/vectors-3.json`.
+- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
+  `standard_history/3` cards (`DERIVATION_3` and `outcome`; `Derivation3`, `Outcome`, `Deal.Rows`,
+  `Deal.LeftOut` and `AsOf.CoverageStartTime`).
 
 ## python 0.16.0 — 2026-11-08
 

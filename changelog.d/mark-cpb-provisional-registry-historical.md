@@ -1,1 +1,0 @@
-- `spec/cpb-provisional-registry.md` now opens with a banner marking it historical and non-normative: CPB defines no artifact-type registry, so nothing in the file is registered or usable for verification. The rest of the file is unchanged ([#424](https://github.com/action-state-group/agent-action-capsule/pull/424)).
