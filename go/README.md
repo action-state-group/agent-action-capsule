@@ -72,8 +72,13 @@ properties of the `standard_history/1` derivation (spec
 the caller holds beside it: a property that needs a missing input is
 `NOT_CHECKED`. `standardhistory.Derive` builds the card from the deal
 entries. `CheckAs` and `DeriveAs` do the same for a token they are given,
-`standard_history/1` or `standard_history/2`, whose card also counts deals
-with no recorded amount (`Deal.Unpriced`) in `unpriced`, in no value band.
+`standard_history/1`, `standard_history/2`, whose card also counts deals
+with no recorded amount (`Deal.Unpriced`) in `unpriced`, in no value band, or
+`standard_history/3` (section 11), which counts each deal from its term rows
+(`Deal.Rows`, `Outcome`) in the three outcomes, counts the deals that did
+not hold that the holder remedied or whose ruling it did not honour, and
+carries the shelf log's coverage start
+(`AsOf.CoverageStartTime`).
 All are at parity with the Python reference
 `agent_action_capsule.standard_history`, and all run
 `../vectors/standard-history-v0/`.

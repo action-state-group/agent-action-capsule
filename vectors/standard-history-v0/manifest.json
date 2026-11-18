@@ -10,6 +10,11 @@
       "count": 12
     },
     {
+      "path": "vectors-3.json",
+      "sha256": "fe076a8249d76e3eaa35ebd0d97cd361bb72e6680a286e51058b286fad622df6",
+      "count": 27
+    },
+    {
       "path": "vectors.json",
       "sha256": "b1fbc5de68e69dee59f4da522f9dbe78e0d76ba57ef09e113f44aab6c9637bfc",
       "count": 30
