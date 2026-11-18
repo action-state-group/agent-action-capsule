@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.12.0 — 2026-11-17
+
+Tag `crates/agent-action-capsule-v0.12.0`.
+
 - The optional `evidence-request` dependency accepts `>=0.4.0, <0.8.0`, so the workspace builds against `evidence-request` 0.7.0 (history_card/2, action-state-group/agent-action-capsule#630). No code change. The vendored `data/REGISTRY.md` gains the `history_card/2` row (§16).
 
 ## 0.11.0 — 2026-11-17
