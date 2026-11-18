@@ -1,0 +1,12 @@
+{
+  "binding": "spec/bindings/record-push-v0.md",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_record_push_vectors.py",
+  "files": [
+    {
+      "path": "carriage.json",
+      "sha256": "6b2b09508ad4ae84034e516db245e00d689a02cd8ab3808890b0f2037bba10d2",
+      "count": 81
+    }
+  ]
+}

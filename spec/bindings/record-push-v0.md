@@ -385,13 +385,19 @@ change an answer.
 
 ## 7. Conformance
 
-This document adds no vectors. The answer objects of §2.2 are those of EBL's receive vectors
-(`testdata/shelf/receive/script.json`), which SF-8 adopts for SF §6. The MCP and A2A message
-shapes of §3 and §4 have no vectors yet: they are open point RP-1, and an implementation's entry
-claims conformance to this binding only once carriage vectors exist.
+The carriage vectors are in [`../../vectors/record-push-v0/`](../../vectors/record-push-v0/):
+the tool call and the `Message` of §3.2 and §4.2, strict base64url members, an error against an
+answer (§2.3 rule 3), how a sender classifies a reply (§2.3 rule 5, §3.3, §4.3), and the tool
+definition and extension entry of §3.1 and §4.1. They are derived from this text and carry
+only the carriage: opaque octets, no record or stamp proof of any profile, no push rule and no
+answer values. The answer objects of §2.2 are those of EBL's receive vectors
+(`testdata/shelf/receive/script.json`), which SF-8 adopts for SF §6. The carriage vectors are
+not yet checked by an implementation: only a reference reader written from this text runs them
+(`python/tests/test_record_push_vectors.py`). An implementation's entry claims conformance to
+this binding only once it passes them.
 
 ## 8. Open points
 
 | # | Point |
 |---|---|
-| RP-1 | Carriage vectors for §3 and §4: a push and its answer over each carriage, and the edge cases (a member that fails strict decoding and a `raw` or `text` part, each answered with an error and no answer; an answer Artifact on a task not completed, which is still the answer; a completed task with no such Artifact, a transport condition). They are to land with the first implementation's MCP and A2A entry for `Receive`, in this repository's `vectors/`. |
+| RP-1 | The carriage vectors of §7 are checked only by a reference reader written from this text. They are to be run by the first implementation's MCP and A2A entry for `Receive`, and corrected here if that run shows a misreading. |
