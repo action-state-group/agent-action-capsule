@@ -1690,7 +1690,7 @@ def _hc2_time(position: int) -> str:
 
 
 def hc2_checkpoint(position: int, key: Ed25519PrivateKey = HC2_LOG, pub: str = HC2_LOG_PUB,
-                   issued_at: str | None = None) -> bytes:
+                   issued_at: str | None = None, extra_claim: bytes = b"") -> bytes:
     """The cll-checkpoint statement at ``position``: COSE_Sign1 (tag 18) over the claims, with
     prev_size the node count of the checkpoint before it (0 for the first)."""
     size = HC2_STREAM.sizes[position]
@@ -1702,6 +1702,10 @@ def hc2_checkpoint(position: int, key: Ed25519PrivateKey = HC2_LOG, pub: str = H
         "commitment": cbor(HC2_STREAM.peaks(size)),
         "prev_commitment": cbor(HC2_STREAM.peaks(prev)) if prev else b"",
     })
+    if extra_claim:
+        # one more claim, written raw (these vectors' cbor() has no floats): bump the map's count
+        assert 0xa0 <= payload[0] < 0xb7
+        payload = bytes([payload[0] + 1]) + payload[1:] + extra_claim
     signature = key.sign(cbor(["Signature1", protected, b"", payload]))
     return b"\xd2" + cbor([protected, {}, payload, signature])
 
@@ -1902,6 +1906,13 @@ def hc2_cases() -> list[dict]:
         card = {"window": 1, "history": [{"position": 0, "checkpoint": cp.hex(), "receipts": [],
                                           "consistency_from_previous": None}]}
         cases.append(_hc2_case(case_id, description, card, sha256_hex(cp), finding))
+    float_cp = hc2_checkpoint(0, extra_claim=b"\x61x\xf9\x3e\x00")
+    cases.append(_hc2_case("checkpoint-claim-float", "The first checkpoint's claims carry one more member, x, "
+                           "whose value is the half-precision float 1.5 (f9 3e 00), signed: outside the "
+                           "profile's data model, so not a well-formed cll-checkpoint.",
+                           {"window": 1, "history": [{"position": 0, "checkpoint": float_cp.hex(), "receipts": [],
+                                                      "consistency_from_previous": None}]},
+                           sha256_hex(float_cp), "checkpoint_invalid"))
     long_tag = b"\xd8\x12" + hc2_checkpoint(0)[1:]
     cases.append(_hc2_case("checkpoint-tag-long-form", "The first checkpoint's tag 18 written in two octets "
                            "(d8 12), not one: still a well-formed cll-checkpoint, whose signature covers only "

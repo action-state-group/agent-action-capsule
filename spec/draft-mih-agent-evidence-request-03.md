@@ -1177,22 +1177,29 @@ to check each `position` against it.
 
 A `checkpoints` subject with content (a, b) and no derivation asks for
 the checkpoints at positions a through b inclusive. The artifact is a map
-with one member, `history`: one entry per position from a to b, in
-ascending order, in the entry form of {{history-card-2}}, where each
-entry's proof is from the checkpoint at the position before it and the
-entry at position a carries none.
+with two members:
 
-A requester that holds a card listing positions a and b checks that the
-first and last entries carry the checkpoints its card lists at those
-positions, that every proof verifies, and that every receipt covers its
-own checkpoint. The receipts then date each checkpoint in the gap: for
+| Member | Content |
+|---|---|
+| `history` | one entry per position from a to b, in ascending order, in the entry form of {{history-card-2}}; each entry's proof is from the checkpoint at the position before it, and the entry at position a carries none |
+| `consistency_to_anchor` | the consistency proof from the checkpoint at position b to the checkpoint resolved by `coverage`; null when b is that checkpoint's position |
+
+`consistency_to_anchor` binds every answer, not only one that reaches a
+listed entry, to the coverage anchor ({{artifact}}).
+
+A requester that holds a card asks for a gap under `expected_pin` set to
+the card's anchor. It checks that the first entry carries the checkpoint
+its card lists at position a, that the last carries the one its card lists
+at b where it lists b, that every proof verifies, `consistency_to_anchor`
+included, and that every receipt covers its own checkpoint. The receipts then date each checkpoint in the gap: for
 example, to show when a disputed record was first covered. The record's
 own inclusion proof is a separate request.
 
 A requester that cannot fetch a whole gap in one answer fetches it in
 parts, starting each part at the last position of the part before it: the
 first entry of every part then carries a checkpoint the requester already
-holds, and the last part ends at a position its card lists.
+holds, every part extends to the anchor by its `consistency_to_anchor`,
+and the last part ends at a position its card lists.
 
 A ranged `checkpoints` request is refused with reason:
 
@@ -1837,8 +1844,9 @@ that the two can cite each other without either defining the other.
   and stays registered ({{history-card-1}}).
 - New term "checkpoint position" ({{terms}}). The `checkpoints` subject
   ({{subject}}) takes an optional range of checkpoint positions, answered
-  as {{history-card-range}} says, in parts when a gap is long, with its
-  refusal reasons. A history card
+  as {{history-card-range}} says: entries a through b and a
+  `consistency_to_anchor` proof binding each answer to the coverage anchor,
+  in parts when a gap is long, with its refusal reasons. A history card
   over a ranged `checkpoints` subject is refused `no_such_subject`.
 - {{iana}}: a row for `history_card/2` in the derivations registry.
 

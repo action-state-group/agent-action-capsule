@@ -1059,7 +1059,7 @@
       ]
     }
   ],
-  "count": 36,
+  "count": 37,
   "cases": [
     {
       "id": "valid-1100-checkpoints",
@@ -8399,6 +8399,29 @@
         ]
       },
       "anchor": "33e5440468820b90c41043f21359a89aef9251fa7fc34151f1293b3657405c4e",
+      "expect": {
+        "valid": false,
+        "finding": "checkpoint_invalid"
+      }
+    },
+    {
+      "id": "checkpoint-claim-float",
+      "section": [
+        "§8.1.2 history_card/2"
+      ],
+      "description": "The first checkpoint's claims carry one more member, x, whose value is the half-precision float 1.5 (f9 3e 00), signed: outside the profile's data model, so not a well-formed cll-checkpoint.",
+      "card": {
+        "window": 1,
+        "history": [
+          {
+            "position": 0,
+            "checkpoint": "d2845847a301270458202cd359c5a9ffca53a62aa1c5486148f3bf36fe1183f4bb535462c4c0e2da09710fa2017368747470733a2f2f6c6f672e6578616d706c65026873747265616d2d61a0588fa7646b696e646e636c6c2d636865636b706f696e74686c6f675f73697a6501696973737565645f617474323032362d31312d30315430303a30303a30305a69707265765f73697a65006a636f6d6d69746d656e745823815820b0d9d177412b2c6982ab870b53f782f68350e2ae5b0ca75c6f4cd3f757b7ce3d6f707265765f636f6d6d69746d656e74406178f93e0058406b208a24c76fcfd7960109dac2e0f5a8f58e13f399145ab0306d1a5628176204f91fdfc28098643d33c88522a3ea96d5285985c68e1a1f059e73d679d6340408",
+            "receipts": [],
+            "consistency_from_previous": null
+          }
+        ]
+      },
+      "anchor": "c52a672a86755fc14c4469d31802a8cff039ec05eef744ead6b27a74a17fc1c0",
       "expect": {
         "valid": false,
         "finding": "checkpoint_invalid"

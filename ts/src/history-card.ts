@@ -290,7 +290,7 @@ async function readCheckpoint(
 ): Promise<Checkpoint | undefined> {
   let outer: CborValue;
   try {
-    outer = decodeWellFormedItem(octets);
+    outer = decodeWellFormedItem(octets, true);
   } catch {
     return undefined;
   }
@@ -313,8 +313,8 @@ async function readCheckpoint(
     return undefined;
   let header: CborValue, claims: CborValue;
   try {
-    header = decodeWellFormedItem(protectedHeader);
-    claims = decodeWellFormedItem(payload);
+    header = decodeWellFormedItem(protectedHeader, false);
+    claims = decodeWellFormedItem(payload, false);
   } catch {
     return undefined;
   }

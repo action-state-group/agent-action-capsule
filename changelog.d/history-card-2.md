@@ -6,7 +6,7 @@
   the logarithm of the number of checkpoints. The `checkpoints` subject takes an optional range of
   checkpoint positions, so a requester can fetch the checkpoints between two listed entries. The
   derivation's row is in `spec/REGISTRY.md` §16.
-- Vectors: `vectors/evidence-request/history-card-2.json` (36 cases and 42 position rows: a valid
+- Vectors: `vectors/evidence-request/history-card-2.json` (37 cases and 42 position rows: a valid
   card over 1,100 checkpoints, a broken proof, a missing sample position, and a case for each
   check) and `vectors/evidence-request/checkpoints-range.json` (9 request and 9 resolution
   cases), both written from -03.

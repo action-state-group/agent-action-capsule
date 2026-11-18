@@ -339,10 +339,23 @@ fn no_duplicate_keys(value: &C) -> bool {
 /// One CBOR item with no duplicate map key at any depth.
 fn one_item_unique(bytes: &[u8]) -> Result<C, &'static str> {
     let value = one_item(bytes)?;
-    if no_duplicate_keys(&value) {
-        Ok(value)
-    } else {
+    if !no_duplicate_keys(&value) {
         Err("a map with a duplicate key")
+    } else if has_float(&value) {
+        // Outside the profile's data model (§5.2), as Python and Go read it.
+        Err("a floating-point value")
+    } else {
+        Ok(value)
+    }
+}
+
+fn has_float(value: &C) -> bool {
+    match value {
+        C::Float(_) => true,
+        C::Array(items) => items.iter().any(has_float),
+        C::Map(entries) => entries.iter().any(|(k, v)| has_float(k) || has_float(v)),
+        C::Tag(_, inner) => has_float(inner),
+        _ => false,
     }
 }
 

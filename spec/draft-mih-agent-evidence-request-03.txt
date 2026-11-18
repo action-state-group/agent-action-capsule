@@ -115,24 +115,24 @@ Internet-Draft              Evidence Request               November 2026
 
 
        8.1.3.  Checkpoints Between Listed Entries  . . . . . . . . .  31
-   9.  Retention Commitments . . . . . . . . . . . . . . . . . . . .  32
-   10. Transport Bindings  . . . . . . . . . . . . . . . . . . . . .  33
-     10.1.  Carriage Rules . . . . . . . . . . . . . . . . . . . . .  34
-     10.2.  A2A Binding  . . . . . . . . . . . . . . . . . . . . . .  35
+   9.  Retention Commitments . . . . . . . . . . . . . . . . . . . .  33
+   10. Transport Bindings  . . . . . . . . . . . . . . . . . . . . .  34
+     10.1.  Carriage Rules . . . . . . . . . . . . . . . . . . . . .  35
+     10.2.  A2A Binding  . . . . . . . . . . . . . . . . . . . . . .  36
      10.3.  MCP Binding  . . . . . . . . . . . . . . . . . . . . . .  37
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  37
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  41
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  42
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  44
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  44
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  45
-   Appendix A.  Example Deployments  . . . . . . . . . . . . . . . .  46
-   Appendix B.  Reference Blocks and This Interaction  . . . . . . .  48
-   Changes from -02  . . . . . . . . . . . . . . . . . . . . . . . .  49
-   Changes from -01  . . . . . . . . . . . . . . . . . . . . . . . .  49
-   Changes from -00  . . . . . . . . . . . . . . . . . . . . . . . .  50
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  51
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  51
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  38
+   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  42
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  43
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  45
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  45
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  46
+   Appendix A.  Example Deployments  . . . . . . . . . . . . . . . .  47
+   Appendix B.  Reference Blocks and This Interaction  . . . . . . .  49
+   Changes from -02  . . . . . . . . . . . . . . . . . . . . . . . .  50
+   Changes from -01  . . . . . . . . . . . . . . . . . . . . . . . .  50
+   Changes from -00  . . . . . . . . . . . . . . . . . . . . . . . .  51
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  52
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  52
 
 1.  Introduction
 
@@ -1715,17 +1715,17 @@ Internet-Draft              Evidence Request               November 2026
 
    A checkpoints subject with content (a, b) and no derivation asks for
    the checkpoints at positions a through b inclusive.  The artifact is
-   a map with one member, history: one entry per position from a to b,
-   in ascending order, in the entry form of Section 8.1.2, where each
-   entry's proof is from the checkpoint at the position before it and
-   the entry at position a carries none.
+   a map with two members:
 
-   A requester that holds a card listing positions a and b checks that
-   the first and last entries carry the checkpoints its card lists at
-   those positions, that every proof verifies, and that every receipt
-   covers its own checkpoint.  The receipts then date each checkpoint in
-   the gap: for example, to show when a disputed record was first
-   covered.  The record's own inclusion proof is a separate request.
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1738,10 +1738,43 @@ Mih                        Expires 21 May 2027                 [Page 31]
 Internet-Draft              Evidence Request               November 2026
 
 
+   +=======================+===========================================+
+   | Member                | Content                                   |
+   +=======================+===========================================+
+   | history               | one entry per position from a to b,       |
+   |                       | in ascending order, in the entry          |
+   |                       | form of Section 8.1.2; each entry's       |
+   |                       | proof is from the checkpoint at the       |
+   |                       | position before it, and the entry         |
+   |                       | at position a carries none                |
+   +-----------------------+-------------------------------------------+
+   | consistency_to_anchor | the consistency proof from the            |
+   |                       | checkpoint at position b to the           |
+   |                       | checkpoint resolved by coverage;          |
+   |                       | null when b is that checkpoint's          |
+   |                       | position                                  |
+   +-----------------------+-------------------------------------------+
+
+                                  Table 8
+
+   consistency_to_anchor binds every answer, not only one that reaches a
+   listed entry, to the coverage anchor (Section 4.1).
+
+   A requester that holds a card asks for a gap under expected_pin set
+   to the card's anchor.  It checks that the first entry carries the
+   checkpoint its card lists at position a, that the last carries the
+   one its card lists at b where it lists b, that every proof verifies,
+   consistency_to_anchor included, and that every receipt covers its own
+   checkpoint.  The receipts then date each checkpoint in the gap: for
+   example, to show when a disputed record was first covered.  The
+   record's own inclusion proof is a separate request.
+
    A requester that cannot fetch a whole gap in one answer fetches it in
    parts, starting each part at the last position of the part before it:
    the first entry of every part then carries a checkpoint the requester
-   already holds, and the last part ends at a position its card lists.
+   already holds, every part extends to the anchor by its
+   consistency_to_anchor, and the last part ends at a position its card
+   lists.
 
    A ranged checkpoints request is refused with reason:
 
@@ -1751,6 +1784,15 @@ Internet-Draft              Evidence Request               November 2026
    *  coverage_unsatisfiable, when b exceeds the position of the
       checkpoint resolved by coverage, as for a range subject that ends
       past its anchor;
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 32]
+
+Internet-Draft              Evidence Request               November 2026
+
 
    *  capacity_exceeded, when the range holds more checkpoints than the
       responder serves in one answer, whoever asks;
@@ -1786,14 +1828,6 @@ Internet-Draft              Evidence Request               November 2026
    else, and it does not make the subject available; it makes a later
    failure to answer attributable to the party that promised.
 
-
-
-
-Mih                        Expires 21 May 2027                 [Page 32]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    A commitment MAY be carried alongside an artifact response
    (Section 4.1), published with the responder's checkpoints, or placed
    in a citing record's reference block as an optional member beside the
@@ -1808,6 +1842,14 @@ Internet-Draft              Evidence Request               November 2026
    not_authorized, coverage_unsatisfiable, request_malformed,
    request_unauthenticated, or derivation_unsupported reflects a
    property of the request or of this responder's capabilities, not a
+
+
+
+Mih                        Expires 21 May 2027                 [Page 33]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    failure to honor the commitment, and is not a breach.  A refusal
    carrying capacity_exceeded is never a breach, within until or after
    it: anyone can load a responder, so counting it would let any
@@ -1842,14 +1884,6 @@ Internet-Draft              Evidence Request               November 2026
    stream closed or timed out without a response frame.  The subprotocol
    identifier is what lets any two peers implementing it interoperate
    without prior arrangement; a peer that does not offer it has not
-
-
-
-Mih                        Expires 21 May 2027                 [Page 33]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    refused — it has not answered, and the requester records that as
    absence, not as policy_declined.  Message-oriented agent protocols
    bind the same way, with the request as a named message type and the
@@ -1864,6 +1898,14 @@ Internet-Draft              Evidence Request               November 2026
    parameter or is implied by the resource, and caller invariance is
    trivially auditable because the resource is the same bytes for every
    client.  Parameterized requests (ranges, correlations, exchanges,
+
+
+
+Mih                        Expires 21 May 2027                 [Page 34]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    derivations, min_freshness) map onto POST with the request map as the
    body.  A GET returns the static resource, which is not an artifact
    response and carries no envelope; a requester that needs the binding
@@ -1898,14 +1940,6 @@ Internet-Draft              Evidence Request               November 2026
        those decoded octets as received, never over the text and never
        over a re-serialization.
 
-
-
-
-Mih                        Expires 21 May 2027                 [Page 34]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    2.  *One request, one digest.* The same request bytes therefore have
        the same digest over every carriage.  A requester that may send
        one request over more than one carriage SHOULD encode it in
@@ -1918,6 +1952,15 @@ Internet-Draft              Evidence Request               November 2026
        with no parameters.  Bytes labeled with any other media type are
        not a request.  A responder writes the reply in the encoding of
        the request and labels it with the request's media type.
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 35]
+
+Internet-Draft              Evidence Request               November 2026
+
 
    4.  *Carriage is not request.* Nothing a carriage adds is part of the
        request: message and task identifiers, context identifiers,
@@ -1954,14 +1997,6 @@ Internet-Draft              Evidence Request               November 2026
    A2A's JSON bindings write the bytes of a raw part as base64 with
    padding (Section 4 of [RFC4648]).
 
-
-
-
-Mih                        Expires 21 May 2027                 [Page 35]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    *Declaration.* A responder that carries this interaction over A2A
    lists one extension in its Agent Card's capabilities.extensions, with
    uri exactly https://datatracker.ietf.org/doc/draft-mih-agent-
@@ -1975,6 +2010,14 @@ Internet-Draft              Evidence Request               November 2026
    mediaType is one of the two media types of Section 10.1, and whose
    extensions contain the extension URI.  The requester MUST send A2A
    version 1.0 and list the extension URI in A2A's extensions service
+
+
+
+Mih                        Expires 21 May 2027                 [Page 36]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    parameter; without a version, A2A reads the request as an earlier
    protocol version.  The Message MUST NOT carry a taskId, so that each
    request starts its own task.  If the requester sets accepted output
@@ -2011,13 +2054,6 @@ Internet-Draft              Evidence Request               November 2026
       failed, or canceled, an A2A error, and a direct Message are the
       responder sending no reply.  None of them is a refusal.
 
-
-
-Mih                        Expires 21 May 2027                 [Page 36]
-
-Internet-Draft              Evidence Request               November 2026
-
-
 10.3.  MCP Binding
 
    This binding uses MCP revision 2026-07-28 ([MCP]).  Field names are
@@ -2027,6 +2063,16 @@ Internet-Draft              Evidence Request               November 2026
    two tools under exactly these names: evidence_manifest, which takes
    no arguments and whose structuredContent is the responder's manifest
    (Section 10), and evidence_request.
+
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 37]
+
+Internet-Draft              Evidence Request               November 2026
+
 
    *Request.* The arguments of evidence_request are exactly two members:
    request, the request bytes in base64url without padding (Section 5 of
@@ -2067,13 +2113,6 @@ Internet-Draft              Evidence Request               November 2026
    responses inherit only whatever independence the responder-selected
    anchor has from its own witnessing or publication.
 
-
-
-Mih                        Expires 21 May 2027                 [Page 37]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    *Split views: per-requester anchor forks defeat invariance.* Caller
    invariance binds the artifact to (subject, anchor), not the anchor to
    a single history: a responder that maintains divergent histories and
@@ -2083,6 +2122,14 @@ Internet-Draft              Evidence Request               November 2026
    anchor-consistency rule of Section 5 makes any fork a provable
    violation once two served anchors are compared; but detection
    ultimately requires that comparison — anchor gossip among requesters,
+
+
+
+Mih                        Expires 21 May 2027                 [Page 38]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    or external witnessing of anchors — infrastructure outside this
    protocol.  This protocol constrains the attack but cannot alone close
    it.
@@ -2122,17 +2169,22 @@ Internet-Draft              Evidence Request               November 2026
    returned for categories (Section 3.9) is the responder's signed
    statement of what it offers in each category.  It is attributable,
    and a counterparty's records can contradict it (Section 6), but it is
-
-
-
-Mih                        Expires 21 May 2027                 [Page 38]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    no more complete than anything else the responder chose to record.  A
    requester SHOULD NOT treat a declared "absent" as proof that nothing
    of that category exists.
+
+
+
+
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 39]
+
+Internet-Draft              Evidence Request               November 2026
+
 
    *A principal reference is not authenticated by this document.* Where
    a deployment binds a request or a commitment to a principal reference
@@ -2181,7 +2233,11 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 39]
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 40]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2237,7 +2293,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 40]
+Mih                        Expires 21 May 2027                 [Page 41]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2293,7 +2349,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 41]
+Mih                        Expires 21 May 2027                 [Page 42]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2349,7 +2405,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 42]
+Mih                        Expires 21 May 2027                 [Page 43]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2400,12 +2456,12 @@ Internet-Draft              Evidence Request               November 2026
    |                         | does not verify            |           |
    +-------------------------+----------------------------+-----------+
 
-                                 Table 8
+                                 Table 9
 
 
 
 
-Mih                        Expires 21 May 2027                 [Page 43]
+Mih                        Expires 21 May 2027                 [Page 44]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2434,7 +2490,7 @@ Internet-Draft              Evidence Request               November 2026
      |                | proofs between them   |          |           |
      +----------------+-----------------------+----------+-----------+
 
-                                  Table 9
+                                  Table 10
 
    The unavailable-window reason classes (Section 4.7) are a closed list
    fixed by this document, not a registry, and need no IANA action.
@@ -2461,7 +2517,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 44]
+Mih                        Expires 21 May 2027                 [Page 45]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2517,7 +2573,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 45]
+Mih                        Expires 21 May 2027                 [Page 46]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2573,7 +2629,7 @@ Appendix A.  Example Deployments
 
 
 
-Mih                        Expires 21 May 2027                 [Page 46]
+Mih                        Expires 21 May 2027                 [Page 47]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2629,7 +2685,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 47]
+Mih                        Expires 21 May 2027                 [Page 48]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2667,7 +2723,7 @@ Appendix B.  Reference Blocks and This Interaction
       |                | (Section 9)       | party, with an expiry  |
       +----------------+-------------------+------------------------+
 
-                                  Table 10
+                                  Table 11
 
    The inversion this produces is deliberate: a producer that cannot
    name a resolver may still cite, and a producer that cannot compute a
@@ -2685,7 +2741,7 @@ Appendix B.  Reference Blocks and This Interaction
 
 
 
-Mih                        Expires 21 May 2027                 [Page 48]
+Mih                        Expires 21 May 2027                 [Page 49]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2709,9 +2765,11 @@ Changes from -02
 
    *  New term "checkpoint position" (Section 2).  The checkpoints
       subject (Section 3.1) takes an optional range of checkpoint
-      positions, answered as Section 8.1.3 says, in parts when a gap is
-      long, with its refusal reasons.  A history card over a ranged
-      checkpoints subject is refused no_such_subject.
+      positions, answered as Section 8.1.3 says: entries a through b and
+      a consistency_to_anchor proof binding each answer to the coverage
+      anchor, in parts when a gap is long, with its refusal reasons.  A
+      history card over a ranged checkpoints subject is refused
+      no_such_subject.
 
    *  Section 13: a row for history_card/2 in the derivations registry.
 
@@ -2739,9 +2797,7 @@ Changes from -01
 
 
 
-
-
-Mih                        Expires 21 May 2027                 [Page 49]
+Mih                        Expires 21 May 2027                 [Page 50]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2797,7 +2853,7 @@ Changes from -00
 
 
 
-Mih                        Expires 21 May 2027                 [Page 50]
+Mih                        Expires 21 May 2027                 [Page 51]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2853,4 +2909,4 @@ Author's Address
 
 
 
-Mih                        Expires 21 May 2027                 [Page 51]
+Mih                        Expires 21 May 2027                 [Page 52]

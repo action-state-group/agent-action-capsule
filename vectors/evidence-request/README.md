@@ -396,7 +396,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `r02-deadline-missed-under-load` | 3.4, 11 | `capacity_exceeded`, never `deadline_unmet` |
 | `r02-map-capacity_exceeded` | 4.6 | status unknown; not withheld by policy, not evidence of non-satisfaction |
 | `r02-map-request_unauthenticated` | 4.6 | status unknown; not withheld by policy, not evidence of non-satisfaction |
-### `history-card-2.json` (36 cases)
+### `history-card-2.json` (37 cases)
 
 | Case | Expect |
 |---|---|
@@ -434,6 +434,7 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 | `issued-at-lowercase` | valid |
 | `issued-at-offset` | valid |
 | `issued-at-not-a-date` | `checkpoint_invalid` |
+| `checkpoint-claim-float` | `checkpoint_invalid` |
 | `checkpoint-tag-long-form` | valid |
 | `anchor-mismatch` | `anchor_mismatch` |
 

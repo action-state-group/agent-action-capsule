@@ -82,8 +82,9 @@ const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 export function decodeReceiptItem(
   data: Uint8Array,
   topTag: boolean,
+  shortest = true,
 ): CborValue {
-  const value = decodeCbor(data);
+  const value = decodeCbor(data, shortest);
   const walk = (item: CborValue, depth: number): void => {
     if (typeof item === "bigint" && item < -(1n << 63n))
       throw new SyntaxError("an integer below -2^63");
@@ -116,13 +117,17 @@ export function decodeReceiptItem(
 }
 
 /**
- * Decode one well-formed CBOR item as decodeCbor does, but accepting an
- * argument in a longer form than its shortest: the rule a cll-checkpoint's
- * own octets are read under (interop profile §6.2.1 step 7), where only the
- * commitment and the proofs must be deterministic.
+ * Decode one CBOR item under the receipt rule of {@link decodeReceiptItem},
+ * data model included, but accepting an argument in a longer form than its
+ * shortest: the rule a cll-checkpoint's own octets are read under (interop
+ * profile §6.2.1 step 7), where only the commitment and the proofs must be
+ * deterministic.
  */
-export function decodeWellFormedItem(data: Uint8Array): CborValue {
-  return decodeCbor(data, false);
+export function decodeWellFormedItem(
+  data: Uint8Array,
+  topTag: boolean,
+): CborValue {
+  return decodeReceiptItem(data, topTag, false);
 }
 
 /**
