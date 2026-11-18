@@ -9,6 +9,9 @@ pub const SUBPROTOCOL: &str = "evidence-request/1";
 /// The `history_card/1` derivation (§8.1, §13).
 pub const DERIVATION_HISTORY_CARD: &str = "history_card/1";
 
+/// The bounded `history_card/2` derivation (ER -03 §8.1.2, §13).
+pub const DERIVATION_HISTORY_CARD_2: &str = "history_card/2";
+
 /// The six subject forms (§3.1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SubjectForm {

@@ -216,6 +216,8 @@ fn sign_refuses_what_the_profile_does_not_allow() {
         Subject::Record("XY".into()),
         Subject::Record("AB".repeat(32)),
         Subject::Range(3, 0),
+        Subject::CheckpointRange(3, 0),
+        Subject::CheckpointRange(0, 1 << 53),
         Subject::Correlation(String::new()),
     ] {
         assert!(
@@ -533,4 +535,23 @@ fn v2_refusal_signatures_match_the_corpus() {
         }
     }
     assert_eq!(checked, 13, "the corpus has thirteen v2 refusal cases");
+}
+
+/// A ranged `checkpoints` subject (ER -03 §3.1) is signed as its range and
+/// read back the same from either binding.
+#[test]
+fn a_checkpoint_range_is_signed_and_read_back() {
+    let k = key("responder");
+    let mut p = parts();
+    p.subject = Subject::CheckpointRange(2, 5);
+    p.verification.clear();
+    let env = sign(REQUEST, p, &k).unwrap();
+    for binding in [Binding::Json, Binding::Cbor] {
+        let back = envelope_of(parse_reply(&env.encode(binding), binding));
+        assert_eq!(back.subject, Subject::CheckpointRange(2, 5));
+        assert_eq!(back, env);
+        back.verify_for(&k.verifying_key(), REQUEST).unwrap();
+    }
+    let json: Value = serde_json::from_slice(&env.encode(Binding::Json)).unwrap();
+    assert_eq!(json["subject"], serde_json::json!({"checkpoints": [2, 5]}));
 }

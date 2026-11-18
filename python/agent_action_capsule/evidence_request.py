@@ -113,6 +113,7 @@ __all__ = [
     "DRAFT",
     "SUBPROTOCOL",
     "DERIVATION_HISTORY_CARD",
+    "DERIVATION_HISTORY_CARD_2",
     "SUBJECT_FORMS",
     "COVERAGE_MEMBERS",
     "REASON_NOT_AUTHORIZED",
@@ -204,6 +205,8 @@ PROFILES = frozenset({"evidence-interop/0", "evidence-interop/1", PROFILE_V2})
 
 #: The one derivation -00 registers (§8.1, §13).
 DERIVATION_HISTORY_CARD = "history_card/1"
+#: -03 §8.1.2; checked by :mod:`agent_action_capsule.history_card`.
+DERIVATION_HISTORY_CARD_2 = "history_card/2"
 
 #: The six subject forms (§3.1), in the draft's order.
 SUBJECT_FORMS = ("full_history", "checkpoints", "record", "range", "correlation", "exchange")
@@ -418,7 +421,9 @@ def _malformed(message: str) -> RequestError:
 class Subject:
     """What a request asks about (§3.1). ``content`` is ``None`` for
     ``full_history`` and ``checkpoints``, a digest for ``record`` and
-    ``exchange``, ``(a, b)`` for ``range``, the identifier for ``correlation``."""
+    ``exchange``, ``(a, b)`` for ``range`` and for a ranged ``checkpoints``
+    subject (-03 §3.1, checkpoint positions), the identifier for
+    ``correlation``."""
 
     form: str
     content: None | str | tuple[int, int] = None
@@ -457,6 +462,13 @@ def _parse_subject(value: Any) -> Subject:
     ((form, content),) = value.items()
     if form not in SUBJECT_FORMS:
         raise _malformed("subject form is not one of the six")
+    if form == "checkpoints" and content is not None:
+        # -03 §3.1: an optional range of checkpoint positions, as for range.
+        if not (isinstance(content, list) and len(content) == 2 and all(_is_uint(v) for v in content)):
+            raise _malformed("a checkpoints range is not two unsigned integers")
+        if content[0] > content[1]:
+            raise _malformed("checkpoints range start is after its end")
+        return Subject(form, (content[0], content[1]))
     if form in ("full_history", "checkpoints"):
         if content is not None:
             raise _malformed("this subject form carries no content")
@@ -619,7 +631,9 @@ class EvidenceStore(Protocol):
         ...
 
     def anchors(self) -> Sequence[Anchor]:
-        """The coverage anchors held."""
+        """The coverage anchors held. For a ranged ``checkpoints`` subject (-03 §8.1.3) they
+        are the stream's checkpoints in the order issued, so an anchor's index is its
+        checkpoint position."""
         ...
 
     def derivation_forms(self, derivation: str) -> Collection[str] | None:
@@ -685,6 +699,10 @@ def resolve(request: Request, store: EvidenceStore, *, uniform_policy_declined: 
             return Resolution(REASON_DERIVATION_UNSUPPORTED)
         if subject.form not in forms:
             return not_held
+        # -03 §8.1: a history card answers checkpoints only without a range.
+        if request.derivation in (DERIVATION_HISTORY_CARD, DERIVATION_HISTORY_CARD_2) and \
+                subject.form == "checkpoints" and subject.content is not None:
+            return not_held
 
     if subject.form == "record":
         held = store.holds_record(subject.content)
@@ -712,6 +730,11 @@ def resolve(request: Request, store: EvidenceStore, *, uniform_policy_declined: 
         return Resolution(REASON_COVERAGE_UNSATISFIABLE)
     if subject.form == "range" and subject.content[1] >= anchor.size:
         return Resolution(REASON_COVERAGE_UNSATISFIABLE)
+    if subject.form == "checkpoints" and subject.content is not None:
+        # -03 §8.1.3: b must not be past the anchor's checkpoint position.
+        position = [a.digest for a in store.anchors()].index(anchor.digest)
+        if subject.content[1] > position:
+            return Resolution(REASON_COVERAGE_UNSATISFIABLE)
     return Resolution(anchor=anchor)
 
 

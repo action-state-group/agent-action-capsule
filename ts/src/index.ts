@@ -7,6 +7,7 @@ export * from "./composed.js";
 export * from "./controller-binding.js";
 export * from "./key-binding.js";
 export * from "./evidence-graph.js";
+export * from "./history-card.js";
 export * from "./json.js";
 export * from "./model.js";
 export * from "./outcome-report.js";

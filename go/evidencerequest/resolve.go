@@ -19,7 +19,9 @@ type AnchorView struct {
 // zero-based log positions. Resolution matches exactly: a View never
 // matches by prefix or case folding.
 type View interface {
-	// Anchors are the anchors issued, oldest first.
+	// Anchors are the anchors issued, oldest first. For a ranged checkpoints
+	// subject they are every checkpoint, so an anchor's index is its
+	// checkpoint position (ER -03 §8.1.3).
 	Anchors() []AnchorView
 	// LogEntries is the number of entries the log holds now, covered or not.
 	LogEntries() uint64
@@ -143,6 +145,11 @@ func ResolveSubject(view View, req Request, r Resolution, now time.Time) Resolut
 	covered := anchors[r.Anchor].Entries
 	switch req.Subject.Kind {
 	case SubjectCheckpoints:
+		// Anchors are the checkpoints oldest first, so an anchor's index is
+		// its checkpoint position (ER -03 §8.1.3).
+		if req.Subject.Ranged && req.Subject.Range[1] > uint64(r.Anchor) {
+			return Resolution{Reason: ReasonCoverageUnsatisfiable}
+		}
 		return r
 	case SubjectFullHistory:
 		for leaf := uint64(0); leaf < covered; leaf++ {
@@ -222,9 +229,10 @@ func withRetention(view View, req Request, now time.Time, r Resolution) Resoluti
 // what its evidence mechanism can do.
 type Policy struct {
 	// Derivation reports the subject forms a derivation other than
-	// history_card/1 is registered for, and false when the responder does
-	// not support it. Nil supports none. history_card/1 is always supported,
-	// over full_history and checkpoints (ER §8.1).
+	// history_card/1 and history_card/2 is registered for, and false when
+	// the responder does not support it. Nil supports none. Both history
+	// cards are always supported, over full_history and unranged
+	// checkpoints (ER -03 §8.1).
 	Derivation func(name string) (forms []SubjectKind, ok bool)
 	// Authorize reports whether the requester may have req answered. It is
 	// asked once the derivation is known to be supported; it decides whether
@@ -277,8 +285,10 @@ func Decide(view View, req Request, p Policy, now time.Time) Resolution {
 	var forms []SubjectKind
 	registered := false
 	switch {
-	case req.Derivation == DerivationHistoryCard:
-		if req.Subject.Kind != SubjectFullHistory && req.Subject.Kind != SubjectCheckpoints {
+	case req.Derivation == DerivationHistoryCard || req.Derivation == DerivationHistoryCard2:
+		// Both history cards are built in, and answer checkpoints only
+		// without a range (ER -03 §8.1).
+		if req.Subject.Kind != SubjectFullHistory && req.Subject.Kind != SubjectCheckpoints || req.Subject.Ranged {
 			return refuse(ReasonNoSuchSubject)
 		}
 	case req.Derivation != "":

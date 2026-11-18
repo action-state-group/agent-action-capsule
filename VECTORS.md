@@ -112,7 +112,7 @@ its 11 `record_signatures`.
 
 | Set | Owning specification | Verbs | Cases |
 |---|---|---|---|
-| `vectors/evidence-request/` | `draft-mih-agent-evidence-request-00`, `-01` and `-02` | request, respond, verify | 212 |
+| `vectors/evidence-request/` | `draft-mih-agent-evidence-request-00` to `-03` | request, respond, verify | 258 |
 | `vectors/settlement/` | `draft-mih-agent-settlement-records-01` | record, verify | 26 |
 | `vectors/checkpoint-consistency/` | checkpoint consistency (`verifyRetainedHead`, a head the reader kept) | verify | 39 |
 | `vectors/interop/` | composition and run-under suites | verify | 11 |

@@ -22,7 +22,7 @@ says except where the octets are. It verifies the commitment's own signature, it
 commitment's key, and hands the stapled history cards to the asker's admission pack, which judges
 them as it judges any history. Finding a commitment confers no trust.
 
-ER is `draft-mih-agent-evidence-request-02` (`spec/draft-mih-agent-evidence-request-02.md`).
+ER is `draft-mih-agent-evidence-request-03` (`spec/draft-mih-agent-evidence-request-03.md`), which adds `history_card/2` beside `history_card/1`.
 Section numbers are those of its rendered `.txt`.
 
 ## 1. What this is, and what it is not
@@ -416,7 +416,7 @@ only hands the cards on, so it has no result of its own to test.
 
 ## References
 
-- ER: `draft-mih-agent-evidence-request-02`, `spec/draft-mih-agent-evidence-request-02.md`.
+- ER: `draft-mih-agent-evidence-request-03`, `spec/draft-mih-agent-evidence-request-03.md`.
 - IP: Minimum Evidence Interoperability Profile v1, `evidence-interop/1`, `spec/interop-profile-v1.md`.
 - NMB: Nostr Mailbox Carriage v0, `spec/bindings/nostr-mailbox-v0.md`.
 - ARD v0.91, NANDA Index v2, A2A v1.0.1, NIP-01, NIP-19, NIP-21, NIP-24, NIP-65, NIP-94, BIP-340,

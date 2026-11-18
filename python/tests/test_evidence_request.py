@@ -416,6 +416,54 @@ def test_retention_vector(case):
         assert state == expect["state"]
 
 
+# --- checkpoints-range.json (-03 §3.1, §8.1.3) -------------------------------------------------
+
+RANGE_CORPUS = _load("checkpoints-range.json")
+
+
+def _range_store() -> _Store:
+    return _Store(json.loads(json.dumps(RANGE_CORPUS["responder"])))
+
+
+def test_checkpoints_range_corpus_header():
+    assert RANGE_CORPUS["draft"] == "draft-mih-agent-evidence-request-03"
+    assert set(RANGE_CORPUS["derivations"]) == {er.DERIVATION_HISTORY_CARD, er.DERIVATION_HISTORY_CARD_2}
+    # the store's anchors() order is the checkpoint order the corpus states
+    order = [a["digest"] for a in RANGE_CORPUS["responder"]["anchors"]]
+    assert {d: order.index(d) for d in order} == RANGE_CORPUS["checkpoint_positions"]
+
+
+@pytest.mark.parametrize("case", RANGE_CORPUS["request_cases"], ids=[c["id"] for c in RANGE_CORPUS["request_cases"]])
+def test_checkpoints_range_request_vector(case):
+    bindings = _request_bytes(case)
+    assert {b for b, _, _ in bindings} == {"json", "cbor"}
+    parsed = []
+    for binding, data, pinned in bindings:
+        assert request_digest(data) == pinned
+        if case["expect"]["well_formed"]:
+            parsed.append(parse_request(data, binding=binding))
+        else:
+            with pytest.raises(RequestError) as exc:
+                parse_request(data, binding=binding)
+            assert exc.value.reason == case["expect"]["reason"], binding
+    if parsed:
+        assert parsed[0] == parsed[1]
+        assert parsed[0].subject.to_wire() == json.loads(case["request_json"])["subject"]
+
+
+@pytest.mark.parametrize("case", RANGE_CORPUS["cases"], ids=[c["id"] for c in RANGE_CORPUS["cases"]])
+def test_checkpoints_range_resolution_vector(case):
+    for binding, data, pinned in _request_bytes(case):
+        result = answer(data, store=_range_store(), signer=PRIMARY, binding=binding, now=NOW)
+        if case["expect"]["answer"] == "artifact":
+            assert isinstance(result, Artifact), (binding, result)
+            assert result.body["subject"] == parse_request(data, binding=binding).subject
+        else:
+            assert isinstance(result, Refusal), (binding, result)
+            assert result.reason == case["expect"]["reason"], binding
+            assert result.request_digest == pinned
+
+
 def test_every_vector_case_is_parametrized():
     """Each test above runs every case of its file, unfiltered, and asserts
     on each with no skip path; the manifest's counts pin the total."""

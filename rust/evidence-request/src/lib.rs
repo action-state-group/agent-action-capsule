@@ -81,6 +81,7 @@ pub mod controller_binding;
 mod det_cbor;
 pub mod digest;
 pub mod envelope;
+pub mod history_card;
 pub mod invariance;
 pub mod jcs;
 pub mod outcome;
