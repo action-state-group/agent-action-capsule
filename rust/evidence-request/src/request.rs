@@ -27,6 +27,9 @@ use std::collections::BTreeMap;
 pub enum Subject {
     FullHistory,
     Checkpoints,
+    /// The checkpoints at checkpoint positions `a` through `b` inclusive
+    /// (ER -03 §3.1, §8.1.3): a `checkpoints` subject with a range.
+    CheckpointRange(u64, u64),
     Record(String),
     /// Positions `a` through `b` inclusive, under the coverage anchor's
     /// ordering.
@@ -40,7 +43,7 @@ impl Subject {
     pub fn form(&self) -> SubjectForm {
         match self {
             Subject::FullHistory => SubjectForm::FullHistory,
-            Subject::Checkpoints => SubjectForm::Checkpoints,
+            Subject::Checkpoints | Subject::CheckpointRange(..) => SubjectForm::Checkpoints,
             Subject::Record(_) => SubjectForm::Record,
             Subject::Range(..) => SubjectForm::Range,
             Subject::Correlation(_) => SubjectForm::Correlation,
@@ -208,12 +211,24 @@ fn parse_subject(value: &Val) -> Result<Subject, RequestError> {
         )),
     };
     match form {
-        SubjectForm::FullHistory | SubjectForm::Checkpoints => match content {
-            Val::Null => Ok(if form == SubjectForm::FullHistory {
-                Subject::FullHistory
-            } else {
-                Subject::Checkpoints
-            }),
+        SubjectForm::Checkpoints => match content {
+            Val::Null => Ok(Subject::Checkpoints),
+            // ER -03 §3.1: an optional range of checkpoint positions.
+            Val::Array(pair) => match pair.as_slice() {
+                [Val::UInt(a), Val::UInt(b)] if a <= b => Ok(Subject::CheckpointRange(*a, *b)),
+                [Val::UInt(_), Val::UInt(_)] => Err(RequestError::Malformed(
+                    "checkpoints range start is after its end",
+                )),
+                _ => Err(RequestError::Malformed(
+                    "a checkpoints range is not two unsigned integers",
+                )),
+            },
+            _ => Err(RequestError::Malformed(
+                "checkpoints content is neither null nor a range",
+            )),
+        },
+        SubjectForm::FullHistory => match content {
+            Val::Null => Ok(Subject::FullHistory),
             _ => Err(RequestError::Malformed(
                 "this subject form carries no content",
             )),

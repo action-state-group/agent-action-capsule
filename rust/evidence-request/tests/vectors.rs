@@ -698,3 +698,82 @@ fn unavailable_window_corpus() {
     }
     assert_eq!((statements, displays), (19, 16));
 }
+
+/// `checkpoints-range.json` (ER -03 §3.1, §8.1.3): the ranged checkpoints
+/// subject parses in both bindings, and resolves against the -03 responder,
+/// whose anchors are its checkpoints in issue order.
+#[test]
+fn checkpoints_range_corpus() {
+    let corpus = load("checkpoints-range.json");
+    assert_eq!(s(&corpus, "draft"), "draft-mih-agent-evidence-request-03");
+    let positions = corpus["checkpoint_positions"].as_object().unwrap();
+    for (i, a) in corpus["responder"]["anchors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .enumerate()
+    {
+        assert_eq!(
+            positions[s(a, "digest")].as_u64(),
+            Some(i as u64),
+            "anchors in checkpoint order"
+        );
+    }
+    let request_cases = corpus["request_cases"].as_array().unwrap();
+    assert!(!request_cases.is_empty());
+    for case in request_cases {
+        let id = s(case, "id");
+        let json_bytes = s(case, "request_json").as_bytes();
+        let cbor = hex::decode(s(case, "request_cbor_hex")).unwrap();
+        assert_eq!(
+            request_digest(json_bytes),
+            s(case, "request_json_digest"),
+            "{id}"
+        );
+        assert_eq!(
+            request_digest(&cbor),
+            s(case, "request_cbor_digest"),
+            "{id}"
+        );
+        let results = [
+            ("json", parse_json(json_bytes)),
+            ("cbor", parse_cbor(&cbor)),
+        ];
+        for (binding, result) in &results {
+            if case["expect"]["well_formed"] == Value::Bool(true) {
+                assert!(result.is_ok(), "{id} ({binding}): {result:?}");
+            } else {
+                let err = result.as_ref().expect_err(id);
+                assert_eq!(
+                    err.reason().token(),
+                    s(&case["expect"], "reason"),
+                    "{id} ({binding})"
+                );
+            }
+        }
+        if let (Ok(a), Ok(b)) = (&results[0].1, &results[1].1) {
+            assert_eq!(a, b, "{id}: both bindings parse to one request");
+        }
+    }
+    let responder = Declared(corpus["responder"].clone());
+    for case in cases(&corpus) {
+        let id = s(case, "id");
+        for request in [
+            parse_json(s(case, "request_json").as_bytes()),
+            parse_cbor(&hex::decode(s(case, "request_cbor_hex")).unwrap()),
+        ] {
+            let answer = resolve(&request.expect(id), &responder);
+            match s(&case["expect"], "answer") {
+                "artifact" => assert!(
+                    matches!(answer, Resolution::Artifact(_)),
+                    "{id}: {answer:?}"
+                ),
+                _ => assert_eq!(
+                    answer,
+                    Resolution::Refuse(Reason::from_token(s(&case["expect"], "reason")).unwrap()),
+                    "{id}"
+                ),
+            }
+        }
+    }
+}

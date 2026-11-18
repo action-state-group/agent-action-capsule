@@ -48,7 +48,9 @@ pub trait Responder {
     fn cites_exchange(&self, half_digest: &str) -> bool;
     /// Whether the coverage mechanism defines record positions.
     fn positional_ordering(&self) -> bool;
-    /// The anchors the responder holds.
+    /// The anchors the responder holds. For a ranged `checkpoints`
+    /// subject they are the stream's checkpoints in the order issued, so an
+    /// anchor's index is its checkpoint position (ER -03 §8.1.3).
     fn anchors(&self) -> Vec<Anchor>;
     /// For a derivation the responder supports, the subject forms it
     /// supports it for; `None` if it does not support the derivation.
@@ -103,12 +105,21 @@ pub fn resolve(request: &Request, responder: &dyn Responder) -> Resolution {
         match responder.derivation_forms(derivation) {
             None => return Resolution::Refuse(Reason::DerivationUnsupported),
             Some(forms) if !forms.contains(&form) => return no_such_subject(),
+            // A history card answers checkpoints only without a range (ER -03 §8.1).
+            Some(_)
+                if matches!(request.subject, Subject::CheckpointRange(..))
+                    && matches!(derivation, Derivation::Token(t)
+                        if t == crate::registry::DERIVATION_HISTORY_CARD
+                            || t == crate::history_card::DERIVATION_HISTORY_CARD_2) =>
+            {
+                return no_such_subject()
+            }
             Some(_) => {}
         }
     }
 
     let held = match &request.subject {
-        Subject::FullHistory | Subject::Checkpoints => true,
+        Subject::FullHistory | Subject::Checkpoints | Subject::CheckpointRange(..) => true,
         Subject::Record(d) => responder.holds_record(d),
         Subject::Correlation(id) => responder.holds_correlation(id),
         Subject::Exchange(d) => responder.cites_exchange(d),
@@ -124,6 +135,7 @@ pub fn resolve(request: &Request, responder: &dyn Responder) -> Resolution {
     }
 
     let anchors = responder.anchors();
+    let ordered: Vec<String> = anchors.iter().map(|a| a.digest.clone()).collect();
     let selected = match &request.coverage {
         Coverage::ExpectedPin(pin) => match &request.subject {
             Subject::Exchange(half) if half == pin => {
@@ -144,6 +156,17 @@ pub fn resolve(request: &Request, responder: &dyn Responder) -> Resolution {
     // Positions of a range must exist under the chosen anchor.
     if let (Subject::Range(_, end), ResolvedAnchor::Anchor(a)) = (&request.subject, &anchor) {
         if *end >= a.size {
+            return Resolution::Refuse(Reason::CoverageUnsatisfiable);
+        }
+    }
+    // A checkpoint range must end at or before the anchor's checkpoint
+    // position: the anchors are the checkpoints in the order issued
+    // (ER -03 §8.1.3).
+    if let (Subject::CheckpointRange(_, end), ResolvedAnchor::Anchor(a)) =
+        (&request.subject, &anchor)
+    {
+        let position = ordered.iter().position(|d| d == &a.digest);
+        if position.is_none_or(|p| *end > p as u64) {
             return Resolution::Refuse(Reason::CoverageUnsatisfiable);
         }
     }

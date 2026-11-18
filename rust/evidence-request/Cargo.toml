@@ -77,3 +77,7 @@ required-features = ["cll"]
 [[test]]
 name = "cll_material_vectors"
 required-features = ["cll"]
+
+[[test]]
+name = "history_card_2_vectors"
+required-features = ["cll"]

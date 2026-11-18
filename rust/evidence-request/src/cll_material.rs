@@ -770,6 +770,188 @@ fn check_consistency(
     }
 }
 
+/// A lowercase hex text string's octets.
+fn lower_hex(value: &serde_json::Value) -> Option<Vec<u8>> {
+    let text = value.as_str()?;
+    if text.len() % 2 != 0
+        || !text
+            .bytes()
+            .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
+    {
+        return None;
+    }
+    hex::decode(text).ok()
+}
+
+struct CardEntry<'a> {
+    position: u64,
+    checkpoint: Vec<u8>,
+    receipts: &'a [serde_json::Value],
+    proof: Option<Vec<u8>>,
+}
+
+/// The card's window and entries, or `None` when the card or an entry is
+/// not the maps and types of ER -03 §8.1.2. Members a profile adds are
+/// ignored.
+fn read_card(card: &serde_json::Value) -> Option<(u64, Vec<CardEntry<'_>>)> {
+    let uint = |v: Option<&serde_json::Value>| v?.as_u64().filter(|n| *n <= MAX_INTEGER);
+    let map = card.as_object()?;
+    let window = uint(map.get("window"))?;
+    let history = map.get("history")?.as_array()?;
+    let mut entries = Vec::with_capacity(history.len());
+    for raw in history {
+        let e = raw.as_object()?;
+        let proof = match e.get("consistency_from_previous")? {
+            serde_json::Value::Null => None,
+            other => Some(lower_hex(other)?),
+        };
+        entries.push(CardEntry {
+            position: uint(e.get("position"))?,
+            checkpoint: lower_hex(e.get("checkpoint")?)?,
+            receipts: e.get("receipts")?.as_array()?,
+            proof,
+        });
+    }
+    Some((window, entries))
+}
+
+/// Whether `receipt` is a `{checkpoint, witness, sig}` receipt over SHA-256
+/// of `checkpoint`, signed by `witness` over UTF-8 of JCS of `{checkpoint,
+/// witness}`: the form `history-card-2.json` fixes for its vectors.
+fn receipt_covers(receipt: &serde_json::Value, checkpoint: &[u8]) -> bool {
+    use sha2::{Digest, Sha256};
+    let Some(map) = receipt.as_object() else {
+        return false;
+    };
+    if map.len() != 3 {
+        return false;
+    }
+    let (Some(covered), Some(witness), Some(key), Some(sig)) = (
+        map.get("checkpoint").and_then(|v| v.as_str()),
+        map.get("witness").and_then(|v| v.as_str()),
+        map.get("witness").and_then(lower_hex),
+        map.get("sig").and_then(lower_hex),
+    ) else {
+        return false;
+    };
+    if covered != hex::encode(Sha256::digest(checkpoint)) {
+        return false;
+    }
+    let (Ok(key), Ok(sig)) = (
+        <[u8; 32]>::try_from(key.as_slice()),
+        <[u8; 64]>::try_from(sig.as_slice()),
+    ) else {
+        return false;
+    };
+    let Ok(key) = VerifyingKey::from_bytes(&key) else {
+        return false;
+    };
+    let body = serde_json::json!({"checkpoint": covered, "witness": witness});
+    let Ok(text) = crate::jcs::to_string(&body) else {
+        return false;
+    };
+    key.verify_strict(text.as_bytes(), &Signature::from_bytes(&sig))
+        .is_ok()
+}
+
+/// Check `card`, the result map of a `history_card/2` in Checkpointed Local
+/// Log form (hex `cll-checkpoint` statements and `cll-consistency-proof`
+/// octets), against `anchor`, SHA-256 of the octets of the checkpoint the
+/// response resolved, and the log keys the requester accepts for the
+/// stream (lowercase hex). `None` when every check of ER -03 §8.1.2
+/// "Verifying" passes, else the first finding of
+/// [`crate::history_card::FINDINGS`]: `card_malformed`, then checks 1 to 7
+/// in order.
+pub fn check_history_card_2(
+    card: &serde_json::Value,
+    anchor: &str,
+    log_keys: &[String],
+) -> Option<&'static str> {
+    use crate::history_card::{positions, MAX_WINDOW};
+    use sha2::{Digest, Sha256};
+    let Some((window, entries)) = read_card(card) else {
+        return Some("card_malformed");
+    };
+    if !(1..=MAX_WINDOW).contains(&window) {
+        return Some("window_out_of_range");
+    }
+    let listed: Vec<u64> = entries.iter().map(|e| e.position).collect();
+    if listed.first() != Some(&0) || listed.windows(2).any(|w| w[1] <= w[0]) {
+        return Some("positions_not_increasing_from_zero");
+    }
+    let expected = positions(*listed.last()?, window);
+    if expected.iter().any(|p| !listed.contains(p)) {
+        return Some("position_missing");
+    }
+    if listed.len() != expected.len() {
+        return Some("position_unexpected");
+    }
+
+    let mut checkpoints: Vec<Checkpoint> = Vec::with_capacity(entries.len());
+    for e in &entries {
+        let Ok(cp) = read_checkpoint(&e.checkpoint) else {
+            return Some("checkpoint_invalid");
+        };
+        let accepted = cp.alg == -8
+            && !cp.crit
+            && cp.kid.len() == 32
+            && log_keys.contains(&hex::encode(&cp.kid))
+            && match (
+                <[u8; 32]>::try_from(cp.kid.as_slice())
+                    .ok()
+                    .and_then(|k| VerifyingKey::from_bytes(&k).ok()),
+                <[u8; 64]>::try_from(cp.signature.as_slice()),
+            ) {
+                (Some(key), Ok(sig)) => key
+                    .verify_strict(
+                        &sig_structure(&cp.protected, &cp.payload),
+                        &Signature::from_bytes(&sig),
+                    )
+                    .is_ok(),
+                _ => false,
+            };
+        if !accepted {
+            return Some("checkpoint_invalid");
+        }
+        if checkpoints
+            .last()
+            .is_some_and(|prev| cp.log_size < prev.log_size)
+        {
+            return Some("checkpoint_shrinks");
+        }
+        checkpoints.push(cp);
+    }
+
+    for (i, e) in entries.iter().enumerate() {
+        match (i, &e.proof) {
+            (0, None) => continue,
+            (0, Some(_)) | (_, None) => return Some("proof_invalid"),
+            (_, Some(octets)) => {
+                let (prev, cur) = (&checkpoints[i - 1], &checkpoints[i]);
+                let spans = proof_parts(octets, 4).is_ok_and(|parts| {
+                    uint(Some(&parts[0])) == Some(prev.log_size)
+                        && uint(Some(&parts[1])) == Some(cur.log_size)
+                });
+                if !spans || check_consistency(&prev.commitment, &cur.commitment, octets).is_err() {
+                    return Some("proof_invalid");
+                }
+            }
+        }
+    }
+
+    if entries
+        .iter()
+        .any(|e| !e.receipts.iter().all(|r| receipt_covers(r, &e.checkpoint)))
+    {
+        return Some("receipt_invalid");
+    }
+
+    if hex::encode(Sha256::digest(&entries.last()?.checkpoint)) != anchor {
+        return Some("anchor_mismatch");
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
