@@ -13,9 +13,9 @@ profile design names the gap: before a side treats a deal as settled or relies o
 side's card, it asks for "a shelf checkpoint with a receipt from a named witness, the consistency
 proof from the checkpoint it kept, and the stamp proof for the book's newest fact", and neither
 EBL nor SF has a form for receipts or a shelf consistency proof in a push (EBL
-`docs/design/461-deal-profile.md` at commit `17ca8a0b1cb3e78bfffebd0fced0c55e7302cee7`, §7.2 and Q8, cited as DP). DP's §8.1 needs
-the same receipts for a second use: a counterparty record takes its time from its author's stamp
-only once that stamp's receipts reach the other side. EBL builds this form (DP §11.1, PR 1).
+`docs/design/461-deal-profile.md` at commit `17ca8a0b1cb3e78bfffebd0fced0c55e7302cee7`, §7.2
+and Q8, cited as DP). DP's §8.1 needs the same receipts for a second use: a counterparty record takes its time from its author's stamp
+only once that stamp's receipts reach the other side.
 Every encoding here is one that EBL or this repository already uses; this document adds the
 message around them and the order of the checks.
 
@@ -95,7 +95,7 @@ other side of the book gains nothing by asking.
 
 On an ask for a book it holds, a holder SHOULD send that book's other side a follow-up, built by
 §4.2, within a rate bound of its own. It MAY ignore an ask for a book it does not hold, an ask
-whose `at` names no shelf checkpoint of its own, and asks beyond its bound.
+whose `at` names no shelf checkpoint eligible for that book (§4.2), and asks beyond its bound.
 
 ## 4. The follow-up
 
@@ -139,27 +139,33 @@ the holder's finished stamps at or after the stamp that wrote the book's first f
    under the target (SF §5.1: the builder takes the book's latest fact at or before a finished
    stamp), made for the `counterparty` audience (SF §4.3), so carrying the fact's status opening
    and never a link opening (SF §5.1).
-2. **`receipts`:** every receipt the holder holds for the target, one per witness and key, sorted
-   by `ts_url` in the byte order of its UTF-8 and then by the directory key id the holder
-   verified it under (EBL `shelf_handover_tie.go` `receiptsLocked`). A holder MAY leave out a
-   receipt that its own check found `fail`. An empty array says the holder holds no receipt for
-   the target.
-3. **`consistency`:** present when the holder knows a held shelf checkpoint of the receiver's
-   whose size is below the target's: from the one named by the ask's `kept` when it is, otherwise
-   from the newest shelf checkpoint the holder proved to the receiver before. Absent when there is
-   none, and when that checkpoint is the target.
+2. **`receipts`:** every receipt for the target that passed the holder's own check (WIT), one
+   per witness and key, sorted by `ts_url` in the byte order of its UTF-8 and then by the
+   directory `key_id` it passed under (EBL keeps only receipts that pass, `shelf_record_time.go`,
+   and orders them so, `shelf_handover_tie.go` `receiptsLocked`). An empty array says the holder
+   holds no such receipt for the target.
+3. **`consistency`:** from the **base**, a shelf checkpoint of the holder's whose size is below
+   the target's: the one the ask's `kept` names, when it names one of the holder's shelf
+   checkpoints and its size is below the target's; otherwise the newest shelf checkpoint below the
+   target's size that the holder proved to the receiver before. Absent when there is no base, so
+   also when the target is the smallest such checkpoint or `kept` is the target itself.
 
-After an ask, the target is the shelf checkpoint named by `at` when the ask has it; otherwise the
-newest finished stamp's shelf checkpoint for which the holder holds a receipt; otherwise, when it
-holds no receipt for any, the newest finished stamp's.
+The **eligible** shelf checkpoints for a book are those cut by the holder's finished stamps at or
+after the stamp that wrote the book's first fact. After an ask, the target is the shelf checkpoint
+named by `at` when the ask has it and it is eligible; otherwise the newest eligible one for which
+the holder holds a receipt; otherwise, when it holds no receipt for any, the newest eligible one.
+An ask whose `at` names a shelf checkpoint that is not eligible for the book gets no follow-up
+(§3).
 
 ### 4.3 When the holder sends it
 
-A holder SHOULD send the other side of a book a follow-up when it first holds a receipt for the
-shelf checkpoint of a stamp proof it sent that side, so that the receipts travel with the proofs
-(DP §8.1). It SHOULD also send one after an ask (§3). It sends a follow-up only to the party on
-the other side of the book, as the holder's profile names that party, by the same means it pushes
-records to that party (SF §6; how it reaches the party is outside this document). A follow-up
+A holder SHOULD send the other side of a book a follow-up whenever it holds a receipt, for the
+shelf checkpoint of a stamp proof it sent that side, that no follow-up it sent that side carried:
+the first receipt for that checkpoint, and each one that arrives later, since the witness the
+receiver counts may be a later one. It MAY wait to gather several receipts into one follow-up.
+This is how receipts travel with stamp proofs (DP §8.1). It SHOULD also send one after an ask
+(§3). It sends a follow-up only to the party on the other side of the book, as the holder's
+profile names that party, by the same means it pushes records to that party (SF §6; how it reaches the party is outside this document). A follow-up
 carries a status opening for the `counterparty` audience (§4.2 step 1), so sending one to anyone
 else discloses what SF §4.3 keeps from them.
 
@@ -167,41 +173,48 @@ else discloses what SF §4.3 keeps from them.
 
 ### 5.1 The checks
 
-A receiver handles a follow-up in this order. Each step's outcome goes into the answer (§5.2).
+A receiver handles a follow-up in this order. The outcomes of steps 1, 3 and 4 go into the answer
+(§5.2).
 
 1. **The stamp proof.** The receiver decodes `stamp_proof` and handles it as the proof part of a
    record push, by SF §6.3 steps 1 to 6, with the same outcomes (`accepted`, `duplicate`, or
    `refused` with class `invalid` or `refused`), the same evidence kept (SF §6.4) and the same
    coverage (SF §6.3). If the proof is refused, the receiver stops: it checks neither
-   `consistency` nor `receipts`, and keeps nothing of them.
-2. **The consistency proof**, when `consistency` is present. The **target** is the stamp proof's
+   `consistency` nor `receipts`, and keeps nothing of them. The **target** is the stamp proof's
    shelf checkpoint.
+2. **The target against held checkpoints.** If the receiver holds another shelf checkpoint signed
+   by the same key, of the same log id and the same size as the target, with a different root,
+   it keeps the two as evidence of kind `shelf_checkpoint` (§5.3): one key signed two shelf
+   checkpoints of one log at one size with different roots. This step runs whether or not the
+   follow-up has `consistency`, and gives no outcome of its own in the answer.
+3. **The consistency proof**, when `consistency` is present.
    1. If `from` is not the checkpoint digest of a held shelf checkpoint from this sender (one
       signed by the stamp proof's key, SF §5.3 step 3), the outcome is `unknown_from`.
    2. Otherwise, if that held checkpoint names another log id or another key id than the target,
-      or its size is above the target's, the outcome is `invalid`.
-   3. Otherwise, if its size equals the target's, the outcome is `accepted` when the two roots
-      are equal. When they differ, the outcome is `invalid`, and the receiver keeps the two shelf
-      checkpoints as evidence of kind `shelf_checkpoint` (§5.3): one key signed two shelf
-      checkpoints of one log at one size with different roots.
-   4. Otherwise the outcome is `accepted` when `kind` is `cll-mmr-consistency`, `proof.old_size`
-      is the held checkpoint's size, `proof.new_size` is the target's size, every hash in `proof`
-      is 64 lowercase hex characters, and the CLL consistency proof verifies from the held
+      or its size is not below the target's, the outcome is `invalid` (two of one size with
+      different roots are also kept by step 2).
+   3. Otherwise the outcome is `accepted` when `kind` is `cll-mmr-consistency`; `proof` is an
+      object with exactly the members `v` (the integer `1`), `kind` (the string `consistency`),
+      `old_size` and `new_size` (integers in the AAC safe range), `old_peaks` and `new_peaks`
+      (arrays of strings) and `witness` (an array of arrays of strings), and no other;
+      `proof.old_size` is the held checkpoint's size; `proof.new_size` is the target's size;
+      every hash in `proof` is 64 lowercase hex characters; and the CLL consistency proof verifies from the held
       checkpoint's root to the target's root (CLL Go `mmr.VerifyConsistency`, v0.4.0); and
       `invalid` otherwise. A proof that fails to verify is not evidence against the sender: the
-      receiver keeps nothing of it.
-3. **The receipts.** For each entry of `receipts`, in order, the receiver applies WIT's check of
+      receiver keeps nothing of it. An `accepted` outcome links `from` to the target (§5.4).
+4. **The receipts.** For each entry of `receipts`, in order, the receiver applies WIT's check of
    one receipt to the target's COSE statement under its own witness directory, and takes its
    status: `pass`, `withheld` or `fail`. An entry WIT finds malformed is `fail`. A receiver that
    does not check an entry, because it cannot run a receipt check or because the entry is past a
    bound of its own, reports it `withheld` (WIT). The receiver keeps each receipt that passes
-   beside the target, with the `key_id` and the `registration_time` WIT gives it; it MAY keep a
-   `withheld` one, to check again later.
+   beside the target, with the `key_id` and the `registration_time` WIT gives it, which is `null`
+   when the receipt passed with no usable registration time (WIT); it MAY keep a `withheld` one,
+   to check again later.
 
-The three steps are independent once the stamp proof passes step 1: a consistency outcome other
+Steps 2 to 4 are independent once the stamp proof passes step 1: a consistency outcome other
 than `accepted` changes neither the proof's outcome nor what the receipts give, and a receipt
 that fails changes neither of the others. Sending the same follow-up again is safe: the stamp
-proof is answered `duplicate` (SF §6.3 step 5), and the other two steps give the same outcomes.
+proof is answered `duplicate` (SF §6.3 step 5), and the other steps give the same outcomes.
 
 ### 5.2 The answer
 
@@ -210,8 +223,8 @@ The answer to a follow-up is one JSON object with exactly these three members:
 | Member | Type | Value |
 |---|---|---|
 | `stamp_proof` | object | the proof answer of RP §2.2: `accepted`, `duplicate` and `refused`, from step 1 |
-| `consistency` | string | `""` when the follow-up had no `consistency` or the stamp proof was refused; otherwise the outcome of step 2: `accepted`, `invalid` or `unknown_from` |
-| `receipts` | array of strings | one status per entry of `receipts`, in order, from step 3: `pass`, `withheld` or `fail`; empty when the stamp proof was refused |
+| `consistency` | string | `""` when the follow-up had no `consistency` or the stamp proof was refused; otherwise the outcome of step 3: `accepted`, `invalid` or `unknown_from` |
+| `receipts` | array of strings | one status per entry of `receipts`, in order, from step 4: `pass`, `withheld` or `fail`; empty when the stamp proof was refused |
 
 On `unknown_from`, the receiver can ask (§3) with its own `kept`. Like a record push's answer,
 this answer is an acknowledgment: it is not signed, and it is not evidence of what the receiver
@@ -225,18 +238,27 @@ This document adds one kind to SF §6.4's table of what a receiver keeps:
 |---|---|
 | `shelf_checkpoint` | two shelf checkpoints one key signed for one log at one size with different roots: the one held and the other |
 
-As for SF's `checkpoint` kind, it is kept whatever the receiver's bounds, once per log and size.
+As for SF's `checkpoint` kind, it is kept whatever the receiver's bounds, once per key, log id and
+size: two holders may use the same log id.
 
 ### 5.4 What a follow-up shows
 
-A follow-up that passes step 1, with a receipt that passes in step 3 and, when the receiver kept
-an earlier shelf checkpoint from the holder, a consistency proof `accepted` in step 2, shows the
+A follow-up whose stamp proof passes step 1 and with a receipt that passes in step 4 shows the
 receiver that the holder's shelf log carried the book's fact under a shelf checkpoint that a
-witness registered, at the time the receipt gives, and that this shelf log extends the one the
-receiver relied on before. Whether that witness is one the book's agreement names, and what that
-does to a row's status or a card, is the receiver's profile's (DP §4.3, §7.2, §8.1). Beside the
-answer, a receiver's profile learns which matters gained a receipt with a registration time, as
-it learns which gained coverage (SF §6.5, "What the receiver learns"); this document puts that in
+witness registered, and, when that receipt's `registration_time` is not `null`, when the witness
+registered it. A receipt that passes with a `null` time shows registration and gives no time.
+
+The target **extends** a shelf checkpoint the receiver relies on only when step 3 accepted a
+consistency proof from that checkpoint to the target, or from a checkpoint that, through a chain
+of consistency proofs the receiver accepted, extends the one it relies on. A held checkpoint is
+not, by being held, one the target extends: a stamp proof whose shelf checkpoint failed
+consistency is still held (step 1). A receiver that relies on an earlier checkpoint names it in
+its ask's `kept`.
+
+Whether a witness is one the book's agreement names, and what that does to a row's status or a
+card, is the receiver's profile's (DP §4.3, §7.2, §8.1). Beside the answer, a receiver's profile
+learns which matters gained a receipt with a registration time that is not `null`, as it learns
+which gained coverage (SF §6.5, "What the receiver learns"); this document puts that in
 no answer.
 
 ## 6. Carriage
@@ -312,7 +334,7 @@ A party that serves the ask and the follow-up over MCP MUST list one tool, as RP
 ```
 
 The schema leaves a receipt's members to WIT, which finds a malformed receipt `fail` rather than
-refusing the message (§5.1 step 3), and leaves `proof`'s members to §5.1 step 2.4, which makes a
+refusing the message (§5.1 step 4), and leaves `proof`'s members to §5.1 step 3.3, which makes a
 malformed proof `invalid`.
 
 Its `outputSchema`:
@@ -358,7 +380,9 @@ or whose `stamp_proof` does not strictly decode to at least one octet, gets the 
 
 A party that serves them over A2A MUST list one `AgentExtension`, as RP §4.1 does, with `uri`
 exactly `https://datatracker.ietf.org/doc/draft-mih-agent-witnessed-checkpoint/`, fixed
-`description` text, `required` `false` and no `params`. The message and the reply follow RP §4.2
+`description` text, `required` `false` and no `params`. As in RP §4.1, the URI names the
+datatracker page of the Internet-Draft meant to carry this document; it is an identifier and does
+not resolve until that draft is posted. The message and the reply follow RP §4.2
 and §4.3 with that URI: one `data` part holding the message object, and a completed `Task` with
 one Artifact, carrying that URI, whose one `data` part holds the answer object. A message whose
 `data` value does not satisfy the input schema of §6.1 carries no message object and gets the
@@ -385,7 +409,8 @@ is answered `{"ask": {}}` in `structuredContent`. The seller then calls the buye
     "receipt_b64": "<the COSE receipt, standard base64>", "leaf_index": 41, "tree_size": 42}],
   "consistency": {"kind": "cll-mmr-consistency", "from": "<9f1c…, 64 hex>",
     "proof": {"v": 1, "kind": "consistency", "old_size": 25, "new_size": 41,
-      "old_peaks": ["<64 hex>", "<64 hex>", "<64 hex>"], "witness": [["<64 hex>"], [], []],
+      "old_peaks": ["<64 hex>", "<64 hex>", "<64 hex>"], "witness": [["<64 hex>"], ["<64 hex>", "<64 hex>"],
+        ["<64 hex>", "<64 hex>", "<64 hex>"]],
       "new_peaks": ["<64 hex>", "<64 hex>", "<64 hex>"]}}}}
 ```
 
@@ -397,7 +422,8 @@ and a buyer that already held the stamp proof, holds a directory row for that wi
   "stamp_proof": {"accepted": false, "duplicate": true, "refused": ""}}}
 ```
 
-The sizes and hashes above are placeholders, not a proof that verifies.
+The sizes and the shape of `witness` are consistent (14 leaves to 22); the hashes are
+placeholders, not a proof that verifies.
 
 ## 7. Security and privacy considerations
 
@@ -410,8 +436,10 @@ The sizes and hashes above are placeholders, not a proof that verifies.
   not already show. A follow-up carries a status opening (§4.2 step 1), so a holder MUST NOT send
   one to anyone but the other side of the book.
 - **A forked shelf log.** A holder that shows the other side two shelf checkpoints of one size
-  with different roots leaves evidence of it (§5.3). A consistency proof that fails to verify is
-  refused and leaves none, since anyone could send one (§5.1 step 2.4).
+  with different roots leaves evidence of it once either arrives in a follow-up (§5.1 step 2,
+  §5.3); a receiver checks a stamp proof pushed alone by SF §6.3, which compares book checkpoints
+  only. A consistency proof that fails to verify is
+  refused and leaves none, since anyone could send one (§5.1 step 3.3).
 - **Receipts are checked, not trusted.** A receipt counts only under the receiver's own witness
   directory (WIT); one from a witness the receiver has no row for is `withheld`, never `pass`.
   The answer's per-receipt statuses (§5.2) tell the holder which of its witnesses the receiver's
@@ -428,5 +456,5 @@ only once vectors exist.
 
 | # | Point |
 |---|---|
-| WC-1 | Conformance vectors: a follow-up with each outcome of §5.1 (each refusal of the stamp proof; `unknown_from`; a held checkpoint of another log or key, or a larger size; one size with equal and with different roots, the second keeping `shelf_checkpoint` evidence; a proof of the wrong sizes, of a malformed hash, and one that does not verify; receipts that pass, are withheld, fail and are malformed), and the carriage edge cases of §6 (neither member, both members, an unknown member). They are to land with EBL's first implementation (DP §11.1, PR 1), generated there and adopted in this repository's `vectors/`, as SF-8 does for SF. |
-| WC-2 | Binding the shelf checkpoint to the holder's shelf log (SF-5). §5.1 step 2 binds each later shelf checkpoint to the log of one the receiver already holds, but the first one a receiver holds is still bound to the holder only by its key (SF §5.3 step 3). |
+| WC-1 | Conformance vectors: a follow-up with each outcome of §5.1 (each refusal of the stamp proof; a target of the size of a held checkpoint with a different root, with and without `consistency`, keeping `shelf_checkpoint` evidence; `unknown_from`; a held checkpoint of another log or key, or of a size not below the target's; a proof of the wrong sizes, of a malformed hash, and one that does not verify; receipts that pass, are withheld, fail and are malformed), and the carriage edge cases of §6 (neither member, both members, an unknown member). They are to land in this repository's `vectors/` with the first implementation, which can cross-check them, as SF-8 does for SF. |
+| WC-2 | Binding the shelf checkpoint to the holder's shelf log (SF-5). §5.1 step 3 binds each later shelf checkpoint to the log of one the receiver already holds, but the first one a receiver holds is still bound to the holder only by its key (SF §5.3 step 3). |
