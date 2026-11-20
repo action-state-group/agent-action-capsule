@@ -1065,12 +1065,13 @@ registration; it MUST NOT say the card was registered.
 
 - **Existence, not uniqueness.** A passing statement shows the card existed by a time. A holder that
   registers two cards for one anchor, or shows each of two requesters a different card with its own
-  Receipt, is not caught by `card_registered`; only comparing the cards themselves catches it, as
-  `caller_invariance` does (§13 "What it shows"). A check that a service carries one card per holder
-  and anchor is SH-18.
+  Receipt, is not caught by `card_registered`; today only comparing the cards themselves catches it,
+  as `caller_invariance` does (§13 "What it shows"). A check that a service carries one card per
+  holder and anchor is SH-18.
 - **What the service learns.** `iss` and `sub` are in the protected header, so the service, and
   anyone who reads its log, learns which holder key registered a card for which anchor, when, and
-  how many statements that key registered for each anchor. The statement carries the card's
+  how many statements that key registered for each anchor. The log is append-only: a holder cannot
+  withdraw a registration, or the link it makes between its key and the anchor. The statement carries the card's
   digest, not the card. A digest does not hide a card from a party that can guess it: a party that holds the
   anchor, the policy digest and `since` can test guesses of the counts against it, because the
   counts of a small card are few. A holder registers knowing that, and registers only on a service
