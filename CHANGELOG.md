@@ -272,7 +272,7 @@ The changes, from the changelog fragments folded in this release:
   in `vectors/standard-history-v0/vectors-4.json`.
 - Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
   `standard_history/4` cards (`DERIVATION_4`; `Derivation4`).
-- Python: the module constant `standard_history.ENTRY_MEMBERS_3` is removed. Use
+- **Removed** (Python): the module constant `standard_history.ENTRY_MEMBERS_3`. Use
   `ENTRY_MEMBERS[DERIVATION_3]`, which holds the same members; `ENTRY_MEMBERS[DERIVATION_4]` holds
   the `/4` ones.
 
