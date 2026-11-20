@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in a `ts` tag yet: everything after `ts/v0.14.0`. The Go and Python entries up to `go/v0.22.0` and `python/v0.17.0` are also listed under those tags. The Rust crates keep their own
+Not in a `ts` tag yet: everything after `ts/v0.14.0`. The Go and Python entries up to `go/v0.23.0` and `python/v0.18.0` are also listed under those tags. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
@@ -238,6 +238,64 @@ has not yet.
   `Deal.LeftOut` and `AsOf.CoverageStartTime`).
 
 - `python/scripts/vendor_cpb_registry.py` now reads a hard-wrapped `**Reference:**` field in the CPB provisional registry in full (continuation lines up to the next label, blank line or heading) instead of only its first line, so a wrapped entry no longer vendors a truncated reference. ([scitt-payload-binding#111](https://github.com/action-state-group/scitt-payload-binding/issues/111))
+
+- Spec: a new derivation token `standard_history/4` (`spec/standard-history-v0.md` §12, #634),
+  beside `standard_history/1` to `/3`, which are unchanged in every member, rule, document and
+  vector. A `/4` card is a `/3` card that leaves no deal out for want of a witness time: a started
+  deal whose records hold no time from a witness its agreement names, or whose agreement names
+  none, is counted and disclosed in `local_times`, whatever its rows say. Its deal entry has
+  `no_witness_time` in place of `left_out`, and its card no `not_counted` tally, since only shop
+  purchases paid up front are not counted. SH-12 and
+  SH-13 say how `/3` and `/4` differ. Its counting table and wording pack are in
+  `spec/history-frame/` (History frame §6.1), its row in `spec/REGISTRY.md` §16, and its 8 vectors
+  in `vectors/standard-history-v0/vectors-4.json`.
+- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
+  `standard_history/4` cards (`DERIVATION_4`; `Derivation4`).
+
+## python 0.18.0 — 2026-11-20
+
+Tag `python/v0.18.0`. The pull requests that changed `python/` since `python/v0.17.0`:
+
+- feat(spec): standard_history/4 counts a deal with no witnessed time (#634) (#636)
+
+The changes, from the changelog fragments folded in this release:
+
+- Spec: a new derivation token `standard_history/4` (`spec/standard-history-v0.md` §12, #634),
+  beside `standard_history/1` to `/3`, which are unchanged in every member, rule, document and
+  vector. A `/4` card is a `/3` card that leaves no deal out for want of a witness time: a started
+  deal whose records hold no time from a witness its agreement names, or whose agreement names
+  none, is counted and disclosed in `local_times`, whatever its rows say. Its deal entry has
+  `no_witness_time` in place of `left_out`, and its card no `not_counted` tally, since only shop
+  purchases paid up front are not counted. SH-12 and
+  SH-13 say how `/3` and `/4` differ. Its counting table and wording pack are in
+  `spec/history-frame/` (History frame §6.1), its row in `spec/REGISTRY.md` §16, and its 8 vectors
+  in `vectors/standard-history-v0/vectors-4.json`.
+- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
+  `standard_history/4` cards (`DERIVATION_4`; `Derivation4`).
+- **Removed** (Python): the module constant `standard_history.ENTRY_MEMBERS_3`. Use
+  `ENTRY_MEMBERS[DERIVATION_3]`, which holds the same members; `ENTRY_MEMBERS[DERIVATION_4]` holds
+  the `/4` ones.
+
+## go 0.23.0 — 2026-11-20
+
+Tag `go/v0.23.0`. The pull requests that changed `go/` since `go/v0.22.0`:
+
+- feat(spec): standard_history/4 counts a deal with no witnessed time (#634) (#636)
+
+The changes, from the changelog fragments folded in this release:
+
+- Spec: a new derivation token `standard_history/4` (`spec/standard-history-v0.md` §12, #634),
+  beside `standard_history/1` to `/3`, which are unchanged in every member, rule, document and
+  vector. A `/4` card is a `/3` card that leaves no deal out for want of a witness time: a started
+  deal whose records hold no time from a witness its agreement names, or whose agreement names
+  none, is counted and disclosed in `local_times`, whatever its rows say. Its deal entry has
+  `no_witness_time` in place of `left_out`, and its card no `not_counted` tally, since only shop
+  purchases paid up front are not counted. SH-12 and
+  SH-13 say how `/3` and `/4` differ. Its counting table and wording pack are in
+  `spec/history-frame/` (History frame §6.1), its row in `spec/REGISTRY.md` §16, and its 8 vectors
+  in `vectors/standard-history-v0/vectors-4.json`.
+- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
+  `standard_history/4` cards (`DERIVATION_4`; `Derivation4`).
 
 ## python 0.17.0 — 2026-11-17
 
