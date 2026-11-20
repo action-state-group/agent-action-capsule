@@ -144,11 +144,11 @@ the holder's finished stamps at or after the stamp that wrote the book's first f
    directory `key_id` it passed under (EBL keeps only receipts that pass, `shelf_record_time.go`,
    and orders them so, `shelf_handover_tie.go` `receiptsLocked`). An empty array says the holder
    holds no such receipt for the target.
-3. **`consistency`:** from the **base**, a shelf checkpoint of the holder's whose size is below
-   the target's: the one the ask's `kept` names, when it names one of the holder's shelf
-   checkpoints and its size is below the target's; otherwise the newest shelf checkpoint below the
-   target's size that the holder proved to the receiver before. Absent when there is no base, so
-   also when the target is the smallest such checkpoint or `kept` is the target itself.
+3. **`consistency`:** absent when the ask's `kept` names the target itself. Otherwise present
+   from the **base**, a shelf checkpoint of the holder's whose size is below the target's: the
+   one `kept` names, when it names one of the holder's shelf checkpoints and its size is below
+   the target's; otherwise the newest shelf checkpoint below the target's size that the holder
+   proved to the receiver before. Absent when there is no base.
 
 The **eligible** shelf checkpoints for a book are those cut by the holder's finished stamps at or
 after the stamp that wrote the book's first fact. After an ask, the target is the shelf checkpoint
@@ -436,9 +436,10 @@ placeholders, not a proof that verifies.
   not already show. A follow-up carries a status opening (§4.2 step 1), so a holder MUST NOT send
   one to anyone but the other side of the book.
 - **A forked shelf log.** A holder that shows the other side two shelf checkpoints of one size
-  with different roots leaves evidence of it once either arrives in a follow-up (§5.1 step 2,
-  §5.3); a receiver checks a stamp proof pushed alone by SF §6.3, which compares book checkpoints
-  only. A consistency proof that fails to verify is
+  with different roots leaves evidence of it when the later of the two arrives in a follow-up
+  (§5.1 step 2, §5.3). A stamp proof pushed alone is checked by SF §6.3, which compares book
+  checkpoints only, so a conflicting shelf checkpoint that arrives later in a plain push leaves
+  none. A consistency proof that fails to verify is
   refused and leaves none, since anyone could send one (§5.1 step 3.3).
 - **Receipts are checked, not trusted.** A receipt counts only under the receiver's own witness
   directory (WIT); one from a witness the receiver has no row for is `withheld`, never `pass`.
