@@ -78,7 +78,8 @@ with no recorded amount (`Deal.Unpriced`) in `unpriced`, in no value band, or
 (`Deal.Rows`, `Outcome`) in the three outcomes, counts the deals that did
 not hold that the holder remedied or whose ruling it did not honour, and
 carries the shelf log's coverage start
-(`AsOf.CoverageStartTime`).
+(`AsOf.CoverageStartTime`), or `standard_history/4` (section 12), which is
+`/3` with no deal left out for want of a witness time (`Derivation4`).
 All are at parity with the Python reference
 `agent_action_capsule.standard_history`, and all run
 `../vectors/standard-history-v0/`.

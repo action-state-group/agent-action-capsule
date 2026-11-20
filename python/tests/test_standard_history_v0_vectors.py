@@ -9,7 +9,8 @@ Every case runs from its inputs alone through ``agent_action_capsule.standard_hi
   ``derive_card`` rebuilds exactly the case's card from them.
 
 ``vectors.json`` holds the ``standard_history/1`` cases, ``vectors-2.json`` the
-``standard_history/2`` ones and ``vectors-3.json`` the ``standard_history/3`` ones (SH §11); a case's ``inputs.derivation`` names the token it is checked under,
+``standard_history/2`` ones, ``vectors-3.json`` the ``standard_history/3`` ones (SH §11) and
+``vectors-4.json`` the ``standard_history/4`` ones (SH §12); a case's ``inputs.derivation`` names the token it is checked under,
 ``/1`` when absent.
 
 ``go/standardhistory`` runs the same cases. The test regenerates the corpus twice and requires
@@ -37,10 +38,12 @@ HAND_WRITTEN = ("README.md",)
 DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
 DATA_2 = json.loads((VECTORS / "vectors-2.json").read_text(encoding="utf-8"))
 DATA_3 = json.loads((VECTORS / "vectors-3.json").read_text(encoding="utf-8"))
+DATA_4 = json.loads((VECTORS / "vectors-4.json").read_text(encoding="utf-8"))
 CASES = DATA["cases"]
 CASES_2 = DATA_2["cases"]
 CASES_3 = DATA_3["cases"]
-ALL_CASES = CASES + CASES_2 + CASES_3
+CASES_4 = DATA_4["cases"]
+ALL_CASES = CASES + CASES_2 + CASES_3 + CASES_4
 
 
 def _check(c: dict) -> dict:
@@ -63,13 +66,14 @@ def _derive(c: dict) -> dict:
 
 
 def test_corpus_header() -> None:
-    for data in (DATA, DATA_2, DATA_3):
+    for data in (DATA, DATA_2, DATA_3, DATA_4):
         assert data["spec"] == "spec/standard-history-v0.md"
         assert tuple(data["properties"]) == sh.PROPERTIES
         assert data["count"] == len(data["cases"])
     assert DATA_2["derivation"] == sh.DERIVATION_2
     assert DATA_3["derivation"] == sh.DERIVATION_3
-    assert all(c["inputs"]["derivation"] in sh.DERIVATIONS for c in CASES_2 + CASES_3)
+    assert DATA_4["derivation"] == sh.DERIVATION_4
+    assert all(c["inputs"]["derivation"] in sh.DERIVATIONS for c in CASES_2 + CASES_3 + CASES_4)
     assert not any("derivation" in c["inputs"] for c in CASES)
     spec = (ROOT / DATA["spec"]).read_text(encoding="utf-8")
     for prop in sh.PROPERTIES:
@@ -127,6 +131,42 @@ def test_every_negative_named_for_v3_is_present() -> None:
     for cid in ("outcomes-from-rows", "quiet-deals-later-anchor"):
         c = next(c for c in CASES_3 if c["id"] == cid)
         assert c["expected"]["standard"] and _derivable(c), cid
+
+
+def test_every_case_named_for_v4_is_present() -> None:
+    """SH §12 "Vectors": the /4 cases, each negative failing the property named."""
+    fails = {c["id"]: c["expected"]["fails"] for c in CASES_4}
+    for cid in ("no-witness-time-left-out", "silent-deal-not-local"):
+        assert fails[cid] == ["counts_recompute"], cid
+    for cid in ("not-counted-member", "v3-card-for-v4-request", "v4-card-for-v3-request"):
+        assert fails[cid] == ["card_form"], cid
+    c = next(c for c in CASES_4 if c["id"] == "no-witness-time-counted")
+    assert c["expected"]["standard"] and _derivable(c)
+    # SH §12: every deal without a witness time carries no_witness_time; the silent one has no local row.
+    flagged = {d["deal"]: d for d in c["inputs"]["deals"] if d.get("no_witness_time")}
+    assert set(flagged) == {"deal-311", "deal-315", "deal-316"}
+    assert not any(r.get("local") for r in flagged["deal-316"]["rows"])
+    assert not any("left_out" in d for d in c["inputs"]["deals"])
+
+
+@pytest.mark.parametrize("change", [{"left_out": "no_witness_time"}, {"no_witness_time": False},
+                                    {"no_witness_time": "true"}])
+def test_malformed_v4_deal_entry_raises(change: dict) -> None:
+    """SH §12: a /4 deal entry has no left_out, and no_witness_time only as true."""
+    c = next(c for c in CASES_4 if c["id"] == "no-witness-time-counted")
+    deals = json.loads(json.dumps(c["inputs"]["deals"]))
+    deals[0].update(change)
+    with pytest.raises(ValueError):
+        _check({**c, "inputs": {**c["inputs"], "deals": deals}})
+
+
+def test_v3_refuses_no_witness_time() -> None:
+    """SH §11.2: no_witness_time is a /4 member only."""
+    c = next(c for c in CASES_3 if c["id"] == "outcomes-from-rows")
+    deals = json.loads(json.dumps(c["inputs"]["deals"]))
+    deals[0]["no_witness_time"] = True
+    with pytest.raises(ValueError):
+        _check({**c, "inputs": {**c["inputs"], "deals": deals}})
 
 
 def test_v3_outcomes_cover_every_row_result() -> None:
@@ -262,7 +302,7 @@ def test_v2_amount_present_must_be_an_amount(amount) -> None:
 
 def test_unknown_token_raises() -> None:
     with pytest.raises(ValueError):
-        sh.check_card(CASES[0]["inputs"]["card"], derivation="standard_history/4")
+        sh.check_card(CASES[0]["inputs"]["card"], derivation="standard_history/5")
 
 
 def test_counts_integral_reads_the_value() -> None:
@@ -413,6 +453,19 @@ def _counting_left_out_first(deals, window, anchor_time, derivation=sh.DERIVATIO
     return t
 
 
+def _v4_leaves_out_untimed(deals, window, anchor_time, derivation=sh.DERIVATION):
+    """Counts a /4 deal with no witnessed time as /3 counts a deal left out (SH §12 counts it)."""
+    if derivation == sh.DERIVATION_4:
+        deals = [d for d in deals if not d.get("no_witness_time")]
+    return _REAL_COUNTS(deals, window, anchor_time, derivation)
+
+
+def _v4_local_rows_only(deals, window, anchor_time, derivation=sh.DERIVATION):
+    """Counts local_times from the rows alone, ignoring no_witness_time (SH §12)."""
+    return _REAL_COUNTS([{k: v for k, v in d.items() if k != "no_witness_time"} for d in deals], window,
+                        anchor_time, derivation)
+
+
 def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
     real_in_window, real_window_start, real_decade = sh._in_window, sh._window_start, sh._decade
     mutants = {
@@ -442,6 +495,9 @@ def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
         "takes left_out before shop_preauth": ("_counts", _counting_left_out_first),
         "lets a /3 card leave out coverage_start": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_3:
                                                                 sh.MEMBERS[sh.DERIVATION_3] - {"coverage_start"}}),
+        "leaves out a /4 deal without a witness time": ("_counts", _v4_leaves_out_untimed),
+        "counts local_times from the rows alone": ("_counts", _v4_local_rows_only),
+        "lets a /4 card carry not_counted": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_4: sh.MEMBERS[sh.DERIVATION_3]}),
     }
     agreeing = [desc for desc, (name, value) in mutants.items()
                 if not _mutant_disagrees(monkeypatch, name, value)]

@@ -128,11 +128,11 @@ its 11 `record_signatures`.
 | `vectors/controller-binding-v0/` | `spec/controller-binding-v0.md` | verify | 42 |
 | `vectors/personal-history-basic-v0/` | `spec/personal-agent-history-profile-v0.md` §6.4 (Basic) | respond, verify | 23 |
 | `vectors/personal-history-outcome-v0/` | `spec/personal-agent-history-outcome-v0.md` (Outcome) | respond, evaluate | 29 |
-| `vectors/standard-history-v0/` | `spec/standard-history-v0.md` (`standard_history/1`, `standard_history/2`, `standard_history/3`) | evaluate, report | 69 |
+| `vectors/standard-history-v0/` | `spec/standard-history-v0.md` (`standard_history/1` to `standard_history/4`) | evaluate, report | 77 |
 | `vectors/inference-service-history-v0/` | `spec/inference-service-history-profile-v0.md` | respond, verify | 27 |
 | `vectors/inference-service-history-v0-interop-v1/` | `spec/inference-service-history-profile-v0.md` over `evidence-interop/1` | respond, verify | 28 |
 | `vectors/inference-service-history-verdicts-v0/` | `spec/inference-service-history-profile-v0.md` §5.3 (the `verdict_counts` member) | respond, verify | 15 |
-| `vectors/history-frame-v0/` | `spec/history-frame-v0.md` (the instances' counting tables and wording packs) | evaluate | 11 |
+| `vectors/history-frame-v0/` | `spec/history-frame-v0.md` (the instances' counting tables and wording packs) | evaluate | 12 |
 
 ## Evaluate, judge and report
 
