@@ -24,7 +24,7 @@ fn corpus() -> Value {
 fn card_registration_vectors() {
     let corpus = corpus();
     let cases = corpus["cases"].as_array().expect("cases");
-    assert_eq!(cases.len(), 36);
+    assert_eq!(cases.len(), 49);
     for case in cases {
         let policy = match &case["policy"] {
             Value::String(name) => &corpus["policies"][name.as_str()],

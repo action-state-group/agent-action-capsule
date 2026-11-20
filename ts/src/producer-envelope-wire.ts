@@ -34,6 +34,14 @@ function head(major: number, length: number): Uint8Array {
   if (length < 256) return Uint8Array.of((major << 5) | 24, length);
   if (length < 65536)
     return Uint8Array.of((major << 5) | 25, length >>> 8, length & 255);
+  if (length <= 0xffffffff)
+    return Uint8Array.of(
+      (major << 5) | 26,
+      length >>> 24,
+      (length >>> 16) & 255,
+      (length >>> 8) & 255,
+      length & 255,
+    );
   throw new RangeError("CBOR value too large");
 }
 

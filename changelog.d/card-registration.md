@@ -5,7 +5,7 @@
   when a Receipt by a service the relying party lists covers it. It shows that the card existed by
   that time and nothing else: `anchor_inclusion` stays `NOT_CHECKED` (IP P-13 stays open for
   cards), it does not show that the holder registered no other card (SH-18), and it does not
-  check the counts. Opt-in; no card, token, counting table or wording pack changes. 36 vectors in
+  check the counts. Opt-in; no card, token, counting table or wording pack changes. 49 vectors in
   `vectors/card-registration-v0/`.
 - Python, Go and TypeScript: `check_card_registered` and `check_card_statement` (Go `CheckCardRegistered`, TypeScript `checkCardRegistered`) in the
   witness modules run those vectors.

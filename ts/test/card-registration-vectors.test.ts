@@ -65,8 +65,8 @@ describe("card-registration-v0 vectors", () => {
     expect(report).toEqual(c.expected);
   });
 
-  it("has 36 cases and covers every status", () => {
-    expect(corpus.cases).toHaveLength(36);
+  it("has 49 cases and covers every status", () => {
+    expect(corpus.cases).toHaveLength(49);
     expect(new Set(corpus.cases.map((c) => c.expected.status))).toEqual(
       new Set(["PASS", "FAIL", "NOT_CHECKED", "NOT_PRESENT"]),
     );

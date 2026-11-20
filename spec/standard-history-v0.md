@@ -948,8 +948,9 @@ table, wording pack or vector of §1 to §12.
 
 **What it shows.** A card statement with a passing Receipt (below) shows that the holder key stated
 exactly these card bytes no later than the Receipt's registration time, and that a transparency
-service the relying party accepts entered that statement in its log. It shows existence at a time,
-and nothing else:
+service the relying party accepts entered that statement in its log. A passing Receipt with no
+registration time shows only that the service logged the statement, not by when. It shows
+existence at a time, and nothing else:
 
 - it does not show that the counts are right: that is `counts_recompute` (§6);
 - it does not show that the card is under the anchor. `anchor_inclusion` checks the artifact
@@ -1054,7 +1055,9 @@ A verifier that got `card_registered` `PASS` for a standard card MAY say that th
 this card with the service named, as the relying party's policy names it, at the registration time,
 or with no time when the passing Receipt has none. It MUST NOT say or imply that the service checked,
 saw or confirmed the counts, the deals or the anchor, or that this is the holder's only card. It
-shows `anchor_inclusion` `NOT_CHECKED` as for any card (§6). With a `card_registered` other than
+shows `anchor_inclusion` `NOT_CHECKED` as for any card (§6). Registration is not a level of §11.8
+"The level reached": it never makes a card witnessed, never changes "unwitnessed" or "checked for
+its form only", and is shown beside the level reached, not as part of it. With a `card_registered` other than
 `PASS`, it MAY say that a card statement came with the card and did not pass, or say nothing about
 registration; it MUST NOT say the card was registered.
 
@@ -1065,9 +1068,10 @@ registration; it MUST NOT say the card was registered.
   Receipt, is not caught by `card_registered`; only comparing the cards themselves catches it, as
   `caller_invariance` does (§13 "What it shows"). A check that a service carries one card per holder
   and anchor is SH-18.
-- **What the service learns.** Registering tells the service, and anyone who reads its log, that the
-  holder key stated something at the registration time. The statement carries the card's digest,
-  not the card. A digest does not hide a card from a party that can guess it: a party that holds the
+- **What the service learns.** `iss` and `sub` are in the protected header, so the service, and
+  anyone who reads its log, learns which holder key registered a card for which anchor, when, and
+  how many statements that key registered for each anchor. The statement carries the card's
+  digest, not the card. A digest does not hide a card from a party that can guess it: a party that holds the
   anchor, the policy digest and `since` can test guesses of the counts against it, because the
   counts of a small card are few. A holder registers knowing that, and registers only on a service
   whose published policy it accepts.
@@ -1080,11 +1084,14 @@ registration; it MUST NOT say the card was registered.
 `vectors/card-registration-v0/` holds card statements beside a card of
 `vectors/standard-history-v0/` and the expected `card_registered` report. Positive: a statement
 with an EdDSA Receipt with and without a registration time, with an ES256 Receipt, with a passing
-Receipt after a failing one, with two passing Receipts, and a passing statement beside a failing
-one. `NOT_PRESENT` and `NOT_CHECKED`: no statement, and a transparency policy that lists no key of
-the Receipt's type. Negative (MUST reject, `FAIL`): a statement over another card, a statement
+Receipt after a failing one, with two passing Receipts, with a protected header over 64 KiB, and
+a passing statement beside a failing one. `NOT_PRESENT` and `NOT_CHECKED`: no statement, and a transparency policy that lists no key of
+the Receipt's type. Aggregation: a statement not checked beside a passing one and beside a failing
+one, and a statement with one Receipt not checked and one failing. Negative (MUST reject, `FAIL`): a statement over another card, a statement
 signed by another key, an `iss` of another key, a `sub` of another anchor, a tampered statement
 signature, a Receipt over the card digest instead of the statement entry, a Receipt by an unlisted
-service, and departures from the one form: an untagged COSE_Sign1, `alg` ES256, a `crit`, a
+service, and departures from the one form: an untagged COSE_Sign1, another tag, a 63-octet
+signature, a text `kid`, an integer content type, CWT_Claims that is not a map, a byte-string `iss`
+or `sub`, a Receipt that is not a byte string, `alg` ES256, a `crit`, a
 `payload_hash_alg`, no CWT_Claims, no `iss` or no `sub`, a payload that is not 32 octets, a
 detached payload, an unprotected label besides `receipts`, no Receipt and 17 Receipts.

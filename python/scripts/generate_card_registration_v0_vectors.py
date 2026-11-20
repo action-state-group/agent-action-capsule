@@ -10,7 +10,8 @@ Sig_structure) as its leaf entry. Each case gives the card octets, the holder ke
 beside the card in the order received, a transparency policy and the ``card_registered`` report
 §13.3 gives.
 
-Every expected value is written here by hand from §13. The CBOR encoder, the RFC 9162 tree and
+Every per-statement expected result is written here by hand from §13; the card-level status,
+service and time are derived from those results by §13.3's aggregation rule in ``case()``. The CBOR encoder, the RFC 9162 tree and
 the P-256 signer are those of ``generate_anchor_witness_v1_vectors.py``, a generator too; this
 script imports no repository implementation. Keys are test keys derived from public labels, and
 the output is deterministic.
@@ -102,8 +103,7 @@ def statement_parts(*, headers: dict | None = None, payload: Any = CARD_DIGEST,
                     key: Ed25519PrivateKey = HOLDER, protected_raw: bytes | None = None) -> tuple[bytes, bytes, bytes]:
     """``(protected octets, payload, signature)``; the signature is over the Sig_structure."""
     prot = protected_raw if protected_raw is not None else cbor(protected() if headers is None else headers)
-    signed_payload = payload if isinstance(payload, bytes) else b""
-    return prot, payload, key.sign(sig_structure(prot, signed_payload))
+    return prot, payload, key.sign(sig_structure(prot, payload))
 
 
 def entry_of(prot: bytes, payload: bytes) -> bytes:
@@ -181,8 +181,7 @@ def case(name: str, description: str, statements: list[bytes], results: list[dic
     }
 
 
-def with_headers(headers: dict, receipts_for_entry: bool = True, payload: bytes = CARD_DIGEST,
-                 key: Ed25519PrivateKey = HOLDER) -> bytes:
+def with_headers(headers: dict, payload: bytes = CARD_DIGEST, key: Ed25519PrivateKey = HOLDER) -> bytes:
     """A statement under ``headers``, signed, with one passing-form Receipt over its own entry."""
     parts = statement_parts(headers=headers, payload=payload, key=key)
     entry = entry_of(parts[0], parts[1])
@@ -218,6 +217,13 @@ def cases() -> list[dict]:
              [passed("service-a", T1)]),
         case("pass-private-label", "a private-use protected label (below -65536)",
              [with_headers({1: -8, 15: {1: HOLDER_ID, 2: ANCHOR_HEX}, -65537: "x"})], [passed("service-a", T1)]),
+        case("pass-large-protected", "a private-use value of 65,536 octets: a protected header over 64 KiB",
+             [with_headers({1: -8, 15: {1: HOLDER_ID, 2: ANCHOR_HEX}, -65537: b"\x00" * 65536})],
+             [passed("service-a", T1)]),
+        case("large-bad-signature-beside-pass", "a large statement whose signature fails, then a passing one",
+             [statement([a1], parts=(cbor({1: -8, 15: {1: HOLDER_ID, 2: ANCHOR_HEX}, -65537: b"\x00" * 65536}),
+                                     CARD_DIGEST, GOOD_PARTS[2])), statement([a2])],
+             [status("FAIL"), passed("service-a", T2)]),
         case("pass-beside-fail", "a failing statement takes nothing from a passing one",
              [other_card_stmt, statement([a2])], [status("FAIL"), passed("service-a", T2)]),
         case("two-statements-earliest", "two passing statements: the earlier time and its service",
@@ -228,6 +234,12 @@ def cases() -> list[dict]:
              policy={"witnesses": []}),
         case("es256-no-p256-key", "an ES256 Receipt and a policy with Ed25519 keys only", [statement([b1])],
              [status("NOT_CHECKED")], policy=ED25519_ONLY),
+        case("not-checked-beside-pass", "a statement not checked beside a passing one: PASS",
+             [statement([b1]), good], [status("NOT_CHECKED"), passed("service-a", T1)], policy=ED25519_ONLY),
+        case("not-checked-beside-fail", "a statement not checked beside a failing one: FAIL",
+             [statement([b1]), other_card_stmt], [status("NOT_CHECKED"), status("FAIL")], policy=ED25519_ONLY),
+        case("receipt-not-checked-and-failing", "one Receipt not checked and one failing in a statement: FAIL (step 5)",
+             [statement([b1, tampered(a1)])], [status("FAIL")], policy=ED25519_ONLY),
         # FAIL: about another card, by another key, or not by an accepted service (steps 2 to 5)
         case("other-card", "a statement over another card's digest", [other_card_stmt], [status("FAIL")]),
         case("card-changed", "the card octets beside the statement are another card's", [good],
@@ -246,6 +258,20 @@ def cases() -> list[dict]:
              [status("FAIL")]),
         # FAIL: not of the form (step 1)
         case("untagged", "a COSE_Sign1 without tag 18", [statement([a1], tag=None)], [status("FAIL")]),
+        case("tag-17", "an outer tag 17 in place of 18", [statement([a1], tag=17)], [status("FAIL")]),
+        case("signature-63", "a signature of 63 octets", [statement([a1], signature=b"\x00" * 63)], [status("FAIL")]),
+        case("kid-text", "a kid that is text", [with_headers({1: -8, 4: "holder", 15: {1: HOLDER_ID, 2: ANCHOR_HEX}})],
+             [status("FAIL")]),
+        case("content-type-int", "a content type that is an integer",
+             [with_headers({1: -8, 3: 50, 15: {1: HOLDER_ID, 2: ANCHOR_HEX}})], [status("FAIL")]),
+        case("cwt-not-map", "CWT_Claims that is not a map", [with_headers({1: -8, 15: [HOLDER_ID, ANCHOR_HEX]})],
+             [status("FAIL")]),
+        case("iss-bytes", "an iss that is a byte string",
+             [with_headers({1: -8, 15: {1: bytes.fromhex(HOLDER_ID), 2: ANCHOR_HEX}})], [status("FAIL")]),
+        case("sub-bytes", "a sub that is a byte string",
+             [with_headers({1: -8, 15: {1: HOLDER_ID, 2: bytes.fromhex(ANCHOR_HEX)}})], [status("FAIL")]),
+        case("receipt-not-bytes", "a receipts element that is not a byte string",
+             [statement(unprotected={394: [a1, 5]})], [status("FAIL")]),
         case("alg-es256", "alg ES256: a card statement is EdDSA under the holder key",
              [with_headers({1: -7, 15: {1: HOLDER_ID, 2: ANCHOR_HEX}})], [status("FAIL")]),
         case("crit-present", "a crit label", [with_headers({1: -8, 2: [1], 15: {1: HOLDER_ID, 2: ANCHOR_HEX}})],

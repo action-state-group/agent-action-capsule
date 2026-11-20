@@ -7,7 +7,8 @@ Statement under the holder key over the SHA-256 of the card octets, with RFC 994
 ## Derivation
 
 `python/scripts/generate_card_registration_v0_vectors.py` builds every statement and Receipt and
-writes every expected report by hand from §13. It reuses the CBOR encoder, RFC 9162 tree and P-256
+writes every per-statement result by hand from §13; the card-level status, service and time
+are derived from those results by §13.3's aggregation rule. It reuses the CBOR encoder, RFC 9162 tree and P-256
 signer of `generate_anchor_witness_v1_vectors.py` and imports no implementation. The card is
 `person-3-months` of `vectors/standard-history-v0/vectors.json`, as JCS octets. Keys are test keys
 derived from public labels, so the directory regenerates byte for byte.
@@ -32,16 +33,20 @@ Times are NumericDates. A consumer compares the whole `expected` object.
 
 Positive: one statement with an EdDSA Receipt with and without a registration time, with an ES256
 Receipt, a failing Receipt before a passing one, two passing Receipts (the earlier time with its
-service), a `kid`, a content type and another CWT claim, a private-use label, a passing statement
-beside a failing one, and two passing statements.
+service), a `kid`, a content type and another CWT claim, a private-use label, a protected header over 64 KiB (a
+65,536-octet private-use value), a passing statement beside a failing one (one of them a large
+statement whose signature fails), and two passing statements.
 
 `NOT_PRESENT` and `NOT_CHECKED`: no statement, an empty policy, and an ES256 Receipt under a policy
-with Ed25519 keys only.
+with Ed25519 keys only. Aggregation: a statement not checked beside a passing one (`PASS`) and
+beside a failing one (`FAIL`), and one statement with a Receipt not checked and one failing (`FAIL`).
 
 Negative (MUST reject, `FAIL`): a statement over another card, the card octets changed, a statement
 signed by another key, an `iss` of another key, a `sub` of another anchor, a tampered statement
 signature, a Receipt over the card digest instead of the statement entry, a Receipt by an unlisted
-service, a tampered Receipt, and departures from the one form: an untagged COSE_Sign1, `alg` ES256,
+service, a tampered Receipt, and departures from the one form: an untagged COSE_Sign1, an outer tag 17, a 63-octet signature, a text
+`kid`, an integer content type, CWT_Claims that is not a map, a byte-string `iss` or `sub`, a
+`receipts` element that is not a byte string, `alg` ES256,
 a `crit`, `payload_hash_alg` (258), no CWT_Claims, no `iss`, no `sub`, a 31-octet payload, a
 detached payload, an unprotected label besides `receipts`, an empty `receipts`, no `receipts`, 17
 Receipts, trailing octets and octets that are not CBOR.
