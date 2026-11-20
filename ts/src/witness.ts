@@ -20,9 +20,15 @@ import {
   verifyCoseReceipt,
   type ReceiptVerification,
 } from "./cose-receipt.js";
+import { strictEd25519, verifyEd25519Strict } from "./ed25519-strict.js";
 import { decodeStrictJson, JsonNumber, sha256Hex } from "./json.js";
 import { nestedTooDeep } from "./nesting.js";
-import { concat, hexToBytes } from "./producer-envelope-wire.js";
+import {
+  concat,
+  hexToBytes,
+  producerEnvelopeSigningBytes,
+} from "./producer-envelope-wire.js";
+import { sha256 } from "./sha256.js";
 import { directoryKeyCounts } from "./spki.js";
 
 // The generic COSE Receipt verifier (leaf bytes and a public key), for
@@ -976,22 +982,65 @@ export async function checkAnchorReceipt(
     witness,
     registration_time: time,
   });
-  if (!ANCHOR_DIGEST.test(anchorDigest) || !(receipt instanceof Uint8Array))
-    return report("FAIL");
+  if (!ANCHOR_DIGEST.test(anchorDigest)) return report("FAIL");
+  return await receiptOverEntry(hexToBytes(anchorDigest), receipt, policy);
+}
+
+/**
+ * Steps 1 to 5 of profile v1 §6.2.2 for one Receipt whose leaf entry is
+ * `entry` (32 octets): the anchor digest for `anchor_witnessed`, a card
+ * statement's entry for `card_registered` (standard-history-v0 §13.2). The
+ * passing key's name is reported as `witness`. Never throws.
+ */
+async function receiptOverEntry(
+  entry: Uint8Array,
+  receipt: unknown,
+  policy: unknown,
+): Promise<AnchorReceiptReport> {
+  const report = (
+    status: AnchorReceiptReport["status"],
+    witness: string | null = null,
+    time: number | null = null,
+  ): AnchorReceiptReport => ({
+    status,
+    witness,
+    registration_time: time,
+  });
+  if (!(receipt instanceof Uint8Array)) return report("FAIL");
   const parsed = parseAnchorReceipt(receipt);
   if (parsed === null) return report("FAIL");
   const keys = anchorPolicyKeys(policy).filter(
     ({ type }) => type === parsed.alg,
   );
   if (keys.length === 0) return report("NOT_CHECKED");
-  const leaf = hexToBytes(anchorDigest);
   let unavailable = false;
   for (const { name, spki } of keys) {
-    const result = await verifyCoseReceipt(receipt, leaf, spki);
+    const result = await verifyCoseReceipt(receipt, entry, spki);
     if (result.ok) return report("PASS", name, parsed.time);
     if (result.unavailable) unavailable = true;
   }
   return report(unavailable ? "NOT_CHECKED" : "FAIL");
+}
+
+/**
+ * Profile v1 §6.2.2's choice among passing reports: the earliest
+ * registration time, the first received of equal times, and with no timed
+ * one the first passing one.
+ */
+function earliest<T extends { readonly registration_time: number | null }>(
+  passed: readonly T[],
+): T | undefined {
+  let chosen: T | undefined;
+  for (const r of passed) {
+    if (
+      chosen === undefined ||
+      (r.registration_time !== null &&
+        (chosen.registration_time === null ||
+          r.registration_time < chosen.registration_time))
+    )
+      chosen = r;
+  }
+  return chosen;
 }
 
 /**
@@ -1019,21 +1068,232 @@ export async function checkAnchorWitnessed(
         : statuses.has("FAIL")
           ? "FAIL"
           : "NOT_CHECKED";
-  let chosen: AnchorReceiptReport | undefined;
-  for (const r of reports) {
-    if (r.status !== "PASS") continue;
-    if (
-      chosen === undefined ||
-      (r.registration_time !== null &&
-        (chosen.registration_time === null ||
-          r.registration_time < chosen.registration_time))
-    )
-      chosen = r;
-  }
+  const chosen = earliest(reports.filter((r) => r.status === "PASS"));
   return {
     status,
     receipts: reports,
     witness: chosen?.witness ?? null,
     witnessed_time: chosen?.registration_time ?? null,
+  };
+}
+
+// --- card statements: spec/standard-history-v0.md §13 ----------------------
+
+/**
+ * `card_registered` (standard-history-v0 §13.3): whether a transparency
+ * service the relying party accepts logged the holder's statement of exactly
+ * these card octets, and when. It is not a card property and changes no
+ * envelope property or IP §8 status; it never shows that the counts are
+ * right, that the card is under the anchor, or that it is the holder's only
+ * card.
+ */
+export const CARD_REGISTERED_PROPERTY = "card_registered";
+const CARD_METHOD =
+  "SCITT Transparent Statement over the card digest, RFC 9942 Receipts (standard-history-v0 §13)";
+const RECEIPTS_LABEL = 394n;
+
+/** One card statement's status, and when it passed, its service and its
+ * registration time (a NumericDate, or null when the Receipt has none). */
+export interface CardStatementReport {
+  readonly status: Exclude<AnchorWitnessStatus, "NOT_PRESENT">;
+  readonly service: string | null;
+  readonly registration_time: number | null;
+}
+
+/** `card_registered` over every card statement beside one card. `service`
+ * and `registration_time` always come from the same Receipt. */
+export interface CardRegisteredReport {
+  readonly status: AnchorWitnessStatus;
+  readonly method: string;
+  readonly statements: readonly CardStatementReport[];
+  readonly service: string | null;
+  readonly registration_time: number | null;
+}
+
+interface CardStatement {
+  readonly protectedBytes: Uint8Array;
+  readonly iss: string;
+  readonly sub: string;
+  readonly payload: Uint8Array;
+  readonly signature: Uint8Array;
+  readonly receipts: readonly Uint8Array[];
+}
+
+/** Step 1 of §13.3: a card statement in the one form of §13.1, decoded
+ * under the receipt encoding rule of profile v1 §6.2.2, or null. */
+function parseCardStatement(octets: unknown): CardStatement | null {
+  try {
+    if (
+      !(octets instanceof Uint8Array) ||
+      octets.length === 0 ||
+      octets.length > MAX_ANCHOR_RECEIPT_OCTETS
+    )
+      return null;
+    const outer = decodeReceiptItem(octets, true);
+    if (
+      !(outer instanceof CborTag) ||
+      outer.tag !== 18n ||
+      !Array.isArray(outer.value) ||
+      outer.value.length !== 4
+    )
+      return null;
+    const [protectedBytes, unprotected, payload, signature] =
+      outer.value as readonly CborValue[];
+    if (
+      !(protectedBytes instanceof Uint8Array) ||
+      protectedBytes.length === 0 ||
+      !(payload instanceof Uint8Array) ||
+      payload.length !== 32 ||
+      !(signature instanceof Uint8Array) ||
+      signature.length !== 64
+    )
+      return null;
+    const headers = decodeReceiptItem(protectedBytes, false);
+    if (!(headers instanceof CborMap)) return null;
+    for (const [label, value] of headers.entries) {
+      if (label === 1n) {
+        if (value !== -8n) return null;
+      } else if (label === HDR_CWT_CLAIMS) {
+        if (
+          !(value instanceof CborMap) ||
+          typeof value.get(1n) !== "string" ||
+          typeof value.get(2n) !== "string"
+        )
+          return null;
+      } else if (label === 4n) {
+        if (!(value instanceof Uint8Array)) return null;
+      } else if (label === 3n) {
+        if (typeof value !== "string") return null;
+      } else if (!(typeof label === "bigint" && label < PRIVATE_LABEL))
+        return null;
+    }
+    const claims = headers.get(HDR_CWT_CLAIMS);
+    if (!headers.has(1n) || !(claims instanceof CborMap)) return null;
+    if (
+      !(unprotected instanceof CborMap) ||
+      unprotected.entries.length !== 1 ||
+      unprotected.entries[0]![0] !== RECEIPTS_LABEL
+    )
+      return null;
+    const receipts = unprotected.entries[0]![1];
+    if (
+      !Array.isArray(receipts) ||
+      receipts.length === 0 ||
+      receipts.length > MAX_ANCHOR_PROOFS ||
+      !(receipts as readonly CborValue[]).every((r) => r instanceof Uint8Array)
+    )
+      return null;
+    return {
+      protectedBytes,
+      iss: claims.get(1n) as string,
+      sub: claims.get(2n) as string,
+      payload,
+      signature,
+      receipts: receipts as readonly Uint8Array[],
+    };
+  } catch {
+    return null;
+  }
+}
+
+const bytesEqual = (a: Uint8Array, b: Uint8Array): boolean =>
+  a.length === b.length && a.every((byte, i) => byte === b[i]);
+
+/**
+ * Steps 1 to 5 of standard-history-v0 §13.3 for one card statement beside
+ * `card` (the card octets, hashed and never parsed), under the holder key
+ * identifier `holder` (the envelope's `responder`, 64 lowercase hex), the
+ * anchor `anchor` (the envelope's `anchor.digest`) and the relying party's
+ * transparency `policy` (profile v1 §6.2.2's witness policy form). A runtime
+ * without Ed25519 reports a statement in the form `NOT_CHECKED`. Never throws.
+ */
+export async function checkCardStatement(
+  card: Uint8Array,
+  holder: string,
+  anchor: string,
+  octets: Uint8Array,
+  policy: AnchorWitnessPolicy | unknown,
+): Promise<CardStatementReport> {
+  const report = (
+    status: CardStatementReport["status"],
+    service: string | null = null,
+    time: number | null = null,
+  ): CardStatementReport => ({ status, service, registration_time: time });
+  const statement = parseCardStatement(octets);
+  if (statement === null) return report("FAIL");
+  // Step 2: the statement is about this card, by this key.
+  if (
+    !(card instanceof Uint8Array) ||
+    !bytesEqual(statement.payload, sha256(card))
+  )
+    return report("FAIL");
+  if (statement.iss !== holder || statement.sub !== anchor)
+    return report("FAIL");
+  if (typeof holder !== "string" || !ANCHOR_DIGEST.test(holder))
+    return report("FAIL");
+  // Step 3: strict Ed25519 under the raw holder key.
+  const message = producerEnvelopeSigningBytes(
+    statement.protectedBytes,
+    statement.payload,
+  );
+  const key = hexToBytes(holder);
+  if (!strictEd25519(key, statement.signature)) return report("FAIL");
+  let verified: boolean;
+  try {
+    verified = await verifyEd25519Strict(key, statement.signature, message);
+  } catch {
+    // verifyEd25519Strict throws only when this runtime has no Ed25519.
+    return report("NOT_CHECKED");
+  }
+  if (!verified) return report("FAIL");
+  // Steps 4 and 5: each Receipt over the statement entry E.
+  const entry = sha256(message);
+  const reports: AnchorReceiptReport[] = [];
+  for (const receipt of statement.receipts)
+    reports.push(await receiptOverEntry(entry, receipt, policy));
+  const chosen = earliest(reports.filter((r) => r.status === "PASS"));
+  if (chosen !== undefined)
+    return report("PASS", chosen.witness, chosen.registration_time);
+  return report(
+    reports.some((r) => r.status === "FAIL") ? "FAIL" : "NOT_CHECKED",
+  );
+}
+
+/**
+ * `card_registered` over `statements` (each the octets of one card
+ * statement, in the order received) beside `card`, under the holder key
+ * identifier `holder`, the anchor `anchor` (the envelope's `anchor.digest`)
+ * and the relying party's transparency `policy` (standard-history-v0 §13.3). The card's registration time and service come
+ * from one passing statement, chosen as profile v1 §6.2.2 chooses a witnessed
+ * time. A failing statement takes nothing from a passing one. Never throws.
+ */
+export async function checkCardRegistered(
+  card: Uint8Array,
+  holder: string,
+  anchor: string,
+  statements: readonly Uint8Array[] | null | undefined,
+  policy: AnchorWitnessPolicy | unknown,
+): Promise<CardRegisteredReport> {
+  const reports: CardStatementReport[] = [];
+  for (const octets of statements ?? [])
+    reports.push(
+      await checkCardStatement(card, holder, anchor, octets, policy),
+    );
+  const statuses = new Set(reports.map((r) => r.status));
+  const status: AnchorWitnessStatus =
+    reports.length === 0
+      ? "NOT_PRESENT"
+      : statuses.has("PASS")
+        ? "PASS"
+        : statuses.has("FAIL")
+          ? "FAIL"
+          : "NOT_CHECKED";
+  const chosen = earliest(reports.filter((r) => r.status === "PASS"));
+  return {
+    status,
+    method: CARD_METHOD,
+    statements: reports,
+    service: chosen?.service ?? null,
+    registration_time: chosen?.registration_time ?? null,
   };
 }

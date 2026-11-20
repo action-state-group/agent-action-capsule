@@ -52,6 +52,9 @@ __all__ = [
     "BINDING_CLL",
     "BINDING_REKOR",
     "BINDING_SCRAPI",
+    "CARD_REGISTERED_PROPERTY",
+    "CardRegisteredReport",
+    "CardStatementReport",
     "GRADE_MMR_VERIFIED",
     "GRADE_OBSERVED_ONLY",
     "REGISTRATION_TIME_REASONS",
@@ -59,6 +62,8 @@ __all__ = [
     "binding_of",
     "check_anchor_receipt",
     "check_anchor_witnessed",
+    "check_card_registered",
+    "check_card_statement",
     "checkpoint_digest",
     "endpoint_of",
     "row_for",
@@ -886,6 +891,11 @@ def check_anchor_receipt(anchor_digest: str, octets: bytes, policy: Any) -> Anch
     ``cryptography``; without it a Receipt in the form is ``NOT_CHECKED``."""
     if not isinstance(anchor_digest, str) or not _ANCHOR_DIGEST.fullmatch(anchor_digest):
         return AnchorReceiptReport(_FAIL, detail="the anchor digest is not 64 lowercase hex characters")
+    return _receipt_over_entry(bytes.fromhex(anchor_digest), octets, policy, "witness")
+
+
+def _receipt_over_entry(entry: bytes, octets: Any, policy: Any, role: str) -> AnchorReceiptReport:
+    """Steps 1 to 5 of §6.2.2 for one Receipt whose leaf entry is ``entry`` (32 octets)."""
     try:
         alg, protected, proofs, signature, time = _anchor_parse(octets)
     except _NotTheForm as exc:
@@ -893,8 +903,7 @@ def check_anchor_receipt(anchor_digest: str, octets: bytes, policy: Any) -> Anch
     wanted = "ed25519" if alg == _ALG_EDDSA else "p256"
     keys = [(name, spki) for name, spki in _anchor_policy_keys(policy) if _anchor_key_type(spki) == wanted]
     if not keys:
-        return AnchorReceiptReport(_NOT_CHECKED, detail=f"the witness policy lists no {wanted} key")
-    entry = bytes.fromhex(anchor_digest)
+        return AnchorReceiptReport(_NOT_CHECKED, detail=f"the {role} policy lists no {wanted} key")
     roots = [_anchor_root(entry, index, size, path) for size, index, path in proofs]
     try:
         for name, spki in keys:
@@ -903,7 +912,7 @@ def check_anchor_receipt(anchor_digest: str, octets: bytes, policy: Any) -> Anch
                     return AnchorReceiptReport(_PASS, witness=name, registration_time=time)
     except ImportError:
         return AnchorReceiptReport(_NOT_CHECKED, detail="the cryptography package is not installed")
-    return AnchorReceiptReport(_FAIL, detail="no accepted witness key verifies the Receipt over this anchor")
+    return AnchorReceiptReport(_FAIL, detail=f"no accepted {role} key verifies the Receipt over this entry")
 
 
 def check_anchor_witnessed(anchor_digest: str, receipts: Sequence[bytes] | None, policy: Any) -> AnchorWitnessReport:
@@ -931,4 +940,157 @@ def check_anchor_witnessed(anchor_digest: str, receipts: Sequence[bytes] | None,
         receipts=reports,
         witness=chosen.witness if chosen else None,
         witnessed_time=chosen.registration_time if chosen else None,
+    )
+
+
+# --- card statements: spec/standard-history-v0.md §13 ----------------------------------------
+
+CARD_REGISTERED_PROPERTY = "card_registered"
+_CARD_METHOD = "SCITT Transparent Statement over the card digest, RFC 9942 Receipts (standard-history-v0 §13)"
+_RECEIPTS_LABEL = 394
+
+
+@dataclass(frozen=True)
+class CardStatementReport:
+    """One card statement's status, and when it passed, its service and registration time."""
+
+    status: str
+    service: str | None = None
+    registration_time: int | None = None
+    detail: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"status": self.status, "service": self.service, "registration_time": self.registration_time}
+
+
+@dataclass(frozen=True)
+class CardRegisteredReport:
+    """``card_registered`` over every card statement beside one card (§13.3). ``service`` and
+    ``registration_time`` always come from the same Receipt."""
+
+    status: str
+    method: str
+    statements: tuple[CardStatementReport, ...]
+    service: str | None
+    registration_time: int | None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "property": CARD_REGISTERED_PROPERTY,
+            "status": self.status,
+            "statements": [r.to_dict() for r in self.statements],
+            "service": self.service,
+            "registration_time": self.registration_time,
+        }
+
+
+def _card_statement_parse(octets: Any) -> tuple[bytes, dict, bytes, bytes, list[bytes]]:
+    """Step 1 of §13.3: ``(protected, headers, payload, signature, receipts)`` of a card statement
+    in the one form of §13.1, or :class:`_NotTheForm`."""
+    from .interop_profile._cbor import Tag
+
+    if not isinstance(octets, (bytes, bytearray)) or not 0 < len(octets) <= _MAX_RECEIPT_OCTETS:
+        raise _NotTheForm("not 1 to 10,485,760 octets")
+    outer = _strict(bytes(octets), top_tag=True)
+    if not isinstance(outer, Tag) or outer.number != 18 or not isinstance(outer.value, list) \
+            or len(outer.value) != 4:
+        raise _NotTheForm("not a tag-18 COSE_Sign1")
+    protected, unprotected, payload, signature = outer.value
+    if not isinstance(protected, bytes) or not protected:
+        raise _NotTheForm("no protected header")
+    if not isinstance(payload, bytes) or len(payload) != 32:
+        raise _NotTheForm("the payload is not 32 attached octets")
+    if not isinstance(signature, bytes) or len(signature) != 64:
+        raise _NotTheForm("the signature is not 64 octets")
+    headers = _strict(protected)
+    if not isinstance(headers, dict):
+        raise _NotTheForm("the protected header is not a map")
+    for label, value in headers.items():
+        if label == 1 and _int(label):
+            ok = _int(value) and value == _ALG_EDDSA
+        elif label == 15 and _int(label):
+            ok = isinstance(value, dict) and isinstance(value.get(1), str) and isinstance(value.get(2), str)
+        elif label == 4 and _int(label):
+            ok = isinstance(value, bytes)
+        elif label == 3 and _int(label):
+            ok = isinstance(value, str)
+        else:
+            ok = _int(label) and label < _PRIVATE_LABEL
+        if not ok:
+            raise _NotTheForm(f"protected label {label!r} is not allowed or has the wrong value")
+    if 1 not in headers or 15 not in headers:
+        raise _NotTheForm("the protected header lacks alg or CWT_Claims")
+    if not isinstance(unprotected, dict) or list(unprotected) != [_RECEIPTS_LABEL]:
+        raise _NotTheForm("the unprotected header is not exactly receipts")
+    receipts = unprotected[_RECEIPTS_LABEL]
+    if not isinstance(receipts, list) or not 1 <= len(receipts) <= _MAX_PROOFS \
+            or not all(isinstance(r, bytes) for r in receipts):
+        raise _NotTheForm("receipts is not one to 16 byte strings")
+    return protected, headers, payload, signature, receipts
+
+
+def check_card_statement(card: bytes, holder: str, anchor: str, octets: Any, policy: Any) -> CardStatementReport:
+    """Steps 1 to 5 of §13.3 for one card statement beside ``card`` (the card octets), under the
+    holder key identifier ``holder`` (the envelope's ``responder``, 64 lowercase hex), the anchor
+    ``anchor`` (the envelope's ``anchor.digest``) and the relying party's transparency ``policy``
+    (IP1 §6.2.2's witness policy form)."""
+    try:
+        protected, headers, payload, signature, receipts = _card_statement_parse(octets)
+    except _NotTheForm as exc:
+        return CardStatementReport(_FAIL, detail=str(exc))
+    claims = headers[15]
+    if not isinstance(card, (bytes, bytearray)) or payload != hashlib.sha256(bytes(card)).digest():
+        return CardStatementReport(_FAIL, detail="the statement is about another card")
+    if claims[1] != holder or claims[2] != anchor:
+        return CardStatementReport(_FAIL, detail="iss is not the holder key, or sub is not the anchor")
+    if not isinstance(holder, str) or not _ANCHOR_DIGEST.fullmatch(holder):
+        return CardStatementReport(_FAIL, detail="the holder key identifier is not 64 lowercase hex characters")
+    message = _anchor_sig_structure(protected, payload)  # the same Signature1 form
+    try:
+        from ._ed25519_strict import verify_strict
+
+        if not verify_strict(bytes.fromhex(holder), message, signature):
+            return CardStatementReport(_FAIL, detail="the statement's signature does not verify under the holder key")
+    except ImportError:
+        return CardStatementReport(_NOT_CHECKED, detail="the cryptography package is not installed")
+    entry = hashlib.sha256(message).digest()
+    reports = [_receipt_over_entry(entry, r, policy, "transparency") for r in receipts]
+    chosen = _earliest([r for r in reports if r.status == _PASS])
+    if chosen is not None:
+        return CardStatementReport(_PASS, service=chosen.witness, registration_time=chosen.registration_time)
+    if any(r.status == _FAIL for r in reports):
+        return CardStatementReport(_FAIL, detail="no Receipt by an accepted service covers the statement")
+    return CardStatementReport(_NOT_CHECKED, detail="; ".join(r.detail or "" for r in reports))
+
+
+def _earliest(passed: list[Any]) -> Any:
+    """IP1 §6.2.2's choice: the earliest registration time, the first received of equal times, and
+    with no time the first passing one."""
+    timed = [r for r in passed if r.registration_time is not None]
+    return min(timed, key=lambda r: r.registration_time) if timed else (passed[0] if passed else None)
+
+
+def check_card_registered(card: bytes, holder: str, anchor: str, statements: Sequence[bytes] | None,
+                          policy: Any) -> CardRegisteredReport:
+    """``card_registered`` over ``statements`` (each the octets of a card statement, in the order
+    received) beside ``card``, under the envelope's holder key identifier ``holder`` and
+    ``anchor.digest`` ``anchor``, and the relying party's transparency ``policy`` (§13.3). Never
+    raises."""
+    reports = tuple(check_card_statement(card, holder, anchor, octets, policy) for octets in statements or ())
+    statuses = {r.status for r in reports}
+    if not reports:
+        status = _NOT_PRESENT
+    elif _PASS in statuses:
+        status = _PASS
+    elif _FAIL in statuses:
+        status = _FAIL
+    else:
+        status = _NOT_CHECKED
+    chosen = _earliest([r for r in reports if r.status == _PASS])
+    return CardRegisteredReport(
+        status=status,
+        method=_CARD_METHOD,
+        statements=reports,
+        service=chosen.service if chosen else None,
+        registration_time=chosen.registration_time if chosen else None,
     )

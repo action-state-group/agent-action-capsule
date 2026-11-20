@@ -20,7 +20,9 @@ This document defines three things:
   `standard_history/4` (§12) is `/3` except that it leaves no deal out for want of a witness time;
   `/1` to `/3` are unchanged by it;
 - the deal member `counterparty_class` (§7), which decides whether a deal is counted;
-- the record kind `receipt_document` (§8): a document the holder holds, sealed by its digest.
+- the record kind `receipt_document` (§8): a document the holder holds, sealed by its digest;
+- the card statement and its check `card_registered` (§13): an opt-in registration of a card on a
+  transparency service, whose Receipt shows that the card existed at a time.
 
 A card is counts and nothing else. It never carries a name, an item, an amount, a counterparty,
 a deal reference, a record digest or a ratio of two counts. Its only date is `since`, a year and
@@ -31,8 +33,8 @@ month (§4).
 **Owns:** the derivation tokens `standard_history/1` to `standard_history/4` and their registry
 rows (`spec/REGISTRY.md` §16),
 the deal entry and the counting rules (§5, §11, §12), the card and its members (§4, §11.6, §12),
-the card properties (§6, §11.7, §12), the member `counterparty_class` and its three values (§7), and the record
-kind `receipt_document` (§8).
+the card properties (§6, §11.7, §12), the member `counterparty_class` and its three values (§7), the record
+kind `receipt_document` (§8), and the card statement and the check `card_registered` (§13).
 
 **Uses unchanged:**
 
@@ -40,7 +42,8 @@ kind `receipt_document` (§8).
 |---|---|---|
 | ER | `draft-mih-agent-evidence-request` -00 | the `full_history` subject [ER §3.1], a derivation named by a registered token and its declared field set [ER "Derivation", "Derivation-Scoped Disclosure"] |
 | IP | `spec/interop-profile-v0.md` (`evidence-interop/0`) | the request and envelope (§6.1, §6.2), `anchor_inclusion` for a derivation (§6.2), the value conventions (§5.2), lifecycle statements and their issuers (§11.2), the per-property vocabulary (§7.1) |
-| IP1 | `spec/interop-profile-v1.md` (`evidence-interop/1`) | only the witness Receipt over an anchor, `cll-witness-receipt`, and its check `anchor_witnessed` (§6.2.2). The request and envelope stay `evidence-interop/0`'s |
+| IP1 | `spec/interop-profile-v1.md` (`evidence-interop/1`) | only the witness Receipt over an anchor, `cll-witness-receipt`, and its check `anchor_witnessed` (§6.2.2); and, for §13, that Receipt's one form, its receipt encoding rule, its check procedure and its witness policy, with another leaf entry. The request and envelope stay `evidence-interop/0`'s |
+| SCITT | RFC 9943 (SCITT architecture) and RFC 9942 (COSE Receipts) | §13 only: the Signed Statement and its CWT `iss` and `sub`, the Transparent Statement, and the `receipts` header parameter (394) |
 | PH | `spec/personal-agent-history-profile-v0.md` | the holder, the holder key and the deal (§1, §2) |
 | EL | `draft-mih-agent-evidence-layer` -00 | the record header, its `record_type` and its correlation identifier, the epistemic types |
 | SR | `draft-mih-agent-settlement-records` -00 | the amount triple (`value`, `assetCode`, `assetScale`) ("Amounts"), the counterparty half citation ("Citations Between Legs") |
@@ -58,7 +61,8 @@ refusal reasons and their mapping (IP v1 P-65), and its requests name `evidence-
 Re-pinning to `evidence-interop/1` is a revision of this profile. The one exception is the
 witness Receipt beside a card (§3 "Inclusion"), which this profile takes from
 `spec/interop-profile-v1.md` §6.2.2 (cited as IP1): it is checked over the anchor, outside any
-request or envelope, so it changes neither.
+request or envelope, so it changes neither. The card statement of §13 uses the same Receipt form
+over another leaf, also beside the card, and changes neither either.
 
 **Does not define:** any record format of a deal, any disclosure policy format (it reads two
 members of one, §5.1), who may receive a card, any trust policy, any ordering, score or grade of
@@ -192,7 +196,9 @@ The responder answers with an IP envelope [IP §6.2] whose `artifact` is UTF-8 o
   `history_card/1`, each a `cll-witness-receipt` [IP1 §6.2.2]. How they travel is the host's, as
   for the policy (SH-9). A verifier that holds them runs `anchor_witnessed` [IP1 §6.2.2] over the
   card's `anchor`. A Receipt covers the anchor, not the card, so `anchor_inclusion` stays
-  `NOT_CHECKED` whatever it reports.
+  `NOT_CHECKED` whatever it reports. A holder MAY also register the card itself on a transparency
+  service and carry that Receipt beside the card (§13); it shows that the card existed at a time,
+  not that it is under the anchor, so `anchor_inclusion` stays `NOT_CHECKED` with it too.
 
 ## 4. The card
 
@@ -434,7 +440,8 @@ card's counts being the holder's statement (above), not as a defect of the card 
 in the stated window, how many deals in it were not counted, and how many counted deals are
 `undecided`; on a `/2` card, how many counted deals have no recorded amount and so are in no
 band, as `unpriced.of` of `outcomes.of`; each count with its `of` on the same line; which checks ran and which did not,
-including `anchor_inclusion` `NOT_CHECKED`, `anchor_witnessed` with its status, and, without
+including `anchor_inclusion` `NOT_CHECKED`, `anchor_witnessed` with its status, `card_registered`
+with its status when a card statement came with the card (§13.4), and, without
 their inputs, `window_from_policy`, `as_of` and `counts_recompute` `NOT_CHECKED`. It shows the
 bands grouped by `currency`, each band with its own currency, and never merges bands of two
 currencies into one row or shows a band in another currency: amounts in different assets are never equal or converted [SR "Amounts"
@@ -575,7 +582,7 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-1 | The card properties (§6) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping, as PH's PA-10. The History frame states this for every instance (HF §4.4). |
 | SH-2 | Filling the deal entry (§5.2) from a host's records: which record gives `agreed_at`, `role` and `amount`, and which claim is a deal's outcome claim. A host profile states its mapping, as `spec/deal-reconcile-contract-v0.md` §4.2 does for a half. |
 | SH-3 | Closed (§6 "Handing the material"): the carriage is one `evidence-bundle/v2` per log the anchor commits, and `counts_recompute` needs coverage shown. ER asks a derivation's result to be re-derivable by the requester; this revision meets that only with that material, and only where coverage can be shown (SH-10). |
-| SH-4 | Closed for the anchor: a card's page checks the anchor's witness Receipts with `anchor_witnessed` (IP1 §6.2.2, §6 "The witness line"). Still open: a verification-material kind that proves a derivation's artifact against the anchor (IP P-13), as PH's PA-13, without which `anchor_inclusion` stays `NOT_CHECKED` and no Receipt says anything about a card's counts; and carrying the Receipts in the envelope's `verification` instead of beside the card. |
+| SH-4 | Closed for the anchor: a card's page checks the anchor's witness Receipts with `anchor_witnessed` (IP1 §6.2.2, §6 "The witness line"). Closed for the card's existence: a holder may register the card on a transparency service, and `card_registered` checks the Receipt (§13). Still open: a verification-material kind that proves a derivation's artifact against the anchor (IP P-13), as PH's PA-13, without which `anchor_inclusion` stays `NOT_CHECKED`; §13's Receipt proves inclusion in a service's log, not under the anchor, and no Receipt says anything about a card's counts. Also open: carrying the Receipts in the envelope's `verification` instead of beside the card. |
 | SH-5 | Finer `controller_class` values for a node's declaration, and the node's further counts, such as counts per tier of paired answers and of referee findings. This revision defines a `node` card with the same members as a `person` card. The further counts belong in a separate derivation token for nodes, so that `/1` and `/2` stay the same for every holder. |
 | SH-6 | A disclosure wider than the policy's window, sent to one requester at the holder's choice. It declares the IP §6.7 coverage kind `holder_selected` and is never a `standard_history/1` or `/2` card. |
 | SH-7 | Reading a dispute's `outcome` and `forum` (§5.4) from the resolving process's statement: IP §11.2.6's statuses (`open`, `upheld`, `dismissed`, `conflicting`) do not say for whom a resolution found, and IP names no forum. |
@@ -589,6 +596,7 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-15 | A coverage start earlier than the format switch. EBL lets a reader that checks the old ticks' material against the genesis facts take the shelf log's first entry as the coverage start (its design §4); a `/3` card always carries the switch's month (§11.5), so such a holder's card understates its coverage. |
 | SH-16 | A remedy made without a ruling. It counts as remedied (§11.4; evidencebook#482 Q5), and the counterparty's answer is to dispute the row. EBL's row rule carries a remedy only for a `ruled` row; the remedy of an unmet row that is not ruled (§11.2) is the host profile's, read from the holder's own remedy record of the row, such as a refund (SH-2). |
 | SH-17 | Closed: the `forum` of a dispute under `/3`. `/3` keeps §5.4's dispute entry and tally, `by_forum` included, and the dispute and ruling records of the deal profile `x-deal-v1` carry a forum (evidencebook#482 Q4). A host profile whose records give no forum cannot fill a `/3` deal entry with a dispute. |
+| SH-18 | A check that a transparency service carries one card statement per holder key and anchor (§13.5), so that a holder that registers two cards is caught without comparing envelopes. It needs a defined query of a service by `iss` and `sub` and a rule for several services, and is only as strong as the services a reader asks; a holder can register the other card on a service the reader does not ask. Until it is defined, `card_registered` claims existence at a time only. |
 
 ## 11. `standard_history/3`
 
@@ -929,3 +937,154 @@ the deal entries and with nothing beside it. Negatives, each failing the propert
 deals left out as `/3` would leave them out, and the silent deal left out of `local_times` (each
 `counts_recompute`); a `/4` card carrying `not_counted`, a `/3` card answering a `/4` request and
 the reverse (`card_form`).
+
+## 13. Registering a card
+
+A holder MAY register a card on a transparency service [SCITT] and carry the service's Receipt
+beside the card. Registration is opt-in: this document names no transparency service, and a card
+that is not registered is a card like any other. It applies to a card under every token
+(`standard_history/1` to `/4`) and changes no card, member, counting rule, card property, counting
+table, wording pack or vector of §1 to §12.
+
+**What it shows.** A card statement with a passing Receipt (below) shows that the holder key stated
+exactly these card bytes no later than the Receipt's registration time, and that a transparency
+service the relying party accepts entered that statement in its log. It shows existence at a time,
+and nothing else:
+
+- it does not show that the counts are right: that is `counts_recompute` (§6);
+- it does not show that the card is under the anchor. `anchor_inclusion` checks the artifact
+  against the holder's own anchor [IP §6.2]; a Receipt proves inclusion in the service's log, and
+  a card is derived at the anchor, never an entry under it. `anchor_inclusion` stays
+  `NOT_CHECKED` for a registered card (§3 "Inclusion");
+- it does not show that the holder registered, or showed anyone, no other card. A holder can
+  register two cards, on one service or on two. That two requesters were given the same card for
+  one anchor is `caller_invariance` over their envelopes [IP §7.2], which needs both envelopes,
+  not a Receipt.
+
+### 13.1 The card statement
+
+A **card statement** is a SCITT Signed Statement about one card, with its Receipts attached: a
+Transparent Statement [SCITT]. Its octets are one COSE_Sign1 (RFC 9052) in this one form:
+
+- CBOR tag 18 around an array of four items: `protected`, `unprotected`, `payload` and
+  `signature`;
+- `protected`, a non-empty byte string holding a map with `alg` (1) EdDSA (-8) and CWT_Claims
+  (15, RFC 9597), and optionally `kid` (4) as a byte string, `content_type` (3) as a text string,
+  and labels below -65536 (private use) with any value. It carries no other label, so no `crit`
+  (2). CWT_Claims is a map that carries `iss` (1), the holder key identifier [IP §5.2] as a text
+  string, and `sub` (2), the anchor the card is as of, the card's `anchor` (§4), as a text string,
+  as a Signed Statement requires [SCITT]; it MAY carry other claims, which this document does not
+  read but which fall under the encoding rule below like every other item;
+- `payload`, attached: the 32 octets of SHA-256 over the card octets, the envelope's
+  `artifact_digest` [IP §6.2] as raw octets. The statement is made over the card's digest, never
+  over the card, as a Capsule ID's registration statement is made over the Capsule ID
+  (`draft-mih-scitt-agent-action-capsule` "Registration and Receipts");
+- `unprotected`, a map with exactly one label, `receipts` (394) [SCITT], whose value is an array of
+  one to 16 byte strings, each the octets of one Receipt (§13.2);
+- `signature`, 64 octets: Ed25519 by the holder key over the `Signature1` Sig_structure with the
+  protected header, an empty external AAD and the payload (RFC 9052 §4.4).
+
+The COSE_Sign1 and its protected header are each decoded under the receipt encoding rule of IP1
+§6.2.2, with the outer tag 18 as the one tag allowed. A Receipt in `receipts` is a byte string
+there, and is decoded on its own (§13.2). A card statement is at most 10,485,760 octets.
+
+The **statement entry** E of a card statement is the 32 octets of SHA-256 over its Sig_structure,
+the octets its signature covers. `receipts` is not in it, so a holder adds a Receipt to a card
+statement without changing E or the signature.
+
+### 13.2 The Receipt
+
+Each Receipt in a card statement's `receipts` is a COSE Receipt in the one form of IP1 §6.2.2,
+with one difference: its leaf entry is the statement entry E (§13.1), not an anchor digest. The
+leaf hash is SHA-256(0x00 || E), and the root is rebuilt from it as RFC 9162 §2.1.3.2 says. A
+service that logged the statement in any other form, such as the card octets or the card digest,
+logged other octets, and its Receipt does not cover this statement.
+
+**What the relying party must trust.** Its transparency policy lists the transparency services it
+accepts, in the form of IP1 §6.2.2's witness policy: each with a name and the public keys it signs
+Receipts under. A relying party SHOULD list only services it holds independent of the holder: a
+service the holder operates confers nothing, as a witness the producer operates confers no
+witnessed status [IP1 §6.2.2]. This document does not decide which services those are.
+
+### 13.3 `card_registered`
+
+**Carriage.** A card statement travels beside the card, as the anchor's witness Receipts do (§3
+"Inclusion"), and how it travels is the host's. It is never an entry of the envelope's
+`verification`: nothing in the answer signs it, and it changes neither the card's bytes nor the
+envelope. A card statement authenticates itself, so a holder can add one after the card was sent,
+and one statement can never take away what another shows.
+
+**Check procedure for one card statement.** Steps run in order, and the first that yields a status
+decides:
+
+1. If the octets are not of the form of §13.1: `FAIL`.
+2. If `payload` is not SHA-256 over the card octets, `iss` is not the envelope's `responder`, or
+   `sub` is not the envelope's `anchor.digest`: `FAIL`. The statement is about another card, or by
+   another key. The check reads the card only as octets; that its `anchor` equals the envelope's
+   is `as_of` (§6).
+3. If the signature does not verify under the holder key, the envelope's `responder` [IP §5.2],
+   strictly as IP1 §6.2.2 step 3 verifies EdDSA: `FAIL`. A verifier that cannot run Ed25519
+   reports `NOT_CHECKED`.
+4. Run IP1 §6.2.2's check procedure on each Receipt in `receipts`, in order, with the leaf entry E
+   and the relying party's transparency policy. If one or more pass: `PASS`, with the
+   **registration time** and the **service** of the passing Receipt chosen as IP1 §6.2.2 chooses
+   the witnessed time and the witness: the earliest registration time, that Receipt's service, the
+   first received of two with that time, and with no time the first passing Receipt's service.
+5. If one or more Receipts fail: `FAIL`. Otherwise: `NOT_CHECKED`.
+
+**`card_registered`.** Over every card statement received beside one card:
+
+- `NOT_PRESENT` when there is none;
+- otherwise `PASS` when one or more statements pass, `FAIL` when none passes and one or more fail,
+  and `NOT_CHECKED` otherwise.
+
+The report names, for each statement, its status, and when it passed, its service and its
+registration time; and for the card, the registration time and the service, chosen over the
+passing statements as step 4 chooses over Receipts. A verifier never pairs one Receipt's time with
+another Receipt's service. A statement that fails takes nothing from one that passes, and a `FAIL`
+is no finding against the card or the holder: anyone can place octets beside a card.
+
+`card_registered` is not a card property (§6): it is not in any token's counting table, it is never
+a reason a card is or is not a standard card, and it never changes an envelope property or an IP
+§8 status. It is reported beside the card properties, as `anchor_witnessed` is.
+
+### 13.4 What a verifier shows
+
+A verifier that got `card_registered` `PASS` for a standard card MAY say that the holder registered
+this card with the service named, as the relying party's policy names it, at the registration time,
+or with no time when the passing Receipt has none. It MUST NOT say or imply that the service checked,
+saw or confirmed the counts, the deals or the anchor, or that this is the holder's only card. It
+shows `anchor_inclusion` `NOT_CHECKED` as for any card (§6). With a `card_registered` other than
+`PASS`, it MAY say that a card statement came with the card and did not pass, or say nothing about
+registration; it MUST NOT say the card was registered.
+
+### 13.5 Security and privacy considerations
+
+- **Existence, not uniqueness.** A passing statement shows the card existed by a time. A holder that
+  registers two cards for one anchor, or shows each of two requesters a different card with its own
+  Receipt, is not caught by `card_registered`; only comparing the cards themselves catches it, as
+  `caller_invariance` does (§13 "What it shows"). A check that a service carries one card per holder
+  and anchor is SH-18.
+- **What the service learns.** Registering tells the service, and anyone who reads its log, that the
+  holder key stated something at the registration time. The statement carries the card's digest,
+  not the card. A digest does not hide a card from a party that can guess it: a party that holds the
+  anchor, the policy digest and `since` can test guesses of the counts against it, because the
+  counts of a small card are few. A holder registers knowing that, and registers only on a service
+  whose published policy it accepts.
+- **No registration is no finding.** Registration is opt-in (this section). A verifier shows a card
+  with `card_registered` `NOT_PRESENT` as it shows any card, and never as a defect of the card or the
+  holder.
+
+### 13.6 Vectors
+
+`vectors/card-registration-v0/` holds card statements beside a card of
+`vectors/standard-history-v0/` and the expected `card_registered` report. Positive: a statement
+with an EdDSA Receipt with and without a registration time, with an ES256 Receipt, with a passing
+Receipt after a failing one, with two passing Receipts, and a passing statement beside a failing
+one. `NOT_PRESENT` and `NOT_CHECKED`: no statement, and a transparency policy that lists no key of
+the Receipt's type. Negative (MUST reject, `FAIL`): a statement over another card, a statement
+signed by another key, an `iss` of another key, a `sub` of another anchor, a tampered statement
+signature, a Receipt over the card digest instead of the statement entry, a Receipt by an unlisted
+service, and departures from the one form: an untagged COSE_Sign1, `alg` ES256, a `crit`, a
+`payload_hash_alg`, no CWT_Claims, no `iss` or no `sub`, a payload that is not 32 octets, a
+detached payload, an unprotected label besides `receipts`, no Receipt and 17 Receipts.

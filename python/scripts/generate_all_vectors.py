@@ -92,6 +92,8 @@ GENERATORS = (
     "generate_deal_reconcile_v0_vectors.py",
     "generate_standard_history_v0_vectors.py",
     "generate_record_push_vectors.py",
+    # Reads a card of the standard-history corpus.
+    "generate_card_registration_v0_vectors.py",
     "generate_inference_service_history_v0_vectors.py",
     ("generate_inference_service_history_v0_vectors.py", "--profile", "1"),
     # Built on the base inference-service history generator's stream and definitions.

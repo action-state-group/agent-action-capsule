@@ -310,6 +310,15 @@ func CheckAnchorReceipt(anchor string, receipt []byte, policy AnchorWitnessPolic
 	if !anchorDigest.MatchString(anchor) {
 		return AnchorReceiptReport{Status: AnchorFail, Detail: "the anchor digest is not 64 lowercase hex characters"}
 	}
+	leaf, _ := hex.DecodeString(anchor)
+	return receiptOverEntry(leaf, receipt, policy, "witness")
+}
+
+// receiptOverEntry runs steps 1 to 5 of profile v1 §6.2.2 for one Receipt
+// whose leaf entry is entry (32 octets): an anchor digest for
+// anchor_witnessed, a card statement entry for card_registered
+// (standard-history-v0 §13.2). role names the policy in a detail.
+func receiptOverEntry(entry, receipt []byte, policy AnchorWitnessPolicy, role string) AnchorReceiptReport {
 	parsed, ok := parseAnchorReceipt(receipt)
 	if !ok {
 		return AnchorReceiptReport{Status: AnchorFail, Detail: "not a Receipt in the one form of profile v1 §6.2.2"}
@@ -321,22 +330,21 @@ func CheckAnchorReceipt(anchor string, receipt []byte, policy AnchorWitnessPolic
 		}
 	}
 	if len(keys) == 0 {
-		return AnchorReceiptReport{Status: AnchorNotChecked, Detail: "the witness policy lists no key of the type alg needs"}
+		return AnchorReceiptReport{Status: AnchorNotChecked, Detail: "the " + role + " policy lists no key of the type alg needs"}
 	}
-	leaf, _ := hex.DecodeString(anchor)
 	for _, key := range keys {
 		if key.key == nil {
 			continue
 		}
 		for _, proof := range parsed.proofs {
-			root, ok := rootFromInclusionProof(leaf, proof.index, proof.size, proof.path)
+			root, ok := rootFromInclusionProof(entry, proof.index, proof.size, proof.path)
 			if ok && verifySignature(parsed.alg, key.key, sigStructure(parsed.protected, root), parsed.signature) {
 				name := key.name
 				return AnchorReceiptReport{Status: AnchorPass, Witness: &name, RegistrationTime: parsed.time}
 			}
 		}
 	}
-	return AnchorReceiptReport{Status: AnchorFail, Detail: "no accepted witness key verifies the Receipt over this anchor"}
+	return AnchorReceiptReport{Status: AnchorFail, Detail: "no accepted " + role + " key verifies the Receipt over this entry"}
 }
 
 // CheckAnchorWitnessed reports anchor_witnessed over receipts, in the order
@@ -347,24 +355,11 @@ func CheckAnchorReceipt(anchor string, receipt []byte, policy AnchorWitnessPolic
 func CheckAnchorWitnessed(anchor string, receipts [][]byte, policy AnchorWitnessPolicy) AnchorWitnessReport {
 	report := AnchorWitnessReport{Status: AnchorNotPresent, Receipts: []AnchorReceiptReport{}}
 	var failed, passed bool
-	var chosen *AnchorReceiptReport
 	for _, receipt := range receipts {
-		report.Receipts = append(report.Receipts, CheckAnchorReceipt(anchor, receipt, policy))
-	}
-	for i := range report.Receipts {
-		r := &report.Receipts[i]
-		switch r.Status {
-		case AnchorPass:
-			passed = true
-			switch {
-			case chosen == nil:
-				chosen = r
-			case r.RegistrationTime != nil && (chosen.RegistrationTime == nil || *r.RegistrationTime < *chosen.RegistrationTime):
-				chosen = r
-			}
-		case AnchorFail:
-			failed = true
-		}
+		r := CheckAnchorReceipt(anchor, receipt, policy)
+		passed = passed || r.Status == AnchorPass
+		failed = failed || r.Status == AnchorFail
+		report.Receipts = append(report.Receipts, r)
 	}
 	switch {
 	case len(receipts) == 0:
@@ -375,8 +370,28 @@ func CheckAnchorWitnessed(anchor string, receipts [][]byte, policy AnchorWitness
 	default:
 		report.Status = AnchorNotChecked
 	}
-	if chosen != nil {
+	if chosen := earliest(report.Receipts, func(r *AnchorReceiptReport) (bool, *int64) {
+		return r.Status == AnchorPass, r.RegistrationTime
+	}); chosen != nil {
 		report.Witness, report.WitnessedTime = chosen.Witness, chosen.RegistrationTime
 	}
 	return report
+}
+
+// earliest is profile v1 §6.2.2's choice among the items that pass: the
+// earliest registration time, the first of equal times, and with no time the
+// first that passes. It returns nil when none passes.
+func earliest[T any](items []T, of func(*T) (bool, *int64)) *T {
+	var chosen *T
+	var chosenTime *int64
+	for i := range items {
+		pass, time := of(&items[i])
+		if !pass {
+			continue
+		}
+		if chosen == nil || (time != nil && (chosenTime == nil || *time < *chosenTime)) {
+			chosen, chosenTime = &items[i], time
+		}
+	}
+	return chosen
 }

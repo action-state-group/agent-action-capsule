@@ -594,6 +594,18 @@ fn inclusion_root(leaf: &[u8], index: u64, size: u64, path: &[Vec<u8>]) -> [u8; 
     fold(leaf, size, index, &mut siblings)
 }
 
+/// The cofactorless Ed25519 equation under the raw `key`. It is strict only
+/// after `strict_ed25519` has accepted the key and signature.
+fn ed25519_verify(key: &[u8; 32], message: &[u8], signature: &[u8]) -> bool {
+    ed25519_dalek::VerifyingKey::from_bytes(key)
+        .ok()
+        .zip(<[u8; 64]>::try_from(signature).ok())
+        .is_some_and(|(key, signature)| {
+            key.verify(message, &ed25519_dalek::Signature::from_bytes(&signature))
+                .is_ok()
+        })
+}
+
 /// The RFC 9052 `Signature1` Sig_structure with an empty external AAD.
 fn sig_structure(protected: &[u8], payload: &[u8]) -> Vec<u8> {
     fn head(out: &mut Vec<u8>, major: u8, n: usize) {
@@ -662,12 +674,7 @@ fn cose_receipt(receipt: &[u8], leaf: &[u8], key_der: &[u8]) -> Result<Option<St
     // After strict_ed25519, the cofactorless `verify` is the strict check.
     let verifies = |message: &[u8]| match alg {
         Algorithm::EdDSA => raw_ed25519(key_der)
-            .and_then(|key| ed25519_dalek::VerifyingKey::from_bytes(&key).ok())
-            .zip(<[u8; 64]>::try_from(decoded.signature.as_slice()).ok())
-            .is_some_and(|(key, signature)| {
-                key.verify(message, &ed25519_dalek::Signature::from_bytes(&signature))
-                    .is_ok()
-            }),
+            .is_some_and(|key| ed25519_verify(&key, message, &decoded.signature)),
         _ => p256::ecdsa::VerifyingKey::from_public_key_der(key_der).is_ok_and(|key| {
             p256::ecdsa::Signature::from_slice(&decoded.signature)
                 .is_ok_and(|signature| key.verify(message, &signature).is_ok())
@@ -2145,9 +2152,22 @@ pub fn check_anchor_receipt(anchor: &str, receipt: &[u8], policy: &Value) -> Anc
         witness,
         registration_time,
     };
-    let leaf = match hex::decode(anchor) {
-        Ok(leaf) if leaf.len() == 32 && !anchor.bytes().any(|b| b.is_ascii_uppercase()) => leaf,
-        _ => return report("FAIL", None, None),
+    match hex::decode(anchor) {
+        Ok(leaf) if leaf.len() == 32 && !anchor.bytes().any(|b| b.is_ascii_uppercase()) => {
+            receipt_over_entry(&leaf, receipt, policy)
+        }
+        _ => report("FAIL", None, None),
+    }
+}
+
+/// Steps 1 to 5 of profile v1 §6.2.2 for one Receipt whose leaf entry is
+/// `leaf` (32 octets): the anchor digest for `anchor_witnessed`, a card
+/// statement's entry for `card_registered` (standard-history-v0 §13.2).
+fn receipt_over_entry(leaf: &[u8], receipt: &[u8], policy: &Value) -> AnchorReceiptReport {
+    let report = |status, witness, registration_time| AnchorReceiptReport {
+        status,
+        witness,
+        registration_time,
     };
     let Some((alg, time)) = parse_anchor_receipt(receipt) else {
         return report("FAIL", None, None);
@@ -2160,7 +2180,7 @@ pub fn check_anchor_receipt(anchor: &str, receipt: &[u8], policy: &Value) -> Anc
         return report("NOT_CHECKED", None, None);
     }
     for (name, _, der) in keys {
-        if cose_receipt(receipt, &leaf, &der).is_ok() {
+        if cose_receipt(receipt, leaf, &der).is_ok() {
             return report("PASS", Some(name), time);
         }
     }
@@ -2191,13 +2211,28 @@ pub fn check_anchor_witnessed(
     } else {
         "NOT_CHECKED"
     };
-    let mut chosen: Option<&AnchorReceiptReport> = None;
-    for r in reports.iter().filter(|r| r.status == "PASS") {
-        let earlier = match (
-            r.registration_time,
-            chosen.and_then(|c| c.registration_time),
-        ) {
-            (Some(time), Some(best)) => time < best,
+    let chosen = earliest(reports.iter().filter(|r| r.status == "PASS"), |r| {
+        r.registration_time
+    });
+    AnchorWitnessReport {
+        status,
+        witness: chosen.and_then(|c| c.witness.clone()),
+        witnessed_time: chosen.and_then(|c| c.registration_time),
+        receipts: reports,
+    }
+}
+
+/// Profile v1 §6.2.2's choice over passing results, in the order received:
+/// the earliest registration time, the first received of equal times, and
+/// with no time the first passing one.
+fn earliest<'a, T>(
+    passed: impl IntoIterator<Item = &'a T>,
+    time: impl Fn(&T) -> Option<u64>,
+) -> Option<&'a T> {
+    let mut chosen: Option<&T> = None;
+    for r in passed {
+        let earlier = match (time(r), chosen.and_then(&time)) {
+            (Some(t), Some(best)) => t < best,
             (Some(_), None) => true,
             (None, _) => false,
         };
@@ -2205,10 +2240,216 @@ pub fn check_anchor_witnessed(
             chosen = Some(r);
         }
     }
-    AnchorWitnessReport {
+    chosen
+}
+
+/// The check `spec/standard-history-v0.md` §13.3 defines. It is not a card
+/// property and never changes an envelope property or a profile §8 status.
+pub const CARD_REGISTERED_PROPERTY: &str = "card_registered";
+/// How `card_registered` is checked, as the Python reference names it.
+pub const CARD_REGISTERED_METHOD: &str =
+    "SCITT Transparent Statement over the card digest, RFC 9942 Receipts (standard-history-v0 §13)";
+/// The COSE `receipts` header label (SCITT).
+const RECEIPTS_LABEL: i128 = 394;
+
+/// One card statement's `card_registered` result: its status (`PASS`,
+/// `FAIL` or `NOT_CHECKED`), and when it passed, its service and its
+/// registration time (a NumericDate) when the chosen Receipt carries one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CardStatementReport {
+    pub status: &'static str,
+    pub service: Option<String>,
+    pub registration_time: Option<u64>,
+}
+
+/// `card_registered` over every card statement beside one card
+/// (standard-history-v0 §13.3). `service` and `registration_time` always
+/// come from the same Receipt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CardRegisteredReport {
+    pub status: &'static str,
+    pub method: &'static str,
+    pub statements: Vec<CardStatementReport>,
+    pub service: Option<String>,
+    pub registration_time: Option<u64>,
+}
+
+/// A card statement in the one form of standard-history-v0 §13.1.
+struct CardStatement {
+    protected: Vec<u8>,
+    iss: String,
+    sub: String,
+    payload: Vec<u8>,
+    signature: Vec<u8>,
+    receipts: Vec<Vec<u8>>,
+}
+
+/// Step 1 of standard-history-v0 §13.3: the card statement in the one form
+/// of §13.1, decoded under the receipt encoding rule of profile v1 §6.2.2,
+/// or `None`.
+fn parse_card_statement(octets: &[u8]) -> Option<CardStatement> {
+    if octets.is_empty() || octets.len() > MAX_RECEIPT_OCTETS {
+        return None;
+    }
+    let ReceiptItem::Tag(18, body) = strict_receipt_item(octets, true)? else {
+        return None;
+    };
+    let ReceiptItem::Array(parts) = *body else {
+        return None;
+    };
+    let [ReceiptItem::Bytes(protected), ReceiptItem::Map(unprotected), ReceiptItem::Bytes(payload), ReceiptItem::Bytes(signature)] =
+        parts.as_slice()
+    else {
+        return None;
+    };
+    if protected.is_empty() || payload.len() != 32 || signature.len() != 64 {
+        return None;
+    }
+    let headers = strict_receipt_item(protected, false)?;
+    let ReceiptItem::Map(pairs) = &headers else {
+        return None;
+    };
+    let text = |item: Option<&ReceiptItem>| match item {
+        Some(ReceiptItem::Text(t)) => Some(t.clone()),
+        _ => None,
+    };
+    for (label, value) in pairs {
+        let ok = match (label, value) {
+            (ReceiptItem::Int(1), ReceiptItem::Int(alg)) => *alg == -8,
+            (ReceiptItem::Int(15), claims @ ReceiptItem::Map(_)) => {
+                text(claims.get(1)).is_some() && text(claims.get(2)).is_some()
+            }
+            (ReceiptItem::Int(4), ReceiptItem::Bytes(_)) => true,
+            (ReceiptItem::Int(3), ReceiptItem::Text(_)) => true,
+            (ReceiptItem::Int(label), _) => *label < PRIVATE_LABEL,
+            _ => false,
+        };
+        if !ok {
+            return None;
+        }
+    }
+    headers.get(1)?;
+    let claims = headers.get(15)?;
+    let [(ReceiptItem::Int(RECEIPTS_LABEL), ReceiptItem::Array(items))] = unprotected.as_slice()
+    else {
+        return None;
+    };
+    if items.is_empty() || items.len() > MAX_RECEIPT_PROOFS {
+        return None;
+    }
+    let receipts = items
+        .iter()
+        .map(|item| match item {
+            ReceiptItem::Bytes(receipt) => Some(receipt.clone()),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(CardStatement {
+        protected: protected.clone(),
+        iss: text(claims.get(1))?,
+        sub: text(claims.get(2))?,
+        payload: payload.clone(),
+        signature: signature.clone(),
+        receipts,
+    })
+}
+
+/// Steps 1 to 5 of standard-history-v0 §13.3 for one card statement beside
+/// `card` (the card octets, hashed and never parsed), under the holder key
+/// identifier `holder` (the envelope's `responder`, 64 lowercase hex
+/// characters), the anchor `anchor` (the envelope's `anchor.digest`) and the
+/// relying party's transparency `policy` (profile v1 §6.2.2's witness policy
+/// form).
+pub fn check_card_statement(
+    card: &[u8],
+    holder: &str,
+    anchor: &str,
+    statement: &[u8],
+    policy: &Value,
+) -> CardStatementReport {
+    let fail = CardStatementReport {
+        status: "FAIL",
+        service: None,
+        registration_time: None,
+    };
+    let Some(statement) = parse_card_statement(statement) else {
+        return fail;
+    };
+    if statement.payload != Sha256::digest(card).as_slice()
+        || statement.iss != holder
+        || statement.sub != anchor
+    {
+        return fail;
+    }
+    let key = match <[u8; 32]>::try_from(hex::decode(holder).unwrap_or_default()) {
+        Ok(key) if !holder.bytes().any(|b| b.is_ascii_uppercase()) => key,
+        _ => return fail,
+    };
+    let message = sig_structure(&statement.protected, &statement.payload);
+    if !(strict_ed25519(&key, &statement.signature)
+        && ed25519_verify(&key, &message, &statement.signature))
+    {
+        return fail;
+    }
+    let entry = Sha256::digest(&message);
+    let reports: Vec<_> = statement
+        .receipts
+        .iter()
+        .map(|receipt| receipt_over_entry(&entry, receipt, policy))
+        .collect();
+    if let Some(chosen) = earliest(reports.iter().filter(|r| r.status == "PASS"), |r| {
+        r.registration_time
+    }) {
+        return CardStatementReport {
+            status: "PASS",
+            service: chosen.witness.clone(),
+            registration_time: chosen.registration_time,
+        };
+    }
+    CardStatementReport {
+        status: if reports.iter().any(|r| r.status == "FAIL") {
+            "FAIL"
+        } else {
+            "NOT_CHECKED"
+        },
+        ..fail
+    }
+}
+
+/// `card_registered` over `statements` (each the octets of a card statement,
+/// in the order received) beside `card`, under the holder key identifier
+/// `holder`, the envelope's `anchor.digest` `anchor` and the relying party's
+/// transparency `policy` (standard-history-v0 §13.3). The card's service and registration time are
+/// chosen over the passing statements as §6.2.2 chooses over Receipts.
+pub fn check_card_registered(
+    card: &[u8],
+    holder: &str,
+    anchor: &str,
+    statements: &[Vec<u8>],
+    policy: &Value,
+) -> CardRegisteredReport {
+    let reports: Vec<_> = statements
+        .iter()
+        .map(|statement| check_card_statement(card, holder, anchor, statement, policy))
+        .collect();
+    let has = |status| reports.iter().any(|r| r.status == status);
+    let status = if reports.is_empty() {
+        "NOT_PRESENT"
+    } else if has("PASS") {
+        "PASS"
+    } else if has("FAIL") {
+        "FAIL"
+    } else {
+        "NOT_CHECKED"
+    };
+    let chosen = earliest(reports.iter().filter(|r| r.status == "PASS"), |r| {
+        r.registration_time
+    });
+    CardRegisteredReport {
         status,
-        witness: chosen.and_then(|c| c.witness.clone()),
-        witnessed_time: chosen.and_then(|c| c.registration_time),
-        receipts: reports,
+        method: CARD_REGISTERED_METHOD,
+        service: chosen.and_then(|c| c.service.clone()),
+        registration_time: chosen.and_then(|c| c.registration_time),
+        statements: reports,
     }
 }
