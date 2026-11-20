@@ -44,7 +44,7 @@ permissions:
 jobs:
   conformance:
     name: Python reference, Go, TypeScript and Rust interlock
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -120,7 +120,7 @@ jobs:
 
   rust-conformance:
     name: Rust verifier runs the shared corpora
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: rust
@@ -181,7 +181,7 @@ jobs:
 
   browser-conformance:
     name: Built browser artifact conformance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -201,7 +201,7 @@ jobs:
 
   pinned-legacy-format-2-verification:
     name: Pinned legacy verifier verifies July format-2 interop record
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout frozen legacy verifier release
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
