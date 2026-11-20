@@ -1,0 +1,22 @@
+{
+  "document": "wording_pack",
+  "frame": "history-frame/0",
+  "instance": "standard_history/4",
+  "language": "en",
+  "strings": {
+    "count.of": "{count} of {of}",
+    "counts.cover": "the counts cover counted deals in the stated window",
+    "counts.not_recomputed": "the holder's statement under the holder key, not recomputed",
+    "deals.not_counted": "deals in the window not counted",
+    "deals.undecided": "counted deals not decided: a row not yet final, not reached, in disagreement or dispute, or without the statement it needed",
+    "deals.unpriced": "counted deals without a recorded amount, in no value band",
+    "deals.local_times": "counted deals with a row that rests on a record no witness timed",
+    "deals.remedied": "of the deals that did not hold, those whose unmet rows the holder remedied",
+    "deals.not_honoured": "of the deals that did not hold, those where the holder did not honour a ruling",
+    "coverage.start": "complete from {coverage_start}; before it, the deals the holder carried into its shelf log",
+    "level.recomputed": "recounted from the holder's whole shelf",
+    "level.form_only": "checked for its form only",
+    "anchor.unwitnessed": "unwitnessed: no witness receipt for this snapshot",
+    "anchor.witnessed_only": "the witness timed this snapshot, not the records the counts rest on"
+  }
+}

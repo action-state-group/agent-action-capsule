@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// Package standardhistory implements the standard_history/1,
-// standard_history/2 and standard_history/3 derivations
-// (spec/standard-history-v0.md, cited as SH; /3 is SH §11): DeriveAs builds a
+// Package standardhistory implements the standard_history/1 to
+// standard_history/4 derivations (spec/standard-history-v0.md, cited as SH;
+// /3 is SH §11 and /4 is SH §12): DeriveAs builds a
 // card of any of them from the deal entries (SH §5.2, §11.2), the policy's
 // window and digest (SH §5.1) and the anchor; CheckAs reports the six
 // card properties of SH §6 for a card, under the token the request named,
@@ -43,6 +43,17 @@ const Derivation2 = "standard_history/2"
 // hold that the holder remedied or whose ruling it did not honour, and carries
 // the shelf log's coverage start.
 const Derivation3 = "standard_history/3"
+
+// Derivation4 is the registered token standard_history/4 (SH §12): /3 except
+// that it leaves no deal out for want of a witness time, so its deal entry has
+// no left_out and its card no not_counted tally.
+const Derivation4 = "standard_history/4"
+
+// shelf reports whether the token counts a shelf log's deals from their term
+// rows (SH §11, §12).
+func shelf(derivation string) bool {
+	return derivation == Derivation3 || derivation == Derivation4
+}
 
 // Properties are the card properties of SH §6, in the order a verifier
 // reports them.
@@ -90,14 +101,17 @@ type tallySpec struct {
 	parts []string
 }
 
-// talliesOf are the token's tallies of SH §4 (under /3, §11.6).
+// talliesOf are the token's tallies of SH §4 (under /3 and /4, §11.6).
 func talliesOf(derivation string) []tallySpec {
 	out := make([]tallySpec, len(tallies))
 	for i, t := range tallies {
 		out[i] = tallySpec(t)
 	}
 	if derivation == Derivation3 {
-		out = append(out, tallySpec{"not_counted", notCounted3}, tallySpec{"remedied", []string{"count"}},
+		out = append(out, tallySpec{"not_counted", notCounted3})
+	}
+	if shelf(derivation) {
+		out = append(out, tallySpec{"remedied", []string{"count"}},
 			tallySpec{"not_honoured", []string{"count"}},
 			tallySpec{"local_times", []string{"count"}})
 	}
@@ -131,6 +145,8 @@ var members = map[string][]string{
 	Derivation:  cardMembers,
 	Derivation2: append(slices.Clone(cardMembers), "unpriced"),
 	Derivation3: append(slices.Clone(cardMembers), "unpriced", "coverage_start", "not_counted", "remedied", "not_honoured",
+		"local_times"),
+	Derivation4: append(slices.Clone(cardMembers), "unpriced", "coverage_start", "remedied", "not_honoured",
 		"local_times"),
 }
 
@@ -191,7 +207,7 @@ type Policy struct {
 }
 
 // AsOf is the anchor the card is as of, its time, and the time of the
-// stream's first checkpoint; under standard_history/3 also the time of the
+// stream's first checkpoint; under standard_history/3 and /4 also the time of the
 // shelf log's coverage start (SH §11.5).
 type AsOf struct {
 	Anchor              string `json:"anchor"`
@@ -200,7 +216,7 @@ type AsOf struct {
 	CoverageStartTime   string `json:"coverage_start_time,omitempty"`
 }
 
-// Row is a row result of a standard_history/3 deal entry (SH §11.2): who
+// Row is a row result of a standard_history/3 or /4 deal entry (SH §11.2): who
 // owed the row and its status as of the anchor's time, with the value and
 // the remedy where the row carries them (empty when absent), and Local when
 // the result rests on a record with no witnessed time.
@@ -257,10 +273,11 @@ type Dispute struct {
 
 // Deal is one deal entry (SH §5.2). A nil CounterpartyClass is a deal
 // without the member. Unpriced is a deal without an amount, because the
-// holder's records do not give it: only a standard_history/2 or /3 card counts
+// holder's records do not give it: every token but standard_history/1 counts
 // one (SH §3), and Amount is then not read. A standard_history/3 entry
 // (SH §11.2) has Rows in place of Outcome, and LeftOut when the deal is left
-// out of the counted deals.
+// out of the counted deals; a standard_history/4 entry (SH §12) has Rows and
+// never LeftOut.
 type Deal struct {
 	Deal              string    `json:"deal"`
 	AgreedAt          string    `json:"agreed_at"`
@@ -275,8 +292,8 @@ type Deal struct {
 	Disputes          []Dispute `json:"disputes"`
 	// hasOutcome records an outcome member read from JSON, which a /3
 	// entry may not carry even empty; v3Err a left_out or rows member that
-	// does not read as SH §11.2 says. Both matter only under /3, so that /1
-	// and /2 read an entry as they always have.
+	// does not read as SH §11.2 says. Both matter only under /3 and /4, so
+	// that /1 and /2 read an entry as they always have.
 	hasOutcome bool
 	v3Err      error
 }
@@ -448,7 +465,7 @@ func checkEntry(d Deal, derivation string) error {
 	if d.CounterpartyClass != nil && !slices.Contains(CounterpartyClasses, *d.CounterpartyClass) {
 		return fmt.Errorf("unknown counterparty_class: %q", *d.CounterpartyClass)
 	}
-	v3 := derivation == Derivation3
+	v3 := shelf(derivation)
 	checks := []struct {
 		member, value string
 		values        []string
@@ -469,7 +486,11 @@ func checkEntry(d Deal, derivation string) error {
 			return d.v3Err
 		}
 		if d.Outcome != "" || d.hasOutcome {
-			return fmt.Errorf("deal %s: a /3 entry carries no outcome", d.Deal)
+			return fmt.Errorf("deal %s: a %s entry carries no outcome", d.Deal, derivation)
+		}
+		if d.LeftOut != nil && derivation == Derivation4 {
+			// SH §12: /4 leaves no deal out.
+			return fmt.Errorf("deal %s: a %s entry carries no left_out", d.Deal, derivation)
 		}
 		if d.LeftOut != nil && !slices.Contains(leftOut, *d.LeftOut) {
 			return fmt.Errorf("deal %s: left_out %q", d.Deal, *d.LeftOut)
@@ -486,7 +507,7 @@ func checkEntry(d Deal, derivation string) error {
 	switch {
 	case d.Unpriced && derivation == Derivation:
 		// SH §3: a /1 entry cannot be filled without the amount.
-		return fmt.Errorf("deal %s: no amount, which only %s and %s count", d.Deal, Derivation2, Derivation3)
+		return fmt.Errorf("deal %s: no amount, which %s does not count", d.Deal, Derivation)
 	case d.Unpriced:
 	case !currencyForm.MatchString(d.Amount.AssetCode):
 		return fmt.Errorf("deal %s: amount without an SR assetCode", d.Deal)
@@ -507,7 +528,7 @@ func checkEntry(d Deal, derivation string) error {
 	return nil
 }
 
-// Outcome is SH §11.3 and §11.4: a counted standard_history/3 deal's
+// Outcome is SH §11.3 and §11.4: a counted standard_history/3 or /4 deal's
 // outcome, the first rule that applies, and for a did_not_hold deal whether
 // the holder did not honour a ruling ("not_honoured") or remedied its unmet
 // rows ("remedied"); empty otherwise. The rows must be well-formed (SH §11.2).
@@ -609,7 +630,8 @@ func counts(deals []Deal, w Window, anchor time.Time, derivation string) (map[st
 			continue
 		}
 		t["in_window"]["of"]++
-		// SH §11.2: under /3 a deal left out is not counted either.
+		// SH §11.2: under /3 a deal left out is not counted either; /4 leaves
+		// none out (SH §12).
 		if d.CounterpartyClass != nil && *d.CounterpartyClass == notCounted || derivation == Derivation3 && d.LeftOut != nil {
 			t["in_window"]["not_counted"]++
 			if derivation == Derivation3 {
@@ -629,7 +651,7 @@ func counts(deals []Deal, w Window, anchor time.Time, derivation string) (map[st
 			t["class_missing"]["count"]++
 		}
 		outcome := d.Outcome
-		if derivation == Derivation3 {
+		if shelf(derivation) {
 			var detail string
 			outcome, detail = Outcome(d.Rows)
 			if outcome == "did_not_hold" {
@@ -738,7 +760,7 @@ func DeriveAs(derivation, holderKind, controllerClass string, asOf AsOf, policy 
 	if err != nil {
 		return nil, err
 	}
-	if derivation == Derivation3 {
+	if shelf(derivation) {
 		if _, err := parseTime(asOf.CoverageStartTime); err != nil {
 			return nil, err
 		}
@@ -885,7 +907,7 @@ func cardForm(v any, derivation string) bool {
 	if derivation != Derivation && !tallyForm(card["unpriced"], outcomes) {
 		return false
 	}
-	if derivation == Derivation3 {
+	if shelf(derivation) {
 		start, ok := str(card["coverage_start"])
 		if !ok || !month.MatchString(start) || start < card["since"].(string) {
 			return false
@@ -1045,7 +1067,7 @@ func partitions(t any, parts []string) bool {
 	return sum == field(t, "of")
 }
 
-// denominator is SH §4 "Denominators" (under /3, §11.6). Run only on a card
+// denominator is SH §4 "Denominators" (under /3 and /4, §11.6). Run only on a card
 // whose form and counts are PASS.
 func denominator(v any, derivation string) bool {
 	card := v.(map[string]any)
@@ -1068,8 +1090,10 @@ func denominator(v any, derivation string) bool {
 			return false
 		}
 	}
-	if derivation == Derivation3 && (field(card["local_times"], "of") != counted ||
-		field(card["not_counted"], "of") != field(card["in_window"], "not_counted")) {
+	if shelf(derivation) && field(card["local_times"], "of") != counted {
+		return false
+	}
+	if derivation == Derivation3 && field(card["not_counted"], "of") != field(card["in_window"], "not_counted") {
 		return false
 	}
 	bands := card["bands"].([]any)
@@ -1096,7 +1120,7 @@ func denominator(v any, derivation string) bool {
 			return false
 		}
 	}
-	if derivation == Derivation3 {
+	if shelf(derivation) {
 		// SH §11.4: a did_not_hold deal is in at most one of the two counts.
 		dnh := field(card["outcomes"], "did_not_hold")
 		if field(card["remedied"], "of") != dnh || field(card["not_honoured"], "of") != dnh ||
@@ -1197,7 +1221,7 @@ func CheckAs(derivation string, card []byte, policy *Policy, asOf *AsOf, deals [
 			return nil, err
 		}
 		ok := m != nil && m["anchor"] == asOf.Anchor && m["since"] == asOf.FirstCheckpointTime[:7]
-		if derivation == Derivation3 {
+		if shelf(derivation) {
 			if _, err := parseTime(asOf.CoverageStartTime); err != nil {
 				return nil, err
 			}

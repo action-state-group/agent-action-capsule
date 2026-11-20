@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The ``standard_history/1``, ``standard_history/2`` and ``standard_history/3`` derivations
-(``spec/standard-history-v0.md``, cited as SH; ``/3`` is SH §11).
+"""The ``standard_history/1`` to ``standard_history/4`` derivations (``spec/standard-history-v0.md``,
+cited as SH; ``/3`` is SH §11 and ``/4`` is SH §12).
 
 Two functions, each for the token its ``derivation`` names (``/1`` when omitted):
 
@@ -27,6 +27,7 @@ __all__ = [
     "DERIVATION",
     "DERIVATION_2",
     "DERIVATION_3",
+    "DERIVATION_4",
     "DERIVATIONS",
     "PROPERTIES",
     "COUNTERPARTY_CLASSES",
@@ -42,7 +43,12 @@ DERIVATION_2 = "standard_history/2"
 #: that the holder remedied or whose ruling it did not honour, and carries the shelf log's coverage
 #: start.
 DERIVATION_3 = "standard_history/3"
-DERIVATIONS = (DERIVATION, DERIVATION_2, DERIVATION_3)
+#: SH §12: /4 is /3 except that it leaves no deal out for want of a witness time: no ``left_out``
+#: and no ``not_counted`` tally.
+DERIVATION_4 = "standard_history/4"
+DERIVATIONS = (DERIVATION, DERIVATION_2, DERIVATION_3, DERIVATION_4)
+#: The tokens that count a shelf log's deals from their term rows (SH §11, §12).
+SHELF = (DERIVATION_3, DERIVATION_4)
 
 #: SH §6, in the order a verifier reports them.
 PROPERTIES = ("card_form", "counts_integral", "denominator", "window_from_policy", "as_of",
@@ -89,7 +95,9 @@ CARD_MEMBERS = frozenset(("derivation", "holder_kind", "controller_class", "anch
 #: SH §4: the members of each token's card.
 MEMBERS = {DERIVATION: CARD_MEMBERS, DERIVATION_2: CARD_MEMBERS | {"unpriced"},
            DERIVATION_3: CARD_MEMBERS | {"unpriced", "coverage_start", "not_counted", "remedied",
-                                         "not_honoured", "local_times"}}
+                                         "not_honoured", "local_times"},
+           DERIVATION_4: CARD_MEMBERS | {"unpriced", "coverage_start", "remedied", "not_honoured",
+                                         "local_times"}}
 BAND_KEYS = ("currency", "decade")
 MAX_COUNT = 2 ** 53 - 1
 
@@ -106,6 +114,7 @@ def _tallies(derivation: str) -> dict:
     t = dict(TALLIES)
     if derivation == DERIVATION_3:
         t["not_counted"] = NOT_COUNTED_3
+    if derivation in SHELF:
         t["remedied"] = ("count",)
         t["not_honoured"] = ("count",)
         t["local_times"] = ("count",)
@@ -155,9 +164,11 @@ def _decade(amount: Mapping[str, Any]) -> int | None:
     return None if value == "0" else len(value) - scale - 1
 
 
-#: SH §11.2: the members a /3 deal entry may carry. /1 and /2 entries are read as SH §5.2 says.
-ENTRY_MEMBERS_3 = frozenset(("deal", "agreed_at", "counterparty_class", "left_out", "role", "amount",
-                             "rows", "happened", "disputes"))
+#: SH §11.2: the members a /3 deal entry may carry; a /4 entry has no ``left_out`` (SH §12). /1 and
+#: /2 entries are read as SH §5.2 says.
+ENTRY_MEMBERS_4 = frozenset(("deal", "agreed_at", "counterparty_class", "role", "amount", "rows",
+                             "happened", "disputes"))
+ENTRY_MEMBERS = {DERIVATION_3: ENTRY_MEMBERS_4 | {"left_out"}, DERIVATION_4: ENTRY_MEMBERS_4}
 ROW_MEMBERS = frozenset(("owed_by", "status", "value", "remedy", "local"))
 
 
@@ -180,16 +191,16 @@ def _check_row(ref: str, row: Any) -> None:
 
 
 def _check_entry(deal: Mapping[str, Any], derivation: str) -> None:
-    """The deal entry's form (SH §5.2; under /3, §11.2). A malformed entry is the caller's error,
-    never a count. ``amount`` may be absent only under /2 and /3: a /1 entry cannot be filled
-    without it (SH §3)."""
+    """The deal entry's form (SH §5.2; under /3, §11.2; under /4, §12). A malformed entry is the
+    caller's error, never a count. ``amount`` may be absent except under /1: a /1 entry cannot be
+    filled without it (SH §3)."""
     if not isinstance(deal, Mapping):
         raise ValueError("a deal entry is not an object")
     if not isinstance(deal.get("deal"), str) or not deal["deal"]:
         raise ValueError("deal entry without a deal reference")
-    v3 = derivation == DERIVATION_3
-    if v3 and not set(deal) <= ENTRY_MEMBERS_3:
-        raise ValueError(f"deal {deal['deal']}: a member a /3 entry does not have")
+    v3 = derivation in SHELF
+    if v3 and not set(deal) <= ENTRY_MEMBERS[derivation]:
+        raise ValueError(f"deal {deal['deal']}: a member a {derivation} entry does not have")
     _time(deal.get("agreed_at"))
     if "counterparty_class" in deal and deal["counterparty_class"] not in COUNTERPARTY_CLASSES:
         raise ValueError(f"unknown counterparty_class: {deal['counterparty_class']!r}")
@@ -263,7 +274,7 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
         if not _in_window(_time(deal["agreed_at"]), window, anchor_time):
             continue
         t["in_window"]["of"] += 1
-        # SH §11.2: under /3 a deal left out is not counted either.
+        # SH §11.2: under /3 a deal left out is not counted either; /4 leaves none out (SH §12).
         if deal.get("counterparty_class") == NOT_COUNTED or (derivation == DERIVATION_3 and "left_out" in deal):
             t["in_window"]["not_counted"] += 1
             if derivation == DERIVATION_3:
@@ -275,7 +286,7 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
         t["class_missing"]["of"] += 1
         if "counterparty_class" not in deal:
             t["class_missing"]["count"] += 1
-        if derivation == DERIVATION_3:
+        if derivation in SHELF:
             result, detail = outcome(deal["rows"])
             if result == "did_not_hold":
                 for name in ("remedied", "not_honoured"):
@@ -320,7 +331,7 @@ def derive_card(*, holder_kind: str, controller_class: str, anchor: str, anchor_
                 coverage_start_time: str | None = None) -> dict:
     """The card of the token ``derivation`` that SH §4 (under /3, §11.6) states for these inputs.
     ``policy`` is ``{"digest", "window"}`` (SH §5.1). ``coverage_start_time`` is the time of the
-    shelf log's coverage start (SH §11.5), required under /3 only.
+    shelf log's coverage start (SH §11.5), required under /3 and /4 only.
 
     Raises ``ValueError`` on a malformed input, a /1 deal entry without an amount included.
     """
@@ -333,7 +344,7 @@ def derive_card(*, holder_kind: str, controller_class: str, anchor: str, anchor_
     card = {"derivation": derivation, "holder_kind": holder_kind, "controller_class": controller_class,
             "anchor": anchor, "since": first_checkpoint_time[:7], "window": dict(window),
             "policy": policy["digest"]}
-    if derivation == DERIVATION_3:
+    if derivation in SHELF:
         _time(coverage_start_time)
         if not first_checkpoint_time <= coverage_start_time <= anchor_time:
             raise ValueError("the coverage start is not between the first checkpoint and the anchor")
@@ -385,7 +396,7 @@ def _card_form(card: Any, derivation: str) -> bool:
         return False
     if derivation != DERIVATION and not _tally_form(card["unpriced"], OUTCOMES):
         return False
-    if derivation == DERIVATION_3:
+    if derivation in SHELF:
         start = card["coverage_start"]
         if not isinstance(start, str) or not MONTH.fullmatch(start) or start < card["since"]:
             return False
@@ -456,7 +467,7 @@ def _partitions(t: Mapping[str, Any], parts: Sequence[str]) -> bool:
 
 
 def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
-    """SH §4 "Denominators" (under /3, §11.6). Run only on a card whose form and counts are PASS."""
+    """SH §4 "Denominators" (under /3 and /4, §11.6). Run only on a card whose form and counts are PASS."""
     for name, parts in _tallies(derivation).items():
         t = card[name]
         if "of" not in t:
@@ -469,8 +480,9 @@ def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
     counted = card["in_window"]["counted"]
     if any(card[name]["of"] != counted for name in ("class_missing", "outcomes", "roles", "happened")):
         return False
-    if derivation == DERIVATION_3 and (card["local_times"]["of"] != counted
-                                       or card["not_counted"]["of"] != card["in_window"]["not_counted"]):
+    if derivation in SHELF and card["local_times"]["of"] != counted:
+        return False
+    if derivation == DERIVATION_3 and card["not_counted"]["of"] != card["in_window"]["not_counted"]:
         return False
     for band in card["bands"]:
         if not _partitions(band, OUTCOMES) or band["of"] < 1:
@@ -484,7 +496,7 @@ def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
     for o in ("of",) + OUTCOMES:
         if sum(band[o] for band in priced) != card["outcomes"][o]:
             return False
-    if derivation == DERIVATION_3:
+    if derivation in SHELF:
         # SH §11.4: a did_not_hold deal is in at most one of the two counts.
         did_not_hold = card["outcomes"]["did_not_hold"]
         if (any(card[name]["of"] != did_not_hold for name in ("remedied", "not_honoured"))
@@ -512,7 +524,7 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
     ``derivation``, the one the request named.
 
     ``policy`` is ``{"digest", "window"}`` (SH §5.1); ``as_of`` is ``{"anchor", "anchor_time",
-    "first_checkpoint_time"}``, and under /3 also ``"coverage_start_time"`` (SH §11.7); ``deals`` is every deal entry the stream holds at the anchor, passed only when the verifier has
+    "first_checkpoint_time"}``, and under /3 and /4 also ``"coverage_start_time"`` (SH §11.7); ``deals`` is every deal entry the stream holds at the anchor, passed only when the verifier has
     shown coverage and no payload member the mapping reads is withheld (SH §6 "Handing the
     material"); the counts are recomputed over the card's own
     window, so the policy is not needed for them. Each is optional; a property that needs a missing one is ``NOT_CHECKED``. Raises ``ValueError`` on a
@@ -545,7 +557,7 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
         _time(as_of.get("first_checkpoint_time"))
         ok = (isinstance(card, Mapping) and card.get("anchor") == as_of.get("anchor")
               and card.get("since") == as_of["first_checkpoint_time"][:7])
-        if derivation == DERIVATION_3:
+        if derivation in SHELF:
             _time(as_of.get("coverage_start_time"))
             _time(as_of.get("anchor_time"))
             # SH §11.1: the anchor is at or after the coverage start.

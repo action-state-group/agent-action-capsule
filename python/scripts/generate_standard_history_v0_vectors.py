@@ -5,8 +5,9 @@
 Each case is one card with what a verifier may hold beside it: the policy's window and digest
 (SH §5.1), the anchor (SH §6 ``as_of``) and the deal entries (SH §5.2). SH §6 lists the
 negatives. ``vectors.json`` holds the ``standard_history/1`` cases; ``vectors-2.json`` holds the
-``standard_history/2`` cases and ``vectors-3.json`` the ``standard_history/3`` ones (SH §11), each
-naming the token it is checked under in ``inputs.derivation``.
+``standard_history/2`` cases, ``vectors-3.json`` the ``standard_history/3`` ones (SH §11) and
+``vectors-4.json`` the ``standard_history/4`` ones (SH §12), each naming the token it is checked
+under in ``inputs.derivation``.
 
 Every card and every expected property is stated here by hand from SH §4 to §6. The script
 imports no implementation: ``python/tests/test_standard_history_v0_vectors.py`` runs the Python
@@ -42,7 +43,10 @@ STATUS_2 = ("Conformance vectors for the informational Standard History Derivati
 STATUS_3 = ("Conformance vectors for the informational Standard History Derivation v0 "
             "(spec/standard-history-v0.md), standard_history/3: deals counted from their term rows, with "
             "the remedied and not-honoured counts and the coverage start. Every digest is a label digest for these vectors only.")
-SH1, SH2, SH3 = "standard_history/1", "standard_history/2", "standard_history/3"
+STATUS_4 = ("Conformance vectors for the informational Standard History Derivation v0 "
+            "(spec/standard-history-v0.md), standard_history/4: /3 with no deal left out for want of a "
+            "witness time. Every digest is a label digest for these vectors only.")
+SH1, SH2, SH3, SH4 = "standard_history/1", "standard_history/2", "standard_history/3", "standard_history/4"
 PROPERTIES = ("card_form", "counts_integral", "denominator", "window_from_policy", "as_of",
               "counts_recompute")
 
@@ -783,6 +787,78 @@ def cases_3() -> list:
     ]
 
 
+def deals4() -> list:
+    """The /3 shelf at the first anchor (SH §12): deal-311, whose agreement names a witness and whose
+    records hold no time from it, has no left_out and its row is local; deal-312 is the shop purchase
+    without left_out; deal-315 is a deal whose agreement names no witness, every row local."""
+    out = []
+    for d in DEALS_3:
+        d = copy.deepcopy(d)
+        d.pop("left_out", None)
+        if d["deal"] == "deal-311":
+            d["rows"] = [row(H, "agreed", MET, local=True)]
+        out.append(d)
+    out.append(deal3("deal-315", "2026-10-25T10:00:00Z", "provided", amount("800", "USD", 2),
+                     [row(H, "agreed", MET, local=True), row(C, "agreed", MET, local=True)], "receipt_only",
+                     "person_agent"))
+    return out
+
+
+DEALS_4 = deals4()
+
+
+def card4(base: dict, **members) -> dict:
+    """A /4 card: ``base``, a /3 card, without not_counted and under SH4, with ``members`` replaced, in
+    the counting table's member order."""
+    c = {k: v for k, v in base.items() if k != "not_counted"}
+    c["derivation"] = SH4
+    c.update(members)
+    return c
+
+
+# SH §12 by hand over DEALS_4: deal-313 is out of the window; deal-312 (shop) alone is not counted.
+# As PERSON_3M_3, plus deal-311 (held, USD decade 1, stamped by both, provided, local) and deal-315
+# (held, USD decade 0, receipt only, provided, local).
+PERSON_3M_4 = card4(
+    PERSON_3M_3,
+    in_window=tally(14, counted=13, not_counted=1), class_missing=tally(13, count=1),
+    outcomes=outs(13, held=3, did_not_hold=5, undecided=5), local_times=tally(13, count=4),
+    bands=PERSON_3M_3["bands"][:4] + [band("USD", 0, 1, held=1), band("USD", 1, 4, held=1, did_not_hold=1, undecided=2),
+                                      PERSON_3M_3["bands"][5]],
+    roles=tally(13, provided=9, bought=4), happened=tally(13, stamped_by_both=5, receipt_only=5, no_record=3),
+)
+FULL_4 = {"policy": POLICY_3M, "as_of": AS_OF_3, "deals": DEALS_4, "derivation": SH4}
+
+
+def cases_4() -> list:
+    return [
+        # Positive.
+        case("no-witness-time-counted", "A deal whose agreement names a witness and whose records hold no "
+             "time from it, and a deal whose agreement names no witness, each counted with its rows local; the "
+             "shop purchase alone not counted", ["§12"], PERSON_3M_4, props(), **FULL_4),
+        case("no-witness-time-without-shelf", "The same card, checked without the deal entries: the counts are "
+             "the holder's statement", ["§12"], PERSON_3M_4, props(counts_recompute=NC),
+             policy=POLICY_3M, as_of=AS_OF_3, derivation=SH4),
+        case("no-witness-time-card-only", "The same card, checked with nothing beside it", ["§12"], PERSON_3M_4,
+             props(window_from_policy=NC, as_of=NC, counts_recompute=NC), derivation=SH4),
+        # Negative.
+        case("no-witness-time-left-out", "deal-311 and deal-315 left out as /3 would leave a deal without a "
+             "witness time, every tally agreeing with the others", ["§12"],
+             card4(PERSON_3M_3, in_window=tally(14, counted=11, not_counted=3)),
+             props(counts_recompute="FAIL"), **FULL_4),
+        case("no-witness-time-not-local", "deal-311 and deal-315 counted, but left out of local_times",
+             ["§12"], mutate(PERSON_3M_4, lambda c: c.update(local_times=tally(13, count=2))),
+             props(counts_recompute="FAIL"), **FULL_4),
+        case("not-counted-member", "A /4 card carrying /3's not_counted tally", ["§12"],
+             {**PERSON_3M_4, "not_counted": reasons(1, shop_preauth=1)},
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL_4),
+        case("v3-card-for-v4-request", "A /3 card answering a /4 request", ["§12"], PERSON_3M_3,
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL_4),
+        case("v4-card-for-v3-request", "A /4 card answering a /3 request", ["§12"], PERSON_3M_4,
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL_3),
+    ]
+
+
 def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
@@ -804,6 +880,7 @@ PACK_STRINGS_2 = {**PACK_STRINGS, "deals.unpriced": "counted deals without a rec
 # §11.2, §11.8 for /3.
 DEAL_ENTRY_3 = ["deal", "agreed_at", "counterparty_class", "left_out", "role", "amount", "rows", "happened",
                 "disputes"]
+DEAL_ENTRY_4 = [m for m in DEAL_ENTRY_3 if m != "left_out"]  # §12
 ROW_RESULT = ["owed_by", "status", "value", "remedy", "local"]
 ROW_STATUSES = ["not_reached", "not_due", "no_statement", "waiting", "uncontested", "agreed_so_far", "agreed",
                 "in_disagreement", "in_dispute", "ruled"]
@@ -821,14 +898,15 @@ PACK_STRINGS_3 = {
     "anchor.unwitnessed": "unwitnessed: no witness receipt for this snapshot",
     "anchor.witnessed_only": "the witness timed this snapshot, not the records the counts rest on",
 }
+PACK_STRINGS_4 = {k: v for k, v in PACK_STRINGS_3.items() if k != "deals.not_counted.reasons"}  # §12
 
 
 def check_frame(all_cases: list, instance: str = SH1) -> None:
     """HF §6.3: the instance's counting table and wording pack (``spec/history-frame/``) equal, member
     for member, what this generator's constants and cases give, and every case's ``standard`` is
     HF §4.5's acceptance rule under the table's ``may_be_not_checked``."""
-    if instance == SH3:
-        check_frame_3(all_cases)
+    if instance in (SH3, SH4):
+        check_frame_3(all_cases, instance)
         return
     table, pack = history_frame.load(instance)
     model = PERSON_3M if instance == SH1 else PERSON_3M_2
@@ -868,24 +946,28 @@ def check_frame(all_cases: list, instance: str = SH1) -> None:
         assert c["expected"]["standard"] is history_frame.accepted(statuses, table["may_be_not_checked"]), c["id"]
 
 
-def check_frame_3(all_cases: list) -> None:
-    """HF §6.3 for /3 (SH §11): its counting table and wording pack restate §11 and this generator's
-    cases."""
-    table, pack = history_frame.load(SH3)
-    model = PERSON_3M_3
+def check_frame_3(all_cases: list, instance: str = SH3) -> None:
+    """HF §6.3 for /3 (SH §11) and /4 (SH §12): its counting table and wording pack restate the
+    section and this generator's cases."""
+    v4 = instance == SH4
+    table, pack = history_frame.load(instance)
+    model = PERSON_3M_4 if v4 else PERSON_3M_3
     raised = model["disputes"]["raised"]
-    every_deal = [d for c in all_cases for d in c["inputs"].get("deals", [])]
-    assert all(set(d) <= set(DEAL_ENTRY_3) for d in every_deal), "deal entry"
+    # Only the cases checked under this token: a card answering another token's request may carry
+    # that token's deals.
+    every_deal = [d for c in all_cases if c["inputs"]["derivation"] == instance for d in c["inputs"].get("deals", [])]
+    assert all(set(d) <= set(DEAL_ENTRY_4 if v4 else DEAL_ENTRY_3) for d in every_deal), "deal entry"
     every_row = [r for d in every_deal for r in d["rows"]]
     assert all(set(r) <= set(ROW_RESULT) for r in every_row), "row result"
     assert {r["status"] for r in every_row} <= set(ROW_STATUSES), "row status"
-    in_window = [d for d in DEALS_3 if d["agreed_at"] >= "2026-07-28T12:00:00Z"]
+    in_window = [d for d in (DEALS_4 if v4 else DEALS_3) if d["agreed_at"] >= "2026-07-28T12:00:00Z"]
     assert model["in_window"]["not_counted"] == sum(
         d.get("counterparty_class") in NOT_COUNTED_3 or d.get("left_out") in NOT_COUNTED_3 for d in in_window)
     standard = [c["expected"]["properties"] for c in all_cases if c["expected"]["standard"]]
+    not_counted = {} if v4 else {"not_counted": NOT_COUNTED_3}
     expected_table = {
-        **history_frame.header("counting_table", SH3),
-        "inputs": {"deal_entry": DEAL_ENTRY_3,
+        **history_frame.header("counting_table", instance),
+        "inputs": {"deal_entry": DEAL_ENTRY_4 if v4 else DEAL_ENTRY_3,
                    "row_result": ROW_RESULT,
                    "row_status": ROW_STATUSES,
                    "row_value": ["met", "not_met"],
@@ -893,10 +975,11 @@ def check_frame_3(all_cases: list) -> None:
                    "unruled_remedy": ["none", "made"],
                    "owed_by": ["holder", "counterparty"],
                    "dispute_entry": ["side", "outcome", "forum"],
-                   "counterparty_class": COUNTERPARTY_CLASSES, "not_counted": NOT_COUNTED_3,
+                   "counterparty_class": COUNTERPARTY_CLASSES, **not_counted,
                    "record_kinds": RECORD_KINDS},
         "card_members": list(model),
-        "tallies": {"in_window": list(model["in_window"]), "not_counted": list(model["not_counted"]),
+        "tallies": {"in_window": list(model["in_window"]),
+                    **({} if v4 else {"not_counted": list(model["not_counted"])}),
                     "class_missing": list(model["class_missing"]),
                     "outcomes": list(model["outcomes"]), "remedied": list(model["remedied"]),
                     "not_honoured": list(model["not_honoured"]),
@@ -910,7 +993,8 @@ def check_frame_3(all_cases: list) -> None:
         "may_be_not_checked": history_frame.not_checked_when_accepted(standard, list(PROPERTIES)),
     }
     assert table == expected_table, "counting table differs from this generator"
-    assert pack == {**history_frame.header("wording_pack", SH3), "language": "en", "strings": PACK_STRINGS_3}, \
+    assert pack == {**history_frame.header("wording_pack", instance), "language": "en",
+                    "strings": PACK_STRINGS_4 if v4 else PACK_STRINGS_3}, \
         "wording pack differs from this generator"
     for c in all_cases:
         assert c["expected"]["standard"] is history_frame.accepted(c["expected"]["properties"],
@@ -918,19 +1002,23 @@ def check_frame_3(all_cases: list) -> None:
 
 
 def build() -> dict:
-    all_cases, all_cases_2, all_cases_3 = cases(), cases_2(), cases_3()
-    ids = [c["id"] for c in all_cases + all_cases_2 + all_cases_3]
+    all_cases, all_cases_2, all_cases_3, all_cases_4 = cases(), cases_2(), cases_3(), cases_4()
+    ids = [c["id"] for c in all_cases + all_cases_2 + all_cases_3 + all_cases_4]
     assert len(ids) == len(set(ids)), "duplicate case id"
     check_frame(all_cases)
     check_frame([c for c in all_cases_2 if c["inputs"]["derivation"] == SH2], SH2)
     check_frame([c for c in all_cases_3 if c["inputs"]["derivation"] == SH3], SH3)
+    check_frame([c for c in all_cases_4 if c["inputs"]["derivation"] == SH4], SH4)
     corpus = {"set": SET, "status": STATUS, "spec": SPEC, "properties": list(PROPERTIES),
               "count": len(all_cases), "cases": all_cases}
     corpus_2 = {"set": SET, "status": STATUS_2, "spec": SPEC, "derivation": SH2, "properties": list(PROPERTIES),
                 "count": len(all_cases_2), "cases": all_cases_2}
     corpus_3 = {"set": SET, "status": STATUS_3, "spec": SPEC, "derivation": SH3, "properties": list(PROPERTIES),
                 "count": len(all_cases_3), "cases": all_cases_3}
-    files = {"vectors.json": _dump(corpus), "vectors-2.json": _dump(corpus_2), "vectors-3.json": _dump(corpus_3)}
+    corpus_4 = {"set": SET, "status": STATUS_4, "spec": SPEC, "derivation": SH4, "properties": list(PROPERTIES),
+                "count": len(all_cases_4), "cases": all_cases_4}
+    files = {"vectors.json": _dump(corpus), "vectors-2.json": _dump(corpus_2), "vectors-3.json": _dump(corpus_3),
+             "vectors-4.json": _dump(corpus_4)}
     files["manifest.json"] = _dump({
         "set": SET, "status": STATUS, "spec": SPEC, "generator": GENERATOR,
         "files": [{"path": name, "sha256": hashlib.sha256(data).hexdigest(), "count": json.loads(data).get("count")}

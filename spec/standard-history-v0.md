@@ -16,7 +16,9 @@ This document defines three things:
   `/1` cannot count them. Its revision `standard_history/3` (§11) counts the deals of a shelf log
   of book facts from each deal's term rows, in the same three outcomes, counts among the deals that
   did not hold those the holder remedied and those where it did not honour a ruling, and carries
-  the coverage start of that shelf log; `/1` and `/2` are unchanged by it;
+  the coverage start of that shelf log; `/1` and `/2` are unchanged by it. Its revision
+  `standard_history/4` (§12) is `/3` except that it leaves no deal out for want of a witness time;
+  `/1` to `/3` are unchanged by it;
 - the deal member `counterparty_class` (§7), which decides whether a deal is counted;
 - the record kind `receipt_document` (§8): a document the holder holds, sealed by its digest.
 
@@ -26,10 +28,10 @@ month (§4).
 
 ## Dependency boundary
 
-**Owns:** the derivation tokens `standard_history/1`, `standard_history/2` and
-`standard_history/3` and their registry rows (`spec/REGISTRY.md` §16),
-the deal entry and the counting rules (§5, §11), the card and its members (§4, §11.6), the card
-properties (§6, §11.7), the member `counterparty_class` and its three values (§7), and the record
+**Owns:** the derivation tokens `standard_history/1` to `standard_history/4` and their registry
+rows (`spec/REGISTRY.md` §16),
+the deal entry and the counting rules (§5, §11, §12), the card and its members (§4, §11.6, §12),
+the card properties (§6, §11.7, §12), the member `counterparty_class` and its three values (§7), and the record
 kind `receipt_document` (§8).
 
 **Uses unchanged:**
@@ -45,8 +47,8 @@ kind `receipt_document` (§8).
 | RES | `spec/evidence-result-v0.md` | the claim verdict `met`, `not_met`, `not_evaluable`, `out_of_scope` (§4) and the grade `self-attested` (§1) |
 | EB | `spec/draft-mih-zhang-agent-disclosure-bundle-02.md` (`evidence-bundle/v2`) | only the Bundle, its `records`, its `completeness` members (`missing`), the disclosure overlay ("Bundle-Level Disclosures"), the padding leaf ("Non-Record Leaves") and the interval coverage and per-record membership claims ("Completeness Claims and Log Membership"), as the carriage of the material `counts_recompute` needs (§6 "Handing the material") |
 | HF | `spec/history-frame-v0.md` | the History frame: its rules (§4), its parameters (§3), and this derivation's counting table and wording pack (§5, §6.1) |
-| SF | `spec/shelf-forms-v0.md` | `/3` only: the shelf log, its book facts and journal facts, the status value a fact commits to, the format-switch marker and the coverage start (§1, §3, §4.2), as the basis `/3` counts from (§11) |
-| EBL | the evidencebook library, <https://github.com/action-state-group/evidencebook>, commit `a443a83a7f9dcf781b1a54ada98e37a286423ebe` | `/3` only: the rule that computes a term row's status (`rowstatus/rowstatus.go`, design §4.2 of evidencebook#461), whose results a `/3` deal entry carries (§11.2, SH-11), and the whole-shelf handover and its checks (`shelf_handover.go`; its design `docs/design/461-shelf-facts.md` §2.7), the material of `/3`'s `counts_recompute` (§11.7) |
+| SF | `spec/shelf-forms-v0.md` | `/3` and `/4` only: the shelf log, its book facts and journal facts, the status value a fact commits to, the format-switch marker and the coverage start (§1, §3, §4.2), as the basis `/3` and `/4` count from (§11, §12) |
+| EBL | the evidencebook library, <https://github.com/action-state-group/evidencebook>, commit `a443a83a7f9dcf781b1a54ada98e37a286423ebe` | `/3` and `/4` only: the rule that computes a term row's status (`rowstatus/rowstatus.go`, design §4.2 of evidencebook#461), whose results a `/3` deal entry carries (§11.2, SH-11), and the whole-shelf handover and its checks (`shelf_handover.go`; its design `docs/design/461-shelf-facts.md` §2.7), the material of `/3`'s `counts_recompute` (§11.7) |
 
 **Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
 `spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
@@ -86,13 +88,17 @@ vector of this document.
 - **Wording pack:** `spec/history-frame/standard-history-1-pack.json`, digest
   `dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74`: the display strings of §6
   "What a verifier shows".
-- **`/3`'s parameters** are `/1`'s, all of them: SH's column of HF §6.1 holds for the three
-  tokens. Its anchor is a shelf checkpoint, the checkpoint of one log (`streams` `one`), and the
+- **`/3`'s and `/4`'s parameters** are `/1`'s, all of them: SH's column of HF §6.1 holds for the
+  four tokens. Its anchor is a shelf checkpoint, the checkpoint of one log (`streams` `one`), and the
   coverage start it carries (§11.5) is a card member, not a coverage kind: `coverage_kind` stays
   `policy_window`, carried as `instance_text`.
 - **`/3`'s documents:** the counting table `spec/history-frame/standard-history-3-table.json`,
   digest `9672d76a964d863b50596a4c8f0fc8f7823fd157a30f225ec258c724b3d6b670`, and the wording pack `spec/history-frame/standard-history-3-pack.json`, digest
   `86da7c4ec596e54cd289cd3df857e4cba32af50e1cba313f63bcd05b1d8ed802` (§11).
+- **`/4`'s documents:** the counting table `spec/history-frame/standard-history-4-table.json`,
+  digest `45b5814ade6d062ef31747207288d2dc9bf6fa303d22765dc18c17bd6dfa3b8e`, and the wording pack
+  `spec/history-frame/standard-history-4-pack.json`, digest
+  `0babb8c1bb2a7fee52ac95606fb8acffac7f2f67634790ac6aa499afcf7a146f` (§12).
 - **`/2`'s documents:** the counting table `spec/history-frame/standard-history-2-table.json`,
   digest `c18c28b9830440fddb0d2963c6731da698b019d00606e3f3e4205dfb34c48a1a`, which adds to `/1`'s
   table the card member and tally `unpriced` (§4); and the wording pack
@@ -100,8 +106,8 @@ vector of this document.
   `212fa32bf4a5193f4161ecc86059cf4b79bac9af183350a1800a05834797a564`, which adds the string that
   words it (§6).
 - **Pinning.** Each token pins both of its documents' bytes (HF §5.4): any change to either of
-  `/2`'s is a new token, and `/1`'s stay as they are; `standard_history/3` pins its own two
-  documents (§11), and any change to either of them is a new token too. Where a document and this text
+  `/2`'s is a new token, and `/1`'s stay as they are; `standard_history/3` and `standard_history/4` each
+  pin their own two documents (§11, §12), and any change to either of them is a new token too. Where a document and this text
   disagree, HF §6.3 applies.
 - **Frame rules.** One holder key per card (HF §4.1), envelope acceptance (HF §4.3), card
   properties outside the IP §8 mapping (HF §4.4), acceptance (HF §4.5: a standard card, §6), no
@@ -118,8 +124,8 @@ described in BCP 14 (RFC 2119, RFC 8174) when, and only when, they appear in all
 
 Terms from PH §1, IP §1 and ER §2 are used unchanged. This document adds:
 
-- **Card:** the artifact of an answer under `standard_history/1`, `standard_history/2` (§4) or
-  `standard_history/3` (§11.6).
+- **Card:** the artifact of an answer under `standard_history/1`, `standard_history/2` (§4),
+  `standard_history/3` (§11.6) or `standard_history/4` (§12).
 - **Policy:** the holder's disclosure policy in force at the anchor, in whatever format the
   holder's host keeps it.
 - **Window:** the span of deals a card counts, set by the policy (§5.1).
@@ -150,17 +156,18 @@ a warning: the holder signed the counts, and recomputing them needs the whole st
 
 ## 3. The derivation
 
-`standard_history/1`, `standard_history/2` and `standard_history/3` are registered derivation
-tokens [ER "Derivation"; `spec/REGISTRY.md` §16]. A request for any of them is the IP request
+`standard_history/1`, `standard_history/2`, `standard_history/3` and `standard_history/4` are
+registered derivation tokens [ER "Derivation"; `spec/REGISTRY.md` §16]. A request for any of them is the IP request
 [IP §6.1] with:
 
 - `subject` `{"full_history": null}` [ER §3.1]: the holder's stream;
 - `coverage` `{"expected_pin": <the anchor>}`;
-- `derivation` `"standard_history/1"`, `"standard_history/2"` or `"standard_history/3"`;
+- `derivation` `"standard_history/1"`, `"standard_history/2"`, `"standard_history/3"` or
+  `"standard_history/4"`;
 - `profile` `"evidence-interop/0"`.
 
-Everything §1 to §9 say of a card holds under `/1` and `/2` unless it names one, and under `/3`
-as §11 says. A responder answers a request with a card of the token the request names, never of
+Everything §1 to §9 say of a card holds under `/1` and `/2` unless it names one, under `/3`
+as §11 says, and under `/4` as §12 says. A responder answers a request with a card of the token the request names, never of
 another one. A
 responder whose records do not give a deal's agreed amount cannot fill that deal's `/1` entry
 (§5.2), so it cannot answer `/1`: it refuses the request with reason `no_such_subject` [IP §6.3,
@@ -576,8 +583,8 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-9 | Handing a recipient the policy, or the two members of it the card reads (§5.1), so that `window_from_policy` can run. Until a carriage is defined, a recipient's verifier reports it `NOT_CHECKED`, and the window is the holder's statement. |
 | SH-10 | A disclosed, checkable form of the set of logs an anchor commits, for an anchor that commits them through a salted or sparse tree, such as a batching tree whose root is a parent log's entry. Without it, coverage (b) of §6 "Handing the material" cannot be shown for such an anchor, and `counts_recompute` stays `NOT_CHECKED`. |
 | SH-11 | Restating, in this repository, the rule that computes a term row's status (§11.2). `/3` cites EBL's rule (`rowstatus/rowstatus.go` at the commit the dependency table pins) and does not restate it; until it is restated, a second implementation of a host computes row results to EBL's vectors (`testdata/row-status/`). |
-| SH-12 | Closed (§11.2 `left_out`): `/3` follows evidencebook#461 acceptance 9 and leaves out a deal only when its agreement names a witness and the holder holds no time from one; it counts a deal whose agreement names none, its rows local (§11.6 `local_times`), as acceptance 3 gives a shelf with no witness a card whose statuses are local. The target design's "a deal with no witness that both accept ... a card tallies it as not counted" (§4.1) is not followed. |
-| SH-13 | A window membership rule that a reader without status openings can check, such as the first witnessed time of a book's first fact in place of `agreed_at`, with a check of a window alone instead of a whole shelf (the target design's proposal of 2026-11-16 for evidencebook#461, not adopted). `/3` keeps `agreed_at` (§5.1, §11.2). |
+| SH-12 | Closed (§11.2 `left_out`; §12): `/3` follows evidencebook#461 acceptance 9 and leaves out a deal only when its agreement names a witness and the holder holds no time from one; it counts a deal whose agreement names none, its rows local (§11.6 `local_times`), as acceptance 3 gives a shelf with no witness a card whose statuses are local. The target design's "a deal with no witness that both accept ... a card tallies it as not counted" (§4.1) is not followed. `/3` stays as it is (§11.6). `/4` follows the later decision that design records (evidencebook#578): a started deal with no witnessed time is counted, its rows local, whether or not its agreement names a witness, so `/4` has no `left_out` and no `not_counted` tally. |
+| SH-13 | A window membership rule that a reader without status openings can check, such as the first witnessed time of a book's first fact in place of `agreed_at`, with a check of a window alone instead of a whole shelf (the target design's proposal of 2026-11-16 for evidencebook#461, not adopted). `/3` and `/4` keep `agreed_at` (§5.1, §11.2, §12). Under `/4` a counted deal may hold no witnessed time at all; its `agreed_at` is then the holder's own time, and `local_times` counts it once one of its rows rests on one of its records (§12). |
 | SH-14 | The wire form of the whole-shelf handover `/3`'s `counts_recompute` reads (§11.7), as SF-7. Until it is defined, the handover is EBL's form, and a verifier that does not read it reports `counts_recompute` `NOT_CHECKED`. |
 | SH-15 | A coverage start earlier than the format switch. EBL lets a reader that checks the old ticks' material against the genesis facts take the shelf log's first entry as the coverage start (its design §4); a `/3` card always carries the switch's month (§11.5), so such a holder's card understates its coverage. |
 | SH-16 | A remedy made without a ruling. It counts as remedied (§11.4; evidencebook#482 Q5), and the counterparty's answer is to dispute the row. EBL's row rule carries a remedy only for a `ruled` row; the remedy of an unmet row that is not ruled (§11.2) is the host profile's, read from the holder's own remedy record of the row, such as a refund (SH-2). |
@@ -852,3 +859,60 @@ exceed it, and a `not_counted` tally whose `of` is not `in_window.not_counted` (
 without `coverage_start` and a `coverage_start` before `since` (`card_form`); a `coverage_start`
 that is not the coverage start's month and an anchor before the coverage start (`as_of`); and a
 `/2` card answering a `/3` request and the reverse (`card_form`).
+
+## 12. `standard_history/4`
+
+`standard_history/4` is `/3` with one counting rule changed: it leaves no deal out for want of a
+witness time. A deal whose records hold no time from a witness its agreement names, and a deal
+whose agreement names no witness, are counted like any other deal. Each of their row results that
+rests on one of their records is `local` (§11.2), since no record of theirs has a time from a named
+witness. A `held` or `did_not_hold` outcome rests on the rows' statements or rulings (§11.3), so
+such a deal counted in either is in `local_times.count`; a row that rests on no record, such as one
+`not_due` or `no_statement` with no statement on it, is not `local`, and leaves its deal
+`undecided`. Everything §11 says of `/3` holds of `/4`, `/3`'s rules wherever they name a token, except:
+
+- **The deal entry** (§11.2) has no `left_out` member. A deal is **counted** under `/4` when it is
+  in the window and its `counterparty_class` is not `shop_preauth`, as §5.3 says of `/1` and `/2`,
+  and `in_window.not_counted` counts the deals in the window of that class. A host never leaves a
+  deal out because no named witness timed its records, or because its agreement names none.
+- **The card** (§11.6) has the members of a `/3` card except `not_counted`: with one reason left,
+  that tally would repeat `in_window.not_counted`. Its `derivation` is `"standard_history/4"`.
+  §11.6 "Denominators" holds without its rule for `not_counted`. No other member is allowed in a
+  `/4` card, at any level. Any change to a member, a value list or a counting rule of `/4` is a new
+  token, and `/4` stays as it is.
+- **The window** stays keyed by `agreed_at` (§5.1; SH-13). For a deal with no witnessed time that
+  is the holder's own time, as it is the holder's statement for every deal (§5.2); the card shows
+  such a deal's rows as local wherever they rest on its records.
+- **Card properties** (§11.7): `card_form` checks this section's members. A `/4` card answering a
+  `/1`, `/2` or `/3` request, or a `/1`, `/2` or `/3` card answering a `/4` request, fails
+  `card_form`. `counts_recompute` derives the counts by this section's rule. A verifier that does
+  not implement `/4`, given a `/4` card, reports its `derivation` as unknown, checks no property of
+  it and shows none of its counts: never `PASS`.
+- **What a verifier shows** (§11.8): there is no "Why not counted" line, since every deal not
+  counted is a shop purchase paid up front. "Local results" shows, among the counted deals, those
+  with a row that rests on a record no named witness timed, the deals with no witnessed time among
+  them.
+- **The holder's levers** (§11.9): `left_out` is not one. A holder that names only a witness that
+  never registers its checkpoints, or names none, takes no deal out of the counts: the deal is
+  counted, and its rows that rest on its records are shown as local.
+- **Documents.** The counting table `spec/history-frame/standard-history-4-table.json`, digest
+  `45b5814ade6d062ef31747207288d2dc9bf6fa303d22765dc18c17bd6dfa3b8e`, and the wording pack
+  `spec/history-frame/standard-history-4-pack.json`, digest
+  `0babb8c1bb2a7fee52ac95606fb8acffac7f2f67634790ac6aa499afcf7a146f`. They are `/3`'s with `left_out`, the
+  `not_counted` input list, the `not_counted` card member and tally, and the string
+  `deals.not_counted.reasons` removed.
+
+`/1`, `/2` and `/3` are unchanged by this section, in every member, value, rule, document and
+vector. A holder that answers `/3` still leaves out a deal as §11.2 says; a requester that wants
+such deals counted names `/4`.
+
+### 12.1 Vectors
+
+`vectors/standard-history-v0/vectors-4.json` holds the `/4` cases, each naming its token in
+`inputs.derivation`: `/3`'s shelf with a deal whose agreement names a witness and whose records
+hold no time from it, and a deal whose agreement names no witness, each counted with its rows local
+and in `local_times`, and the shop purchase alone not counted, checked with all the material,
+without the deal entries and with nothing beside it; and negatives each failing the property named:
+those two deals left out as `/3` would leave them out and those two deals left out of
+`local_times` (each `counts_recompute`), a `/4` card carrying `not_counted`, a `/3` card answering a
+`/4` request and the reverse (`card_form`).
