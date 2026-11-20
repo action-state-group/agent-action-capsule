@@ -29,8 +29,8 @@
       "instance": "standard_history/4",
       "table": "spec/history-frame/standard-history-4-table.json",
       "pack": "spec/history-frame/standard-history-4-pack.json",
-      "table_digest": "45b5814ade6d062ef31747207288d2dc9bf6fa303d22765dc18c17bd6dfa3b8e",
-      "pack_digest": "0babb8c1bb2a7fee52ac95606fb8acffac7f2f67634790ac6aa499afcf7a146f"
+      "table_digest": "38406ce224eaff3088759f07c0ec06fe63577bad742a60fdc86f6b5b7dec6bea",
+      "pack_digest": "b3c8273673decfaeb38945f5c90a3b99b0ac633a0a291c3acd2cc4e6703bc930"
     },
     {
       "instance": "personal_history_basic/1",
@@ -649,8 +649,8 @@
       "inputs": {
         "instance": "standard_history/4",
         "listed": {
-          "table": "45b5814ade6d062ef31747207288d2dc9bf6fa303d22765dc18c17bd6dfa3b8e",
-          "pack": "0babb8c1bb2a7fee52ac95606fb8acffac7f2f67634790ac6aa499afcf7a146f"
+          "table": "38406ce224eaff3088759f07c0ec06fe63577bad742a60fdc86f6b5b7dec6bea",
+          "pack": "b3c8273673decfaeb38945f5c90a3b99b0ac633a0a291c3acd2cc4e6703bc930"
         },
         "table": {
           "document": "counting_table",
@@ -661,6 +661,7 @@
               "deal",
               "agreed_at",
               "counterparty_class",
+              "no_witness_time",
               "role",
               "amount",
               "rows",
@@ -848,7 +849,7 @@
             "deals.not_counted": "deals in the window not counted",
             "deals.undecided": "counted deals not decided: a row not yet final, not reached, in disagreement or dispute, or without the statement it needed",
             "deals.unpriced": "counted deals without a recorded amount, in no value band",
-            "deals.local_times": "counted deals with a row that rests on a record no witness timed",
+            "deals.local_times": "counted deals with a row that rests on a record no witness timed, or with no witnessed time at all",
             "deals.remedied": "of the deals that did not hold, those whose unmet rows the holder remedied",
             "deals.not_honoured": "of the deals that did not hold, those where the holder did not honour a ruling",
             "coverage.start": "complete from {coverage_start}; before it, the deals the holder carried into its shelf log",

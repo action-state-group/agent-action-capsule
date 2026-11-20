@@ -165,7 +165,7 @@ same-commit files in CI.
   later anchor, and negatives for each outcome rule, a deal left out counted, the remedied,
   not-honoured and not-counted tallies,
   five-line tallies and the coverage start; and in `vectors-4.json` `/4` cards that count the deals
-  with no witnessed time, their rows local, with negatives that leave them out, leave them out of
+  with no witnessed time and disclose them in `local_times`, with negatives that leave them out, leave them out of
   `local_times` or carry `not_counted`; `python/scripts/generate_standard_history_v0_vectors.py` regenerates
   them.
 - `inference-service-history-v0/`: the Inference-Service History Profile

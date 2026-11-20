@@ -136,26 +136,37 @@ def test_every_negative_named_for_v3_is_present() -> None:
 def test_every_case_named_for_v4_is_present() -> None:
     """SH §12 "Vectors": the /4 cases, each negative failing the property named."""
     fails = {c["id"]: c["expected"]["fails"] for c in CASES_4}
-    for cid in ("no-witness-time-left-out", "no-witness-time-not-local"):
+    for cid in ("no-witness-time-left-out", "silent-deal-not-local"):
         assert fails[cid] == ["counts_recompute"], cid
     for cid in ("not-counted-member", "v3-card-for-v4-request", "v4-card-for-v3-request"):
         assert fails[cid] == ["card_form"], cid
     c = next(c for c in CASES_4 if c["id"] == "no-witness-time-counted")
     assert c["expected"]["standard"] and _derivable(c)
-    # SH §12: every deal without a witness time is counted, its rows local.
-    local = [d for d in c["inputs"]["deals"] if all(r.get("local") for r in d["rows"])]
-    assert {d["deal"] for d in local} == {"deal-311", "deal-315"}
+    # SH §12: every deal without a witness time carries no_witness_time; the silent one has no local row.
+    flagged = {d["deal"]: d for d in c["inputs"]["deals"] if d.get("no_witness_time")}
+    assert set(flagged) == {"deal-311", "deal-315", "deal-316"}
+    assert not any(r.get("local") for r in flagged["deal-316"]["rows"])
     assert not any("left_out" in d for d in c["inputs"]["deals"])
 
 
-def test_v4_refuses_left_out() -> None:
-    """SH §12: a /4 deal entry has no left_out; the same entries with it are a /3 entry."""
+@pytest.mark.parametrize("change", [{"left_out": "no_witness_time"}, {"no_witness_time": False},
+                                    {"no_witness_time": "true"}])
+def test_malformed_v4_deal_entry_raises(change: dict) -> None:
+    """SH §12: a /4 deal entry has no left_out, and no_witness_time only as true."""
     c = next(c for c in CASES_4 if c["id"] == "no-witness-time-counted")
     deals = json.loads(json.dumps(c["inputs"]["deals"]))
-    deals[0]["left_out"] = "no_witness_time"
+    deals[0].update(change)
     with pytest.raises(ValueError):
         _check({**c, "inputs": {**c["inputs"], "deals": deals}})
-    sh.check_card(c["inputs"]["card"], deals=deals, derivation=sh.DERIVATION_3)
+
+
+def test_v3_refuses_no_witness_time() -> None:
+    """SH §11.2: no_witness_time is a /4 member only."""
+    c = next(c for c in CASES_3 if c["id"] == "outcomes-from-rows")
+    deals = json.loads(json.dumps(c["inputs"]["deals"]))
+    deals[0]["no_witness_time"] = True
+    with pytest.raises(ValueError):
+        _check({**c, "inputs": {**c["inputs"], "deals": deals}})
 
 
 def test_v3_outcomes_cover_every_row_result() -> None:
@@ -443,10 +454,16 @@ def _counting_left_out_first(deals, window, anchor_time, derivation=sh.DERIVATIO
 
 
 def _v4_leaves_out_untimed(deals, window, anchor_time, derivation=sh.DERIVATION):
-    """Counts a /4 deal whose rows are all local as /3 counts a deal left out (SH §12 counts it)."""
+    """Counts a /4 deal with no witnessed time as /3 counts a deal left out (SH §12 counts it)."""
     if derivation == sh.DERIVATION_4:
-        deals = [d for d in deals if not all(r.get("local") for r in d["rows"])]
+        deals = [d for d in deals if not d.get("no_witness_time")]
     return _REAL_COUNTS(deals, window, anchor_time, derivation)
+
+
+def _v4_local_rows_only(deals, window, anchor_time, derivation=sh.DERIVATION):
+    """Counts local_times from the rows alone, ignoring no_witness_time (SH §12)."""
+    return _REAL_COUNTS([{k: v for k, v in d.items() if k != "no_witness_time"} for d in deals], window,
+                        anchor_time, derivation)
 
 
 def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -479,6 +496,7 @@ def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
         "lets a /3 card leave out coverage_start": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_3:
                                                                 sh.MEMBERS[sh.DERIVATION_3] - {"coverage_start"}}),
         "leaves out a /4 deal without a witness time": ("_counts", _v4_leaves_out_untimed),
+        "counts local_times from the rows alone": ("_counts", _v4_local_rows_only),
         "lets a /4 card carry not_counted": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_4: sh.MEMBERS[sh.DERIVATION_3]}),
     }
     agreeing = [desc for desc, (name, value) in mutants.items()

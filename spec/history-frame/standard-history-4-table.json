@@ -7,6 +7,7 @@
       "deal",
       "agreed_at",
       "counterparty_class",
+      "no_witness_time",
       "role",
       "amount",
       "rows",

@@ -276,13 +276,15 @@ type Dispute struct {
 // holder's records do not give it: every token but standard_history/1 counts
 // one (SH §3), and Amount is then not read. A standard_history/3 entry
 // (SH §11.2) has Rows in place of Outcome, and LeftOut when the deal is left
-// out of the counted deals; a standard_history/4 entry (SH §12) has Rows and
-// never LeftOut.
+// out of the counted deals; a standard_history/4 entry (SH §12) has Rows,
+// never LeftOut, and NoWitnessTime when the deal holds no time from a witness
+// its agreement names (or its agreement names none).
 type Deal struct {
 	Deal              string    `json:"deal"`
 	AgreedAt          string    `json:"agreed_at"`
 	CounterpartyClass *string   `json:"counterparty_class,omitempty"`
 	LeftOut           *string   `json:"left_out,omitempty"`
+	NoWitnessTime     bool      `json:"no_witness_time,omitempty"`
 	Role              string    `json:"role"`
 	Amount            Amount    `json:"amount"`
 	Unpriced          bool      `json:"-"`
@@ -305,12 +307,13 @@ type Deal struct {
 func (d *Deal) UnmarshalJSON(data []byte) error {
 	type plain Deal
 	var p plain
-	// left_out and rows are read below, so that a value /3 refuses never
-	// stops a /1 or /2 entry from reading.
+	// left_out, no_witness_time and rows are read below, so that a value /3
+	// or /4 refuses never stops a /1 or /2 entry from reading.
 	w := struct {
 		*plain
-		LeftOut json.RawMessage `json:"left_out"`
-		Rows    json.RawMessage `json:"rows"`
+		LeftOut       json.RawMessage `json:"left_out"`
+		NoWitnessTime json.RawMessage `json:"no_witness_time"`
+		Rows          json.RawMessage `json:"rows"`
 	}{plain: &p}
 	if err := json.Unmarshal(data, &w); err != nil {
 		return err
@@ -333,6 +336,13 @@ func (d *Deal) UnmarshalJSON(data []byte) error {
 			p.v3Err = fmt.Errorf("deal %s: left_out is not a string", p.Deal)
 		}
 		p.LeftOut = s
+	}
+	if w.NoWitnessTime != nil {
+		// SH §12: present only as true.
+		p.NoWitnessTime = true
+		if !bytes.Equal(w.NoWitnessTime, []byte("true")) {
+			p.v3Err = fmt.Errorf("deal %s: no_witness_time is not true", p.Deal)
+		}
 	}
 	if w.Rows != nil {
 		var rows []Row
@@ -491,6 +501,9 @@ func checkEntry(d Deal, derivation string) error {
 		if d.LeftOut != nil && derivation == Derivation4 {
 			// SH §12: /4 leaves no deal out.
 			return fmt.Errorf("deal %s: a %s entry carries no left_out", d.Deal, derivation)
+		}
+		if d.NoWitnessTime && derivation == Derivation3 {
+			return fmt.Errorf("deal %s: a %s entry carries no no_witness_time", d.Deal, derivation)
 		}
 		if d.LeftOut != nil && !slices.Contains(leftOut, *d.LeftOut) {
 			return fmt.Errorf("deal %s: left_out %q", d.Deal, *d.LeftOut)
@@ -663,7 +676,9 @@ func counts(deals []Deal, w Window, anchor time.Time, derivation string) (map[st
 				}
 			}
 			t["local_times"]["of"]++
-			if slices.ContainsFunc(d.Rows, func(r Row) bool { return r.Local }) {
+			// SH §12: under /4 a deal with no witnessed time is in local_times
+			// whatever its rows say.
+			if slices.ContainsFunc(d.Rows, func(r Row) bool { return r.Local }) || d.NoWitnessTime {
 				t["local_times"]["count"]++
 			}
 		}

@@ -75,11 +75,12 @@ entry carries row results, not the row statements and dates they are computed fr
 computes them is EBL's (SH-11), whose own vectors test it.
 
 In `vectors-4.json`, positive: `no-witness-time-counted` (`/3`'s shelf at the first anchor with
-deal-311, whose agreement names a witness and whose records hold no time from it, and deal-315,
-whose agreement names no witness, each counted with every row local and in `local_times`; the shop
-purchase alone not counted), the same card without the deal entries
+three deals that carry `no_witness_time`, each counted and in `local_times`: deal-311, whose
+agreement names a witness and whose records hold no time from it, deal-315, whose agreement names no
+witness, and deal-316, an agreement followed by silence whose rows hold no statement and are not
+local; the shop purchase alone not counted), the same card without the deal entries
 (`no-witness-time-without-shelf`) and with nothing beside it (`no-witness-time-card-only`).
-Negative: `no-witness-time-left-out` and `no-witness-time-not-local` (`counts_recompute`),
+Negative: `no-witness-time-left-out` and `silent-deal-not-local` (`counts_recompute`),
 `not-counted-member`, `v3-card-for-v4-request` and `v4-card-for-v3-request` (`card_form`).
 
 ## Gates
@@ -88,7 +89,7 @@ Negative: `no-witness-time-left-out` and `no-witness-time-not-local` (`counts_re
   reference, `agent_action_capsule.standard_history`, rebuilds each fully checked standard card
   from its inputs with `derive_card`, runs defective evaluators that must each disagree with a
   case, checks that a `/1` card cannot be built over an unpriced deal, that every pair of row
-  results falls in exactly one `/3` line, that a `/4` entry refuses `left_out`, and regenerates the directory twice, byte-identical.
+  results falls in exactly one `/3` line, that a `/4` entry refuses `left_out` and carries `no_witness_time` only as `true`, and regenerates the directory twice, byte-identical.
 - `go/standardhistory` runs every case through the Go package and rebuilds the same cards with
   `Derive`.
 

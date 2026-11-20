@@ -164,11 +164,11 @@ def _decade(amount: Mapping[str, Any]) -> int | None:
     return None if value == "0" else len(value) - scale - 1
 
 
-#: SH §11.2: the members a /3 deal entry may carry; a /4 entry has no ``left_out`` (SH §12). /1 and
-#: /2 entries are read as SH §5.2 says.
-ENTRY_MEMBERS_4 = frozenset(("deal", "agreed_at", "counterparty_class", "role", "amount", "rows",
-                             "happened", "disputes"))
-ENTRY_MEMBERS = {DERIVATION_3: ENTRY_MEMBERS_4 | {"left_out"}, DERIVATION_4: ENTRY_MEMBERS_4}
+#: SH §11.2: the members a /3 deal entry may carry; a /4 entry has ``no_witness_time`` in place of
+#: ``left_out`` (SH §12). /1 and /2 entries are read as SH §5.2 says.
+_ENTRY_MEMBERS = frozenset(("deal", "agreed_at", "counterparty_class", "role", "amount", "rows",
+                            "happened", "disputes"))
+ENTRY_MEMBERS = {DERIVATION_3: _ENTRY_MEMBERS | {"left_out"}, DERIVATION_4: _ENTRY_MEMBERS | {"no_witness_time"}}
 ROW_MEMBERS = frozenset(("owed_by", "status", "value", "remedy", "local"))
 
 
@@ -211,6 +211,8 @@ def _check_entry(deal: Mapping[str, Any], derivation: str) -> None:
     if v3:
         if "left_out" in deal and deal["left_out"] not in LEFT_OUT:
             raise ValueError(f"deal {deal['deal']}: left_out {deal['left_out']!r}")
+        if "no_witness_time" in deal and deal["no_witness_time"] is not True:
+            raise ValueError(f"deal {deal['deal']}: no_witness_time {deal['no_witness_time']!r}")
         rows = deal.get("rows")
         if not isinstance(rows, list) or not rows:
             raise ValueError(f"deal {deal['deal']}: rows is not a non-empty array")
@@ -293,7 +295,8 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
                     t[name]["of"] += 1
                     t[name]["count"] += int(detail == name)
             t["local_times"]["of"] += 1
-            if any(r.get("local") for r in deal["rows"]):
+            # SH §12: under /4 a deal with no witnessed time is in local_times whatever its rows say.
+            if any(r.get("local") for r in deal["rows"]) or deal.get("no_witness_time"):
                 t["local_times"]["count"] += 1
         else:
             result = deal["outcome"]

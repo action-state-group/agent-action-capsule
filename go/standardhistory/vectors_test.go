@@ -446,8 +446,9 @@ func TestMalformedV3DealEntryIsAnError(t *testing.T) {
 	}
 }
 
-// TestV4RefusesLeftOut: a standard_history/4 deal entry has no left_out
-// (SH §12); the same entries with it are a /3 entry.
+// TestV4RefusesLeftOut: a standard_history/4 deal entry has no left_out and
+// carries no_witness_time only as true (SH §12); no_witness_time is not a /3
+// member, and left_out is.
 func TestV4RefusesLeftOut(t *testing.T) {
 	var tc vectorCase
 	for _, c := range loadFile(t, "vectors-4.json").Cases {
@@ -464,4 +465,20 @@ func TestV4RefusesLeftOut(t *testing.T) {
 	require.Error(t, err)
 	_, err = standardhistory.CheckAs(standardhistory.Derivation3, tc.Inputs.Card, nil, tc.Inputs.AsOf, deals)
 	require.NoError(t, err)
+
+	for _, bad := range []string{"false", `"true"`, "null"} {
+		var d standardhistory.Deal
+		entry := `{"deal":"d","agreed_at":"2026-10-01T00:00:00Z","role":"provided","happened":"no_record",` +
+			`"rows":[{"owed_by":"holder","status":"not_due"}],"disputes":[],"no_witness_time":` + bad + `}`
+		require.NoError(t, json.Unmarshal([]byte(entry), &d))
+		_, err = standardhistory.CheckAs(standardhistory.Derivation4, tc.Inputs.Card, nil, tc.Inputs.AsOf,
+			append(slices.Clone(tc.Inputs.Deals), d))
+		assert.Error(t, err, bad)
+	}
+
+	v3 := v3Case(t, "outcomes-from-rows")
+	flagged := slices.Clone(v3.Inputs.Deals)
+	flagged[0].NoWitnessTime = true
+	_, err = standardhistory.CheckAs(standardhistory.Derivation3, v3.Inputs.Card, nil, v3.Inputs.AsOf, flagged)
+	require.Error(t, err)
 }

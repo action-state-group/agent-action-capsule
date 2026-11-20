@@ -788,19 +788,25 @@ def cases_3() -> list:
 
 
 def deals4() -> list:
-    """The /3 shelf at the first anchor (SH §12): deal-311, whose agreement names a witness and whose
-    records hold no time from it, has no left_out and its row is local; deal-312 is the shop purchase
-    without left_out; deal-315 is a deal whose agreement names no witness, every row local."""
+    """The /3 shelf at the first anchor (SH §12), with no left_out. Three deals carry no_witness_time:
+    deal-311, whose agreement names a witness and whose records hold no time from it (its row local);
+    deal-315, whose agreement names no witness (every row local); and deal-316, an agreement followed
+    by silence, whose rows hold no statement and so are not local. deal-312 is the shop purchase."""
     out = []
     for d in DEALS_3:
         d = copy.deepcopy(d)
         d.pop("left_out", None)
         if d["deal"] == "deal-311":
             d["rows"] = [row(H, "agreed", MET, local=True)]
+            d["no_witness_time"] = True
         out.append(d)
-    out.append(deal3("deal-315", "2026-10-25T10:00:00Z", "provided", amount("800", "USD", 2),
-                     [row(H, "agreed", MET, local=True), row(C, "agreed", MET, local=True)], "receipt_only",
-                     "person_agent"))
+    for d in (deal3("deal-315", "2026-10-25T10:00:00Z", "provided", amount("800", "USD", 2),
+                    [row(H, "agreed", MET, local=True), row(C, "agreed", MET, local=True)], "receipt_only",
+                    "person_agent"),
+              deal3("deal-316", "2026-10-26T10:00:00Z", "bought", amount("300000", "USD", 2),
+                    [row(H, "no_statement"), row(C, "no_statement")], "no_record", "person_agent")):
+        d["no_witness_time"] = True
+        out.append(d)
     return out
 
 
@@ -817,15 +823,16 @@ def card4(base: dict, **members) -> dict:
 
 
 # SH §12 by hand over DEALS_4: deal-313 is out of the window; deal-312 (shop) alone is not counted.
-# As PERSON_3M_3, plus deal-311 (held, USD decade 1, stamped by both, provided, local) and deal-315
-# (held, USD decade 0, receipt only, provided, local).
+# As PERSON_3M_3, plus deal-311 (held, USD decade 1, stamped by both, provided), deal-315 (held, USD
+# decade 0, receipt only, provided) and deal-316 (undecided, USD decade 3, no record, bought), all
+# three in local_times by no_witness_time.
 PERSON_3M_4 = card4(
     PERSON_3M_3,
-    in_window=tally(14, counted=13, not_counted=1), class_missing=tally(13, count=1),
-    outcomes=outs(13, held=3, did_not_hold=5, undecided=5), local_times=tally(13, count=4),
+    in_window=tally(15, counted=14, not_counted=1), class_missing=tally(14, count=1),
+    outcomes=outs(14, held=3, did_not_hold=5, undecided=6), local_times=tally(14, count=5),
     bands=PERSON_3M_3["bands"][:4] + [band("USD", 0, 1, held=1), band("USD", 1, 4, held=1, did_not_hold=1, undecided=2),
-                                      PERSON_3M_3["bands"][5]],
-    roles=tally(13, provided=9, bought=4), happened=tally(13, stamped_by_both=5, receipt_only=5, no_record=3),
+                                      PERSON_3M_3["bands"][5], band("USD", 3, 1, undecided=1)],
+    roles=tally(14, provided=9, bought=5), happened=tally(14, stamped_by_both=5, receipt_only=5, no_record=4),
 )
 FULL_4 = {"policy": POLICY_3M, "as_of": AS_OF_3, "deals": DEALS_4, "derivation": SH4}
 
@@ -833,21 +840,23 @@ FULL_4 = {"policy": POLICY_3M, "as_of": AS_OF_3, "deals": DEALS_4, "derivation":
 def cases_4() -> list:
     return [
         # Positive.
-        case("no-witness-time-counted", "A deal whose agreement names a witness and whose records hold no "
-             "time from it, and a deal whose agreement names no witness, each counted with its rows local; the "
-             "shop purchase alone not counted", ["§12"], PERSON_3M_4, props(), **FULL_4),
+        case("no-witness-time-counted", "Three deals with no witnessed time, each counted and in local_times: "
+             "one whose agreement names a witness and whose records hold no time from it, one whose agreement "
+             "names no witness, and an agreement followed by silence whose rows are not local; the shop purchase "
+             "alone not counted", ["§12"], PERSON_3M_4, props(), **FULL_4),
         case("no-witness-time-without-shelf", "The same card, checked without the deal entries: the counts are "
              "the holder's statement", ["§12"], PERSON_3M_4, props(counts_recompute=NC),
              policy=POLICY_3M, as_of=AS_OF_3, derivation=SH4),
         case("no-witness-time-card-only", "The same card, checked with nothing beside it", ["§12"], PERSON_3M_4,
              props(window_from_policy=NC, as_of=NC, counts_recompute=NC), derivation=SH4),
         # Negative.
-        case("no-witness-time-left-out", "deal-311 and deal-315 left out as /3 would leave a deal without a "
-             "witness time, every tally agreeing with the others", ["§12"],
-             card4(PERSON_3M_3, in_window=tally(14, counted=11, not_counted=3)),
+        case("no-witness-time-left-out", "The three deals with no witnessed time left out as /3 would leave "
+             "them out, every tally agreeing with the others", ["§12"],
+             card4(PERSON_3M_3, in_window=tally(15, counted=11, not_counted=4)),
              props(counts_recompute="FAIL"), **FULL_4),
-        case("no-witness-time-not-local", "deal-311 and deal-315 counted, but left out of local_times",
-             ["§12"], mutate(PERSON_3M_4, lambda c: c.update(local_times=tally(13, count=2))),
+        case("silent-deal-not-local", "deal-316, an agreement followed by silence, counted but left out of "
+             "local_times because none of its rows is local", ["§12"],
+             mutate(PERSON_3M_4, lambda c: c.update(local_times=tally(14, count=4))),
              props(counts_recompute="FAIL"), **FULL_4),
         case("not-counted-member", "A /4 card carrying /3's not_counted tally", ["§12"],
              {**PERSON_3M_4, "not_counted": reasons(1, shop_preauth=1)},
@@ -880,7 +889,7 @@ PACK_STRINGS_2 = {**PACK_STRINGS, "deals.unpriced": "counted deals without a rec
 # §11.2, §11.8 for /3.
 DEAL_ENTRY_3 = ["deal", "agreed_at", "counterparty_class", "left_out", "role", "amount", "rows", "happened",
                 "disputes"]
-DEAL_ENTRY_4 = [m for m in DEAL_ENTRY_3 if m != "left_out"]  # §12
+DEAL_ENTRY_4 = [m if m != "left_out" else "no_witness_time" for m in DEAL_ENTRY_3]  # §12
 ROW_RESULT = ["owed_by", "status", "value", "remedy", "local"]
 ROW_STATUSES = ["not_reached", "not_due", "no_statement", "waiting", "uncontested", "agreed_so_far", "agreed",
                 "in_disagreement", "in_dispute", "ruled"]
@@ -898,7 +907,9 @@ PACK_STRINGS_3 = {
     "anchor.unwitnessed": "unwitnessed: no witness receipt for this snapshot",
     "anchor.witnessed_only": "the witness timed this snapshot, not the records the counts rest on",
 }
-PACK_STRINGS_4 = {k: v for k, v in PACK_STRINGS_3.items() if k != "deals.not_counted.reasons"}  # §12
+PACK_STRINGS_4 = {**{k: v for k, v in PACK_STRINGS_3.items() if k != "deals.not_counted.reasons"},  # §12
+                  "deals.local_times": "counted deals with a row that rests on a record no witness timed, or with "
+                                       "no witnessed time at all"}
 
 
 def check_frame(all_cases: list, instance: str = SH1) -> None:

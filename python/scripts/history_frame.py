@@ -45,8 +45,8 @@ DIGESTS = {
         "pack": "86da7c4ec596e54cd289cd3df857e4cba32af50e1cba313f63bcd05b1d8ed802",
     },
     "standard_history/4": {
-        "table": "45b5814ade6d062ef31747207288d2dc9bf6fa303d22765dc18c17bd6dfa3b8e",
-        "pack": "0babb8c1bb2a7fee52ac95606fb8acffac7f2f67634790ac6aa499afcf7a146f",
+        "table": "38406ce224eaff3088759f07c0ec06fe63577bad742a60fdc86f6b5b7dec6bea",
+        "pack": "b3c8273673decfaeb38945f5c90a3b99b0ac633a0a291c3acd2cc4e6703bc930",
     },
     "personal_history_basic/1": {
         "table": "d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1",
