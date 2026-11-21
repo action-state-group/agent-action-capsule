@@ -255,9 +255,10 @@ has not yet.
 - Spec: a holder MAY register a Standard History card on a SCITT transparency service
   (`spec/standard-history-v0.md` §13, #639). A card statement is a Transparent Statement under the
   holder key over the SHA-256 of the card octets, with RFC 9942 Receipts in its `receipts` header,
-  carried beside the card; the new check `card_registered` reports `PASS` with a registration time
-  when a Receipt by a service the relying party lists covers it. It shows that the card existed by
-  that time and nothing else: `anchor_inclusion` stays `NOT_CHECKED` (IP P-13 stays open for
+  carried beside the card; the new check `card_registered` reports `PASS` when a Receipt by a service
+  the relying party lists covers it, with the registration time when the Receipt carries one. It shows
+  that the card existed by that time (a passing Receipt with no time shows only that the service
+  logged the statement) and nothing else: `anchor_inclusion` stays `NOT_CHECKED` (IP P-13 stays open for
   cards), it does not show that the holder registered no other card (SH-18), and it does not
   check the counts. Opt-in; no card, token, counting table or wording pack changes. 49 vectors in
   `vectors/card-registration-v0/`.
@@ -282,13 +283,14 @@ Tag `go/v0.24.0`. The pull requests that changed `go/` since `go/v0.23.0`:
 
 The changes, from the changelog fragments folded in this release, and the entries that changed no Go package directory (the record push carriage vectors, the witnessed checkpoint follow-up draft):
 
-- Go: `evidencerequest.SubjectCheckpointRange` and `witness.CheckCardRegistered` / `witness.CheckCardStatement` are new; `evidencerequest.Subject.Ranged` is dropped (see the first and second entries).
+- Go: `evidencerequest.SubjectCheckpointRange` and `witness.CheckCardRegistered` / `witness.CheckCardStatement` are new; `evidencerequest.Subject.Ranged` is dropped (see the card registration and `checkpoint_range` entries below).
 - Spec: a holder MAY register a Standard History card on a SCITT transparency service
   (`spec/standard-history-v0.md` §13, #639). A card statement is a Transparent Statement under the
   holder key over the SHA-256 of the card octets, with RFC 9942 Receipts in its `receipts` header,
-  carried beside the card; the new check `card_registered` reports `PASS` with a registration time
-  when a Receipt by a service the relying party lists covers it. It shows that the card existed by
-  that time and nothing else: `anchor_inclusion` stays `NOT_CHECKED` (IP P-13 stays open for
+  carried beside the card; the new check `card_registered` reports `PASS` when a Receipt by a service
+  the relying party lists covers it, with the registration time when the Receipt carries one. It shows
+  that the card existed by that time (a passing Receipt with no time shows only that the service
+  logged the statement) and nothing else: `anchor_inclusion` stays `NOT_CHECKED` (IP P-13 stays open for
   cards), it does not show that the holder registered no other card (SH-18), and it does not
   check the counts. Opt-in; no card, token, counting table or wording pack changes. 49 vectors in
   `vectors/card-registration-v0/`.

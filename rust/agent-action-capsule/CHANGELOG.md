@@ -3,6 +3,7 @@
 ## Unreleased
 
 - The optional `evidence-request` dependency accepts `>=0.4.0, <0.9.0`, so the workspace builds against `evidence-request` 0.8.0 (`checkpoint_range`, AAC#645).
+- Registry data only, no code change: the embedded `cpb_provisional.json` is re-vendored from `scitt-payload-binding@b4af581` (#643), and the embedded `data/REGISTRY.md` gains the `standard_history/4` row (#636).
 - `witness::check_card_registered` and `witness::check_card_statement` (feature `strict`): the
   `card_registered` check of `spec/standard-history-v0.md` §13 (#639) over card statements beside a
   Standard History card, passing `vectors/card-registration-v0/`.
