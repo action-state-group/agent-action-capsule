@@ -59,6 +59,10 @@ same-commit files in CI.
 - `anchor-witness-v1/`: profile `evidence-interop/1` §6.2.2 witness Receipts
   over an anchor and the `anchor_witnessed` report, positive and MUST-reject;
   `python/scripts/generate_anchor_witness_v1_vectors.py` regenerates them.
+- `card-registration-v0/`: `spec/standard-history-v0.md` §13 card statements
+  beside a Standard History card and the `card_registered` report, positive and
+  MUST-reject; `python/scripts/generate_card_registration_v0_vectors.py`
+  regenerates them.
 - `json-nesting/`: the nesting limit every implementation shares: JSON text
   nested 128 levels deep is read and canonicalized, 129 levels is refused as
   malformed, and a value past the limit has no RFC 8785 form; `spec/interop-profile-v1.md` §5.2

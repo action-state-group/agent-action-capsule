@@ -37,6 +37,7 @@
     "bundle_category_coverage": "bundle/category-coverage/manifest.json",
     "cll_material": "cll-material/manifest.json",
     "anchor_witness_v1": "anchor-witness-v1/manifest.json",
+    "card_registration_v0": "card-registration-v0/manifest.json",
     "adapter_x402": "adapters/x402/manifest.json",
     "adapter_ucp": "adapters/ucp/manifest.json",
     "adapter_erc8183": "adapters/erc-8183/manifest.json",
