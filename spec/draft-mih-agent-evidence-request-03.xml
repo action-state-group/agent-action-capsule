@@ -387,10 +387,11 @@ list can name <tt>checkpoint_range</tt> without <tt>checkpoints</tt>. A responde
 refuses <tt>checkpoints</tt> with reason <tt>capacity_exceeded</tt> to every requester,
 because a stream's full checkpoint list exceeds what it serves in one
 answer, <bcp14>SHOULD NOT</bcp14> list <tt>checkpoints</tt> in a list that covers only such
-streams, and lists <tt>checkpoint_range</tt> and the history card derivations it
-still answers; a list that covers several streams lists <tt>checkpoints</tt>
-while any of them still answers it. A checkpoint list only grows, so once
-a stream is past that size it stays so. A requester
+streams. Such a list then names <tt>checkpoint_range</tt> and the history card
+derivations the responder still answers. A list that covers several
+streams names <tt>checkpoints</tt> while the responder answers it for any of
+them. A checkpoint list only grows, so once a stream is past that size it
+stays past it, unless the responder raises what it serves in one answer. A requester
 reads a list as what it can ask, not as a promise: a listed form can
 still be refused for any reason of <xref target="refusal"/>.</t>
         <t>The <tt>exchange</tt> form names the requester's own sealed half of a prior
@@ -2182,7 +2183,7 @@ action.</t>
         </reference>
       </references>
     </references>
-    <?line 1766?>
+    <?line 1767?>
 
 <section anchor="field-evidence">
       <name>Example Deployments</name>

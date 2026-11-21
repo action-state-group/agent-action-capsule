@@ -362,10 +362,11 @@ list can name `checkpoint_range` without `checkpoints`. A responder that
 refuses `checkpoints` with reason `capacity_exceeded` to every requester,
 because a stream's full checkpoint list exceeds what it serves in one
 answer, SHOULD NOT list `checkpoints` in a list that covers only such
-streams, and lists `checkpoint_range` and the history card derivations it
-still answers; a list that covers several streams lists `checkpoints`
-while any of them still answers it. A checkpoint list only grows, so once
-a stream is past that size it stays so. A requester
+streams. Such a list then names `checkpoint_range` and the history card
+derivations the responder still answers. A list that covers several
+streams names `checkpoints` while the responder answers it for any of
+them. A checkpoint list only grows, so once a stream is past that size it
+stays past it, unless the responder raises what it serves in one answer. A requester
 reads a list as what it can ask, not as a promise: a listed form can
 still be refused for any reason of {{refusal}}.
 
