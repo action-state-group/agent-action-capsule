@@ -204,7 +204,7 @@ type Request struct {
 // sends one a conforming responder would refuse request_malformed.
 func (r Request) Value() (map[string]any, error) {
 	if !r.Subject.Valid() {
-		return nil, fmt.Errorf("%w: subject is not one of the six forms with conforming content", ErrInvalid)
+		return nil, fmt.Errorf("%w: subject is not one of the defined forms with conforming content", ErrInvalid)
 	}
 	coverage := map[string]any{}
 	if r.Coverage.ExpectedPin != "" {

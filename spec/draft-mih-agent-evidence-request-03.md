@@ -360,10 +360,12 @@ forms it answers, as in the manifest ({{transports}}) or in a list a
 deployment profile defines, it names each form by its own token, so a
 list can name `checkpoint_range` without `checkpoints`. A responder that
 refuses `checkpoints` with reason `capacity_exceeded` to every requester,
-because the stream's full checkpoint list exceeds what it serves in one
-answer, SHOULD NOT list `checkpoints` for that stream, and lists
-`checkpoint_range` and the history card derivations it still answers. A
-checkpoint list only grows, so once that is so it stays so. A requester
+because a stream's full checkpoint list exceeds what it serves in one
+answer, SHOULD NOT list `checkpoints` in a list that covers only such
+streams, and lists `checkpoint_range` and the history card derivations it
+still answers; a list that covers several streams lists `checkpoints`
+while any of them still answers it. A checkpoint list only grows, so once
+a stream is past that size it stays so. A requester
 reads a list as what it can ask, not as a promise: a listed form can
 still be refused for any reason of {{refusal}}.
 
@@ -688,8 +690,8 @@ however well it verifies otherwise. A deployment profile MAY fix the
 member names and the signature format of the envelope; this document
 fixes only what the signature covers.
 
-For the `checkpoints` subject and the history card derivations the
-artifact *is* the verification material: there is no separate record to
+For the `checkpoints` and `checkpoint_range` subjects and the history
+card derivations the artifact *is* the verification material: there is no separate record to
 verify, only commitments and the proofs between them. Implementations
 MUST NOT serve an empty artifact alongside proofs in these cases; the
 proofs are the artifact, and caller invariance ({{invariance}}) binds them.

@@ -19,7 +19,7 @@ type AnchorView struct {
 // zero-based log positions. Resolution matches exactly: a View never
 // matches by prefix or case folding.
 type View interface {
-	// Anchors are the anchors issued, oldest first. For a ranged checkpoints
+	// Anchors are the anchors issued, oldest first. For a checkpoint_range
 	// subject they are every checkpoint, so an anchor's index is its
 	// checkpoint position (ER -03 §8.1.3).
 	Anchors() []AnchorView
@@ -233,8 +233,8 @@ type Policy struct {
 	// Derivation reports the subject forms a derivation other than
 	// history_card/1 and history_card/2 is registered for, and false when
 	// the responder does not support it. Nil supports none. Both history
-	// cards are always supported, over full_history and unranged
-	// checkpoints (ER -03 §8.1).
+	// cards are always supported, over full_history and checkpoints, never
+	// checkpoint_range (ER -03 §8.1).
 	Derivation func(name string) (forms []SubjectKind, ok bool)
 	// Authorize reports whether the requester may have req answered. It is
 	// asked once the derivation is known to be supported; it decides whether

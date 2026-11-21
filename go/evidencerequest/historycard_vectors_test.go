@@ -14,7 +14,7 @@ import (
 )
 
 // history-card-2.json and checkpoints-range.json are ER -03 corpora: the
-// history_card/2 positions and card checks, and the ranged checkpoints
+// history_card/2 positions and card checks, and the checkpoint_range
 // subject.
 
 type historyCard2Corpus struct {

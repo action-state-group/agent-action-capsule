@@ -8,7 +8,7 @@ nothing arrived (a recorded absence). This module implements what both sides
 must agree on, and the responder's decision logic:
 
 * :func:`parse_request`: the request map in its JSON or CBOR binding, checked
-  against -00 (the six subject forms, exactly one coverage member, the
+  against -00 (the six subject forms and -03's ``checkpoint_range``, exactly one coverage member, the
   optional fields), raising :class:`RequestError` with the exact refusal
   reason when it is not well formed.
 * :func:`request_digest`: SHA-256 over the request bytes as received.
