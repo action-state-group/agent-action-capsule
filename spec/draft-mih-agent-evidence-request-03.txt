@@ -82,20 +82,20 @@ Table of Contents
    2.  Conventions and Definitions . . . . . . . . . . . . . . . . .   5
    3.  The Request . . . . . . . . . . . . . . . . . . . . . . . . .   7
      3.1.  Subject . . . . . . . . . . . . . . . . . . . . . . . . .   9
-       3.1.1.  What a Record Carries . . . . . . . . . . . . . . . .  10
+       3.1.1.  What a Record Carries . . . . . . . . . . . . . . . .  11
      3.2.  Coverage  . . . . . . . . . . . . . . . . . . . . . . . .  12
      3.3.  Derivation  . . . . . . . . . . . . . . . . . . . . . . .  13
-     3.4.  Deadline  . . . . . . . . . . . . . . . . . . . . . . . .  13
-     3.5.  Nonce . . . . . . . . . . . . . . . . . . . . . . . . . .  13
+     3.4.  Deadline  . . . . . . . . . . . . . . . . . . . . . . . .  14
+     3.5.  Nonce . . . . . . . . . . . . . . . . . . . . . . . . . .  14
      3.6.  Route . . . . . . . . . . . . . . . . . . . . . . . . . .  14
      3.7.  Principal Reference . . . . . . . . . . . . . . . . . . .  14
-     3.8.  Recording the Request . . . . . . . . . . . . . . . . . .  14
+     3.8.  Recording the Request . . . . . . . . . . . . . . . . . .  15
      3.9.  Categories  . . . . . . . . . . . . . . . . . . . . . . .  15
    4.  Interaction Outcomes  . . . . . . . . . . . . . . . . . . . .  16
-     4.1.  The Artifact Response . . . . . . . . . . . . . . . . . .  16
+     4.1.  The Artifact Response . . . . . . . . . . . . . . . . . .  17
      4.2.  The Signed Refusal  . . . . . . . . . . . . . . . . . . .  18
      4.3.  Pending . . . . . . . . . . . . . . . . . . . . . . . . .  19
-     4.4.  Recorded Absence  . . . . . . . . . . . . . . . . . . . .  19
+     4.4.  Recorded Absence  . . . . . . . . . . . . . . . . . . . .  20
      4.5.  The Three-State Discipline  . . . . . . . . . . . . . . .  20
      4.6.  Mapping to a Requirement-Satisfaction Status  . . . . . .  21
      4.7.  Unavailable-Window Statements . . . . . . . . . . . . . .  23
@@ -122,17 +122,17 @@ Internet-Draft              Evidence Request               November 2026
      10.3.  MCP Binding  . . . . . . . . . . . . . . . . . . . . . .  37
    11. Security Considerations . . . . . . . . . . . . . . . . . . .  38
    12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  42
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  43
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  45
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  45
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  46
-   Appendix A.  Example Deployments  . . . . . . . . . . . . . . . .  47
-   Appendix B.  Reference Blocks and This Interaction  . . . . . . .  49
-   Changes from -02  . . . . . . . . . . . . . . . . . . . . . . . .  50
-   Changes from -01  . . . . . . . . . . . . . . . . . . . . . . . .  50
-   Changes from -00  . . . . . . . . . . . . . . . . . . . . . . . .  51
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  52
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  52
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  44
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  46
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  46
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  47
+   Appendix A.  Example Deployments  . . . . . . . . . . . . . . . .  48
+   Appendix B.  Reference Blocks and This Interaction  . . . . . . .  50
+   Changes from -02  . . . . . . . . . . . . . . . . . . . . . . . .  51
+   Changes from -01  . . . . . . . . . . . . . . . . . . . . . . . .  51
+   Changes from -00  . . . . . . . . . . . . . . . . . . . . . . . .  52
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  53
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  53
 
 1.  Introduction
 
@@ -452,38 +452,43 @@ Internet-Draft              Evidence Request               November 2026
 
 3.1.  Subject
 
-   The subject names what is asked for, in one of six forms:
+   The subject names what is asked for, in one of seven forms:
 
-     +==============+=============+=================================+
-     | Form         | Content     | Meaning                         |
-     +==============+=============+=================================+
-     | full_history | (none)      | the responder's entire evidence |
-     |              |             | body for this evidence stream   |
-     +--------------+-------------+---------------------------------+
-     | checkpoints  | (none), or  | the responder's checkpoints and |
-     |              | (a, b)      | their receipts for this stream, |
-     |              |             | or with (a, b) those at         |
-     |              |             | checkpoint positions a through  |
-     |              |             | b inclusive; no records         |
-     +--------------+-------------+---------------------------------+
-     | record       | digest      | the single record identified by |
-     |              |             | this digest                     |
-     +--------------+-------------+---------------------------------+
-     | range        | (a, b)      | the records at positions a      |
-     |              |             | through b inclusive, under the  |
-     |              |             | coverage anchor's ordering      |
-     +--------------+-------------+---------------------------------+
-     | correlation  | identifier  | all records the responder holds |
-     |              |             | that carry this correlation     |
-     |              |             | identifier (Section 3.1.1)      |
-     +--------------+-------------+---------------------------------+
-     | exchange     | digest of   | every record the responder      |
-     |              | the         | holds that cites this exchange  |
-     |              | requester's | half (Section 3.1.1, Section 6) |
-     |              | own half    |                                 |
-     +--------------+-------------+---------------------------------+
+    +==================+=============+================================+
+    | Form             | Content     | Meaning                        |
+    +==================+=============+================================+
+    | full_history     | (none)      | the responder's entire         |
+    |                  |             | evidence body for this         |
+    |                  |             | evidence stream                |
+    +------------------+-------------+--------------------------------+
+    | checkpoints      | (none)      | the responder's checkpoints    |
+    |                  |             | and their receipts for this    |
+    |                  |             | stream; no records             |
+    +------------------+-------------+--------------------------------+
+    | checkpoint_range | (a, b)      | the responder's checkpoints    |
+    |                  |             | and their receipts at          |
+    |                  |             | checkpoint positions a through |
+    |                  |             | b inclusive; no records        |
+    +------------------+-------------+--------------------------------+
+    | record           | digest      | the single record identified   |
+    |                  |             | by this digest                 |
+    +------------------+-------------+--------------------------------+
+    | range            | (a, b)      | the records at positions a     |
+    |                  |             | through b inclusive, under the |
+    |                  |             | coverage anchor's ordering     |
+    +------------------+-------------+--------------------------------+
+    | correlation      | identifier  | all records the responder      |
+    |                  |             | holds that carry this          |
+    |                  |             | correlation identifier         |
+    |                  |             | (Section 3.1.1)                |
+    +------------------+-------------+--------------------------------+
+    | exchange         | digest of   | every record the responder     |
+    |                  | the         | holds that cites this exchange |
+    |                  | requester's | half (Section 3.1.1,           |
+    |                  | own half    | Section 6)                     |
+    +------------------+-------------+--------------------------------+
 
-                                 Table 2
+                                  Table 2
 
    Subjects are digests, positions, and opaque identifiers — never
    display names.  Names drift; digests do not.  A requester that holds
@@ -491,11 +496,6 @@ Internet-Draft              Evidence Request               November 2026
    and a responder MUST NOT attempt fuzzy or best-effort matching of a
    subject: a subject that does not resolve exactly is answered with a
    refusal carrying reason no_such_subject (Section 4.2).
-
-   The range form presupposes a coverage-anchor mechanism that defines
-   record positions; under a mechanism defining no positional ordering
-   it cannot be satisfied and is refused with reason
-   coverage_unsatisfiable.
 
 
 
@@ -506,15 +506,40 @@ Mih                        Expires 21 May 2027                  [Page 9]
 Internet-Draft              Evidence Request               November 2026
 
 
+   The range form presupposes a coverage-anchor mechanism that defines
+   record positions; under a mechanism defining no positional ordering
+   it cannot be satisfied and is refused with reason
+   coverage_unsatisfiable.
+
    The checkpoints form asks for commitments only.  It is the cheapest
-   question a stranger can ask and the one a responder can always safely
-   answer; the history card derivations (Section 8.1) are its proof-
-   carrying forms.  With content (a, b), it names the checkpoints at
-   checkpoint positions (Section 2) a through b inclusive, so a
-   requester holding a history card can fetch the checkpoints between
-   two entries the card lists (Section 8.1.3).  The bounds are two
-   unsigned integers, a no greater than b; any other content is
-   malformed.
+   question a stranger can ask; the history card derivations
+   (Section 8.1) are its proof-carrying forms.  It carries no content,
+   and a checkpoints subject that carries any is malformed.  Its answer
+   grows with the number of checkpoints, so a long-lived stream can
+   outgrow what a responder serves in one answer, and the responder then
+   refuses it with reason capacity_exceeded.
+
+   The checkpoint_range form names the checkpoints at checkpoint
+   positions (Section 2) a through b inclusive, so a requester holding a
+   history card can fetch the checkpoints between two entries the card
+   lists (Section 8.1.3).  The bounds are two unsigned integers, a no
+   greater than b; any other content is malformed.
+
+   *Listing the forms answered.* Wherever a responder lists the subject
+   forms it answers, as in the manifest (Section 10) or in a list a
+   deployment profile defines, it names each form by its own token, so a
+   list can name checkpoint_range without checkpoints.  A responder that
+   refuses checkpoints with reason capacity_exceeded to every requester,
+   because a stream's full checkpoint list exceeds what it serves in one
+   answer, SHOULD NOT list checkpoints in a list that covers only such
+   streams.  Such a list then names checkpoint_range and the history
+   card derivations the responder still answers.  A list that covers
+   several streams names checkpoints while the responder answers it for
+   any of them.  A checkpoint list only grows, so once a stream is past
+   that size it stays past it, unless the responder raises what it
+   serves in one answer.  A requester reads a list as what it can ask,
+   not as a promise: a listed form can still be refused for any reason
+   of Section 4.2.
 
    The exchange form names the requester's own sealed half of a prior
    interaction.  A responder that recorded its side of that interaction
@@ -523,6 +548,19 @@ Internet-Draft              Evidence Request               November 2026
    answers no_such_subject — which, when the requester holds a signed
    reply from that responder citing the same half (Section 3.1.1), is
    itself a contradiction the requester can cite (Section 6).
+
+
+
+
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 10]
+
+Internet-Draft              Evidence Request               November 2026
+
 
 3.1.1.  What a Record Carries
 
@@ -554,14 +592,6 @@ Internet-Draft              Evidence Request               November 2026
       -  Correlation members: the header's subject_ref (Section 4 of
          [I-D.mih-agent-evidence-layer]), and any header field a profile
          adds under that section's provision for profile-added header
-
-
-
-Mih                        Expires 21 May 2027                 [Page 10]
-
-Internet-Draft              Evidence Request               November 2026
-
-
          fields and designates as an equivalent correlation field
          (Section 9 of [I-D.mih-agent-evidence-layer]), for example each
          text-valued member of a correlation map added by a profile.
@@ -576,6 +606,17 @@ Internet-Draft              Evidence Request               November 2026
          (Section 3.4 of [I-D.mih-scitt-agent-action-capsule]: currently
          action_id, decision_id, external_ref, and chain), cited here
          and not redefined.
+
+
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 11]
+
+Internet-Draft              Evidence Request               November 2026
+
 
       -  Half citation: an entry of references whose citation_purpose is
          counterparty_half and whose digest is the half's digest
@@ -603,21 +644,6 @@ Internet-Draft              Evidence Request               November 2026
    MUST NOT reject the artifact on that ground.  An unchecked record is
    still checked against the coverage anchor like any other.
 
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 21 May 2027                 [Page 11]
-
-Internet-Draft              Evidence Request               November 2026
-
-
 3.2.  Coverage
 
    The coverage field carries *exactly one* of the following two
@@ -640,6 +666,14 @@ Internet-Draft              Evidence Request               November 2026
    *min_freshness (size or time):* the requester holds no specific
    anchor and instead requires that the response be covered by a
    commitment at least this fresh — at least this log size, or issued no
+
+
+
+Mih                        Expires 21 May 2027                 [Page 12]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    earlier than this time.  The responder selects a qualifying anchor
    and identifies it in the response.  This form trades the pin's
    independence for availability: the requester can always form the
@@ -661,18 +695,6 @@ Internet-Draft              Evidence Request               November 2026
    coverage.  Serving under weaker-than-requested coverage is not a
    degraded success; it is a different answer to a different question,
    and this document forbids it.
-
-
-
-
-
-
-
-
-Mih                        Expires 21 May 2027                 [Page 12]
-
-Internet-Draft              Evidence Request               November 2026
-
 
 3.3.  Derivation
 
@@ -698,6 +720,16 @@ Internet-Draft              Evidence Request               November 2026
    general but not for this subject refuses with reason no_such_subject,
    per Section 3.1.
 
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 13]
+
+Internet-Draft              Evidence Request               November 2026
+
+
 3.4.  Deadline
 
    The deadline field states the latest time at which a response is
@@ -719,16 +751,6 @@ Internet-Draft              Evidence Request               November 2026
    issuance time (Section 4.2) — binds to _this_ instance of asking, not
    replayable against a fresh one.  Covered by the request digest, it
    MUST NOT influence the artifact (Section 5).
-
-
-
-
-
-
-Mih                        Expires 21 May 2027                 [Page 13]
-
-Internet-Draft              Evidence Request               November 2026
-
 
 3.6.  Route
 
@@ -755,6 +777,15 @@ Internet-Draft              Evidence Request               November 2026
    trust.  A retention commitment (Section 9) similarly names an
    answerable party without this document defining what a name is.
 
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 14]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    Two consequences for implementers.  First, a requester or responder
    MAY be authenticated at the transport layer (by the signature over a
    response, for example, Section 11) without either party ever
@@ -778,14 +809,6 @@ Internet-Draft              Evidence Request               November 2026
    recorded or their digests exchanged, deterministic encoding SHOULD be
    used: CBOR Core Deterministic Encoding (Section 4.2 of [RFC8949]) for
    CBOR, JCS [RFC8785] for JSON, so that the recorded bytes and the
-
-
-
-Mih                        Expires 21 May 2027                 [Page 14]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    transmitted bytes are the same bytes.  A requester that retains
    neither the transmitted request bytes nor their digest cannot
    correlate a refusal — identified only by digest — with its own record
@@ -807,6 +830,17 @@ Internet-Draft              Evidence Request               November 2026
    and are not defined here.
 
    The value is a map with two members:
+
+
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 15]
+
+Internet-Draft              Evidence Request               November 2026
+
 
            +========+==========+===============================+
            | Member | Presence | Value                         |
@@ -835,13 +869,6 @@ Internet-Draft              Evidence Request               November 2026
    duplicated names as malformed, and refuses the request with reason
    request_malformed.  Names are compared as exact strings.
 
-
-
-Mih                        Expires 21 May 2027                 [Page 15]
-
-Internet-Draft              Evidence Request               November 2026
-
-
    The field asks for a declaration, nothing else.  It does not change
    the subject, it does not change coverage (Section 3.2), and it does
    not change which records are served.  A declaration states what the
@@ -863,6 +890,14 @@ Internet-Draft              Evidence Request               November 2026
    its waiting window.  Treating these as *outcomes* rather than as
    three things a responder chooses among matters: a responder can grant
    or refuse, full stop; it cannot "respond with absence," because
+
+
+
+Mih                        Expires 21 May 2027                 [Page 16]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    absence is precisely the case in which nothing arrived to be a
    response.  There is no fourth outcome, and no outcome is ever
    converted into another (Section 4.5).
@@ -890,14 +925,6 @@ Internet-Draft              Evidence Request               November 2026
        the artifact against the anchor *offline* — inclusion proofs,
        consistency proofs, countersignatures, receipts [RFC9942].  An
        anchor MAY carry receipts from more than one transparency
-
-
-
-Mih                        Expires 21 May 2027                 [Page 16]
-
-Internet-Draft              Evidence Request               November 2026
-
-
        service; each receipt is verified on its own terms, and how many
        independent services a requester requires is requester policy,
        not a property of this interaction.  The formats are evidence-
@@ -917,6 +944,16 @@ Internet-Draft              Evidence Request               November 2026
        items 4 and 5, the artifact's digest, and the identification of
        the resolved anchor.
 
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 17]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    Items 4 to 6 MUST be present.  They bind one answer to one instance
    of asking.  Two envelopes for the same subject under the same anchor
    name the same artifact digest; envelopes answering requests with
@@ -930,12 +967,12 @@ Internet-Draft              Evidence Request               November 2026
    deployment profile MAY fix the member names and the signature format
    of the envelope; this document fixes only what the signature covers.
 
-   For the checkpoints subject and the history card derivations the
-   artifact _is_ the verification material: there is no separate record
-   to verify, only commitments and the proofs between them.
-   Implementations MUST NOT serve an empty artifact alongside proofs in
-   these cases; the proofs are the artifact, and caller invariance
-   (Section 5) binds them.
+   For the checkpoints and checkpoint_range subjects and the history
+   card derivations the artifact _is_ the verification material: there
+   is no separate record to verify, only commitments and the proofs
+   between them.  Implementations MUST NOT serve an empty artifact
+   alongside proofs in these cases; the proofs are the artifact, and
+   caller invariance (Section 5) binds them.
 
    An artifact response MAY be accompanied by a retention commitment
    (Section 9) covering the subject served.
@@ -945,14 +982,6 @@ Internet-Draft              Evidence Request               November 2026
    requesters SHOULD treat a verification failure as adverse —
    equivalent to discovering the exchange was not what it claimed —
    rather than as a retryable transport fault.
-
-
-
-
-Mih                        Expires 21 May 2027                 [Page 17]
-
-Internet-Draft              Evidence Request               November 2026
-
 
 4.2.  The Signed Refusal
 
@@ -973,6 +1002,14 @@ Internet-Draft              Evidence Request               November 2026
        having held the evidence. capacity_exceeded is distinct from
        policy_declined by design: it states that the responder declined
        for a limit of its own (load, a size limit on the request or on
+
+
+
+Mih                        Expires 21 May 2027                 [Page 18]
+
+Internet-Draft              Evidence Request               November 2026
+
+
        the answer, a full replay cache, or a transient fault), whoever
        asked and whatever its policy discloses, so policy_declined and
        not_authorized remain statements about policy.
@@ -993,22 +1030,6 @@ Internet-Draft              Evidence Request               November 2026
        already uses, such that the requester can record the refusal and
        later demonstrate to a third party that this responder refused
        this request for this stated reason.
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 21 May 2027                 [Page 18]
-
-Internet-Draft              Evidence Request               November 2026
-
 
    Human-readable detail MAY accompany the reason token; the token, not
    the prose, is the machine-readable answer.  A responder MUST select
@@ -1038,6 +1059,13 @@ Internet-Draft              Evidence Request               November 2026
    own bookkeeping or to display outstanding requests to an operator,
    without that tracking implying anything about the eventual outcome.
 
+
+
+Mih                        Expires 21 May 2027                 [Page 19]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    Only once the waiting window closes with neither an artifact nor a
    refusal received does a request's state resolve to absence
    (Section 4.4).  Until that boundary, delay, slow transport, and a
@@ -1053,18 +1081,6 @@ Internet-Draft              Evidence Request               November 2026
    not sent by anyone; it is _recorded by the requester_: the request
    digest, the transport attempted, and the window in which no answer
    came.
-
-
-
-
-
-
-
-
-Mih                        Expires 21 May 2027                 [Page 19]
-
-Internet-Draft              Evidence Request               November 2026
-
 
    Absence is an outcome about the exchange, not about the responder's
    intent.  A network partition, a crashed responder, and a responder
@@ -1099,6 +1115,13 @@ Internet-Draft              Evidence Request               November 2026
       answer" (my attempt, my window) as distinct, differently-evidenced
       facts.
 
+
+
+Mih                        Expires 21 May 2027                 [Page 20]
+
+Internet-Draft              Evidence Request               November 2026
+
+
    *  *Refusal is never degraded into absence.* A requester that
       receives a valid signed refusal SHOULD record it as such;
       discarding a refusal and recording an absence misstates the
@@ -1114,13 +1137,6 @@ Internet-Draft              Evidence Request               November 2026
       retention commitment (Section 9) makes an absence attributable; it
       does not make it a signed act of the responder, and no party may
       record it as one.
-
-
-
-Mih                        Expires 21 May 2027                 [Page 20]
-
-Internet-Draft              Evidence Request               November 2026
-
 
    *  *Pending is never recorded as absence.* A request still inside its
       waiting window is pending (Section 4.3), not absent; only the
@@ -1143,22 +1159,6 @@ Internet-Draft              Evidence Request               November 2026
    deployment composing this interaction with an evidence-contract or
    evidence-bundle layer typically derives one from the three outcomes
    above.  The mapping shape — not a specific registry — is informative:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1534,10 +1534,10 @@ Internet-Draft              Evidence Request               November 2026
    external receipts over those commitments, and the proofs that each
    commitment extends an earlier one.
 
-   Either card answers the checkpoints subject without a range or the
-   full_history subject: both name the evidence stream the card is for.
-   A request naming either derivation over any other subject, a ranged
-   checkpoints subject included, is refused with reason no_such_subject.
+   Either card answers the checkpoints subject or the full_history
+   subject: both name the evidence stream the card is for.  A request
+   naming either derivation over any other subject, a checkpoint_range
+   subject included, is refused with reason no_such_subject.
 
    history_card/2 is the default first question.  It is the thing a
    stranger checks before deciding whether to ask for anything else.
@@ -1713,9 +1713,9 @@ Internet-Draft              Evidence Request               November 2026
 
 8.1.3.  Checkpoints Between Listed Entries
 
-   A checkpoints subject with content (a, b) and no derivation asks for
-   the checkpoints at positions a through b inclusive.  The artifact is
-   a map with two members:
+   A checkpoint_range subject with content (a, b) and no derivation asks
+   for the checkpoints at positions a through b inclusive.  The artifact
+   is a map with two members:
 
 
 
@@ -1776,7 +1776,7 @@ Internet-Draft              Evidence Request               November 2026
    consistency_to_anchor, and the last part ends at a position its card
    lists.
 
-   A ranged checkpoints request is refused with reason:
+   A checkpoint_range request is refused with reason:
 
    *  request_malformed, when the bounds are not two unsigned integers
       or a exceeds b (Section 3.1);
@@ -2343,9 +2343,9 @@ Internet-Draft              Evidence Request               November 2026
    sensitive have the same option as for coverage probing: a uniform
    policy_declined for the derivation.
 
-
-
-
+   *A list of the forms answered can leak a size.* A responder that
+   stops listing checkpoints (Section 3.1) tells every reader of its
+   list that a stream has passed the size it serves in one answer.  A
 
 
 
@@ -2353,6 +2353,11 @@ Mih                        Expires 21 May 2027                 [Page 42]
 
 Internet-Draft              Evidence Request               November 2026
 
+
+   history card's positions state the count more precisely, so the list
+   adds nothing for a responder that answers either card.  A responder
+   that declines both cards to hide that count can keep listing
+   checkpoints: a list is not a promise.
 
    *Exchange subjects reveal a relationship.* An exchange request names
    a half that only the two parties could hold, so any intermediary that
@@ -2394,6 +2399,17 @@ Internet-Draft              Evidence Request               November 2026
    and disclosed to every reader of the stream the statement is sealed
    in.
 
+
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 43]
+
+Internet-Draft              Evidence Request               November 2026
+
+
 13.  IANA Considerations
 
    This document requests that IANA establish a registry titled
@@ -2405,7 +2421,47 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 43]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 21 May 2027                 [Page 44]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2461,7 +2517,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 44]
+Mih                        Expires 21 May 2027                 [Page 45]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2517,7 +2573,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 45]
+Mih                        Expires 21 May 2027                 [Page 46]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2573,7 +2629,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 46]
+Mih                        Expires 21 May 2027                 [Page 47]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2629,7 +2685,7 @@ Appendix A.  Example Deployments
 
 
 
-Mih                        Expires 21 May 2027                 [Page 47]
+Mih                        Expires 21 May 2027                 [Page 48]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2685,7 +2741,7 @@ Internet-Draft              Evidence Request               November 2026
 
 
 
-Mih                        Expires 21 May 2027                 [Page 48]
+Mih                        Expires 21 May 2027                 [Page 49]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2741,7 +2797,7 @@ Appendix B.  Reference Blocks and This Interaction
 
 
 
-Mih                        Expires 21 May 2027                 [Page 49]
+Mih                        Expires 21 May 2027                 [Page 50]
 
 Internet-Draft              Evidence Request               November 2026
 
@@ -2763,13 +2819,16 @@ Changes from -02
       the number of checkpoints, where history_card/1's grows linearly.
       history_card/1 is unchanged and stays registered (Section 8.1.1).
 
-   *  New term "checkpoint position" (Section 2).  The checkpoints
-      subject (Section 3.1) takes an optional range of checkpoint
+   *  New term "checkpoint position" (Section 2).  A seventh subject
+      form, checkpoint_range (Section 3.1), names a range of checkpoint
       positions, answered as Section 8.1.3 says: entries a through b and
       a consistency_to_anchor proof binding each answer to the coverage
       anchor, in parts when a gap is long, with its refusal reasons.  A
-      history card over a ranged checkpoints subject is refused
-      no_such_subject.
+      history card over a checkpoint_range subject is refused
+      no_such_subject.  The checkpoints form is unchanged and carries no
+      content; the range has its own token so that a responder can list
+      the ranged form without the full list, which it stops listing once
+      the list outgrows one answer (Section 3.1).
 
    *  Section 13: a row for history_card/2 in the derivations registry.
 
@@ -2791,16 +2850,17 @@ Changes from -01
       (Section 2); Section 4.4, Section 4.5 and Section 4.6 say the
       statement leaves the absence unchanged.
 
-   *  Security, Privacy and IANA Considerations: a statement is the
-      responder's word; it discloses operational state; its reason
-      classes are not a registry.
 
 
 
-Mih                        Expires 21 May 2027                 [Page 50]
+Mih                        Expires 21 May 2027                 [Page 51]
 
 Internet-Draft              Evidence Request               November 2026
 
+
+   *  Security, Privacy and IANA Considerations: a statement is the
+      responder's word; it discloses operational state; its reason
+      classes are not a registry.
 
    *  Appendix A: a worked example of a responder flooded during a
       dispute window.
@@ -2845,18 +2905,17 @@ Changes from -00
       outcomes that have a reply to reply types; -00 said "the three
       outcomes as three reply types", but absence has no reply.
 
-   *  Security and Privacy Considerations: a category declaration
-      declares and does not prove; carriage metadata reveals the ask.
 
 
 
 
-
-
-Mih                        Expires 21 May 2027                 [Page 51]
+Mih                        Expires 21 May 2027                 [Page 52]
 
 Internet-Draft              Evidence Request               November 2026
 
+
+   *  Security and Privacy Considerations: a category declaration
+      declares and does not prove; carriage metadata reveals the ask.
 
    *  References: RFC 4648 added as normative, A2A and MCP as
       informative.  The Checkpointed Local Log and Evidence Bundle
@@ -2906,7 +2965,4 @@ Author's Address
 
 
 
-
-
-
-Mih                        Expires 21 May 2027                 [Page 52]
+Mih                        Expires 21 May 2027                 [Page 53]

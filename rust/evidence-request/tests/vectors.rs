@@ -699,7 +699,7 @@ fn unavailable_window_corpus() {
     assert_eq!((statements, displays), (19, 16));
 }
 
-/// `checkpoints-range.json` (ER -03 §3.1, §8.1.3): the ranged checkpoints
+/// `checkpoints-range.json` (ER -03 §3.1, §8.1.3): the checkpoint_range
 /// subject parses in both bindings, and resolves against the -03 responder,
 /// whose anchors are its checkpoints in issue order.
 #[test]

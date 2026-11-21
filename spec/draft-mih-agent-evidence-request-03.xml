@@ -305,7 +305,7 @@ names in the table above are fixed; the semantics are as specified in this
 document.]]</t>
       <section anchor="subject">
         <name>Subject</name>
-        <t>The <tt>subject</tt> names what is asked for, in one of six forms:</t>
+        <t>The <tt>subject</tt> names what is asked for, in one of seven forms:</t>
         <table>
           <thead>
             <tr>
@@ -324,8 +324,14 @@ document.]]</t>
             <tr>
               <td align="left">
                 <tt>checkpoints</tt></td>
-              <td align="left">(none), or (a, b)</td>
-              <td align="left">the responder's checkpoints and their receipts for this stream, or with (a, b) those at checkpoint positions a through b inclusive; no records</td>
+              <td align="left">(none)</td>
+              <td align="left">the responder's checkpoints and their receipts for this stream; no records</td>
+            </tr>
+            <tr>
+              <td align="left">
+                <tt>checkpoint_range</tt></td>
+              <td align="left">(a, b)</td>
+              <td align="left">the responder's checkpoints and their receipts at checkpoint positions a through b inclusive; no records</td>
             </tr>
             <tr>
               <td align="left">
@@ -363,13 +369,31 @@ resolve exactly is answered with a refusal carrying reason
 record positions; under a mechanism defining no positional ordering it
 cannot be satisfied and is refused with reason <tt>coverage_unsatisfiable</tt>.</t>
         <t>The <tt>checkpoints</tt> form asks for commitments only. It is the cheapest
-question a stranger can ask and the one a responder can always safely
-answer; the history card derivations (<xref target="history-card"/>) are its
-proof-carrying forms. With content (a, b), it names the checkpoints at
-checkpoint positions (<xref target="terms"/>) a through b inclusive, so a requester
-holding a history card can fetch the checkpoints between two entries the
-card lists (<xref target="history-card-range"/>). The bounds are two unsigned integers,
-a no greater than b; any other content is malformed.</t>
+question a stranger can ask; the history card derivations
+(<xref target="history-card"/>) are its proof-carrying forms. It carries no content,
+and a <tt>checkpoints</tt> subject that carries any is malformed. Its answer
+grows with the number of checkpoints, so a long-lived stream can outgrow
+what a responder serves in one answer, and the responder then refuses it
+with reason <tt>capacity_exceeded</tt>.</t>
+        <t>The <tt>checkpoint_range</tt> form names the checkpoints at checkpoint positions
+(<xref target="terms"/>) a through b inclusive, so a requester holding a history card
+can fetch the checkpoints between two entries the card lists
+(<xref target="history-card-range"/>). The bounds are two unsigned integers, a no
+greater than b; any other content is malformed.</t>
+        <t><strong>Listing the forms answered.</strong> Wherever a responder lists the subject
+forms it answers, as in the manifest (<xref target="transports"/>) or in a list a
+deployment profile defines, it names each form by its own token, so a
+list can name <tt>checkpoint_range</tt> without <tt>checkpoints</tt>. A responder that
+refuses <tt>checkpoints</tt> with reason <tt>capacity_exceeded</tt> to every requester,
+because a stream's full checkpoint list exceeds what it serves in one
+answer, <bcp14>SHOULD NOT</bcp14> list <tt>checkpoints</tt> in a list that covers only such
+streams. Such a list then names <tt>checkpoint_range</tt> and the history card
+derivations the responder still answers. A list that covers several
+streams names <tt>checkpoints</tt> while the responder answers it for any of
+them. A checkpoint list only grows, so once a stream is past that size it
+stays past it, unless the responder raises what it serves in one answer. A requester
+reads a list as what it can ask, not as a promise: a listed form can
+still be refused for any reason of <xref target="refusal"/>.</t>
         <t>The <tt>exchange</tt> form names the requester's own sealed half of a prior
 interaction. A responder that recorded its side of that interaction holds a
 record citing that half by digest; the subject resolves to exactly those
@@ -720,8 +744,8 @@ of the requester's own request bytes does not answer that request,
 however well it verifies otherwise. A deployment profile <bcp14>MAY</bcp14> fix the
 member names and the signature format of the envelope; this document
 fixes only what the signature covers.</t>
-        <t>For the <tt>checkpoints</tt> subject and the history card derivations the
-artifact <em>is</em> the verification material: there is no separate record to
+        <t>For the <tt>checkpoints</tt> and <tt>checkpoint_range</tt> subjects and the history
+card derivations the artifact <em>is</em> the verification material: there is no separate record to
 verify, only commitments and the proofs between them. Implementations
 <bcp14>MUST NOT</bcp14> serve an empty artifact alongside proofs in these cases; the
 proofs are the artifact, and caller invariance (<xref target="invariance"/>) binds them.</t>
@@ -1182,10 +1206,10 @@ requester's role requires the whole record.</t>
 declared field sets contain no record content: a card discloses
 commitments, external receipts over those commitments, and the proofs that
 each commitment extends an earlier one.</t>
-        <t>Either card answers the <tt>checkpoints</tt> subject without a range or the
-<tt>full_history</tt> subject: both name the evidence stream the card is for. A
-request naming either derivation over any other subject, a ranged
-<tt>checkpoints</tt> subject included, is refused with reason <tt>no_such_subject</tt>.</t>
+        <t>Either card answers the <tt>checkpoints</tt> subject or the <tt>full_history</tt>
+subject: both name the evidence stream the card is for. A request naming
+either derivation over any other subject, a <tt>checkpoint_range</tt> subject
+included, is refused with reason <tt>no_such_subject</tt>.</t>
         <t><tt>history_card/2</tt> is the default first question. It is the thing a
 stranger checks before deciding whether to ask for anything else. Either
 card is safe to serve to anyone under the digests-only tier, and a
@@ -1343,8 +1367,8 @@ to check each <tt>position</tt> against it.</t>
         </section>
         <section anchor="history-card-range">
           <name>Checkpoints Between Listed Entries</name>
-          <t>A <tt>checkpoints</tt> subject with content (a, b) and no derivation asks for
-the checkpoints at positions a through b inclusive. The artifact is a map
+          <t>A <tt>checkpoint_range</tt> subject with content (a, b) and no derivation asks
+for the checkpoints at positions a through b inclusive. The artifact is a map
 with two members:</t>
           <table>
             <thead>
@@ -1380,7 +1404,7 @@ parts, starting each part at the last position of the part before it: the
 first entry of every part then carries a checkpoint the requester already
 holds, every part extends to the anchor by its <tt>consistency_to_anchor</tt>,
 and the last part ends at a position its card lists.</t>
-          <t>A ranged <tt>checkpoints</tt> request is refused with reason:</t>
+          <t>A <tt>checkpoint_range</tt> request is refused with reason:</t>
           <ul spacing="normal">
             <li>
               <t><tt>request_malformed</tt>, when the bounds are not two unsigned integers or
@@ -1829,6 +1853,13 @@ approximation of activity over time, without any record content. A
 many checkpoints the stream holds.
 Responders for whom that is sensitive have the same option as for
 coverage probing: a uniform <tt>policy_declined</tt> for the derivation.</t>
+      <t><strong>A list of the forms answered can leak a size.</strong> A responder that stops
+listing <tt>checkpoints</tt> (<xref target="subject"/>) tells every reader of its list that a
+stream has passed the size it serves in one answer. A history card's
+positions state the count more precisely, so the list adds nothing for a
+responder that answers either card. A responder that declines both cards
+to hide that count can keep listing <tt>checkpoints</tt>: a list is not a
+promise.</t>
       <t><strong>Exchange subjects reveal a relationship.</strong> An <tt>exchange</tt> request names a
 half that only the two parties could hold, so any intermediary that sees
 the request learns that they interacted. Both parties already know;
@@ -2152,7 +2183,7 @@ action.</t>
         </reference>
       </references>
     </references>
-    <?line 1738?>
+    <?line 1767?>
 
 <section anchor="field-evidence">
       <name>Example Deployments</name>
@@ -2309,12 +2340,16 @@ where <tt>history_card/1</tt>'s grows linearly. <tt>history_card/1</tt> is uncha
 and stays registered (<xref target="history-card-1"/>).</t>
         </li>
         <li>
-          <t>New term "checkpoint position" (<xref target="terms"/>). The <tt>checkpoints</tt> subject
-(<xref target="subject"/>) takes an optional range of checkpoint positions, answered
-as <xref target="history-card-range"/> says: entries a through b and a
+          <t>New term "checkpoint position" (<xref target="terms"/>). A seventh subject form,
+<tt>checkpoint_range</tt> (<xref target="subject"/>), names a range of checkpoint positions,
+answered as <xref target="history-card-range"/> says: entries a through b and a
 <tt>consistency_to_anchor</tt> proof binding each answer to the coverage anchor,
 in parts when a gap is long, with its refusal reasons. A history card
-over a ranged <tt>checkpoints</tt> subject is refused <tt>no_such_subject</tt>.</t>
+over a <tt>checkpoint_range</tt> subject is refused <tt>no_such_subject</tt>. The
+<tt>checkpoints</tt> form is unchanged and carries no content; the range has
+its own token so that a responder can list the ranged form without the
+full list, which it stops listing once the list outgrows one answer
+(<xref target="subject"/>).</t>
         </li>
         <li>
           <t><xref target="iana"/>: a row for <tt>history_card/2</tt> in the derivations registry.</t>

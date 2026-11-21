@@ -8,7 +8,7 @@ nothing arrived (a recorded absence). This module implements what both sides
 must agree on, and the responder's decision logic:
 
 * :func:`parse_request`: the request map in its JSON or CBOR binding, checked
-  against -00 (the six subject forms, exactly one coverage member, the
+  against -00 (the six subject forms and -03's ``checkpoint_range``, exactly one coverage member, the
   optional fields), raising :class:`RequestError` with the exact refusal
   reason when it is not well formed.
 * :func:`request_digest`: SHA-256 over the request bytes as received.
@@ -43,6 +43,7 @@ readings the conformance vectors in ``vectors/evidence-request/`` document
 * A subject is a map with exactly one member, named by the form token:
   ``{"full_history": null}``, ``{"checkpoints": null}``, ``{"record":
   <digest>}``, ``{"range": [a, b]}`` (unsigned, ``a <= b``),
+  ``{"checkpoint_range": [a, b]}`` (-03; checkpoint positions, likewise),
   ``{"correlation": "<id>"}``, ``{"exchange": <digest>}`` (A1, A6).
 * A digest is SHA-256 as 64 lowercase hex characters, as text in both
   bindings (A2). Nothing is ever matched by prefix or with case folding.
@@ -114,6 +115,7 @@ __all__ = [
     "SUBPROTOCOL",
     "DERIVATION_HISTORY_CARD",
     "DERIVATION_HISTORY_CARD_2",
+    "SUBJECT_CHECKPOINT_RANGE",
     "SUBJECT_FORMS",
     "COVERAGE_MEMBERS",
     "REASON_NOT_AUTHORIZED",
@@ -208,8 +210,14 @@ DERIVATION_HISTORY_CARD = "history_card/1"
 #: -03 §8.1.2; checked by :mod:`agent_action_capsule.history_card`.
 DERIVATION_HISTORY_CARD_2 = "history_card/2"
 
-#: The six subject forms (§3.1), in the draft's order.
+#: The six subject forms of -02's §3.1 table, in the draft's order. ``checkpoint_range``
+#: (-03) is not among them, so a list built from this one for a profile that pins -02
+#: (``evidence-interop/1``) names no token beyond that profile.
 SUBJECT_FORMS = ("full_history", "checkpoints", "record", "range", "correlation", "exchange")
+#: -03 §3.1 adds a seventh form: the checkpoints at positions a through b. It has its
+#: own token so that a responder can list it without ``checkpoints``.
+SUBJECT_CHECKPOINT_RANGE = "checkpoint_range"
+_REQUEST_FORMS = SUBJECT_FORMS + (SUBJECT_CHECKPOINT_RANGE,)
 
 #: The two coverage members (§3.2).
 COVERAGE_MEMBERS = ("expected_pin", "min_freshness")
@@ -421,8 +429,8 @@ def _malformed(message: str) -> RequestError:
 class Subject:
     """What a request asks about (§3.1). ``content`` is ``None`` for
     ``full_history`` and ``checkpoints``, a digest for ``record`` and
-    ``exchange``, ``(a, b)`` for ``range`` and for a ranged ``checkpoints``
-    subject (-03 §3.1, checkpoint positions), the identifier for
+    ``exchange``, ``(a, b)`` for ``range`` and for ``checkpoint_range``
+    (-03 §3.1, checkpoint positions), the identifier for
     ``correlation``."""
 
     form: str
@@ -460,14 +468,14 @@ def _parse_subject(value: Any) -> Subject:
     if len(value) != 1:
         raise _malformed("subject must have exactly one member")
     ((form, content),) = value.items()
-    if form not in SUBJECT_FORMS:
-        raise _malformed("subject form is not one of the six")
-    if form == "checkpoints" and content is not None:
-        # -03 §3.1: an optional range of checkpoint positions, as for range.
+    if form not in _REQUEST_FORMS:
+        raise _malformed("subject form is not one of the defined forms")
+    if form == SUBJECT_CHECKPOINT_RANGE:
+        # -03 §3.1: a range of checkpoint positions, as for range.
         if not (isinstance(content, list) and len(content) == 2 and all(_is_uint(v) for v in content)):
-            raise _malformed("a checkpoints range is not two unsigned integers")
+            raise _malformed("a checkpoint_range is not two unsigned integers")
         if content[0] > content[1]:
-            raise _malformed("checkpoints range start is after its end")
+            raise _malformed("checkpoint_range start is after its end")
         return Subject(form, (content[0], content[1]))
     if form in ("full_history", "checkpoints"):
         if content is not None:
@@ -631,7 +639,7 @@ class EvidenceStore(Protocol):
         ...
 
     def anchors(self) -> Sequence[Anchor]:
-        """The coverage anchors held. For a ranged ``checkpoints`` subject (-03 §8.1.3) they
+        """The coverage anchors held. For a ``checkpoint_range`` subject (-03 §8.1.3) they
         are the stream's checkpoints in the order issued, so an anchor's index is its
         checkpoint position."""
         ...
@@ -699,9 +707,9 @@ def resolve(request: Request, store: EvidenceStore, *, uniform_policy_declined: 
             return Resolution(REASON_DERIVATION_UNSUPPORTED)
         if subject.form not in forms:
             return not_held
-        # -03 §8.1: a history card answers checkpoints only without a range.
+        # -03 §8.1: a history card never answers checkpoint_range.
         if request.derivation in (DERIVATION_HISTORY_CARD, DERIVATION_HISTORY_CARD_2) and \
-                subject.form == "checkpoints" and subject.content is not None:
+                subject.form == SUBJECT_CHECKPOINT_RANGE:
             return not_held
 
     if subject.form == "record":
@@ -714,7 +722,7 @@ def resolve(request: Request, store: EvidenceStore, *, uniform_policy_declined: 
         if not store.positional_ordering():
             return Resolution(REASON_COVERAGE_UNSATISFIABLE)
         held = True
-    else:  # full_history, checkpoints
+    else:  # full_history, checkpoints, checkpoint_range
         held = True
     if not held:
         return not_held
@@ -730,7 +738,7 @@ def resolve(request: Request, store: EvidenceStore, *, uniform_policy_declined: 
         return Resolution(REASON_COVERAGE_UNSATISFIABLE)
     if subject.form == "range" and subject.content[1] >= anchor.size:
         return Resolution(REASON_COVERAGE_UNSATISFIABLE)
-    if subject.form == "checkpoints" and subject.content is not None:
+    if subject.form == SUBJECT_CHECKPOINT_RANGE:
         # -03 §8.1.3: b must not be past the anchor's checkpoint position.
         position = [a.digest for a in store.anchors()].index(anchor.digest)
         if subject.content[1] > position:

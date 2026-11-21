@@ -14,7 +14,7 @@ import (
 )
 
 // history-card-2.json and checkpoints-range.json are ER -03 corpora: the
-// history_card/2 positions and card checks, and the ranged checkpoints
+// history_card/2 positions and card checks, and the checkpoint_range
 // subject.
 
 type historyCard2Corpus struct {
@@ -191,15 +191,15 @@ func TestCheckpointsRangeResolutionVectors(t *testing.T) {
 	}
 }
 
-// A ranged checkpoints subject (ER -03 §3.1) is signed as its range and
+// A checkpoint_range subject (ER -03 §3.1) is signed as its range and
 // read back the same from either encoding; changing the range breaks the
 // signature.
 func TestEnvelopeSignsACheckpointRange(t *testing.T) {
 	s, keyID := signer(t, 3)
 	artifact := []byte(`{"history":[]}`)
-	ranged := er.Subject{Kind: er.SubjectCheckpoints, Range: [2]uint64{2, 5}, Ranged: true}
+	ranged := er.Subject{Kind: er.SubjectCheckpointRange, Range: [2]uint64{2, 5}}
 	require.True(t, ranged.Valid())
-	assert.Equal(t, map[string]any{"checkpoints": []any{uint64(2), uint64(5)}}, ranged.Value())
+	assert.Equal(t, map[string]any{"checkpoint_range": []any{uint64(2), uint64(5)}}, ranged.Value())
 	unsigned := er.Envelope{
 		Profile: er.ProfileID, RequestDigest: digestOf("req"), Subject: ranged,
 		Anchor: er.Anchor{Digest: digestOf("anchor")}, ArtifactDigest: er.Digest(artifact),
@@ -221,11 +221,11 @@ func TestEnvelopeSignsACheckpointRange(t *testing.T) {
 	assert.Error(t, widened.Verify(), "the range is signed")
 	unranged := e
 	unranged.Subject = er.Subject{Kind: er.SubjectCheckpoints}
-	assert.Error(t, unranged.Verify(), "a range is not an unranged subject")
+	assert.Error(t, unranged.Verify(), "a checkpoint_range is not a checkpoints subject")
 }
 
 // Both history cards are built in: Decide accepts history_card/2 with no
-// Policy.Derivation, over unranged checkpoints and full_history only.
+// Policy.Derivation, over checkpoints and full_history only.
 func TestDecideHistoryCard2IsBuiltIn(t *testing.T) {
 	issued := time.Date(2026, 9, 27, 0, 0, 0, 0, time.UTC)
 	view := vectorView{logSize: 3, records: []string{digestOf("r")}, anchorList: []er.AnchorView{{Digest: digestOf("a0"), Entries: 1, IssuedAt: issued}, {Digest: digestOf("a1"), Entries: 3, IssuedAt: issued.Add(time.Hour)}}}
@@ -237,7 +237,7 @@ func TestDecideHistoryCard2IsBuiltIn(t *testing.T) {
 	}{
 		{er.Subject{Kind: er.SubjectCheckpoints}, ""},
 		{er.Subject{Kind: er.SubjectFullHistory}, ""},
-		{er.Subject{Kind: er.SubjectCheckpoints, Range: [2]uint64{0, 1}, Ranged: true}, er.ReasonNoSuchSubject},
+		{er.Subject{Kind: er.SubjectCheckpointRange, Range: [2]uint64{0, 1}}, er.ReasonNoSuchSubject},
 		{er.Subject{Kind: er.SubjectRecord, Digest: digestOf("r")}, er.ReasonNoSuchSubject},
 	} {
 		d := er.Decide(view, er.Request{Subject: tc.subject, Coverage: pin, Derivation: er.DerivationHistoryCard2}, er.Policy{}, now)

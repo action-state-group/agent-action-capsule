@@ -2,7 +2,7 @@
   "draft": "draft-mih-agent-evidence-request-03",
   "provenance": "spec-derived",
   "corpus": "checkpoints-range",
-  "description": "The ranged checkpoints subject and history_card/2 resolution: request validation (request_cases) and the most specific refusal reason against the -03 responder (cases).",
+  "description": "The checkpoint_range subject and history_card/2 resolution: request validation (request_cases) and the most specific refusal reason against the -03 responder (cases).",
   "responder": {
     "evidence_stream": "stream-a",
     "log_size": 42,
@@ -62,29 +62,29 @@
   },
   "request_cases": [
     {
-      "id": "pos-checkpoints-range",
+      "id": "pos-checkpoint-range",
       "section": [
         "§3.1 Subject"
       ],
-      "description": "checkpoints at positions 0 through 1.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0301\",\"subject\":{\"checkpoints\":[0,1]}}",
-      "request_json_digest": "65a9595135f9254a23f51ef9c97031958b43ebe24c98754d97739249301fb065",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333031677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
-      "request_cbor_digest": "bed47c6fbe014bf2e8e9e22cae55bbdbb64a29c8484b5bce808bf9949ac42eac",
+      "description": "checkpoint_range at positions 0 through 1.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0301\",\"subject\":{\"checkpoint_range\":[0,1]}}",
+      "request_json_digest": "32e36f420d5921c60caed26953835ecfa1544df9f5875a37474abe828c51a0f0",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333031677375626a656374a170636865636b706f696e745f72616e676582000168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "f36577ad70103dc18071b4a98fea26cd46aee633db0a93fe9d7a7279b33d565d",
       "expect": {
         "well_formed": true
       }
     },
     {
-      "id": "pos-checkpoints-range-one",
+      "id": "pos-checkpoint-range-one",
       "section": [
         "§3.1 Subject"
       ],
       "description": "a range of one checkpoint, a = b.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0302\",\"subject\":{\"checkpoints\":[1,1]}}",
-      "request_json_digest": "1a8be6e2107f2f076a3e608675b3a444dc014f46445a5ea1b76be558af0bfcd0",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333032677375626a656374a16b636865636b706f696e747382010168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
-      "request_cbor_digest": "55680d9def65e11c04e50b8f87569e6ff6165a5a2aae4e6a57cd977dddacadea",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0302\",\"subject\":{\"checkpoint_range\":[1,1]}}",
+      "request_json_digest": "25179b50a282b1c4f31581f4a5fd057de3f930b7e2414828092ecb51fc1f1af5",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333032677375626a656374a170636865636b706f696e745f72616e676582010168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "f81e3ca9d2959a1f6b4e4059088617816c940dca5b3c8545a874364a4a3bced2",
       "expect": {
         "well_formed": true
       }
@@ -94,7 +94,7 @@
       "section": [
         "§3.1 Subject"
       ],
-      "description": "checkpoints with null content, as in -02.",
+      "description": "checkpoints with null content, as in -02 and unchanged.",
       "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0303\",\"subject\":{\"checkpoints\":null}}",
       "request_json_digest": "1346ad16d35e7b57f638b5c1515ec9730ad33efcd7e582b10e420e8daefac88f",
       "request_cbor_hex": "a3656e6f6e6365666e2d30333033677375626a656374a16b636865636b706f696e7473f668636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
@@ -104,75 +104,75 @@
       }
     },
     {
-      "id": "neg-checkpoints-range-reversed",
+      "id": "neg-checkpoint-range-reversed",
       "section": [
         "§3.1 Subject"
       ],
       "description": "a exceeds b.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0304\",\"subject\":{\"checkpoints\":[1,0]}}",
-      "request_json_digest": "8e159cc9f9adeed1a76988699712c8cd36f638b177237dc9829298b312862762",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333034677375626a656374a16b636865636b706f696e747382010068636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
-      "request_cbor_digest": "a3311452a54d90fca33a1c33b26e6d14cec74f1ca5d138ee4d011304e1a6c00b",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0304\",\"subject\":{\"checkpoint_range\":[1,0]}}",
+      "request_json_digest": "1f71cb613f9a0fdb0efbd42a1b840b439ca9944569e7a2d9601822e21f85cebe",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333034677375626a656374a170636865636b706f696e745f72616e676582010068636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "0e7ddf23518e2d4df3f6cb8fee766140499285ca5e0feaedc6f75fc57138b152",
       "expect": {
         "well_formed": false,
         "reason": "request_malformed"
       }
     },
     {
-      "id": "neg-checkpoints-range-negative",
+      "id": "neg-checkpoint-range-negative",
       "section": [
         "§3.1 Subject"
       ],
       "description": "a negative bound.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0305\",\"subject\":{\"checkpoints\":[-1,1]}}",
-      "request_json_digest": "32b24cf34671f93f03026de7dbc0d75ce7688794becc8557e25b47a7a74bafc9",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333035677375626a656374a16b636865636b706f696e747382200168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
-      "request_cbor_digest": "30c557a6e38a1f4f05c5fbe0f9c5fd0009697696424411e6a6a297faa5776722",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0305\",\"subject\":{\"checkpoint_range\":[-1,1]}}",
+      "request_json_digest": "2bca802d5c616745caad24811c6a6b5913e7b48486b905f27df6f2010aeeb6ec",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333035677375626a656374a170636865636b706f696e745f72616e676582200168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "c7307cfbe3d7dcc52de9a5d5068a248f7085c32bdb5bae291a177908c5ced9ab",
       "expect": {
         "well_formed": false,
         "reason": "request_malformed"
       }
     },
     {
-      "id": "neg-checkpoints-range-text",
+      "id": "neg-checkpoint-range-text",
       "section": [
         "§3.1 Subject"
       ],
       "description": "a bound given as text.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0306\",\"subject\":{\"checkpoints\":[\"0\",1]}}",
-      "request_json_digest": "6f60862d4748fb948890983776905d1fb1e66d47e0d7bcfe3c9b2e01378c554a",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333036677375626a656374a16b636865636b706f696e74738261300168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
-      "request_cbor_digest": "84328078429134c4775864e3748c11314c4ed148f930c368f10666e447de8428",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0306\",\"subject\":{\"checkpoint_range\":[\"0\",1]}}",
+      "request_json_digest": "63e2e03506e048cea0d935f25b936d751a576a56d6ee111199b6922b43c14dba",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333036677375626a656374a170636865636b706f696e745f72616e67658261300168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "e649e5c74ddb08929a93363cbd84fae39f1c528658e40985f12a2a6401fb40bb",
       "expect": {
         "well_formed": false,
         "reason": "request_malformed"
       }
     },
     {
-      "id": "neg-checkpoints-range-one-bound",
+      "id": "neg-checkpoint-range-one-bound",
       "section": [
         "§3.1 Subject"
       ],
       "description": "one bound only.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0307\",\"subject\":{\"checkpoints\":[0]}}",
-      "request_json_digest": "cde500aa7c1a9d3ccf94ce0162982dde7d3b5071a5d209153ebd448ec95de1bb",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333037677375626a656374a16b636865636b706f696e7473810068636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
-      "request_cbor_digest": "fb45c1dd025ff606ff9ac52977b6e51db44f6ae365fa30ce6604db12d303eb04",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0307\",\"subject\":{\"checkpoint_range\":[0]}}",
+      "request_json_digest": "efbebbfc36bec36b9e29d2656b5cf17869c3d891a8cf7faa5a7754ec239f0948",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333037677375626a656374a170636865636b706f696e745f72616e6765810068636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "f7d9898b77cc325181d8da81fe1353a84f3e2abfe738e6dfc45228dc5bf6de42",
       "expect": {
         "well_formed": false,
         "reason": "request_malformed"
       }
     },
     {
-      "id": "neg-checkpoints-range-three-bounds",
+      "id": "neg-checkpoint-range-three-bounds",
       "section": [
         "§3.1 Subject"
       ],
       "description": "three bounds.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0308\",\"subject\":{\"checkpoints\":[0,1,2]}}",
-      "request_json_digest": "1346d033bbd91bcac7b4a99efb93ea9a1906f4a3460353e36574bec981194ed5",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333038677375626a656374a16b636865636b706f696e74738300010268636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
-      "request_cbor_digest": "d49dfb1eac4c2c653db56851784355c32b5f080414c88c507cf37001a962fad4",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0308\",\"subject\":{\"checkpoint_range\":[0,1,2]}}",
+      "request_json_digest": "ff8b0c5a24a75c8b8c12507bd748de4309045bf928c506361d78ff1986811301",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333038677375626a656374a170636865636b706f696e745f72616e67658300010268636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "ed1614241c4631d4d48a2ce4e0c177527e172ea70fc585a84606d0aa341cdce3",
       "expect": {
         "well_formed": false,
         "reason": "request_malformed"
@@ -183,11 +183,41 @@
       "section": [
         "§3.1 Subject"
       ],
-      "description": "content that is neither null nor two bounds.",
+      "description": "checkpoints content that is not null.",
       "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0309\",\"subject\":{\"checkpoints\":\"all\"}}",
       "request_json_digest": "81e8fc9c54e322aed63ffe063f7ff1430ea7a249c6701f7fb57c2ff42b6d0e73",
       "request_cbor_hex": "a3656e6f6e6365666e2d30333039677375626a656374a16b636865636b706f696e747363616c6c68636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
       "request_cbor_digest": "fae2eaa2f6253ca4279168c8565aa348cc211e41125493a0180edb8b02e296bf",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      }
+    },
+    {
+      "id": "neg-checkpoints-content-range",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "checkpoints carrying two bounds: the range has its own form, checkpoint_range, and checkpoints carries no content.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0320\",\"subject\":{\"checkpoints\":[0,1]}}",
+      "request_json_digest": "1c835d3e03383e28daa7181628de0feddba65e2d7550feff3e6c3e3227279e13",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333230677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "0ed00a98b518a7a4d8cc49c8bec862903e0668dd85542203c8f956e328d124de",
+      "expect": {
+        "well_formed": false,
+        "reason": "request_malformed"
+      }
+    },
+    {
+      "id": "neg-checkpoint-range-null",
+      "section": [
+        "§3.1 Subject"
+      ],
+      "description": "checkpoint_range with no bounds: its content is two unsigned integers.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0321\",\"subject\":{\"checkpoint_range\":null}}",
+      "request_json_digest": "0f2651dbe0ce633082d4a5d89f030fa91fa6cacdcadbfb7c22160de3367a0ba9",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333231677375626a656374a170636865636b706f696e745f72616e6765f668636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "3ab1fd2981f04831e767a8ae1b1b815514882adc87173c3b9aaa2b798127769b",
       "expect": {
         "well_formed": false,
         "reason": "request_malformed"
@@ -197,59 +227,59 @@
   "count": 9,
   "cases": [
     {
-      "id": "res-checkpoints-range-served",
+      "id": "res-checkpoint-range-served",
       "section": [
         "§3.1 Subject",
         "§8.1.3 Checkpoints Between Listed Entries"
       ],
       "description": "positions 0 through 1 under the anchor at position 1: served.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0311\",\"subject\":{\"checkpoints\":[0,1]}}",
-      "request_json_digest": "f5763ea25b2aa4eb4155e173ffebae065f303d2ca0dd92a68ebb281aeb403b1e",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333131677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
-      "request_cbor_digest": "ce1c968ead68cc44d766dcfcf50ac18ef3b38ce6706349815c3cb6054e81b17f",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0311\",\"subject\":{\"checkpoint_range\":[0,1]}}",
+      "request_json_digest": "a7892971a0f0549ebe670dade81a26db64aeb77e933c64ae83c8231436883852",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333131677375626a656374a170636865636b706f696e745f72616e676582000168636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "08f6d1c77f731b5a3ac9397ff92463cccc3b414064922534e88d9419c05fd7e6",
       "expect": {
         "answer": "artifact"
       }
     },
     {
-      "id": "res-checkpoints-range-past-anchor",
+      "id": "res-checkpoint-range-past-anchor",
       "section": [
         "§8.1.3 Checkpoints Between Listed Entries"
       ],
       "description": "position 1 is past the anchor at position 0.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"4d4c877328c2f5cdf12523841fbc41cb9b8ef490578ca3a13b93d6bf20faeb6d\"},\"nonce\":\"n-0312\",\"subject\":{\"checkpoints\":[0,1]}}",
-      "request_json_digest": "944b19fb0df0311ebb7c30eb110d94c780b4e0437df72a18f80b96df9e15fa08",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333132677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e784034643463383737333238633266356364663132353233383431666263343163623962386566343930353738636133613133623933643662663230666165623664",
-      "request_cbor_digest": "b9a1ce291c5a5219295399b71a6b79b35aff20e30666bac4de896fff2de0f589",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"4d4c877328c2f5cdf12523841fbc41cb9b8ef490578ca3a13b93d6bf20faeb6d\"},\"nonce\":\"n-0312\",\"subject\":{\"checkpoint_range\":[0,1]}}",
+      "request_json_digest": "500ae95b3966de09c5418775c242fd1014196efa024eae4c3250cfd20296a2ac",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333132677375626a656374a170636865636b706f696e745f72616e676582000168636f766572616765a16c65787065637465645f70696e784034643463383737333238633266356364663132353233383431666263343163623962386566343930353738636133613133623933643662663230666165623664",
+      "request_cbor_digest": "28fae99125014769f67c7f26964fe60837d1df08e1c3df49af693ec225c909aa",
       "expect": {
         "answer": "refusal",
         "reason": "coverage_unsatisfiable"
       }
     },
     {
-      "id": "res-checkpoints-range-at-anchor",
+      "id": "res-checkpoint-range-at-anchor",
       "section": [
         "§8.1.3 Checkpoints Between Listed Entries"
       ],
       "description": "position 0 under the anchor at position 0: served.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"4d4c877328c2f5cdf12523841fbc41cb9b8ef490578ca3a13b93d6bf20faeb6d\"},\"nonce\":\"n-0313\",\"subject\":{\"checkpoints\":[0,0]}}",
-      "request_json_digest": "d104b42dfb7214488e1412d236b8b9a061ef183da4056d8467e3d8ec5ef9d810",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333133677375626a656374a16b636865636b706f696e747382000068636f766572616765a16c65787065637465645f70696e784034643463383737333238633266356364663132353233383431666263343163623962386566343930353738636133613133623933643662663230666165623664",
-      "request_cbor_digest": "3cd07cb5aa8847c7dfeead8ee2c098ad639e3a0fdb4e7cedcb27408efa1345db",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"4d4c877328c2f5cdf12523841fbc41cb9b8ef490578ca3a13b93d6bf20faeb6d\"},\"nonce\":\"n-0313\",\"subject\":{\"checkpoint_range\":[0,0]}}",
+      "request_json_digest": "60fe497533b0ab43cb9b8ab1b300b40eb48eba23262743df37000168d74e1804",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333133677375626a656374a170636865636b706f696e745f72616e676582000068636f766572616765a16c65787065637465645f70696e784034643463383737333238633266356364663132353233383431666263343163623962386566343930353738636133613133623933643662663230666165623664",
+      "request_cbor_digest": "a03783367a4ad19cad4a1c53648c575e2201ed99f99b0d67c35216bcc7843917",
       "expect": {
         "answer": "artifact"
       }
     },
     {
-      "id": "res-checkpoints-range-beyond-stream",
+      "id": "res-checkpoint-range-beyond-stream",
       "section": [
         "§8.1.3 Checkpoints Between Listed Entries"
       ],
       "description": "position 2: no checkpoint there yet, past every anchor.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0314\",\"subject\":{\"checkpoints\":[0,2]}}",
-      "request_json_digest": "091a4465a4aee04a0c3289ff74be87fd336d6e23528f260b5fff9e6e780cc3ae",
-      "request_cbor_hex": "a3656e6f6e6365666e2d30333134677375626a656374a16b636865636b706f696e747382000268636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
-      "request_cbor_digest": "bff4e017873b9e2abea97a5ec1a070a3a5d87a1c3f1a6fd3e2a56b8d2c0ff440",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"nonce\":\"n-0314\",\"subject\":{\"checkpoint_range\":[0,2]}}",
+      "request_json_digest": "a561af6626e8d6bd24c7058b8dc617f61222dee50947a4545cb986d8681705c2",
+      "request_cbor_hex": "a3656e6f6e6365666e2d30333134677375626a656374a170636865636b706f696e745f72616e676582000268636f766572616765a16c65787065637465645f70696e784036343431333730393535643262343038383834373933393632613636346461656336626232356530366437366132663533643861383066363661363735323032",
+      "request_cbor_digest": "ea5d8582dc42de32aeef590bd64405cb1aec0dba89f1ac28afa4e75127e6b803",
       "expect": {
         "answer": "refusal",
         "reason": "coverage_unsatisfiable"
@@ -302,30 +332,30 @@
       }
     },
     {
-      "id": "res-history-card-2-ranged",
+      "id": "res-history-card-2-checkpoint-range",
       "section": [
         "§8.1.3 Checkpoints Between Listed Entries"
       ],
-      "description": "history_card/2 over a ranged checkpoints subject.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"derivation\":\"history_card/2\",\"nonce\":\"n-0318\",\"subject\":{\"checkpoints\":[0,1]}}",
-      "request_json_digest": "e2409ed792fd61864a167a1634ba54d51d2562e642750c6ac00f5697331f3665",
-      "request_cbor_hex": "a4656e6f6e6365666e2d30333138677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326a64657269766174696f6e6e686973746f72795f636172642f32",
-      "request_cbor_digest": "1b3a7f66220cb8393b5f533f9df4dc7f7c76585e3fc15e3fa371866151e2b131",
+      "description": "history_card/2 over a checkpoint_range subject.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"derivation\":\"history_card/2\",\"nonce\":\"n-0318\",\"subject\":{\"checkpoint_range\":[0,1]}}",
+      "request_json_digest": "eb8f63c934ea56b32d4bc6d79efee79223cb715158b43ca302bdcc7d72fb48b8",
+      "request_cbor_hex": "a4656e6f6e6365666e2d30333138677375626a656374a170636865636b706f696e745f72616e676582000168636f766572616765a16c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326a64657269766174696f6e6e686973746f72795f636172642f32",
+      "request_cbor_digest": "b6d0eb1caadfc98320ed00d0a547443b04647bdf61c8e044bc77336bea0b2352",
       "expect": {
         "answer": "refusal",
         "reason": "no_such_subject"
       }
     },
     {
-      "id": "res-history-card-1-ranged",
+      "id": "res-history-card-1-checkpoint-range",
       "section": [
         "§8.1.3 Checkpoints Between Listed Entries"
       ],
-      "description": "history_card/1 over a ranged checkpoints subject.",
-      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"derivation\":\"history_card/1\",\"nonce\":\"n-0319\",\"subject\":{\"checkpoints\":[0,1]}}",
-      "request_json_digest": "55dbde0508065f5ece245f2f7e2fe6d53dfc79b41b0b2066a8ac326629d3f55b",
-      "request_cbor_hex": "a4656e6f6e6365666e2d30333139677375626a656374a16b636865636b706f696e747382000168636f766572616765a16c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326a64657269766174696f6e6e686973746f72795f636172642f31",
-      "request_cbor_digest": "6c8809b4798c764df295c4a704a2350780383768ee24ad55e3cca0ee25e68be4",
+      "description": "history_card/1 over a checkpoint_range subject.",
+      "request_json": "{\"coverage\":{\"expected_pin\":\"6441370955d2b408884793962a664daec6bb25e06d76a2f53d8a80f66a675202\"},\"derivation\":\"history_card/1\",\"nonce\":\"n-0319\",\"subject\":{\"checkpoint_range\":[0,1]}}",
+      "request_json_digest": "c1eb31aab22a89b5090ef37ead98ba2260a9f0b5e3251b77edf4d66026341f48",
+      "request_cbor_hex": "a4656e6f6e6365666e2d30333139677375626a656374a170636865636b706f696e745f72616e676582000168636f766572616765a16c65787065637465645f70696e7840363434313337303935356432623430383838343739333936326136363464616563366262323565303664373661326635336438613830663636613637353230326a64657269766174696f6e6e686973746f72795f636172642f31",
+      "request_cbor_digest": "8db948a8d079992ad2344ae32ce1e4e790bf07e3df8bb109b7f0c3245fe509ed",
       "expect": {
         "answer": "refusal",
         "reason": "no_such_subject"

@@ -28,7 +28,7 @@ pub enum Subject {
     FullHistory,
     Checkpoints,
     /// The checkpoints at checkpoint positions `a` through `b` inclusive
-    /// (ER -03 §3.1, §8.1.3): a `checkpoints` subject with a range.
+    /// (ER -03 §3.1, §8.1.3): the `checkpoint_range` form.
     CheckpointRange(u64, u64),
     Record(String),
     /// Positions `a` through `b` inclusive, under the coverage anchor's
@@ -43,7 +43,8 @@ impl Subject {
     pub fn form(&self) -> SubjectForm {
         match self {
             Subject::FullHistory => SubjectForm::FullHistory,
-            Subject::Checkpoints | Subject::CheckpointRange(..) => SubjectForm::Checkpoints,
+            Subject::Checkpoints => SubjectForm::Checkpoints,
+            Subject::CheckpointRange(..) => SubjectForm::CheckpointRange,
             Subject::Record(_) => SubjectForm::Record,
             Subject::Range(..) => SubjectForm::Range,
             Subject::Correlation(_) => SubjectForm::Correlation,
@@ -202,7 +203,7 @@ fn parse_subject(value: &Val) -> Result<Subject, RequestError> {
         ));
     };
     let form = SubjectForm::from_token(token).ok_or(RequestError::Malformed(
-        "subject form is not one of the six",
+        "subject form is not one of the defined forms",
     ))?;
     let digest = |v: &Val| match v.as_text() {
         Some(d) if is_digest(d) => Ok(d.to_string()),
@@ -213,18 +214,23 @@ fn parse_subject(value: &Val) -> Result<Subject, RequestError> {
     match form {
         SubjectForm::Checkpoints => match content {
             Val::Null => Ok(Subject::Checkpoints),
-            // ER -03 §3.1: an optional range of checkpoint positions.
+            _ => Err(RequestError::Malformed(
+                "this subject form carries no content",
+            )),
+        },
+        // ER -03 §3.1: a range of checkpoint positions, as for range.
+        SubjectForm::CheckpointRange => match content {
             Val::Array(pair) => match pair.as_slice() {
                 [Val::UInt(a), Val::UInt(b)] if a <= b => Ok(Subject::CheckpointRange(*a, *b)),
                 [Val::UInt(_), Val::UInt(_)] => Err(RequestError::Malformed(
-                    "checkpoints range start is after its end",
+                    "checkpoint_range start is after its end",
                 )),
                 _ => Err(RequestError::Malformed(
-                    "a checkpoints range is not two unsigned integers",
+                    "a checkpoint_range is not two unsigned integers",
                 )),
             },
             _ => Err(RequestError::Malformed(
-                "checkpoints content is neither null nor a range",
+                "a checkpoint_range is not two unsigned integers",
             )),
         },
         SubjectForm::FullHistory => match content {

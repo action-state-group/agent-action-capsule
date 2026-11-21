@@ -1926,7 +1926,7 @@ def hc2_cases() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# checkpoints-range.json: the ranged checkpoints subject (-03 §3.1, §8.1.3)
+# checkpoints-range.json: the checkpoint_range subject (-03 §3.1, §8.1.3)
 # ---------------------------------------------------------------------------
 
 # The -03 responder: RESPONDER's state, whose two anchors are its two checkpoints, at checkpoint
@@ -1939,24 +1939,30 @@ PIN_40 = {"expected_pin": ANCHOR_40}
 def checkpoints_range_request_cases() -> list[dict]:
     c = request_case
     return [
-        c("pos-checkpoints-range", [S_SUBJ], "checkpoints at positions 0 through 1.",
-          _req({"checkpoints": [0, 1]}, PIN_42, nonce="n-0301"), WELL_FORMED),
-        c("pos-checkpoints-range-one", [S_SUBJ], "a range of one checkpoint, a = b.",
-          _req({"checkpoints": [1, 1]}, PIN_42, nonce="n-0302"), WELL_FORMED),
-        c("pos-checkpoints-unranged", [S_SUBJ], "checkpoints with null content, as in -02.",
+        c("pos-checkpoint-range", [S_SUBJ], "checkpoint_range at positions 0 through 1.",
+          _req({"checkpoint_range": [0, 1]}, PIN_42, nonce="n-0301"), WELL_FORMED),
+        c("pos-checkpoint-range-one", [S_SUBJ], "a range of one checkpoint, a = b.",
+          _req({"checkpoint_range": [1, 1]}, PIN_42, nonce="n-0302"), WELL_FORMED),
+        c("pos-checkpoints-unranged", [S_SUBJ], "checkpoints with null content, as in -02 and unchanged.",
           _req({"checkpoints": None}, PIN_42, nonce="n-0303"), WELL_FORMED),
-        c("neg-checkpoints-range-reversed", [S_SUBJ], "a exceeds b.",
-          _req({"checkpoints": [1, 0]}, PIN_42, nonce="n-0304"), MALFORMED("request_malformed")),
-        c("neg-checkpoints-range-negative", [S_SUBJ], "a negative bound.",
-          _req({"checkpoints": [-1, 1]}, PIN_42, nonce="n-0305"), MALFORMED("request_malformed")),
-        c("neg-checkpoints-range-text", [S_SUBJ], "a bound given as text.",
-          _req({"checkpoints": ["0", 1]}, PIN_42, nonce="n-0306"), MALFORMED("request_malformed")),
-        c("neg-checkpoints-range-one-bound", [S_SUBJ], "one bound only.",
-          _req({"checkpoints": [0]}, PIN_42, nonce="n-0307"), MALFORMED("request_malformed")),
-        c("neg-checkpoints-range-three-bounds", [S_SUBJ], "three bounds.",
-          _req({"checkpoints": [0, 1, 2]}, PIN_42, nonce="n-0308"), MALFORMED("request_malformed")),
-        c("neg-checkpoints-content-text", [S_SUBJ], "content that is neither null nor two bounds.",
+        c("neg-checkpoint-range-reversed", [S_SUBJ], "a exceeds b.",
+          _req({"checkpoint_range": [1, 0]}, PIN_42, nonce="n-0304"), MALFORMED("request_malformed")),
+        c("neg-checkpoint-range-negative", [S_SUBJ], "a negative bound.",
+          _req({"checkpoint_range": [-1, 1]}, PIN_42, nonce="n-0305"), MALFORMED("request_malformed")),
+        c("neg-checkpoint-range-text", [S_SUBJ], "a bound given as text.",
+          _req({"checkpoint_range": ["0", 1]}, PIN_42, nonce="n-0306"), MALFORMED("request_malformed")),
+        c("neg-checkpoint-range-one-bound", [S_SUBJ], "one bound only.",
+          _req({"checkpoint_range": [0]}, PIN_42, nonce="n-0307"), MALFORMED("request_malformed")),
+        c("neg-checkpoint-range-three-bounds", [S_SUBJ], "three bounds.",
+          _req({"checkpoint_range": [0, 1, 2]}, PIN_42, nonce="n-0308"), MALFORMED("request_malformed")),
+        c("neg-checkpoints-content-text", [S_SUBJ], "checkpoints content that is not null.",
           _req({"checkpoints": "all"}, PIN_42, nonce="n-0309"), MALFORMED("request_malformed")),
+        c("neg-checkpoints-content-range", [S_SUBJ], "checkpoints carrying two bounds: the range has its "
+          "own form, checkpoint_range, and checkpoints carries no content.",
+          _req({"checkpoints": [0, 1]}, PIN_42, nonce="n-0320"), MALFORMED("request_malformed")),
+        c("neg-checkpoint-range-null", [S_SUBJ], "checkpoint_range with no bounds: its content is two "
+          "unsigned integers.",
+          _req({"checkpoint_range": None}, PIN_42, nonce="n-0321"), MALFORMED("request_malformed")),
     ]
 
 
@@ -1968,25 +1974,25 @@ def checkpoints_range_resolution_cases() -> list[dict]:
 
     c = request_case
     return [
-        c("res-checkpoints-range-served", [S_SUBJ, S_HCR], "positions 0 through 1 under the anchor at "
-          "position 1: served.", _req({"checkpoints": [0, 1]}, PIN_42, nonce="n-0311"), art),
-        c("res-checkpoints-range-past-anchor", [S_HCR], "position 1 is past the anchor at position 0.",
-          _req({"checkpoints": [0, 1]}, PIN_40, nonce="n-0312"), ref("coverage_unsatisfiable")),
-        c("res-checkpoints-range-at-anchor", [S_HCR], "position 0 under the anchor at position 0: served.",
-          _req({"checkpoints": [0, 0]}, PIN_40, nonce="n-0313"), art),
-        c("res-checkpoints-range-beyond-stream", [S_HCR], "position 2: no checkpoint there yet, past every "
-          "anchor.", _req({"checkpoints": [0, 2]}, PIN_42, nonce="n-0314"), ref("coverage_unsatisfiable")),
+        c("res-checkpoint-range-served", [S_SUBJ, S_HCR], "positions 0 through 1 under the anchor at "
+          "position 1: served.", _req({"checkpoint_range": [0, 1]}, PIN_42, nonce="n-0311"), art),
+        c("res-checkpoint-range-past-anchor", [S_HCR], "position 1 is past the anchor at position 0.",
+          _req({"checkpoint_range": [0, 1]}, PIN_40, nonce="n-0312"), ref("coverage_unsatisfiable")),
+        c("res-checkpoint-range-at-anchor", [S_HCR], "position 0 under the anchor at position 0: served.",
+          _req({"checkpoint_range": [0, 0]}, PIN_40, nonce="n-0313"), art),
+        c("res-checkpoint-range-beyond-stream", [S_HCR], "position 2: no checkpoint there yet, past every "
+          "anchor.", _req({"checkpoint_range": [0, 2]}, PIN_42, nonce="n-0314"), ref("coverage_unsatisfiable")),
         c("res-history-card-2", [S_DER, S_HC2], "history_card/2 over checkpoints: served.",
           _req({"checkpoints": None}, PIN_42, derivation="history_card/2", nonce="n-0315"), art),
         c("res-history-card-2-full-history", [S_DER, S_HC2], "history_card/2 over full_history: served.",
           _req({"full_history": None}, PIN_42, derivation="history_card/2", nonce="n-0316"), art),
         c("res-history-card-2-record", [S_DER, S_HC2], "history_card/2 is not defined for a record.",
           _req({"record": R1}, PIN_42, derivation="history_card/2", nonce="n-0317"), ref("no_such_subject")),
-        c("res-history-card-2-ranged", [S_HCR], "history_card/2 over a ranged checkpoints subject.",
-          _req({"checkpoints": [0, 1]}, PIN_42, derivation="history_card/2", nonce="n-0318"),
+        c("res-history-card-2-checkpoint-range", [S_HCR], "history_card/2 over a checkpoint_range subject.",
+          _req({"checkpoint_range": [0, 1]}, PIN_42, derivation="history_card/2", nonce="n-0318"),
           ref("no_such_subject")),
-        c("res-history-card-1-ranged", [S_HCR], "history_card/1 over a ranged checkpoints subject.",
-          _req({"checkpoints": [0, 1]}, PIN_42, derivation="history_card/1", nonce="n-0319"),
+        c("res-history-card-1-checkpoint-range", [S_HCR], "history_card/1 over a checkpoint_range subject.",
+          _req({"checkpoint_range": [0, 1]}, PIN_42, derivation="history_card/1", nonce="n-0319"),
           ref("no_such_subject")),
     ]
 
@@ -2066,7 +2072,7 @@ def build() -> dict[str, bytes]:
             notes=HC2_NOTES, findings=HC2_FINDINGS, max_window=HC2_MAX_WINDOW, log_keys=[HC2_LOG_PUB],
             positions=hc2_position_cases())),
         "checkpoints-range.json": _dump(_corpus(
-            "checkpoints-range", "The ranged checkpoints subject and history_card/2 resolution: request "
+            "checkpoints-range", "The checkpoint_range subject and history_card/2 resolution: request "
             "validation (request_cases) and the most specific refusal reason against the -03 responder "
             "(cases).", checkpoints_range_resolution_cases(), draft=DRAFT_03, responder=RESPONDER_03,
             checkpoint_positions={ANCHOR_40: 0, ANCHOR_42: 1},

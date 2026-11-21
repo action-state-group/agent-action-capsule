@@ -48,7 +48,7 @@ pub trait Responder {
     fn cites_exchange(&self, half_digest: &str) -> bool;
     /// Whether the coverage mechanism defines record positions.
     fn positional_ordering(&self) -> bool;
-    /// The anchors the responder holds. For a ranged `checkpoints`
+    /// The anchors the responder holds. For a `checkpoint_range`
     /// subject they are the stream's checkpoints in the order issued, so an
     /// anchor's index is its checkpoint position (ER -03 §8.1.3).
     fn anchors(&self) -> Vec<Anchor>;
@@ -105,7 +105,7 @@ pub fn resolve(request: &Request, responder: &dyn Responder) -> Resolution {
         match responder.derivation_forms(derivation) {
             None => return Resolution::Refuse(Reason::DerivationUnsupported),
             Some(forms) if !forms.contains(&form) => return no_such_subject(),
-            // A history card answers checkpoints only without a range (ER -03 §8.1).
+            // A history card never answers checkpoint_range (ER -03 §8.1).
             Some(_)
                 if matches!(request.subject, Subject::CheckpointRange(..))
                     && matches!(derivation, Derivation::Token(t)

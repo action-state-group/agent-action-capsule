@@ -40,7 +40,8 @@ const Subprotocol = "evidence-request/1"
 // (ER §8.1).
 const DerivationHistoryCard = "history_card/1"
 
-// SubjectKind is one of the request draft's six subject forms (ER §3.1).
+// SubjectKind is one of the request draft's subject forms (ER §3.1): the
+// six of -02 and -03's checkpoint_range.
 type SubjectKind string
 
 const (
@@ -50,9 +51,16 @@ const (
 	SubjectRange       SubjectKind = "range"
 	SubjectCorrelation SubjectKind = "correlation"
 	SubjectExchange    SubjectKind = "exchange"
+	// SubjectCheckpointRange (ER -03 §3.1, §8.1.3) names the checkpoints at
+	// positions Range[0] through Range[1]. It has its own token so that a
+	// responder can list it without checkpoints.
+	SubjectCheckpointRange SubjectKind = "checkpoint_range"
 )
 
-// SubjectForms lists the six forms in code-point order.
+// SubjectForms lists the six forms of -02's §3.1 table in code-point order;
+// SubjectCheckpointRange (-03) is not among them, so a manifest built from
+// this list for a profile that pins -02 (evidence-interop/1) names no token
+// beyond that profile.
 var SubjectForms = []SubjectKind{SubjectCheckpoints, SubjectCorrelation, SubjectExchange, SubjectFullHistory, SubjectRange, SubjectRecord}
 
 // Refusal reason tokens: the request draft's registry, verbatim (ER §13):
@@ -82,33 +90,26 @@ var RefusalReasons = []string{
 	ReasonCapacityExceeded, ReasonRequestUnauthenticated,
 }
 
-// Subject names what is asked for, in one of the six forms. Digest serves
+// Subject names what is asked for, in one of the forms. Digest serves
 // record and exchange, Range serves range (two zero-based log positions,
-// a <= b), Correlation serves correlation. A checkpoints subject with
-// Ranged set names the checkpoints at positions Range[0] through Range[1]
-// (ER -03 §3.1, §8.1.3). On the wire it is a map with exactly one member
-// named by the form (ERV A1).
+// a <= b) and checkpoint_range (two checkpoint positions, a <= b; ER -03
+// §3.1, §8.1.3), Correlation serves correlation. On the wire it is a map
+// with exactly one member named by the form (ERV A1).
 type Subject struct {
 	Kind        SubjectKind
 	Digest      string
 	Range       [2]uint64
-	Ranged      bool
 	Correlation string
 }
 
 // Value is the subject's wire value (profile §5.2).
 func (s Subject) Value() map[string]any {
 	switch s.Kind {
-	case SubjectCheckpoints:
-		if s.Ranged {
-			return map[string]any{string(s.Kind): []any{s.Range[0], s.Range[1]}}
-		}
-		return map[string]any{string(s.Kind): nil}
-	case SubjectFullHistory:
+	case SubjectCheckpoints, SubjectFullHistory:
 		return map[string]any{string(s.Kind): nil}
 	case SubjectRecord, SubjectExchange:
 		return map[string]any{string(s.Kind): s.Digest}
-	case SubjectRange:
+	case SubjectRange, SubjectCheckpointRange:
 		return map[string]any{string(s.Kind): []any{s.Range[0], s.Range[1]}}
 	case SubjectCorrelation:
 		return map[string]any{string(s.Kind): s.Correlation}
@@ -116,23 +117,15 @@ func (s Subject) Value() map[string]any {
 	return map[string]any{}
 }
 
-// Valid reports whether s is one of the six forms with conforming content
+// Valid reports whether s is one of the forms with conforming content
 // and nothing another form would carry.
 func (s Subject) Valid() bool {
-	if s.Ranged && s.Kind != SubjectCheckpoints {
-		return false
-	}
 	switch s.Kind {
-	case SubjectCheckpoints:
-		if s.Ranged {
-			return s.Range[0] <= s.Range[1] && s.Range[1] <= MaxSafeInteger && s.Digest == "" && s.Correlation == ""
-		}
-		return s.Digest == "" && s.Correlation == "" && s.Range == [2]uint64{}
-	case SubjectFullHistory:
+	case SubjectCheckpoints, SubjectFullHistory:
 		return s.Digest == "" && s.Correlation == "" && s.Range == [2]uint64{}
 	case SubjectRecord, SubjectExchange:
 		return IsDigest(s.Digest) && s.Correlation == "" && s.Range == [2]uint64{}
-	case SubjectRange:
+	case SubjectRange, SubjectCheckpointRange:
 		return s.Range[0] <= s.Range[1] && s.Range[1] <= MaxSafeInteger && s.Digest == "" && s.Correlation == ""
 	case SubjectCorrelation:
 		return s.Correlation != "" && s.Digest == "" && s.Range == [2]uint64{}
@@ -161,20 +154,13 @@ func ParseSubject(v any) (Subject, bool) {
 	for name, content := range m {
 		s := Subject{Kind: SubjectKind(name)}
 		switch s.Kind {
-		case SubjectCheckpoints:
-			if content == nil {
-				return s, true
-			}
-			a, b, ok := positionPair(content)
-			s.Range, s.Ranged = [2]uint64{a, b}, true
-			return s, ok
-		case SubjectFullHistory:
+		case SubjectCheckpoints, SubjectFullHistory:
 			return s, content == nil
 		case SubjectRecord, SubjectExchange:
 			digest, ok := content.(string)
 			s.Digest = digest
 			return s, ok && IsDigest(digest)
-		case SubjectRange:
+		case SubjectRange, SubjectCheckpointRange:
 			a, b, ok := positionPair(content)
 			s.Range = [2]uint64{a, b}
 			return s, ok
@@ -220,7 +206,7 @@ type Request struct {
 // sends one a conforming responder would refuse request_malformed.
 func (r Request) Value() (map[string]any, error) {
 	if !r.Subject.Valid() {
-		return nil, fmt.Errorf("%w: subject is not one of the six forms with conforming content", ErrInvalid)
+		return nil, fmt.Errorf("%w: subject is not one of the defined forms with conforming content", ErrInvalid)
 	}
 	coverage := map[string]any{}
 	if r.Coverage.ExpectedPin != "" {

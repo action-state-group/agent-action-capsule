@@ -537,7 +537,7 @@ fn v2_refusal_signatures_match_the_corpus() {
     assert_eq!(checked, 13, "the corpus has thirteen v2 refusal cases");
 }
 
-/// A ranged `checkpoints` subject (ER -03 §3.1) is signed as its range and
+/// A `checkpoint_range` subject (ER -03 §3.1) is signed as its range and
 /// read back the same from either binding.
 #[test]
 fn a_checkpoint_range_is_signed_and_read_back() {
@@ -553,5 +553,8 @@ fn a_checkpoint_range_is_signed_and_read_back() {
         back.verify_for(&k.verifying_key(), REQUEST).unwrap();
     }
     let json: Value = serde_json::from_slice(&env.encode(Binding::Json)).unwrap();
-    assert_eq!(json["subject"], serde_json::json!({"checkpoints": [2, 5]}));
+    assert_eq!(
+        json["subject"],
+        serde_json::json!({"checkpoint_range": [2, 5]})
+    );
 }

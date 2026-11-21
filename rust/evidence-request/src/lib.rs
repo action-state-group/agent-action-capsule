@@ -9,7 +9,8 @@
 //!
 //! - [`request`]: parse a request from its JSON or CBOR binding (the CBOR
 //!   binding in core deterministic encoding only) and check it
-//!   against -00 (the six subject forms, exactly one coverage member, the
+//!   against -00 (the six subject forms and -03's `checkpoint_range`,
+//!   exactly one coverage member, the
 //!   optional fields), giving the exact refusal reason when it is not
 //!   well formed.
 //! - [`digest`]: the request digest, SHA-256 over the bytes as received.

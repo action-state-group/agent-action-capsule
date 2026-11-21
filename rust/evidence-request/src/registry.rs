@@ -12,11 +12,15 @@ pub const DERIVATION_HISTORY_CARD: &str = "history_card/1";
 /// The bounded `history_card/2` derivation (ER -03 §8.1.2, §13).
 pub const DERIVATION_HISTORY_CARD_2: &str = "history_card/2";
 
-/// The six subject forms (§3.1).
+/// The subject forms (§3.1): the six of -02 and -03's `checkpoint_range`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SubjectForm {
     FullHistory,
     Checkpoints,
+    /// The checkpoints at checkpoint positions a through b (ER -03 §3.1,
+    /// §8.1.3). It has its own token so that a responder can list it
+    /// without `checkpoints`.
+    CheckpointRange,
     Record,
     Range,
     Correlation,
@@ -24,6 +28,10 @@ pub enum SubjectForm {
 }
 
 impl SubjectForm {
+    /// The six forms of -02's §3.1 table; [`SubjectForm::CheckpointRange`]
+    /// (-03) is not among them, so a list built from this one for a profile
+    /// that pins -02 (`evidence-interop/1`) names no token beyond that
+    /// profile.
     pub const ALL: [SubjectForm; 6] = [
         SubjectForm::FullHistory,
         SubjectForm::Checkpoints,
@@ -38,6 +46,7 @@ impl SubjectForm {
         match self {
             SubjectForm::FullHistory => "full_history",
             SubjectForm::Checkpoints => "checkpoints",
+            SubjectForm::CheckpointRange => "checkpoint_range",
             SubjectForm::Record => "record",
             SubjectForm::Range => "range",
             SubjectForm::Correlation => "correlation",
@@ -47,7 +56,10 @@ impl SubjectForm {
 
     /// The form for an exact token; `None` for anything else.
     pub fn from_token(token: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|f| f.token() == token)
+        Self::ALL
+            .into_iter()
+            .chain([SubjectForm::CheckpointRange])
+            .find(|f| f.token() == token)
     }
 }
 

@@ -9,8 +9,8 @@ forms, which record members carry a correlation identifier or cite an exchange
 half, coverage, the request digest, the signed refusal, the three outcomes and
 the pending state, caller invariance, retention commitments, the `categories`
 request field, A2A and MCP carriage, unavailable-window statements, the
-two refusal reasons -02 adds, and -03's `history_card/2` and ranged
-`checkpoints` subject.
+two refusal reasons -02 adds, and -03's `history_card/2` and
+`checkpoint_range` subject.
 
 Each corpus names the revision it is written from in its `draft` member.
 `carries.json`, `categories.json` and `carriage.json` follow text that first
@@ -47,7 +47,7 @@ section and the reading used (the most literal one); the list is below, for -01.
 | `unavailable-window.json` | Unavailable-window statements (-02 §4.7). `kind` `statement`: whether a reader recognizes the statement (well formed, signed by `responder_key`, registered) and its registration time, the earliest of its `receipts` marked `accepted` (from a transparency service the reader accepts as independent of the responder). `kind` `display`: an absence (`sent_at` to `closed_at`) and statements; expect the ids of the statements that cover it, `shown_as`, and per covering statement its `reason_class`, `stated_period`, registration time and `stated_afterwards`. `must_not_show_as` lists what the reader must never show. Statements are signed with the primary key of `refusal.json` under the profile in the file. |
 | `refusal-02.json` | The two refusal reasons -02 adds (§4.2, §13): `capacity_exceeded` and `request_unauthenticated`. `refusal_reasons` is the -02 registry; `registry.json` stays the -00 one, under which both are unregistered. A case with `refusal` checks the signature (profile of `refusal.json`) and registration against `refusal_reasons`; one with `facts.commitment` is the retention classification (§9); `facts.cause` is the reason load shedding uses (§11, §3.4); `facts.refusal_reason` alone is the illustrative status mapping (§4.6). |
 | `history-card-2.json` | `history_card/2` (-03 §8.1.2) in Checkpointed Local Log form. `positions`: P(n, W) for each `n` and `window`. `cases`: a `card`, the `anchor` the response resolved (SHA-256 of the anchor checkpoint's octets) and the corpus's `log_keys`; expect `valid`, or the first `finding` in `findings` order. `notes` fixes each check, the receipt form (for these vectors only) and the unit of `log_size` (MMR nodes). The stream is 1,100 checkpoints, so the valid card spans more than 1,024. |
-| `checkpoints-range.json` | The ranged `checkpoints` subject (-03 §3.1, §8.1.3) and `history_card/2` resolution. `request_cases` are request maps as in `request.json`; `cases` resolve against `responder`, whose `anchors` are its checkpoints in issue order, at the `checkpoint_positions` given. `derivations` is the -03 derivation registry. |
+| `checkpoints-range.json` | The `checkpoint_range` subject (-03 §3.1, §8.1.3), the content-free `checkpoints` subject beside it, and `history_card/2` resolution. `request_cases` are request maps as in `request.json`; `cases` resolve against `responder`, whose `anchors` are its checkpoints in issue order, at the `checkpoint_positions` given. `derivations` is the -03 derivation registry. |
 | `manifest.json` | SHA-256 and case count of every generated file, and the ambiguity list. |
 | `SHA256SUMS` | SHA-256 of every file in this directory except itself. |
 | `DIFFS.md` | Known differences between one existing Python responder and -00. |
@@ -440,28 +440,30 @@ generator hashes them into `SHA256SUMS` but never rewrites them.
 
 `positions` holds 42 rows: n in 0, 1, 2, 3, 7, 8, 9, 63, 64, 65, 1023, 1024, 1099 and 1000000, each with window 1, 8 and 64.
 
-### `checkpoints-range.json` (9 cases, 9 request cases)
+### `checkpoints-range.json` (9 cases, 11 request cases)
 
 | Case | Expect |
 |---|---|
-| `pos-checkpoints-range` | well formed |
-| `pos-checkpoints-range-one` | well formed |
+| `pos-checkpoint-range` | well formed |
+| `pos-checkpoint-range-one` | well formed |
 | `pos-checkpoints-unranged` | well formed |
-| `neg-checkpoints-range-reversed` | `request_malformed` |
-| `neg-checkpoints-range-negative` | `request_malformed` |
-| `neg-checkpoints-range-text` | `request_malformed` |
-| `neg-checkpoints-range-one-bound` | `request_malformed` |
-| `neg-checkpoints-range-three-bounds` | `request_malformed` |
+| `neg-checkpoint-range-reversed` | `request_malformed` |
+| `neg-checkpoint-range-negative` | `request_malformed` |
+| `neg-checkpoint-range-text` | `request_malformed` |
+| `neg-checkpoint-range-one-bound` | `request_malformed` |
+| `neg-checkpoint-range-three-bounds` | `request_malformed` |
 | `neg-checkpoints-content-text` | `request_malformed` |
-| `res-checkpoints-range-served` | artifact |
-| `res-checkpoints-range-past-anchor` | refusal `coverage_unsatisfiable` |
-| `res-checkpoints-range-at-anchor` | artifact |
-| `res-checkpoints-range-beyond-stream` | refusal `coverage_unsatisfiable` |
+| `neg-checkpoints-content-range` | `request_malformed` |
+| `neg-checkpoint-range-null` | `request_malformed` |
+| `res-checkpoint-range-served` | artifact |
+| `res-checkpoint-range-past-anchor` | refusal `coverage_unsatisfiable` |
+| `res-checkpoint-range-at-anchor` | artifact |
+| `res-checkpoint-range-beyond-stream` | refusal `coverage_unsatisfiable` |
 | `res-history-card-2` | artifact |
 | `res-history-card-2-full-history` | artifact |
 | `res-history-card-2-record` | refusal `no_such_subject` |
-| `res-history-card-2-ranged` | refusal `no_such_subject` |
-| `res-history-card-1-ranged` | refusal `no_such_subject` |
+| `res-history-card-2-checkpoint-range` | refusal `no_such_subject` |
+| `res-history-card-1-checkpoint-range` | refusal `no_such_subject` |
 
 ## Readings in the -01 corpora
 

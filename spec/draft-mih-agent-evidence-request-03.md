@@ -318,12 +318,13 @@ document.]]
 
 ## Subject {#subject}
 
-The `subject` names what is asked for, in one of six forms:
+The `subject` names what is asked for, in one of seven forms:
 
 | Form | Content | Meaning |
 |---|---|---|
 | `full_history` | (none) | the responder's entire evidence body for this evidence stream |
-| `checkpoints` | (none), or (a, b) | the responder's checkpoints and their receipts for this stream, or with (a, b) those at checkpoint positions a through b inclusive; no records |
+| `checkpoints` | (none) | the responder's checkpoints and their receipts for this stream; no records |
+| `checkpoint_range` | (a, b) | the responder's checkpoints and their receipts at checkpoint positions a through b inclusive; no records |
 | `record` | digest | the single record identified by this digest |
 | `range` | (a, b) | the records at positions a through b inclusive, under the coverage anchor's ordering |
 | `correlation` | identifier | all records the responder holds that carry this correlation identifier ({{carries}}) |
@@ -341,13 +342,33 @@ record positions; under a mechanism defining no positional ordering it
 cannot be satisfied and is refused with reason `coverage_unsatisfiable`.
 
 The `checkpoints` form asks for commitments only. It is the cheapest
-question a stranger can ask and the one a responder can always safely
-answer; the history card derivations ({{history-card}}) are its
-proof-carrying forms. With content (a, b), it names the checkpoints at
-checkpoint positions ({{terms}}) a through b inclusive, so a requester
-holding a history card can fetch the checkpoints between two entries the
-card lists ({{history-card-range}}). The bounds are two unsigned integers,
-a no greater than b; any other content is malformed.
+question a stranger can ask; the history card derivations
+({{history-card}}) are its proof-carrying forms. It carries no content,
+and a `checkpoints` subject that carries any is malformed. Its answer
+grows with the number of checkpoints, so a long-lived stream can outgrow
+what a responder serves in one answer, and the responder then refuses it
+with reason `capacity_exceeded`.
+
+The `checkpoint_range` form names the checkpoints at checkpoint positions
+({{terms}}) a through b inclusive, so a requester holding a history card
+can fetch the checkpoints between two entries the card lists
+({{history-card-range}}). The bounds are two unsigned integers, a no
+greater than b; any other content is malformed.
+
+**Listing the forms answered.** Wherever a responder lists the subject
+forms it answers, as in the manifest ({{transports}}) or in a list a
+deployment profile defines, it names each form by its own token, so a
+list can name `checkpoint_range` without `checkpoints`. A responder that
+refuses `checkpoints` with reason `capacity_exceeded` to every requester,
+because a stream's full checkpoint list exceeds what it serves in one
+answer, SHOULD NOT list `checkpoints` in a list that covers only such
+streams. Such a list then names `checkpoint_range` and the history card
+derivations the responder still answers. A list that covers several
+streams names `checkpoints` while the responder answers it for any of
+them. A checkpoint list only grows, so once a stream is past that size it
+stays past it, unless the responder raises what it serves in one answer. A requester
+reads a list as what it can ask, not as a promise: a listed form can
+still be refused for any reason of {{refusal}}.
 
 The `exchange` form names the requester's own sealed half of a prior
 interaction. A responder that recorded its side of that interaction holds a
@@ -670,8 +691,8 @@ however well it verifies otherwise. A deployment profile MAY fix the
 member names and the signature format of the envelope; this document
 fixes only what the signature covers.
 
-For the `checkpoints` subject and the history card derivations the
-artifact *is* the verification material: there is no separate record to
+For the `checkpoints` and `checkpoint_range` subjects and the history
+card derivations the artifact *is* the verification material: there is no separate record to
 verify, only commitments and the proofs between them. Implementations
 MUST NOT serve an empty artifact alongside proofs in these cases; the
 proofs are the artifact, and caller invariance ({{invariance}}) binds them.
@@ -1053,10 +1074,10 @@ declared field sets contain no record content: a card discloses
 commitments, external receipts over those commitments, and the proofs that
 each commitment extends an earlier one.
 
-Either card answers the `checkpoints` subject without a range or the
-`full_history` subject: both name the evidence stream the card is for. A
-request naming either derivation over any other subject, a ranged
-`checkpoints` subject included, is refused with reason `no_such_subject`.
+Either card answers the `checkpoints` subject or the `full_history`
+subject: both name the evidence stream the card is for. A request naming
+either derivation over any other subject, a `checkpoint_range` subject
+included, is refused with reason `no_such_subject`.
 
 `history_card/2` is the default first question. It is the thing a
 stranger checks before deciding whether to ask for anything else. Either
@@ -1175,8 +1196,8 @@ to check each `position` against it.
 
 ### Checkpoints Between Listed Entries {#history-card-range}
 
-A `checkpoints` subject with content (a, b) and no derivation asks for
-the checkpoints at positions a through b inclusive. The artifact is a map
+A `checkpoint_range` subject with content (a, b) and no derivation asks
+for the checkpoints at positions a through b inclusive. The artifact is a map
 with two members:
 
 | Member | Content |
@@ -1201,7 +1222,7 @@ first entry of every part then carries a checkpoint the requester already
 holds, every part extends to the anchor by its `consistency_to_anchor`,
 and the last part ends at a position its card lists.
 
-A ranged `checkpoints` request is refused with reason:
+A `checkpoint_range` request is refused with reason:
 
 - `request_malformed`, when the bounds are not two unsigned integers or
   a exceeds b ({{subject}});
@@ -1643,6 +1664,14 @@ many checkpoints the stream holds.
 Responders for whom that is sensitive have the same option as for
 coverage probing: a uniform `policy_declined` for the derivation.
 
+**A list of the forms answered can leak a size.** A responder that stops
+listing `checkpoints` ({{subject}}) tells every reader of its list that a
+stream has passed the size it serves in one answer. A history card's
+positions state the count more precisely, so the list adds nothing for a
+responder that answers either card. A responder that declines both cards
+to hide that count can keep listing `checkpoints`: a list is not a
+promise.
+
 **Exchange subjects reveal a relationship.** An `exchange` request names a
 half that only the two parties could hold, so any intermediary that sees
 the request learns that they interacted. Both parties already know;
@@ -1842,12 +1871,16 @@ that the two can cite each other without either defining the other.
   SHOULD answer it to any requester. Its size grows with the logarithm of the number of checkpoints,
   where `history_card/1`'s grows linearly. `history_card/1` is unchanged
   and stays registered ({{history-card-1}}).
-- New term "checkpoint position" ({{terms}}). The `checkpoints` subject
-  ({{subject}}) takes an optional range of checkpoint positions, answered
-  as {{history-card-range}} says: entries a through b and a
+- New term "checkpoint position" ({{terms}}). A seventh subject form,
+  `checkpoint_range` ({{subject}}), names a range of checkpoint positions,
+  answered as {{history-card-range}} says: entries a through b and a
   `consistency_to_anchor` proof binding each answer to the coverage anchor,
   in parts when a gap is long, with its refusal reasons. A history card
-  over a ranged `checkpoints` subject is refused `no_such_subject`.
+  over a `checkpoint_range` subject is refused `no_such_subject`. The
+  `checkpoints` form is unchanged and carries no content; the range has
+  its own token so that a responder can list the ranged form without the
+  full list, which it stops listing once the list outgrows one answer
+  ({{subject}}).
 - {{iana}}: a row for `history_card/2` in the derivations registry.
 
 # Changes from -01 {#changes-01}
