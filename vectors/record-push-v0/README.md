@@ -30,10 +30,15 @@ the `section` it follows, a `description`, an `input` or `received` and an `expe
 
 - `push`: `input` is the `tools/call` params (`name`, `arguments`) over MCP, or the `Message`
   over A2A. `expect.result` is `push` with `record_hex` and `stamp_proof_hex` (the octets the
-  members decode to, `null` when absent), or `error` with `answer` `false` and `code` `-32602`
-  (over A2A an A2A error is also allowed; either way it is a transport condition to the sender).
+  members decode to, `null` when absent), or `error` with `answer` `false`: the call carries no push and is
+  never answered with an answer object. The error code is not pinned: the binding says a receiver SHOULD use
+  `-32602` (§3.2), and over A2A an A2A error is also allowed (§4.2); either way it is a transport condition
+  to the sender.
 - `classify`: `pushed` names the parts pushed; `received.response` is the JSON-RPC response the
-  sender got. `expect.classification` is `answer` (with the `answer`) or `transport_condition`.
+  sender got. `expect.classification` is `answer` (with the `answer`) or `transport_condition`. The
+  sender passes an answer object through unchanged: its values (`duplicate`, `stored`, a refusal and so on)
+  are copied from EBL's receive vectors, and no case asserts which answer a receiver gives to a push, so
+  the order of the receiver's checks (SF-6) stays open.
 - `declaration`: `input` is a tool definition or an extension entry; `expect.conforms`.
 
 `python/scripts/generate_record_push_vectors.py` regenerates `carriage.json`, `manifest.json`
@@ -60,6 +65,8 @@ and `SHA256SUMS`; this file is hand-written.
 | `neg-a2a-empty-member` | push | A2A | error, no answer |
 | `neg-mcp-impossible-length` | push | MCP | error, no answer |
 | `neg-a2a-impossible-length` | push | A2A | error, no answer |
+| `neg-mcp-trailing-newline` | push | MCP | error, no answer |
+| `neg-a2a-trailing-newline` | push | A2A | error, no answer |
 | `neg-mcp-whitespace` | push | MCP | error, no answer |
 | `neg-a2a-whitespace` | push | A2A | error, no answer |
 | `neg-mcp-not-a-string` | push | MCP | error, no answer |
@@ -88,6 +95,7 @@ and `SHA256SUMS`; this file is hand-written.
 | `neg-classify-mcp-internal-error` | classify | MCP | transport condition |
 | `neg-classify-mcp-message-too-large` | classify | MCP | transport condition |
 | `neg-classify-mcp-input-required` | classify | MCP | transport condition |
+| `neg-classify-mcp-task-handle` | classify | MCP | transport condition |
 | `neg-classify-mcp-no-structured-content` | classify | MCP | transport condition |
 | `neg-classify-mcp-missing-part-member` | classify | MCP | transport condition |
 | `neg-classify-mcp-extra-part-member` | classify | MCP | transport condition |
@@ -117,6 +125,10 @@ and `SHA256SUMS`; this file is hand-written.
 | `neg-declared-mcp-header-annotation` | declaration | MCP | does not conform |
 | `neg-declared-mcp-open-input` | declaration | MCP | does not conform |
 | `neg-declared-mcp-no-min-properties` | declaration | MCP | does not conform |
+| `neg-declared-mcp-loose-output-schema` | declaration | MCP | does not conform |
+| `neg-declared-mcp-widened-refusal-class` | declaration | MCP | does not conform |
+| `neg-declared-mcp-output-required-dropped` | declaration | MCP | does not conform |
+| `neg-declared-mcp-output-header-annotation` | declaration | MCP | does not conform |
 | `neg-declared-mcp-no-output-schema` | declaration | MCP | does not conform |
 | `pos-declared-a2a-extension` | declaration | A2A | conforms |
 | `neg-declared-a2a-other-uri` | declaration | A2A | does not conform |

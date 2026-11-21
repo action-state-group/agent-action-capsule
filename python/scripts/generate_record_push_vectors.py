@@ -57,6 +57,36 @@ RECORD_ONLY = {"record": ANSWER["record"]}
 PROOF_ONLY = {"stamp_proof": ANSWER["stamp_proof"]}
 
 
+# §3.1: the fixed outputSchema, copied from the binding (the test checks the copy against the text).
+OUTPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "record": {
+            "type": "object",
+            "properties": {
+                "digest": {"type": "string"}, "stored": {"type": "boolean"},
+                "duplicate": {"type": "boolean"}, "deleted": {"type": "boolean"},
+                "counted": {"type": "boolean"}, "ask_for_book": {"type": "boolean"},
+                "refused": {"enum": ["", "invalid", "refused", "over_limit", "busy"]},
+            },
+            "required": ["digest", "stored", "duplicate", "deleted", "counted", "ask_for_book", "refused"],
+            "additionalProperties": False,
+        },
+        "stamp_proof": {
+            "type": "object",
+            "properties": {
+                "accepted": {"type": "boolean"}, "duplicate": {"type": "boolean"},
+                "refused": {"enum": ["", "invalid", "refused"]},
+            },
+            "required": ["accepted", "duplicate", "refused"],
+            "additionalProperties": False,
+        },
+    },
+    "minProperties": 1,
+    "additionalProperties": False,
+}
+
+
 def with_(base: dict, **changes) -> dict:
     out = copy.deepcopy(base)
     out.update(changes)
@@ -82,7 +112,7 @@ def push_err(carriage: str, case_id: str, section: list[str], description: str, 
     return {
         "id": case_id, "kind": "push", "carriage": carriage, "section": section,
         "description": description, "input": message,
-        "expect": {"result": "error", "answer": False, "code": -32602},
+        "expect": {"result": "error", "answer": False},
     }
 
 
@@ -135,6 +165,7 @@ def push_cases() -> list[dict]:
          {"record": base64.b64encode(ALPHABET_OCTETS).decode("ascii")}),
         ("empty-member", "A member that decodes to no octet.", {"record": ""}),
         ("impossible-length", "Five characters never decode: not strict base64url.", {"record": "AAAAA"}),
+        ("trailing-newline", "A member with a newline after the last character.", {"record": RECORD_B64 + "\n"}),
         ("whitespace", "A member with a space in it.", {"record": RECORD_B64[:8] + " " + RECORD_B64[8:]}),
         ("not-a-string", "A member that is not a string.", {"record": list(RECORD)}),
         ("null-member", "A null member is not an absent member.", {"record": RECORD_B64, "stamp_proof": None}),
@@ -227,7 +258,7 @@ def classify_cases() -> list[dict]:
     refused = {"record": {"ask_for_book": False, "counted": False, "deleted": False, "digest": "",
                           "duplicate": False, "refused": "invalid", "stored": False},
                "stamp_proof": {"accepted": False, "duplicate": False, "refused": "invalid"}}
-    busy = {"record": with_(refused["record"], refused="busy")}
+    busy = {"record": with_(refused["record"], refused="busy", digest=ANSWER["record"]["digest"])}
     mcp("pos-mcp-answer-both", "A complete, non-error result whose structuredContent is the answer object.",
         both, rpc(mcp_result(ANSWER)), "answer", ANSWER)
     mcp("pos-mcp-answer-record-only", "One member per part pushed: a record-only push is answered with a record member.",
@@ -251,6 +282,8 @@ def classify_cases() -> list[dict]:
         both, rpc(error={"code": -32600, "message": "too large"}), "transport_condition")
     mcp("neg-mcp-input-required", "An input_required result is a transport condition (§3.3).",
         both, rpc({"resultType": "input_required", "isError": False, "content": []}), "transport_condition")
+    mcp("neg-mcp-task-handle", "A task handle instead of a complete result (§3.3); its form is MCP's, not pinned here.",
+        both, rpc({"resultType": "task", "task": {"taskId": "t-1", "status": "working"}}), "transport_condition")
     mcp("neg-mcp-no-structured-content", "No structuredContent: no answer in the answer position.",
         both, rpc(mcp_result(None, content=[{"type": "text", "text": json.dumps(ANSWER)}])), "transport_condition")
     mcp("neg-mcp-missing-part-member", "A part was pushed and its member is missing from the answer.",
@@ -315,9 +348,7 @@ def declaration_cases() -> list[dict]:
             "record": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
             "stamp_proof": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"}},
             "minProperties": 1, "additionalProperties": False},
-        "outputSchema": {"type": "object", "properties": {"record": {"type": "object"},
-                                                           "stamp_proof": {"type": "object"}},
-                         "minProperties": 1, "additionalProperties": False},
+        "outputSchema": copy.deepcopy(OUTPUT_SCHEMA),
     }
     ext = {"uri": URI, "description": "Takes a record push.", "required": False}
 
@@ -342,6 +373,19 @@ def declaration_cases() -> list[dict]:
          mutated(tool, ["inputSchema", "additionalProperties"], True), False),
         ("neg-mcp-no-min-properties", "mcp", "§3.1", "An input schema that allows a push with neither part.",
          mutated(tool, ["inputSchema", "minProperties"], _DELETE), False),
+        ("neg-mcp-loose-output-schema", "mcp", "§3.1", "An outputSchema that lists the members but not their fixed shape.",
+         mutated(tool, ["outputSchema"], {"type": "object", "properties": {"record": {"type": "object"},
+                                                                          "stamp_proof": {"type": "object"}},
+                                          "minProperties": 1, "additionalProperties": False}), False),
+        ("neg-mcp-widened-refusal-class", "mcp", "§3.1", "The proof's refused enum widened to the record's classes.",
+         mutated(tool, ["outputSchema", "properties", "stamp_proof", "properties", "refused"],
+                 {"enum": ["", "invalid", "refused", "over_limit", "busy"]}), False),
+        ("neg-mcp-output-required-dropped", "mcp", "§3.1", "The record answer's required list dropped.",
+         mutated(tool, ["outputSchema", "properties", "record", "required"], _DELETE), False),
+        ("neg-mcp-output-header-annotation", "mcp", "§3.1",
+         "An x-mcp-header annotation on an outputSchema property.",
+         mutated(tool, ["outputSchema", "properties", "record", "properties", "digest", "x-mcp-header"], "Digest"),
+         False),
         ("neg-mcp-no-output-schema", "mcp", "§3.1", "A tool without an outputSchema.",
          mutated(tool, ["outputSchema"], _DELETE), False),
         ("pos-a2a-extension", "a2a", "§4.1", "The extension entry as listed.", ext, True),

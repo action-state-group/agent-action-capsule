@@ -26,6 +26,9 @@ CASES = DATA["cases"]
 URI = DATA["extension_uri"]
 BINDING = (ROOT / "spec" / "bindings" / "record-push-v0.md").read_text(encoding="utf-8")
 
+# §3.1: the outputSchema is the second JSON block of that section; the vectors must carry it exactly.
+OUTPUT_SCHEMA = json.loads(re.search(r"The `outputSchema` is:\n\n```json\n(.*?)\n```", BINDING, re.S).group(1))
+
 B64U = re.compile(r"^[A-Za-z0-9_-]+$")
 RECORD_KEYS = {"digest": str, "stored": bool, "duplicate": bool, "deleted": bool, "counted": bool,
                "ask_for_book": bool, "refused": str}
@@ -36,7 +39,7 @@ PROOF_REFUSED = {"", "invalid", "refused"}
 
 def decode(text):
     """§3.2: strict base64url, no padding, at least one octet; None when it does not decode."""
-    if not isinstance(text, str) or not B64U.match(text) or len(text) % 4 == 1:
+    if not isinstance(text, str) or not B64U.fullmatch(text) or len(text) % 4 == 1:
         return None
     return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
 
@@ -62,7 +65,8 @@ def receive(case):
                 or "taskId" in message or not isinstance(content, list) or len(content) != 1):
             return "error"
         part = content[0]
-        if part.get("mediaType") != "application/json" or set(part) != {"mediaType", "data"}:
+        if (part.get("mediaType") != "application/json" or "data" not in part
+                or {"raw", "text", "url"} & set(part)):
             return "error"
         parts = read_push(part["data"])
     return "error" if parts is None else parts
@@ -103,7 +107,7 @@ def sender_classify(case):
             if URI in artifact.get("extensions", []):
                 content = artifact.get("parts", [])
                 if (len(content) == 1 and content[0].get("mediaType") == "application/json"
-                        and set(content[0]) == {"mediaType", "data"}):
+                        and "data" in content[0] and not {"raw", "text", "url"} & set(content[0])):
                     answer = content[0]["data"]
                 break
     if answer is None or not well_formed_answer(answer, pushed):
@@ -123,7 +127,7 @@ def conforms(case):
             and set(props) == {"record", "stamp_proof"}
             and all(p == {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"} for p in props.values())
             and schema.get("additionalProperties") is False and schema.get("minProperties") == 1
-            and isinstance(out, dict) and out.get("additionalProperties") is False)
+            and out == OUTPUT_SCHEMA)
 
 
 def test_generator_reproduces_every_file_byte_for_byte(tmp_path):

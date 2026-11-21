@@ -196,8 +196,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -225,8 +224,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -247,8 +245,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -279,8 +276,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -300,8 +296,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -331,8 +326,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -352,8 +346,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -383,8 +376,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -404,8 +396,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -435,8 +426,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -456,8 +446,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -487,8 +476,57 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-trailing-newline",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member with a newline after the last character. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX\n"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-trailing-newline",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member with a newline after the last character. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX\n"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
       }
     },
     {
@@ -508,8 +546,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -539,8 +576,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -585,8 +621,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -641,8 +676,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -663,8 +697,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -695,8 +728,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -717,8 +749,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -749,8 +780,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -777,8 +807,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -805,8 +834,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -836,8 +864,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -872,8 +899,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -895,8 +921,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -925,8 +950,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -957,8 +981,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -988,8 +1011,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -1017,8 +1039,7 @@
       },
       "expect": {
         "result": "error",
-        "answer": false,
-        "code": -32602
+        "answer": false
       }
     },
     {
@@ -1256,7 +1277,7 @@
                 "ask_for_book": false,
                 "counted": false,
                 "deleted": false,
-                "digest": "",
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
                 "duplicate": false,
                 "refused": "busy",
                 "stored": false
@@ -1272,7 +1293,7 @@
             "ask_for_book": false,
             "counted": false,
             "deleted": false,
-            "digest": "",
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
             "duplicate": false,
             "refused": "busy",
             "stored": false
@@ -1507,6 +1528,36 @@
             "resultType": "input_required",
             "isError": false,
             "content": []
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-task-handle",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A task handle instead of a complete result (§3.3); its form is MCP's, not pinned here.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "task",
+            "task": {
+              "taskId": "t-1",
+              "status": "working"
+            }
           }
         }
       },
@@ -2845,10 +2896,70 @@
           "type": "object",
           "properties": {
             "record": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
             },
             "stamp_proof": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
             }
           },
           "minProperties": 1,
@@ -2891,10 +3002,70 @@
           "type": "object",
           "properties": {
             "record": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
             },
             "stamp_proof": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
             }
           },
           "minProperties": 1,
@@ -2938,10 +3109,70 @@
           "type": "object",
           "properties": {
             "record": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
             },
             "stamp_proof": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
             }
           },
           "minProperties": 1,
@@ -2984,10 +3215,70 @@
           "type": "object",
           "properties": {
             "record": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
             },
             "stamp_proof": {
-              "type": "object"
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
             }
           },
           "minProperties": 1,
@@ -3029,10 +3320,428 @@
           "type": "object",
           "properties": {
             "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-loose-output-schema",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "An outputSchema that lists the members but not their fixed shape.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
               "type": "object"
             },
             "stamp_proof": {
               "type": "object"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-widened-refusal-class",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "The proof's refused enum widened to the record's classes.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-output-required-dropped",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "The record answer's required list dropped.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-output-header-annotation",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "An x-mcp-header annotation on an outputSchema property.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string",
+                  "x-mcp-header": "Digest"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
             }
           },
           "minProperties": 1,
