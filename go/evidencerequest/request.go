@@ -57,8 +57,10 @@ const (
 	SubjectCheckpointRange SubjectKind = "checkpoint_range"
 )
 
-// SubjectForms lists the six forms of the -02 registry in code-point order;
-// SubjectCheckpointRange (-03) is not among them.
+// SubjectForms lists the six forms of -02's §3.1 table in code-point order;
+// SubjectCheckpointRange (-03) is not among them, so a manifest built from
+// this list for a profile that pins -02 (evidence-interop/1) names no token
+// beyond that profile.
 var SubjectForms = []SubjectKind{SubjectCheckpoints, SubjectCorrelation, SubjectExchange, SubjectFullHistory, SubjectRange, SubjectRecord}
 
 // Refusal reason tokens: the request draft's registry, verbatim (ER §13):

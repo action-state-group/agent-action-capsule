@@ -28,8 +28,10 @@ pub enum SubjectForm {
 }
 
 impl SubjectForm {
-    /// The six forms of the -02 registry; [`SubjectForm::CheckpointRange`]
-    /// (-03) is not among them.
+    /// The six forms of -02's §3.1 table; [`SubjectForm::CheckpointRange`]
+    /// (-03) is not among them, so a list built from this one for a profile
+    /// that pins -02 (`evidence-interop/1`) names no token beyond that
+    /// profile.
     pub const ALL: [SubjectForm; 6] = [
         SubjectForm::FullHistory,
         SubjectForm::Checkpoints,

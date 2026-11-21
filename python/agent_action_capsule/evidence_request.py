@@ -210,7 +210,9 @@ DERIVATION_HISTORY_CARD = "history_card/1"
 #: -03 §8.1.2; checked by :mod:`agent_action_capsule.history_card`.
 DERIVATION_HISTORY_CARD_2 = "history_card/2"
 
-#: The six subject forms (§3.1), in the draft's order, as the -02 registry lists them.
+#: The six subject forms of -02's §3.1 table, in the draft's order. ``checkpoint_range``
+#: (-03) is not among them, so a list built from this one for a profile that pins -02
+#: (``evidence-interop/1``) names no token beyond that profile.
 SUBJECT_FORMS = ("full_history", "checkpoints", "record", "range", "correlation", "exchange")
 #: -03 §3.1 adds a seventh form: the checkpoints at positions a through b. It has its
 #: own token so that a responder can list it without ``checkpoints``.

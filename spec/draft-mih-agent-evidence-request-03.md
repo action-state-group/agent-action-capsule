@@ -1667,7 +1667,9 @@ coverage probing: a uniform `policy_declined` for the derivation.
 listing `checkpoints` ({{subject}}) tells every reader of its list that a
 stream has passed the size it serves in one answer. A history card's
 positions state the count more precisely, so the list adds nothing for a
-responder that answers either card.
+responder that answers either card. A responder that declines both cards
+to hide that count can keep listing `checkpoints`: a list is not a
+promise.
 
 **Exchange subjects reveal a relationship.** An `exchange` request names a
 half that only the two parties could hold, so any intermediary that sees

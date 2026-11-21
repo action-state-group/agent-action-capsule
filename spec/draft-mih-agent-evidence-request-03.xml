@@ -1856,7 +1856,9 @@ coverage probing: a uniform <tt>policy_declined</tt> for the derivation.</t>
 listing <tt>checkpoints</tt> (<xref target="subject"/>) tells every reader of its list that a
 stream has passed the size it serves in one answer. A history card's
 positions state the count more precisely, so the list adds nothing for a
-responder that answers either card.</t>
+responder that answers either card. A responder that declines both cards
+to hide that count can keep listing <tt>checkpoints</tt>: a list is not a
+promise.</t>
       <t><strong>Exchange subjects reveal a relationship.</strong> An <tt>exchange</tt> request names a
 half that only the two parties could hold, so any intermediary that sees
 the request learns that they interacted. Both parties already know;
@@ -2180,7 +2182,7 @@ action.</t>
         </reference>
       </references>
     </references>
-    <?line 1764?>
+    <?line 1766?>
 
 <section anchor="field-evidence">
       <name>Example Deployments</name>

@@ -2399,9 +2399,9 @@ Internet-Draft              Evidence Request               November 2026
    sensitive have the same option as for coverage probing: a uniform
    policy_declined for the derivation.
 
-
-
-
+   *A list of the forms answered can leak a size.* A responder that
+   stops listing checkpoints (Section 3.1) tells every reader of its
+   list that a stream has passed the size it serves in one answer.  A
 
 
 
@@ -2410,11 +2410,10 @@ Mih                        Expires 21 May 2027                 [Page 43]
 Internet-Draft              Evidence Request               November 2026
 
 
-   *A list of the forms answered can leak a size.* A responder that
-   stops listing checkpoints (Section 3.1) tells every reader of its
-   list that a stream has passed the size it serves in one answer.  A
    history card's positions state the count more precisely, so the list
-   adds nothing for a responder that answers either card.
+   adds nothing for a responder that answers either card.  A responder
+   that declines both cards to hide that count can keep listing
+   checkpoints: a list is not a promise.
 
    *Exchange subjects reveal a relationship.* An exchange request names
    a half that only the two parties could hold, so any intermediary that
@@ -2455,6 +2454,7 @@ Internet-Draft              Evidence Request               November 2026
    statement is not limited by this document, never shown as the reason,
    and disclosed to every reader of the stream the statement is sealed
    in.
+
 
 
 
