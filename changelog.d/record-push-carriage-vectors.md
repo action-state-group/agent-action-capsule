@@ -1,1 +1,0 @@
-- Add `vectors/record-push-v0/`, carriage vectors for the record push binding over MCP and A2A (RP-1): the `record_push` tool call and the A2A `Message`, strict base64url members, an error against an answer, how a sender classifies a reply, and the fixed tool definition and extension entry. They pin the carriage only, and no implementation runs them yet.
