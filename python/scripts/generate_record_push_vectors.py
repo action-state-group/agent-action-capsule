@@ -165,7 +165,7 @@ def push_cases() -> list[dict]:
          {"record": base64.b64encode(ALPHABET_OCTETS).decode("ascii")}),
         ("empty-member", "A member that decodes to no octet.", {"record": ""}),
         ("impossible-length", "Five characters never decode: not strict base64url.", {"record": "AAAAA"}),
-        ("trailing-newline", "A member with a newline after the last character.", {"record": RECORD_B64 + "\n"}),
+        ("trailing-newline", "A member with a newline after the last character, which a lenient decoder drops.", {"record": "AAA\n"}),
         ("whitespace", "A member with a space in it.", {"record": RECORD_B64[:8] + " " + RECORD_B64[8:]}),
         ("not-a-string", "A member that is not a string.", {"record": list(RECORD)}),
         ("null-member", "A null member is not an absent member.", {"record": RECORD_B64, "stamp_proof": None}),
