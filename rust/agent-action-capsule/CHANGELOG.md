@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The optional `evidence-request` dependency accepts `>=0.4.0, <0.9.0`, so the workspace builds against `evidence-request` 0.8.0 (`checkpoint_range`, AAC#645).
+- `witness::check_card_registered` and `witness::check_card_statement` (feature `strict`): the
+  `card_registered` check of `spec/standard-history-v0.md` §13 (#639) over card statements beside a
+  Standard History card, passing `vectors/card-registration-v0/`.
+
 ## 0.12.0 — 2026-11-17
 
 Tag `crates/agent-action-capsule-v0.12.0`.

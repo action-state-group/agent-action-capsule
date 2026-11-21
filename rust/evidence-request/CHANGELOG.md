@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-11-21
+
+Tag `crates/evidence-request-v0.8.0`.
+
+- Breaking: `registry::SubjectForm` gains `CheckpointRange`, token `checkpoint_range` (`draft-mih-agent-evidence-request-03` §3.1, AAC#644). `request::Subject::CheckpointRange(a, b)` now reads and writes `{"checkpoint_range": [a, b]}`, its `form()` is `SubjectForm::CheckpointRange`, and `{"checkpoints": [a, b]}` is malformed. `SubjectForm::ALL` stays the six forms of -02's §3.1 table, so a manifest built from it for `evidence-interop/1`, which pins -02, names no token beyond that profile; `from_token` also knows `checkpoint_range`, and a list of the -03 forms adds `SubjectForm::CheckpointRange` to `ALL`.
+
 ## 0.7.0 — 2026-11-17
 
 Tag `crates/evidence-request-v0.7.0`.
