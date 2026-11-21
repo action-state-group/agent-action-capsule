@@ -45,11 +45,12 @@ def test_confirmed_with_response_digest_is_fine():
     EffectRecord(status="confirmed", response_digest=HEX, effect_attestation="gate_executed")
 
 
-def test_planned_forbids_digests():
-    with pytest.raises(InvariantError):
-        EffectRecord(status="planned", request_digest=HEX)
+def test_planned_forbids_response_digest_allows_request_digest():
+    EffectRecord(status="planned", request_digest=HEX)
     with pytest.raises(InvariantError):
         EffectRecord(status="planned", response_digest=HEX)
+    with pytest.raises(InvariantError):
+        EffectRecord(status="planned", request_digest="not-hex-64")
 
 
 def test_dispatched_forbids_response_digest():

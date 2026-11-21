@@ -204,6 +204,157 @@ fn as_map(v: Option<&Value>) -> Option<&Map<String, Value>> {
     v.and_then(Value::as_object)
 }
 
+/// Parent verdict classes whose supersedes child is bound to the parent's
+/// action (§5.4.4 deferral binding rule): the open-item classes plus expired.
+const DEFERRAL_BINDING_PARENT_CLASSES: [&str; 6] = [
+    "deferred",
+    "needs_decision",
+    "hitl_dispatched",
+    "escalated",
+    "blocked",
+    "expired",
+];
+
+/// The check-6 codes of the deferral binding rule; a child carrying any of
+/// them does not close its parent (§5.4.4).
+const DEFERRAL_BINDING_CODES: [&str; 3] = [
+    "supersedes_action_mismatch",
+    "supersedes_effect_type_mismatch",
+    "supersedes_request_digest_mismatch",
+];
+
+fn verdict_class_of(capsule: &Map<String, Value>) -> Option<&str> {
+    as_map(capsule.get("disposition"))
+        .and_then(|d| d.get("verdict_class"))
+        .and_then(Value::as_str)
+}
+
+/// The first Capsule in `store` that recomputes to `id` under check 2's
+/// profile and digest. A carried capsule_id alone never selects a Capsule, so a
+/// forged copy cannot stand in for the real one (§5.4.4).
+fn store_capsule<'a>(store: &'a [Value], id: &str) -> Option<&'a Map<String, Value>> {
+    store.iter().filter_map(Value::as_object).find(|m| {
+        m.get("capsule_id").and_then(Value::as_str) == Some(id)
+            && m.get("format_version").and_then(Value::as_str) == Some("4")
+            && m.get("canonicalization_id").and_then(Value::as_str) == Some("jcs")
+            && compute_capsule_id(m).ok().as_deref() == Some(id)
+    })
+}
+
+/// The Effect Record farthest up the bound path from `parent` (§5.4.4), and
+/// whether the walk reached the end of that path. The walk is incomplete when
+/// an earlier Capsule is known only by an identifier or does not recompute.
+fn effect_anchor<'a>(
+    parent: &'a Map<String, Value>,
+    store: &'a [Value],
+) -> (Option<&'a Map<String, Value>>, bool) {
+    let mut seen = HashSet::new();
+    let mut anchor = None;
+    let mut node = parent;
+    while verdict_class_of(node).is_some_and(|c| DEFERRAL_BINDING_PARENT_CLASSES.contains(&c)) {
+        if let Some(effect) = as_map(node.get("effect")) {
+            anchor = Some(effect);
+        }
+        let Some(chain) = as_map(node.get("chain")) else {
+            break;
+        };
+        if chain.get("relation").and_then(Value::as_str) != Some("supersedes") {
+            break;
+        }
+        let Some(up) = chain.get("parent_capsule_id").and_then(Value::as_str) else {
+            break;
+        };
+        if !seen.insert(up) {
+            break;
+        }
+        match store_capsule(store, up) {
+            Some(upper) => node = upper,
+            None => return (anchor, false),
+        }
+    }
+    (anchor, true)
+}
+
+/// The §5.4.4 deferral binding rule for a supersedes child over `parent`. It
+/// runs only when the parent's verdict_class is an open-item class or
+/// expired, and compares only string values; a mistyped field is already a
+/// check-1 failure on the Capsule that carries it.
+fn deferral_binding_findings(
+    capsule: &Map<String, Value>,
+    parent: &Map<String, Value>,
+    store: &[Value],
+) -> Vec<Finding> {
+    let Some(parent_class) =
+        verdict_class_of(parent).filter(|c| DEFERRAL_BINDING_PARENT_CLASSES.contains(c))
+    else {
+        return Vec::new();
+    };
+    let mut findings = Vec::new();
+    if let Some(parent_action) = parent.get("action_id").and_then(Value::as_str) {
+        if capsule.get("action_id").and_then(Value::as_str) != Some(parent_action) {
+            findings.push(mkf(
+                "supersedes_action_mismatch",
+                &format!(
+                    "supersedes over a {parent_class} parent MUST carry the parent's action_id \
+                     {parent_action:?} (§5.4.4 deferral binding rule)"
+                ),
+                Some(6),
+                "error",
+            ));
+        }
+    }
+    let child_effect = as_map(capsule.get("effect"));
+    if verdict_class_of(capsule) != Some("executed") && child_effect.is_none() {
+        return findings;
+    }
+    let (anchor, complete) = effect_anchor(parent, store);
+    if !complete {
+        findings.push(mkf(
+            "deferral_binding_not_evaluated",
+            "an earlier Capsule on the bound supersedes path is in the store only as an identifier \
+             or does not recompute; the effect binding was not evaluated (§5.4.4)",
+            Some(6),
+            "info",
+        ));
+        return findings;
+    }
+    let Some(anchor) = anchor else {
+        return findings;
+    };
+    let child_str = |key: &str| {
+        child_effect
+            .and_then(|e| e.get(key))
+            .and_then(Value::as_str)
+    };
+    if let Some(anchor_type) = anchor.get("type").and_then(Value::as_str) {
+        if child_str("type") != Some(anchor_type) {
+            findings.push(mkf(
+                "supersedes_effect_type_mismatch",
+                &format!(
+                    "effect.type MUST equal {anchor_type:?}, the first Effect Record up the \
+                     supersedes chain (§5.4.4 deferral binding rule)"
+                ),
+                Some(6),
+                "error",
+            ));
+        }
+    }
+    if let Some(anchor_request) = anchor.get("request_digest").and_then(Value::as_str) {
+        if child_str("request_digest") != Some(anchor_request) {
+            findings.push(mkf(
+                "supersedes_request_digest_mismatch",
+                &format!(
+                    "effect.request_digest MUST equal {anchor_request}, the first Effect Record \
+                     up the supersedes chain (§5.4.4 deferral binding rule)"
+                ),
+                Some(6),
+                "error",
+            ));
+        }
+    }
+    findings
+}
+
 /// Derives `assurance.effect_mode` from the Effect Record (§5.2).
 fn derive_effect_mode(effect: Option<&Map<String, Value>>) -> String {
     let effect = match effect {
@@ -674,6 +825,24 @@ pub fn verify_with(
                             Some(6),
                             "error",
                         ));
+                    } else if chain.get("relation").and_then(Value::as_str) == Some("supersedes") {
+                        match store_capsule(store, parent_str) {
+                            Some(parent_capsule) => findings.extend(deferral_binding_findings(
+                                capsule_map,
+                                parent_capsule,
+                                store,
+                            )),
+                            None => findings.push(mkf(
+                                "deferral_binding_not_evaluated",
+                                &format!(
+                                    "chain parent {parent_str} is in the store only as an identifier \
+                                     or does not recompute; the deferral binding rule was not \
+                                     evaluated (§5.4.4)"
+                                ),
+                                Some(6),
+                                "info",
+                            )),
+                        }
                     }
                 }
             }
@@ -1037,12 +1206,21 @@ pub fn verify_store_with(capsules: &[Value], regs: &Registries) -> Vec<Verificat
     };
 
     // Concurrent supersedes (§5.4.4): the earliest supersedes over a parent is
-    // authoritative; each later one is reported.
+    // authoritative; each later one is reported. A supersedes that violates the
+    // deferral binding rule does not close its parent, so it is not a
+    // candidate for the earliest authoritative one.
     let mut seen_parents = HashSet::new();
     for (i, c) in capsules.iter().enumerate() {
         let Some(parent) = chained(c, "supersedes").filter(|p| !p.is_empty()) else {
             continue;
         };
+        if results[i]
+            .findings
+            .iter()
+            .any(|f| DEFERRAL_BINDING_CODES.contains(&f.code.as_str()))
+        {
+            continue;
+        }
         if seen_parents.contains(&parent) {
             results[i].findings.push(mkf(
                 "concurrent_supersedes",

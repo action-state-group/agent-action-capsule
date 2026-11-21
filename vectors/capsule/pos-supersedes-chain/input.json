@@ -23,14 +23,14 @@
       "canonicalization_id": "jcs"
     },
     {
-      "action_id": "po-resolution",
+      "action_id": "po-parent-hitl",
       "action_type": "decide",
       "assurance": {
         "attestation_mode": "self_attested",
         "effect_mode": "confirmed",
         "ledger_mode": "chained"
       },
-      "capsule_id": "7de5b036ec83e98f3d4f21398dae8c35f272ecfd60ba2dbc97ad038fd64aa388",
+      "capsule_id": "c19f48f4d6ba74bd3fbd95e7a3f5ce3d85b3aaf83bd03d0eddff9b09a003592f",
       "chain": {
         "parent_capsule_id": "7af44dadf6d5303f7ec75c7c761933740dee4c8a88598238ec9df6cb40623854",
         "relation": "supersedes"

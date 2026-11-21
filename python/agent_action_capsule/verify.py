@@ -32,6 +32,7 @@ from .contracts import (
     DOMAIN_VALUES,
     LEDGER_MODE_RANK,
     NEVER_DISPATCH_VERDICT_CLASSES,
+    OPEN_ITEM_VERDICT_CLASSES,
     PROVENANCE_MODES,
     PROVENANCE_VALUES,
     TIME_RUNGS,
@@ -360,6 +361,127 @@ def _text(v: Any) -> str | None:
     return v if isinstance(v, str) else None
 
 
+# Parent classes whose `supersedes` child is bound to the parent's action
+# (§5.4.4 deferral binding rule): the open-item classes plus `expired`.
+_DEFERRAL_BINDING_PARENT_CLASSES = OPEN_ITEM_VERDICT_CLASSES | {"expired"}
+
+# The check-6 error codes of the deferral binding rule; a child carrying any of
+# them does not close its parent (§5.4.4).
+DEFERRAL_BINDING_CODES = frozenset({
+    "supersedes_action_mismatch",
+    "supersedes_effect_type_mismatch",
+    "supersedes_request_digest_mismatch",
+})
+
+
+def _verdict_class(capsule: Mapping[str, Any]) -> str | None:
+    """disposition.verdict_class when it is a string; a mistyped value is a
+    check-1 failure on its own Capsule and binds nothing here."""
+    disposition = capsule.get("disposition")
+    value = disposition.get("verdict_class") if isinstance(disposition, Mapping) else None
+    return value if isinstance(value, str) else None
+
+
+def _store_capsule(store: list[Any], capsule_id: str) -> Mapping[str, Any] | None:
+    """The first Capsule in ``store`` that recomputes to ``capsule_id`` (check 2's
+    profile and digest). A carried capsule_id alone never selects a Capsule, so a
+    forged copy cannot stand in for the real one (§5.4.4)."""
+    for item in store:
+        if not isinstance(item, Mapping) or item.get("capsule_id") != capsule_id:
+            continue
+        if item.get("format_version") != "4" or item.get("canonicalization_id") != CANONICALIZATION_JCS:
+            continue
+        try:
+            if compute_capsule_id(dict(item)) == capsule_id:
+                return item
+        except Exception:  # noqa: BLE001 -- an uncomputable candidate is not the parent
+            continue
+    return None
+
+
+def _effect_anchor(
+    parent: Mapping[str, Any], store: list[Any]
+) -> tuple[Mapping[str, Any] | None, bool]:
+    """The Effect Record farthest up the bound path from ``parent`` (§5.4.4), and
+    whether the walk reached the end of that path. The walk is incomplete when
+    an earlier Capsule is known only by an identifier or does not recompute."""
+    seen: set[str] = set()
+    anchor: Mapping[str, Any] | None = None
+    node: Mapping[str, Any] = parent
+    while _verdict_class(node) in _DEFERRAL_BINDING_PARENT_CLASSES:
+        effect = node.get("effect")
+        if isinstance(effect, Mapping):
+            anchor = effect
+        chain = node.get("chain")
+        if not isinstance(chain, Mapping) or chain.get("relation") != "supersedes":
+            break
+        up = chain.get("parent_capsule_id")
+        if not isinstance(up, str) or up in seen:
+            break
+        seen.add(up)
+        upper = _store_capsule(store, up)
+        if upper is None:
+            return anchor, False
+        node = upper
+    return anchor, True
+
+
+def _deferral_binding_findings(
+    capsule: Mapping[str, Any], parent: Mapping[str, Any], store: list[Any]
+) -> list[Finding]:
+    """§5.4.4 deferral binding rule for a `supersedes` child over ``parent``.
+
+    Runs only when the parent's verdict_class is an open-item class or
+    `expired`. Comparisons are made only on string values; a mistyped field is
+    already a check-1 failure on the Capsule that carries it."""
+    parent_class = _verdict_class(parent)
+    if parent_class not in _DEFERRAL_BINDING_PARENT_CLASSES:
+        return []
+    findings: list[Finding] = []
+    parent_action = parent.get("action_id")
+    child_action = capsule.get("action_id")
+    if isinstance(parent_action, str) and child_action != parent_action:
+        findings.append(Finding(
+            "supersedes_action_mismatch",
+            f"supersedes over a {parent_class} parent MUST carry the parent's action_id "
+            f"{parent_action!r}; found {child_action!r} (§5.4.4 deferral binding rule)",
+            check=6,
+        ))
+    effect = capsule.get("effect")
+    child_effect = effect if isinstance(effect, Mapping) else None
+    if _verdict_class(capsule) != "executed" and child_effect is None:
+        return findings
+    anchor, complete = _effect_anchor(parent, store)
+    if not complete:
+        findings.append(Finding(
+            "deferral_binding_not_evaluated",
+            "an earlier Capsule on the bound supersedes path is in the store only as an "
+            "identifier or does not recompute; the effect binding was not evaluated (§5.4.4)",
+            severity="info", check=6,
+        ))
+        return findings
+    if anchor is None:
+        return findings
+    child_effect = child_effect or {}
+    anchor_type = anchor.get("type")
+    if isinstance(anchor_type, str) and child_effect.get("type") != anchor_type:
+        findings.append(Finding(
+            "supersedes_effect_type_mismatch",
+            f"effect.type MUST equal {anchor_type!r}, the first Effect Record up the "
+            "supersedes chain (§5.4.4 deferral binding rule)",
+            check=6,
+        ))
+    anchor_request = anchor.get("request_digest")
+    if isinstance(anchor_request, str) and child_effect.get("request_digest") != anchor_request:
+        findings.append(Finding(
+            "supersedes_request_digest_mismatch",
+            f"effect.request_digest MUST equal {anchor_request}, the first Effect Record "
+            "up the supersedes chain (§5.4.4 deferral binding rule)",
+            check=6,
+        ))
+    return findings
+
+
 def _store_ids(store: Iterable[Any] | None) -> set[str] | None:
     if store is None:
         return None
@@ -386,6 +508,10 @@ def verify(
     if too_deep(capsule):
         findings.append(Finding("verifier_internal_error", "Capsule is nested too deeply or contains itself"))
         return VerificationResult(ok=False, findings=findings)
+    # The store is read more than once (parent ids, then parent Capsules), so a
+    # one-shot iterable is materialized here.
+    if store is not None and not isinstance(store, list):
+        store = list(store)
     try:
         return _verify(capsule, findings, store, registries)
     except Exception as exc:  # never throw (§6)
@@ -562,6 +688,17 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             findings.append(Finding("chain_check_store_level", "chain parent-existence and concurrent-supersedes are store-level checks (§6); not run without a store", severity="info", check=6))
         elif isinstance(parent, str) and parent not in ids:
             findings.append(Finding("chain_parent_missing", f"chain parent {parent} not found in the store (§6)", check=6))
+        elif isinstance(parent, str) and chain.get("relation") == "supersedes":
+            parent_capsule = _store_capsule(store, parent)
+            if parent_capsule is None:
+                findings.append(Finding(
+                    "deferral_binding_not_evaluated",
+                    f"chain parent {parent} is in the store only as an identifier or does not "
+                    "recompute; the deferral binding rule was not evaluated (§5.4.4)",
+                    severity="info", check=6,
+                ))
+            else:
+                findings.extend(_deferral_binding_findings(capsule, parent_capsule, store))
 
     findings.extend(reference_checks.get(6, []))
 
@@ -782,6 +919,8 @@ def verify_store(
 
     # Concurrent-supersedes (§5.4.4): earliest in ledger order is authoritative;
     # any later supersedes over the same parent surfaces as an (info) finding.
+    # A supersedes that violates the deferral binding rule does not close its
+    # parent, so it is not a candidate for the earliest authoritative one.
     seen_parent: set[str] = set()
     for c, res in zip(capsules, results):
         if not isinstance(c, Mapping):
@@ -790,6 +929,8 @@ def verify_store(
         if not isinstance(chain, Mapping):
             continue
         if chain.get("relation") != "supersedes":
+            continue
+        if any(f.code in DEFERRAL_BINDING_CODES for f in res.findings):
             continue
         parent = chain.get("parent_capsule_id")
         if not isinstance(parent, str):

@@ -187,7 +187,158 @@ const STRING_MEMBERS = [
   ["provenance_mode", "imported_at"],
 ] as const;
 
-/** AAC Class 1 verification. It always returns a structured result. */
+/**
+ * Parent verdict classes whose supersedes child is bound to the parent's
+ * action (§5.4.4 deferral binding rule): the open-item classes plus expired.
+ */
+const DEFERRAL_BINDING_PARENT_CLASSES: ReadonlySet<string> = new Set([
+  "deferred",
+  "needs_decision",
+  "hitl_dispatched",
+  "escalated",
+  "blocked",
+  "expired",
+]);
+
+/** The check-6 error codes of the deferral binding rule; a child carrying any of them does not close its parent (§5.4.4). */
+const DEFERRAL_BINDING_CODES: ReadonlySet<string> = new Set([
+  "supersedes_action_mismatch",
+  "supersedes_effect_type_mismatch",
+  "supersedes_request_digest_mismatch",
+]);
+
+function verdictClassOf(capsule: RecordValue): ParsedJson | undefined {
+  return object(capsule.disposition)?.verdict_class;
+}
+
+/**
+ * The first Capsule in store that recomputes to id under check 2's profile and
+ * digest. A carried capsule_id alone never selects a Capsule, so a forged copy
+ * cannot stand in for the real one (§5.4.4).
+ */
+async function storeCapsule(
+  store: readonly (ParsedJson | string)[],
+  id: string,
+): Promise<RecordValue | undefined> {
+  for (const item of store) {
+    const candidate = object(item);
+    if (
+      candidate?.capsule_id !== id ||
+      candidate.format_version !== "4" ||
+      candidate.canonicalization_id !== "jcs"
+    )
+      continue;
+    try {
+      if ((await computeCapsuleId(candidate)) === id) return candidate;
+    } catch {
+      // an uncomputable candidate is not the parent
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The Effect Record farthest up the bound path from parent (§5.4.4), and
+ * whether the walk reached the end of that path. The walk is incomplete when an
+ * earlier Capsule is known only by an identifier or does not recompute.
+ */
+async function effectAnchor(
+  parent: RecordValue,
+  store: readonly (ParsedJson | string)[],
+): Promise<{ anchor: RecordValue | undefined; complete: boolean }> {
+  const seen = new Set<string>();
+  let anchor: RecordValue | undefined;
+  let node: RecordValue = parent;
+  for (;;) {
+    const vc = verdictClassOf(node);
+    if (typeof vc !== "string" || !DEFERRAL_BINDING_PARENT_CLASSES.has(vc))
+      break;
+    const effect = object(node.effect);
+    if (effect !== undefined) anchor = effect;
+    const chain = object(node.chain);
+    const up = chain?.parent_capsule_id;
+    if (
+      chain?.relation !== "supersedes" ||
+      typeof up !== "string" ||
+      seen.has(up)
+    )
+      break;
+    seen.add(up);
+    const upper = await storeCapsule(store, up);
+    if (upper === undefined) return { anchor, complete: false };
+    node = upper;
+  }
+  return { anchor, complete: true };
+}
+
+/**
+ * The §5.4.4 deferral binding rule for a supersedes child over parent. It runs
+ * only when the parent's verdict_class is an open-item class or expired, and
+ * compares only string values; a mistyped field is already a check-1 failure
+ * on the Capsule that carries it.
+ */
+async function deferralBindingFindings(
+  capsule: RecordValue,
+  parent: RecordValue,
+  store: readonly (ParsedJson | string)[],
+): Promise<Finding[]> {
+  const parentClass = verdictClassOf(parent);
+  if (
+    typeof parentClass !== "string" ||
+    !DEFERRAL_BINDING_PARENT_CLASSES.has(parentClass)
+  )
+    return [];
+  const findings: Finding[] = [];
+  const parentAction = parent.action_id;
+  if (typeof parentAction === "string" && capsule.action_id !== parentAction)
+    findings.push({
+      code: "supersedes_action_mismatch",
+      detail: `supersedes over a ${parentClass} parent MUST carry the parent's action_id ${JSON.stringify(parentAction)} (§5.4.4 deferral binding rule)`,
+      severity: "error",
+      check: 6,
+    });
+  const childEffect = object(capsule.effect);
+  if (verdictClassOf(capsule) !== "executed" && childEffect === undefined)
+    return findings;
+  const { anchor, complete } = await effectAnchor(parent, store);
+  if (!complete) {
+    findings.push({
+      code: "deferral_binding_not_evaluated",
+      detail:
+        "an earlier Capsule on the bound supersedes path is in the store only as an identifier or does not recompute; the effect binding was not evaluated (§5.4.4)",
+      severity: "info",
+      check: 6,
+    });
+    return findings;
+  }
+  if (anchor === undefined) return findings;
+  const anchorType = anchor.type;
+  if (typeof anchorType === "string" && childEffect?.type !== anchorType)
+    findings.push({
+      code: "supersedes_effect_type_mismatch",
+      detail: `effect.type MUST equal ${JSON.stringify(anchorType)}, the first Effect Record up the supersedes chain (§5.4.4 deferral binding rule)`,
+      severity: "error",
+      check: 6,
+    });
+  const anchorRequest = anchor.request_digest;
+  if (
+    typeof anchorRequest === "string" &&
+    childEffect?.request_digest !== anchorRequest
+  )
+    findings.push({
+      code: "supersedes_request_digest_mismatch",
+      detail: `effect.request_digest MUST equal ${anchorRequest}, the first Effect Record up the supersedes chain (§5.4.4 deferral binding rule)`,
+      severity: "error",
+      check: 6,
+    });
+  return findings;
+}
+
+/**
+ * AAC Class 1 verification. It always returns a structured result. A store
+ * given as a Set carries ids only, so the deferral binding rule (§5.4.4),
+ * which reads the parent Capsule, is reported as not evaluated.
+ */
 export async function verifyClass1(
   capsule: ParsedJson,
   store?: readonly (ParsedJson | string)[] | Set<string>,
@@ -541,6 +692,30 @@ export async function verifyClass1(
           `chain parent ${chain.parent_capsule_id} not found in store (§6)`,
           6,
         );
+      else if (
+        typeof chain.parent_capsule_id === "string" &&
+        chain.relation === "supersedes"
+      ) {
+        const parent =
+          store instanceof Set
+            ? undefined
+            : await storeCapsule(store, chain.parent_capsule_id);
+        if (parent === undefined)
+          add(
+            "deferral_binding_not_evaluated",
+            `chain parent ${chain.parent_capsule_id} is in the store only as an identifier or does not recompute; the deferral binding rule was not evaluated (§5.4.4)`,
+            6,
+            "info",
+          );
+        else
+          findings.push(
+            ...(await deferralBindingFindings(
+              top,
+              parent,
+              store as readonly (ParsedJson | string)[],
+            )),
+          );
+      }
     }
   }
   findings.push(...references.filter((finding) => finding.check === 6));
@@ -797,20 +972,20 @@ export async function verifyStore(
   capsules: readonly ParsedJson[],
   extensions: Readonly<Record<string, ReadonlySet<string>>> = {},
 ): Promise<VerificationResult[]> {
-  const ids = new Set(
-    capsules
-      .map((capsule) => object(capsule)?.capsule_id)
-      .filter((id): id is string => typeof id === "string"),
-  );
+  // The Capsules themselves are the store: the deferral binding rule (§5.4.4)
+  // reads the parent Capsule and recomputes its id.
   const results = await Promise.all(
-    capsules.map((capsule) => verifyClass1(capsule, ids, extensions)),
+    capsules.map((capsule) => verifyClass1(capsule, capsules, extensions)),
   );
+  // A supersedes that violates the deferral binding rule does not close its
+  // parent, so it is not a candidate for the earliest authoritative one.
   const seen = new Set<string>();
   capsules.forEach((capsule, index) => {
     const chain = object(object(capsule)?.chain);
     if (
       chain?.relation !== "supersedes" ||
-      typeof chain.parent_capsule_id !== "string"
+      typeof chain.parent_capsule_id !== "string" ||
+      results[index]!.findings.some((f) => DEFERRAL_BINDING_CODES.has(f.code))
     )
       return;
     if (seen.has(chain.parent_capsule_id)) {

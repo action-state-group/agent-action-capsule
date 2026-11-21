@@ -1,0 +1,49 @@
+{
+  "description": "deferral -> escalated with no Effect Record -> executed closure with another effect.type: the anchor is the deferral's Effect Record two links up -> supersedes_effect_type_mismatch (check 6, §5.4.4).",
+  "kind": "store",
+  "results": [
+    {
+      "capsule_id_recomputed": "6e9f03473ccdf69cf0206042095e7f6e3a0a4c7b7ba9ee8f65e1fbfd44205397",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "not_applicable",
+        "ledger_mode": "standalone"
+      },
+      "findings": [],
+      "ok": true
+    },
+    {
+      "capsule_id_recomputed": "3e0c4ea9f78af984b299bb7dc86f50ecd617f4955466aa50b0fd5e8a6e37941f",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "not_applicable",
+        "ledger_mode": "chained"
+      },
+      "findings": [],
+      "ok": true
+    },
+    {
+      "capsule_id_recomputed": "f8baef342e32e80e7ddabe7a388ef234780b8bdfb44c2aaddd2efde863231419",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "confirmed",
+        "ledger_mode": "chained"
+      },
+      "findings": [
+        {
+          "check": 6,
+          "code": "supersedes_effect_type_mismatch",
+          "detail": "effect.type MUST equal 'send_payment', the first Effect Record up the supersedes chain (§5.4.4 deferral binding rule)",
+          "severity": "error"
+        }
+      ],
+      "ok": false
+    }
+  ],
+  "provenance": "spec-derived",
+  "canonical_preimages": {
+    "ledger[0].capsule_id": "{\"action_id\":\"pay-vendor-a\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"deferred\",\"human_disposed\":true,\"verdict_class\":\"deferred\"},\"effect\":{\"request_digest\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"status\":\"planned\",\"type\":\"send_payment\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}",
+    "ledger[1].capsule_id": "{\"action_id\":\"pay-vendor-a\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"chain\":{\"parent_capsule_id\":\"6e9f03473ccdf69cf0206042095e7f6e3a0a4c7b7ba9ee8f65e1fbfd44205397\",\"relation\":\"supersedes\"},\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"policy\",\"decision\":\"needs_input\",\"human_disposed\":false,\"verdict_class\":\"escalated\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}",
+    "ledger[2].capsule_id": "{\"action_id\":\"pay-vendor-a\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"confirmed\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"chain\":{\"parent_capsule_id\":\"3e0c4ea9f78af984b299bb7dc86f50ecd617f4955466aa50b0fd5e8a6e37941f\",\"relation\":\"supersedes\"},\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"accept\",\"human_disposed\":true,\"verdict_class\":\"executed\"},\"effect\":{\"effect_attestation\":\"gate_executed\",\"request_digest\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"response_digest\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"status\":\"confirmed\",\"type\":\"write_order\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}"
+  }
+}

@@ -239,9 +239,9 @@ def test_effect_confirmed_valid_response_digest_ok():
     EffectRecord(status="confirmed", response_digest=HEX_A)
 
 
-def test_effect_planned_with_request_digest_raises():
-    with pytest.raises(InvariantError, match="planned"):
-        EffectRecord(status="planned", request_digest=HEX_A)
+def test_effect_planned_with_request_digest_ok():
+    # §5.2: a planned effect MAY commit to the request a decider disposes (§5.4.4).
+    EffectRecord(status="planned", request_digest=HEX_A)
 
 
 def test_effect_planned_with_response_digest_raises():

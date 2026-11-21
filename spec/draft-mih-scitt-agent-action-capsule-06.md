@@ -380,7 +380,7 @@ detail is specified in {{constraints}}.
 | format_version | string | REQUIRED | The serialization-suite version. The value MUST be exactly "4". |
 | canonicalization_id | string | REQUIRED | The value MUST be exactly "jcs". Absent, null, non-string, empty, unknown, and `"jcs-n"` declarations are invalid. |
 | capsule_id | string (64 lowercase hex) | REQUIRED | The derived identifier. Remove local-only `signature` and `key_id` envelope fields, if present in a local composite representation, then compute SHA-256 over plain JCS of the Capsule after removing only `capsule_id`. The `canonicalization_id` declaration, `chain` block, and `references` array participate. Verifiers MUST recompute; carried values MUST NOT be trusted. |
-| action_id | string | REQUIRED | Stable identifier of the action; unique within one producer ledger. |
+| action_id | string | REQUIRED | Stable identifier of the action, shared by every Capsule that records the same action (for example, a deferral and the Capsule that closes it, {{hitl}}); distinct actions in one producer ledger carry distinct values. |
 | action_type | string | REQUIRED | "fyi" (informational) or "decide" (a disposition was required). |
 | operator | string | REQUIRED | The accountable tenant the action was performed for. |
 | developer | string | REQUIRED | The agent identity and version that performed the action. |
@@ -470,7 +470,7 @@ The Effect Record describes the side effect the action committed. Its
 
 | status | Meaning | Binding requirement |
 |---|---|---|
-| planned | Intended, not dispatched. | request_digest and response_digest MUST be absent. |
+| planned | Intended, not dispatched. | response_digest MUST be absent. request_digest MAY be present and, when present, digests the request a decider is asked to dispose ({{hitl}}). |
 | dispatched | Sent; result not observed. | request_digest SHOULD be present; response_digest MUST be absent. |
 | confirmed | Result observed and bound. | response_digest MUST be present and MUST be a JSON digest ({{conventions}}) of the actual response. |
 | failed | Attempted; runtime reported failure (state known). | response_digest, when present, digests the failure response. |
@@ -1030,8 +1030,49 @@ parent is structurally valid but MUST surface as a verification finding.
 Open-items predicate: an item is open when its Capsule's
 `verdict_class` is one of `deferred`, `needs_decision`,
 `hitl_dispatched`, `escalated`, or `blocked`, and no Capsule in the
-store carries `chain.parent_capsule_id` equal to its `capsule_id` with
+store that satisfies the deferral binding rule below carries
+`chain.parent_capsule_id` equal to its `capsule_id` with
 `relation: "supersedes"`.
+
+Deferral binding rule: a Capsule chained `supersedes` to a parent whose
+`verdict_class` is one of the open-item classes above or `expired` (a
+bound parent) records a disposition of the parent's action, and MUST be
+about that same action. Its bound path starts at the parent and follows
+`supersedes` links upward while each Capsule on it is a bound parent.
+Its effect anchor is the Capsule farthest up the bound path that carries
+an Effect Record ({{effect}}): the first commitment made in the chain.
+There is no anchor when no Capsule on the bound path carries one. Then:
+
+- it MUST carry the parent's `action_id`;
+- when its `verdict_class` is `executed`, or when it carries an Effect
+  Record, and it has an effect anchor, its `effect.type` MUST equal the
+  anchor's `effect.type`; and
+- when, in addition, the anchor's Effect Record carries
+  `request_digest`, its `effect.request_digest` MUST be present and
+  equal to the anchor's.
+
+A deferral that intends an effect it has not dispatched records it with
+`effect.status: "planned"` and MAY commit to the request the decider is
+asked to dispose through `request_digest` ({{effect}}). Along a bound
+path, every later Capsule that carries an Effect Record, and the
+executing closure in any case, then carries the same type and digest,
+so an escalation or expiry in between cannot change what was asked: a
+Capsule on the path that carries no Effect Record passes the commitment
+through unchanged, and one that carries a different Effect Record fails
+without becoming the anchor for the Capsules after it. A chain with no
+Effect Record commits to no effect type or request, and only the
+`action_id` binding applies.
+
+A verifier resolves each Capsule on the bound path by recomputing its
+`capsule_id` ({{identity}}) and never by a carried value alone. When the
+parent, or an earlier Capsule the bound path reaches, is in the store
+only as an identifier or no Capsule in the store recomputes to it, the
+part of the rule that depends on it cannot be evaluated: a verifier
+reports that as an informational finding, not as a pass. A `supersedes`
+Capsule that violates this rule is a verification failure (check 6,
+{{verification}}) and does not close its parent: it is not counted by
+the open-items predicate, and it is not a candidate for the earliest
+authoritative supersedes under the concurrent-supersedes rule.
 
 ### Cross-record references {#xref}
 
@@ -1323,6 +1364,9 @@ its result is not `ok`.
    matrix REQUIRES it, or present where it MUST be absent — including
    the planned carve — is a failure ({{effect}}).
 6. Chain semantics (store-level): a missing chain parent is a failure;
+   a `supersedes` Capsule whose parent is in the store and that violates
+   the deferral binding rule of {{hitl}} is a failure, and one whose
+   parent cannot be resolved to a Capsule is reported as informational;
    concurrent supersedes surface as findings per {{hitl}}. A
    `references` entry ({{xref}}) is a different claim: it is informational
    cross-stream correlation, never a chain-integrity input, and a
@@ -1968,6 +2012,18 @@ before publication.
   and signature are byte strings, and no octet follows the envelope or the
   protected map inside its byte string; a verifier rejects any violation
   ({{envelope}}).
+* Deferral binding: a Capsule chained `supersedes` to an open item, or
+  to an `expired` one, carries the parent's `action_id`; an executing
+  closure, and any Capsule in the chain that carries an Effect Record,
+  also matches the `effect.type` and, when present, the
+  `request_digest` of the first Effect Record up the chain of open and
+  `expired` parents. A
+  violation fails check 6 and does not close the parent. `action_id` is
+  shared by every Capsule that records the same action, and a `planned`
+  effect MAY carry `request_digest` ({{identity}}, {{effect}}, {{hitl}},
+  {{verification}}). This rejects a store that verified under -05: one
+  in which a deferral was closed by a Capsule for another action or
+  another effect.
 * Wire version unchanged: a producer conforming to this revision still
   emits "draft-mih-scitt-agent-action-capsule-05", and verifier acceptance
   of `spec_version` is unchanged ({{identity}}).
