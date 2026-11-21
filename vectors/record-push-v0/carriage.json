@@ -1,0 +1,3864 @@
+{
+  "binding": "spec/bindings/record-push-v0.md",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_record_push_vectors.py",
+  "description": "Carriage vectors for the record push binding over MCP and A2A (open point RP-1). Kinds: push (what a receiver does with a tool call or Message: hand the decoded octets to SF section 6, or answer an error and no answer object), classify (what a sender received, classified by the answer position alone), declaration (the tool definition and the extension entry). They pin nothing about records, stamp proofs, the push rule or the answers' values.",
+  "extension_uri": "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/",
+  "cases": [
+    {
+      "id": "pos-mcp-both-parts",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.1"
+      ],
+      "description": "A tools/call of record_push with both members: each decodes to the octets pushed.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "stamp_proof": "eyJvcGFxdWUiOiJzdGFtcCBwcm9vZiBvY3RldHMifQ"
+        }
+      },
+      "expect": {
+        "result": "push",
+        "record_hex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "stamp_proof_hex": "7b226f7061717565223a227374616d702070726f6f66206f6374657473227d"
+      }
+    },
+    {
+      "id": "pos-mcp-record-only",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.1"
+      ],
+      "description": "One member is enough: a push with only a record.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX"
+        }
+      },
+      "expect": {
+        "result": "push",
+        "record_hex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "stamp_proof_hex": null
+      }
+    },
+    {
+      "id": "pos-mcp-proof-only",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.1"
+      ],
+      "description": "One member is enough: a push with only a stamp proof.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "stamp_proof": "eyJvcGFxdWUiOiJzdGFtcCBwcm9vZiBvY3RldHMifQ"
+        }
+      },
+      "expect": {
+        "result": "push",
+        "record_hex": null,
+        "stamp_proof_hex": "7b226f7061717565223a227374616d702070726f6f66206f6374657473227d"
+      }
+    },
+    {
+      "id": "pos-mcp-url-safe-alphabet",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.1"
+      ],
+      "description": "Octets whose text uses '-' and '_': base64url, not base64.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "-_-_"
+        }
+      },
+      "expect": {
+        "result": "push",
+        "record_hex": "fbffbf",
+        "stamp_proof_hex": null
+      }
+    },
+    {
+      "id": "pos-a2a-both-parts",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.1"
+      ],
+      "description": "A SendMessage Message with one data part holding the push object: the same octets as the MCP case.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+              "stamp_proof": "eyJvcGFxdWUiOiJzdGFtcCBwcm9vZiBvY3RldHMifQ"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "push",
+        "record_hex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "stamp_proof_hex": "7b226f7061717565223a227374616d702070726f6f66206f6374657473227d"
+      }
+    },
+    {
+      "id": "pos-a2a-record-only",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.1"
+      ],
+      "description": "One member is enough over A2A too.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "push",
+        "record_hex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+        "stamp_proof_hex": null
+      }
+    },
+    {
+      "id": "pos-a2a-proof-only",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.1"
+      ],
+      "description": "One member is enough over A2A too.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "stamp_proof": "eyJvcGFxdWUiOiJzdGFtcCBwcm9vZiBvY3RldHMifQ"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "push",
+        "record_hex": null,
+        "stamp_proof_hex": "7b226f7061717565223a227374616d702070726f6f66206f6374657473227d"
+      }
+    },
+    {
+      "id": "neg-mcp-empty-arguments",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "No member: a push with neither part carries no push (§2.3 rule 3). Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {}
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-empty-arguments",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "No member: a push with neither part carries no push (§2.3 rule 3). Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {}
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-extra-member",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member that is neither record nor stamp_proof. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "sender": "abc"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-extra-member",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member that is neither record nor stamp_proof. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+              "sender": "abc"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-padded",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "base64url without padding: a padded member does not strictly decode. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX=="
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-padded",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "base64url without padding: a padded member does not strictly decode. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX=="
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-standard-alphabet",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "base64 (with '+' and '/') is not base64url. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "+/+/"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-standard-alphabet",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "base64 (with '+' and '/') is not base64url. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "+/+/"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-empty-member",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member that decodes to no octet. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": ""
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-empty-member",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member that decodes to no octet. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": ""
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-impossible-length",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "Five characters never decode: not strict base64url. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAAAA"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-impossible-length",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "Five characters never decode: not strict base64url. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAAAA"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-trailing-newline",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member with a newline after the last character, which a lenient decoder drops. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAA\n"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-trailing-newline",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member with a newline after the last character, which a lenient decoder drops. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAA\n"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-whitespace",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member with a space in it. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAECAwQF BgcICQoLDA0ODxAREhMUFRYX"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-whitespace",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member with a space in it. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQF BgcICQoLDA0ODxAREhMUFRYX"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-not-a-string",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member that is not a string. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23
+          ]
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-not-a-string",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A member that is not a string. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                18,
+                19,
+                20,
+                21,
+                22,
+                23
+              ]
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-null-member",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A null member is not an absent member. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "stamp_proof": null
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-null-member",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "A null member is not an absent member. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+              "stamp_proof": null
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-mcp-one-bad-member",
+      "kind": "push",
+      "carriage": "mcp",
+      "section": [
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "One member decodes and the other does not: the whole call carries no push, and no part is answered. Error, never an answer.",
+      "input": {
+        "name": "record_push",
+        "arguments": {
+          "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+          "stamp_proof": "eyJvcGFxdWUiOiJzdGFtcCBwcm9vZiBvY3RldHMifQ!"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-one-bad-member",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§3.2",
+        "§2.3"
+      ],
+      "description": "One member decodes and the other does not: the whole call carries no push, and no part is answered. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+              "stamp_proof": "eyJvcGFxdWUiOiJzdGFtcCBwcm9vZiBvY3RldHMifQ!"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-raw-part",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.3"
+      ],
+      "description": "The push object in a raw part, as the evidence request carriage does: not this carriage. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "raw": "eyJyZWNvcmQiOiAiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVgifQ"
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-text-part",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.3"
+      ],
+      "description": "The push object as JSON text in a text part. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "text": "{\"record\": \"AAECAwQFBgcICQoLDA0ODxAREhMUFRYX\"}"
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-metadata-only",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.3"
+      ],
+      "description": "The push object in the Message's metadata, with a data part that is not a push object. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {}
+          }
+        ],
+        "metadata": {
+          "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX"
+        }
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-two-parts",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.3"
+      ],
+      "description": "Two parts: the Message holds exactly one. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX"
+            }
+          },
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-no-parts",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.3"
+      ],
+      "description": "No part. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": []
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-other-media-type",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.3"
+      ],
+      "description": "A data part whose mediaType is not application/json. An A2A error such as ContentTypeNotSupportedError is also a transport condition. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/cbor",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-task-id-present",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.3"
+      ],
+      "description": "A taskId: each push starts its own task. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+              "stamp_proof": "eyJvcGFxdWUiOiJzdGFtcCBwcm9vZiBvY3RldHMifQ"
+            }
+          }
+        ],
+        "taskId": "t-1"
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-role-agent",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.3"
+      ],
+      "description": "A Message whose role is not ROLE_USER. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_AGENT",
+        "extensions": [
+          "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+        ],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+              "stamp_proof": "eyJvcGFxdWUiOiJzdGFtcCBwcm9vZiBvY3RldHMifQ"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "neg-a2a-extension-not-listed",
+      "kind": "push",
+      "carriage": "a2a",
+      "section": [
+        "§4.2",
+        "§2.3"
+      ],
+      "description": "The extension URI missing from the Message's extensions. Error, never an answer.",
+      "input": {
+        "messageId": "m-7",
+        "role": "ROLE_USER",
+        "extensions": [],
+        "parts": [
+          {
+            "mediaType": "application/json",
+            "data": {
+              "record": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYX",
+              "stamp_proof": "eyJvcGFxdWUiOiJzdGFtcCBwcm9vZiBvY3RldHMifQ"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "error",
+        "answer": false
+      }
+    },
+    {
+      "id": "pos-classify-mcp-answer-both",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A complete, non-error result whose structuredContent is the answer object.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": true,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": true,
+                "refused": "",
+                "stored": false
+              },
+              "stamp_proof": {
+                "accepted": true,
+                "duplicate": false,
+                "refused": ""
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": true,
+            "duplicate": false,
+            "refused": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-mcp-answer-record-only",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "One member per part pushed: a record-only push is answered with a record member.",
+      "pushed": [
+        "record"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": true,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": true,
+                "refused": "",
+                "stored": false
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-mcp-answer-proof-only",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "One member per part pushed: a proof-only push is answered with a proof member.",
+      "pushed": [
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "stamp_proof": {
+                "accepted": true,
+                "duplicate": false,
+                "refused": ""
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "stamp_proof": {
+            "accepted": true,
+            "duplicate": false,
+            "refused": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-mcp-refused-is-an-answer",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A refused part is an answer, not an error (§3.3).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": false,
+                "deleted": false,
+                "digest": "",
+                "duplicate": false,
+                "refused": "invalid",
+                "stored": false
+              },
+              "stamp_proof": {
+                "accepted": false,
+                "duplicate": false,
+                "refused": "invalid"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": false,
+            "deleted": false,
+            "digest": "",
+            "duplicate": false,
+            "refused": "invalid",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": false,
+            "duplicate": false,
+            "refused": "invalid"
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-mcp-busy-is-an-answer",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "refused \"busy\" is an answer; the sender may push again (§2.3 rule 5).",
+      "pushed": [
+        "record"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": false,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": false,
+                "refused": "busy",
+                "stored": false
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": false,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": false,
+            "refused": "busy",
+            "stored": false
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-mcp-is-error-true-still-an-answer",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "An answer object in the answer position is the answer, whatever isError says (§2.3 rule 5).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": true,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": true,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": true,
+                "refused": "",
+                "stored": false
+              },
+              "stamp_proof": {
+                "accepted": true,
+                "duplicate": false,
+                "refused": ""
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": true,
+            "duplicate": false,
+            "refused": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-mcp-text-block-ignored",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A text block beside structuredContent: the sender reads only structuredContent.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "not read"
+              }
+            ],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": true,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": true,
+                "refused": "",
+                "stored": false
+              },
+              "stamp_proof": {
+                "accepted": true,
+                "duplicate": false,
+                "refused": ""
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": true,
+            "duplicate": false,
+            "refused": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "neg-classify-mcp-jsonrpc-error",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A JSON-RPC error is a transport condition, never a refusal (§2.3 rule 3).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "error": {
+            "code": -32602,
+            "message": "invalid params"
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-internal-error",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "-32603 on a receiver fault: no answer, so nothing is concluded (§2.3 rule 4).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "error": {
+            "code": -32603,
+            "message": "internal"
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-message-too-large",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "-32600 on a message over the bound: a transport condition (§2.3 rule 6).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "error": {
+            "code": -32600,
+            "message": "too large"
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-input-required",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "An input_required result is a transport condition (§3.3).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "input_required",
+            "isError": false,
+            "content": []
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-task-handle",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A task handle instead of a complete result (§3.3); its form is MCP's, not pinned here.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "task",
+            "task": {
+              "taskId": "t-1",
+              "status": "working"
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-no-structured-content",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "No structuredContent: no answer in the answer position.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [
+              {
+                "type": "text",
+                "text": "{\"record\": {\"ask_for_book\": false, \"counted\": true, \"deleted\": false, \"digest\": \"71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb\", \"duplicate\": true, \"refused\": \"\", \"stored\": false}, \"stamp_proof\": {\"accepted\": true, \"duplicate\": false, \"refused\": \"\"}}"
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-missing-part-member",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A part was pushed and its member is missing from the answer.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": true,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": true,
+                "refused": "",
+                "stored": false
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-extra-part-member",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "An answer member for a part that was not pushed.",
+      "pushed": [
+        "record"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": true,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": true,
+                "refused": "",
+                "stored": false
+              },
+              "stamp_proof": {
+                "accepted": true,
+                "duplicate": false,
+                "refused": ""
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-extra-answer-member",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A member of the record answer beyond the seven of §2.2.",
+      "pushed": [
+        "record"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": true,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": true,
+                "refused": "",
+                "stored": false,
+                "extra": true
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-missing-answer-member",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A record answer without its ask_for_book member.",
+      "pushed": [
+        "record"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "counted": true,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": true,
+                "refused": "",
+                "stored": false
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-wrong-member-type",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A record answer whose stored member is a string.",
+      "pushed": [
+        "record"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "record": {
+                "ask_for_book": false,
+                "counted": true,
+                "deleted": false,
+                "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                "duplicate": true,
+                "refused": "",
+                "stored": "false"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-mcp-unregistered-refusal",
+      "kind": "classify",
+      "carriage": "mcp",
+      "section": [
+        "§3.3",
+        "§2.3"
+      ],
+      "description": "A proof answer whose refused value is not one of its classes.",
+      "pushed": [
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "resultType": "complete",
+            "isError": false,
+            "content": [],
+            "structuredContent": {
+              "stamp_proof": {
+                "accepted": true,
+                "duplicate": false,
+                "refused": "over_limit"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "pos-classify-a2a-completed-answer",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "A completed task with one Artifact of the extension: the answer.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": true,
+            "duplicate": false,
+            "refused": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-a2a-record-only",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "One member per part pushed, over A2A too.",
+      "pushed": [
+        "record"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-a2a-refused-is-an-answer",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "A refused part is an answer: the task still completes (§4.3).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": false,
+                          "deleted": false,
+                          "digest": "",
+                          "duplicate": false,
+                          "refused": "invalid",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": false,
+                          "duplicate": false,
+                          "refused": "invalid"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": false,
+            "deleted": false,
+            "digest": "",
+            "duplicate": false,
+            "refused": "invalid",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": false,
+            "duplicate": false,
+            "refused": "invalid"
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-a2a-artifact-on-failed-task",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact of the extension on a task in TASK_STATE_FAILED is still the answer: the sender looks for the Artifact whatever the task state (§4.3, §2.3 rule 5).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_FAILED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": true,
+            "duplicate": false,
+            "refused": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-a2a-artifact-on-rejected-task",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact of the extension on a task in TASK_STATE_REJECTED is still the answer: the sender looks for the Artifact whatever the task state (§4.3, §2.3 rule 5).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_REJECTED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": true,
+            "duplicate": false,
+            "refused": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-a2a-artifact-on-working-task",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact of the extension on a task in TASK_STATE_WORKING is still the answer: the sender looks for the Artifact whatever the task state (§4.3, §2.3 rule 5).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_WORKING"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": true,
+            "duplicate": false,
+            "refused": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "pos-classify-a2a-artifact-on-canceled-task",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact of the extension on a task in TASK_STATE_CANCELED is still the answer: the sender looks for the Artifact whatever the task state (§4.3, §2.3 rule 5).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_CANCELED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "answer",
+        "answer": {
+          "record": {
+            "ask_for_book": false,
+            "counted": true,
+            "deleted": false,
+            "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+            "duplicate": true,
+            "refused": "",
+            "stored": false
+          },
+          "stamp_proof": {
+            "accepted": true,
+            "duplicate": false,
+            "refused": ""
+          }
+        }
+      }
+    },
+    {
+      "id": "neg-classify-a2a-completed-no-artifact",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "A completed task with no Artifact: a transport condition.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-failed-no-artifact",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "A task in a failed state with no Artifact: a transport condition.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_FAILED"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-artifact-without-extension",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact that does not list the extension URI is not the answer.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-artifact-other-extension",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact listing another extension URI is not the answer.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "urn:other"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-two-parts",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact with two parts is not of the answer's form.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    },
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-text-part",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact whose one part is text, not data.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "text": "{\"record\": {\"ask_for_book\": false, \"counted\": true, \"deleted\": false, \"digest\": \"71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb\", \"duplicate\": true, \"refused\": \"\", \"stored\": false}, \"stamp_proof\": {\"accepted\": true, \"duplicate\": false, \"refused\": \"\"}}"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-other-media-type",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact whose data part is not application/json.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/cbor",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-direct-message",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "A direct Message instead of a Task: a transport condition (§4.3).",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "message": {
+              "messageId": "m-9",
+              "role": "ROLE_AGENT",
+              "parts": [
+                {
+                  "mediaType": "application/json",
+                  "data": {
+                    "record": {
+                      "ask_for_book": false,
+                      "counted": true,
+                      "deleted": false,
+                      "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                      "duplicate": true,
+                      "refused": "",
+                      "stored": false
+                    },
+                    "stamp_proof": {
+                      "accepted": true,
+                      "duplicate": false,
+                      "refused": ""
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-error",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An A2A error is a transport condition, never a refusal.",
+      "pushed": [
+        "record",
+        "stamp_proof"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "error": {
+            "code": -32602,
+            "message": "invalid params"
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "neg-classify-a2a-extra-part-member",
+      "kind": "classify",
+      "carriage": "a2a",
+      "section": [
+        "§4.3",
+        "§2.3"
+      ],
+      "description": "An Artifact answer with a member for a part that was not pushed.",
+      "pushed": [
+        "record"
+      ],
+      "received": {
+        "response": {
+          "jsonrpc": "2.0",
+          "id": 7,
+          "result": {
+            "task": {
+              "id": "task-1",
+              "contextId": "ctx-1",
+              "status": {
+                "state": "TASK_STATE_COMPLETED"
+              },
+              "artifacts": [
+                {
+                  "artifactId": "a-1",
+                  "extensions": [
+                    "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/"
+                  ],
+                  "parts": [
+                    {
+                      "mediaType": "application/json",
+                      "data": {
+                        "record": {
+                          "ask_for_book": false,
+                          "counted": true,
+                          "deleted": false,
+                          "digest": "71db53839ee90023a82b5d166eceb29c262872e43df0bfe46a21cb8311c67ccb",
+                          "duplicate": true,
+                          "refused": "",
+                          "stored": false
+                        },
+                        "stamp_proof": {
+                          "accepted": true,
+                          "duplicate": false,
+                          "refused": ""
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "classification": "transport_condition"
+      }
+    },
+    {
+      "id": "pos-declared-mcp-tool",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "The tool as listed: fixed name and schemas.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": true
+      }
+    },
+    {
+      "id": "neg-declared-mcp-other-name",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "Another tool name.",
+      "input": {
+        "name": "push_record",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-header-annotation",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "An x-mcp-header annotation on a property would copy a record into an HTTP header.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "x-mcp-header": "Record"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-open-input",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "An input schema that allows other members.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-no-min-properties",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "An input schema that allows a push with neither part.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-loose-output-schema",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "An outputSchema that lists the members but not their fixed shape.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object"
+            },
+            "stamp_proof": {
+              "type": "object"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-widened-refusal-class",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "The proof's refused enum widened to the record's classes.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-output-required-dropped",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "The record answer's required list dropped.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-output-header-annotation",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "An x-mcp-header annotation on an outputSchema property.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "object",
+              "properties": {
+                "digest": {
+                  "type": "string",
+                  "x-mcp-header": "Digest"
+                },
+                "stored": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "deleted": {
+                  "type": "boolean"
+                },
+                "counted": {
+                  "type": "boolean"
+                },
+                "ask_for_book": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused",
+                    "over_limit",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "digest",
+                "stored",
+                "duplicate",
+                "deleted",
+                "counted",
+                "ask_for_book",
+                "refused"
+              ],
+              "additionalProperties": false
+            },
+            "stamp_proof": {
+              "type": "object",
+              "properties": {
+                "accepted": {
+                  "type": "boolean"
+                },
+                "duplicate": {
+                  "type": "boolean"
+                },
+                "refused": {
+                  "enum": [
+                    "",
+                    "invalid",
+                    "refused"
+                  ]
+                }
+              },
+              "required": [
+                "accepted",
+                "duplicate",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-mcp-no-output-schema",
+      "kind": "declaration",
+      "carriage": "mcp",
+      "section": [
+        "§3.1",
+        "§2.3"
+      ],
+      "description": "A tool without an outputSchema.",
+      "input": {
+        "name": "record_push",
+        "title": "Record push",
+        "description": "Takes a record push.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "record": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "stamp_proof": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          "minProperties": 1,
+          "additionalProperties": false
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "pos-declared-a2a-extension",
+      "kind": "declaration",
+      "carriage": "a2a",
+      "section": [
+        "§4.1",
+        "§2.3"
+      ],
+      "description": "The extension entry as listed.",
+      "input": {
+        "uri": "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/",
+        "description": "Takes a record push.",
+        "required": false
+      },
+      "expect": {
+        "conforms": true
+      }
+    },
+    {
+      "id": "neg-declared-a2a-other-uri",
+      "kind": "declaration",
+      "carriage": "a2a",
+      "section": [
+        "§4.1",
+        "§2.3"
+      ],
+      "description": "The binding under another URI.",
+      "input": {
+        "uri": "https://example.invalid/record-push",
+        "description": "Takes a record push.",
+        "required": false
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-a2a-required",
+      "kind": "declaration",
+      "carriage": "a2a",
+      "section": [
+        "§4.1",
+        "§2.3"
+      ],
+      "description": "required true: a push is opted into per message.",
+      "input": {
+        "uri": "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/",
+        "description": "Takes a record push.",
+        "required": true
+      },
+      "expect": {
+        "conforms": false
+      }
+    },
+    {
+      "id": "neg-declared-a2a-params",
+      "kind": "declaration",
+      "carriage": "a2a",
+      "section": [
+        "§4.1",
+        "§2.3"
+      ],
+      "description": "params present: the entry says nothing about the receiver.",
+      "input": {
+        "uri": "https://datatracker.ietf.org/doc/draft-mih-agent-record-push/",
+        "description": "Takes a record push.",
+        "required": false,
+        "params": {
+          "count": 3
+        }
+      },
+      "expect": {
+        "conforms": false
+      }
+    }
+  ]
+}

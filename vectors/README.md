@@ -35,6 +35,12 @@ same-commit files in CI.
   outcomes, caller invariance, retention, the `categories` field, A2A and MCP
   carriage, unavailable-window statements), derived from the draft text;
   `python/scripts/generate_evidence_request_vectors.py` regenerates them.
+- `record-push-v0/`: carriage vectors for `spec/bindings/record-push-v0.md` §3 and §4 (open
+  point RP-1): the `record_push` tool call and the A2A `Message`, strict base64url members, an
+  error against an answer, how a sender classifies a reply (an answer Artifact on a task not
+  completed is still the answer), and the fixed tool definition and extension entry. Carriage
+  only: no record, no stamp proof, no push rule; only the Python reference reader checks them
+  yet; `python/scripts/generate_record_push_vectors.py` regenerates them.
 - `settlement/`: draft-mih-agent-settlement-records-01 cases (two-party
   payer/payee leg records, the payment reference join, wrapped objects by
   digest, exact amounts, delivered-content digests, derived states), derived

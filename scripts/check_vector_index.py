@@ -101,6 +101,7 @@ COUNTERS = {
     "vectors/interop/": lambda: glob_count("vectors/interop/*/[pn]*-*", dirs=True),
     "vectors/evidence-request/": request_count,
     "vectors/settlement/": lambda: cases("vectors/settlement/cases.json"),
+    "vectors/record-push-v0/": lambda: cases("vectors/record-push-v0/carriage.json"),
     "vectors/checkpoint-consistency/": lambda: cases("vectors/checkpoint-consistency/vectors.json"),
     "vectors/evidence-layer/padding/": lambda: cases("vectors/evidence-layer/padding/cases.json"),
     "vectors/cll-material/": lambda: cases("vectors/cll-material/cases.json"),

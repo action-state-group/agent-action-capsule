@@ -113,6 +113,7 @@ its 11 `record_signatures`.
 | Set | Owning specification | Verbs | Cases |
 |---|---|---|---|
 | `vectors/evidence-request/` | `draft-mih-agent-evidence-request-00` to `-03` | request, respond, verify | 258 |
+| `vectors/record-push-v0/` | `spec/bindings/record-push-v0.md` §2-§4 (carriage over MCP and A2A) | request, respond | 88 |
 | `vectors/settlement/` | `draft-mih-agent-settlement-records-01` | record, verify | 26 |
 | `vectors/checkpoint-consistency/` | checkpoint consistency (`verifyRetainedHead`, a head the reader kept) | verify | 39 |
 | `vectors/interop/` | composition and run-under suites | verify | 11 |

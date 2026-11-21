@@ -40,6 +40,7 @@
   "vectors/personal-history-basic-v0/": {"python": ["test_personal_history_basic_v0_vectors.py"], "go": ["./personalhistory"]},
   "vectors/personal-history-outcome-v0/": {"python": ["test_personal_history_outcome_v0_vectors.py"]},
   "vectors/standard-history-v0/": {"python": ["test_standard_history_v0_vectors.py"], "go": ["./standardhistory"]},
+  "vectors/record-push-v0/": {"python": ["test_record_push_vectors.py"]},
   "vectors/inference-service-history-v0/": {"python": ["test_inference_service_history_v0_vectors.py"]},
   "vectors/inference-service-history-v0-interop-v1/": {"python": ["test_inference_service_history_v0_interop_v1_vectors.py"]},
   "vectors/inference-service-history-verdicts-v0/": {"python": ["test_inference_service_history_verdicts_v0_vectors.py"], "rust": ["agent-action-capsule:inference_history_verdicts_vectors"]},
