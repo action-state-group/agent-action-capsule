@@ -2,7 +2,7 @@
   "schema_version": "1",
   "_vendored_from": "action-state-group/scitt-payload-binding",
   "_vendored_source": "spec/cpb-provisional-registry.md",
-  "_vendored_commit": "fa57e7cb890c9021f34e7b8cc8e6e203ee0be184",
+  "_vendored_commit": "b4af5817f7677f5a21bfd238c86ec95f30780352",
   "_vendored_note": "Machine-readable resolver projection of the CPB *provisional* (Rung 3) Artifact Type entries. Lossy by design: name -> status + governed closed-set values. The markdown is normative; do not hand-edit -- re-run scripts/vendor_cpb_registry.py.",
   "provisional_artifact_types": {
     "verifiable-agent-conversation": {
@@ -12,12 +12,12 @@
     },
     "trace-trust-record": {
       "status": "provisional",
-      "reference": "`agentrust-io/trace-spec` @ `e0afe8eba628244afd591433014b182530a0c11c`",
+      "reference": "`agentrust-io/trace-spec` @ `e0afe8eba628244afd591433014b182530a0c11c` — `spec/trace-v0.2.md` §3.2.2 (row 1), `spec/registry-anchor-v1.md` §1 and §2 (row 2), `schema/trace-claim.json` (the closed field set both rows range over).",
       "governed_values": {}
     },
     "mesh-inference-exchange": {
       "status": "provisional",
-      "reference": "`action-state-group/capsule-emit-mesh` @ `9be03df` —",
+      "reference": "`action-state-group/capsule-emit-mesh` @ `9be03df`",
       "governed_values": {
         "terminal_state": [
           "completed",
@@ -43,5 +43,5 @@
       "governed_values": {}
     }
   },
-  "snapshot_sha256": "68617be45d5d186e15fb0035fa30829cdef02f7fda85b9b9cecee9a6151994bc"
+  "snapshot_sha256": "7d76464ad5be64eaf526938863bf6ed88a920297edae646e3ed26474267abf3b"
 }
