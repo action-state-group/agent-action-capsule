@@ -153,11 +153,11 @@ def test_cbor_encoder_is_core_deterministic():
 
 
 @pytest.mark.parametrize("binding", ["json", "cbor"])
-def test_a_ranged_checkpoints_subject_is_signed_and_read_back(gen, binding):
-    """-03 §3.1: the envelope signs the range, and a reader gets the same subject back."""
-    env = er.sign_envelope(REQUEST, er.Subject("checkpoints", (2, 5)), ANCHOR, ARTIFACT,
+def test_a_checkpoint_range_subject_is_signed_and_read_back(gen, binding):
+    """-03 §3.1: the envelope signs the checkpoint_range, and a reader gets the same subject back."""
+    env = er.sign_envelope(REQUEST, er.Subject("checkpoint_range", (2, 5)), ANCHOR, ARTIFACT,
                            signer=_Signer(gen, "responder"), issued_at=ISSUED_AT)
-    assert env.signed_members()["subject"] == {"checkpoints": [2, 5]}
+    assert env.signed_members()["subject"] == {"checkpoint_range": [2, 5]}
     back = er.parse_reply(env.encode(binding), binding=binding)
-    assert isinstance(back, er.Envelope) and back.subject == er.Subject("checkpoints", (2, 5))
+    assert isinstance(back, er.Envelope) and back.subject == er.Subject("checkpoint_range", (2, 5))
     back.verify()

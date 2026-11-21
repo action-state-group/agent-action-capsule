@@ -142,7 +142,7 @@ pub fn subject_value(subject: &Subject) -> Value {
     match subject {
         Subject::FullHistory => json!({"full_history": null}),
         Subject::Checkpoints => json!({"checkpoints": null}),
-        Subject::CheckpointRange(a, b) => json!({ "checkpoints": [a, b] }),
+        Subject::CheckpointRange(a, b) => json!({ "checkpoint_range": [a, b] }),
         Subject::Record(d) => json!({ "record": d }),
         Subject::Range(a, b) => json!({ "range": [a, b] }),
         Subject::Correlation(c) => json!({ "correlation": c }),
@@ -494,9 +494,9 @@ fn check_subject(subject: &Subject) -> Result<(), &'static str> {
         Subject::Range(a, b) if a > b => Err("range start is after its end"),
         Subject::Range(_, b) if *b > MAX_INTEGER => Err("range is not two profile integers"),
         Subject::Range(..) => Ok(()),
-        Subject::CheckpointRange(a, b) if a > b => Err("checkpoints range start is after its end"),
+        Subject::CheckpointRange(a, b) if a > b => Err("checkpoint_range start is after its end"),
         Subject::CheckpointRange(_, b) if *b > MAX_INTEGER => {
-            Err("checkpoints range is not two profile integers")
+            Err("checkpoint_range is not two profile integers")
         }
         Subject::CheckpointRange(..) => Ok(()),
         Subject::Correlation(c) if c.is_empty() => Err("correlation is not non-empty text"),

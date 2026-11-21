@@ -145,9 +145,11 @@ func ResolveSubject(view View, req Request, r Resolution, now time.Time) Resolut
 	covered := anchors[r.Anchor].Entries
 	switch req.Subject.Kind {
 	case SubjectCheckpoints:
+		return r
+	case SubjectCheckpointRange:
 		// Anchors are the checkpoints oldest first, so an anchor's index is
 		// its checkpoint position (ER -03 §8.1.3).
-		if req.Subject.Ranged && req.Subject.Range[1] > uint64(r.Anchor) {
+		if req.Subject.Range[1] > uint64(r.Anchor) {
 			return Resolution{Reason: ReasonCoverageUnsatisfiable}
 		}
 		return r
@@ -286,9 +288,9 @@ func Decide(view View, req Request, p Policy, now time.Time) Resolution {
 	registered := false
 	switch {
 	case req.Derivation == DerivationHistoryCard || req.Derivation == DerivationHistoryCard2:
-		// Both history cards are built in, and answer checkpoints only
-		// without a range (ER -03 §8.1).
-		if req.Subject.Kind != SubjectFullHistory && req.Subject.Kind != SubjectCheckpoints || req.Subject.Ranged {
+		// Both history cards are built in, and answer checkpoints and
+		// full_history only, never checkpoint_range (ER -03 §8.1).
+		if req.Subject.Kind != SubjectFullHistory && req.Subject.Kind != SubjectCheckpoints {
 			return refuse(ReasonNoSuchSubject)
 		}
 	case req.Derivation != "":

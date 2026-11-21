@@ -1,0 +1,2 @@
+<!-- changelog: rust/evidence-request/CHANGELOG.md -->
+- Breaking: `registry::SubjectForm` gains `CheckpointRange`, token `checkpoint_range` (`draft-mih-agent-evidence-request-03` §3.1, AAC#644). `request::Subject::CheckpointRange(a, b)` now reads and writes `{"checkpoint_range": [a, b]}`, its `form()` is `SubjectForm::CheckpointRange`, and `{"checkpoints": [a, b]}` is malformed. `SubjectForm::ALL` stays the six forms of the -02 registry; `from_token` also knows `checkpoint_range`.
