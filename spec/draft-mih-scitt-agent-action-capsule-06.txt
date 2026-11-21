@@ -902,8 +902,9 @@ Internet-Draft            Agent Action Capsules            November 2026
    Record (for example, permit receipts per
    [I-D.munoz-scitt-permit-profile], or machine mandates) are typed
    digest references per [I-D.mih-sokolov-scitt-payload-binding]'s Typed
-   Digest References section, with artifact types drawn from the CPB
-   Artifact Type registry.  Cross-profile comparability of digest values
+   Digest References section.  CPB defines no artifact-type registry;
+   the artifact types such a reference may name are accepted as
+   Section 5.5.5 states.  Cross-profile comparability of digest values
    (comparable only under compatible declared digest contexts; otherwise
    indeterminate/deny, never equal-looking-hex) follows that document's
    Cross-Profile Comparability subsection.
@@ -919,8 +920,8 @@ Internet-Draft            Agent Action Capsules            November 2026
    the typed digest reference above: they are bare intra-profile digests
    and join keys, either a current JSON digest or an opaque correlation
    string, not {type, digest_alg, digest} objects citing an external
-   artifact by registered artifact type.  They MUST NOT be interpreted
-   as CPB typed digest references.  Only the external-authorization
+   artifact by declared artifact type.  They MUST NOT be interpreted as
+   CPB typed digest references.  Only the external-authorization
    references described in this paragraph use the CPB typed-reference
    mechanism.
 
@@ -943,7 +944,6 @@ Internet-Draft            Agent Action Capsules            November 2026
    producer MUST NOT record an assurance mode it did not achieve; a
    verifier rederives each mode from the evidence present and reports
    any overclaim.
-
 
 
 
@@ -1726,10 +1726,10 @@ Internet-Draft            Agent Action Capsules            November 2026
    reference [I-D.mih-sokolov-scitt-payload-binding]: {type, digest_alg,
    digest}, the same mechanism this profile already uses for the
    external-authorization references of the Effect Record (Section 5.3).
-   type names an artifact type per the CPB Artifact Type registry; this
-   document defines the references entry shape, not an exhaustive list
-   of what may be cited.
-
+   type is an artifact-type identifier.  CPB defines no artifact-type
+   registry, and this document creates none.  This document declares one
+   artifact type, agent-action-capsule, with one digest context and no
+   purpose label: digest_alg is exactly "SHA-256" and digest is the
 
 
 
@@ -1737,6 +1737,18 @@ Mih                        Expires 5 May 2027                  [Page 31]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
+
+   cited Capsule's capsule_id (Section 5.1), 64 lowercase hexadecimal
+   characters.  Every other type is accepted only through an artifact-
+   type declaration that a citing profile identifies by stable normative
+   reference, of which a deployment MAY accept a subset, as CPB's Cross-
+   Profile Comparability subsection requires; a verifier MUST NOT
+   discover a type from an unspecified or mutable registry snapshot.  A
+   well-formed references entry whose type matches no accepted
+   declaration is Unresolved (cause: context) in CPB's terms, which
+   check 8 of Section 6 reports as informational and never as a
+   rejection.  This document defines the references entry shape, not an
+   exhaustive list of what may be cited.
 
    *Digest as identity.* A references entry's target is identified
    solely by the {digest_alg, digest} pair from its shape (above); no
@@ -1768,24 +1780,12 @@ Internet-Draft            Agent Action Capsules            November 2026
    artifact be identified by content rather than by name originates
    here.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   *Identity references, never policy references.* Every references
+   entry, as defined above, is an IDENTITY reference: its {digest_alg,
+   digest} pair pins the exact bytes of one target, the same discipline
+   capsule_id gives this Capsule itself (Section 5.1) — for a cited AAC
+   Capsule, checking a references entry against that Capsule's own
+   capsule_id computation is exactly this comparison.  This profile
 
 
 
@@ -1794,12 +1794,6 @@ Mih                        Expires 5 May 2027                  [Page 32]
 Internet-Draft            Agent Action Capsules            November 2026
 
 
-   *Identity references, never policy references.* Every references
-   entry, as defined above, is an IDENTITY reference: its {digest_alg,
-   digest} pair pins the exact bytes of one target, the same discipline
-   capsule_id gives this Capsule itself (Section 5.1) — for a cited AAC
-   Capsule, checking a references entry against that Capsule's own
-   capsule_id computation is exactly this comparison.  This profile
    defines no POLICY reference: a citation of the shape "this issuer,
    this subject, at least this version," which deliberately pins no
    historical bytes and instead names an evolving relationship a runtime
@@ -1827,6 +1821,12 @@ Internet-Draft            Agent Action Capsules            November 2026
 
    A references entry MAY additionally carry a retention object,
    declaring a retention undertaking about the cited target:
+
+
+
+
+
+
 
 
 
@@ -1975,10 +1975,10 @@ Internet-Draft            Agent Action Capsules            November 2026
    registry-governed (Specification Required, Section 12) string stating
    why this Capsule cites the target. citation_purpose is a distinct
    vocabulary from CPB's own purpose field on a typed digest reference:
-   CPB's purpose selects among an artifact type's registered digest
-   contexts, and citation_purpose is this profile's own, separately-
-   named field for the citing relationship, never a repurposing of CPB's
-   field.  The seeded vocabulary:
+   CPB's purpose selects among the digest contexts that an artifact
+   type's declaration defines, and citation_purpose is this profile's
+   own, separately-named field for the citing relationship, never a
+   repurposing of CPB's field.  The seeded vocabulary:
 
    +========================+=========================================+
    | citation_purpose       | Meaning                                 |
@@ -2247,7 +2247,10 @@ Internet-Draft            Agent Action Capsules            November 2026
        citation_purpose): report as informational findings; MUST NOT
        reject (Section 12).  An unknown effect_attestation is
        additionally graded no stronger than runtime_claimed
-       (Section 5.3).
+       (Section 5.3).  A well-formed references entry whose type matches
+       no accepted artifact-type declaration (Section 5.5.5) is likewise
+       reported as an informational finding (Unresolved, cause context);
+       MUST NOT reject.
 
    9.  Provenance mode: provenance_mode.mode: "backfilled" without a
        well-formed provenance_mode block (source_ref,
@@ -2287,9 +2290,6 @@ Internet-Draft            Agent Action Capsules            November 2026
    Capsule carrying effect.status: "failed" derives effect_mode:
    "dispatched_unconfirmed" (Section 5.3); the matrix therefore REQUIRES
    effect_attestation.  A conforming verifier MUST report a check-5
-   failure for such a Capsule when effect_attestation is absent, and
-   MUST NOT treat the failed status as exempt (only planned is carved,
-   and only not_applicable is the no-effect case).  The same expectation
 
 
 
@@ -2298,6 +2298,9 @@ Mih                        Expires 5 May 2027                  [Page 41]
 Internet-Draft            Agent Action Capsules            November 2026
 
 
+   failure for such a Capsule when effect_attestation is absent, and
+   MUST NOT treat the failed status as exempt (only planned is carved,
+   and only not_applicable is the no-effect case).  The same expectation
    holds for effect.status: "reverted", which likewise derives
    dispatched_unconfirmed.  This vector exists to demonstrate the matrix
    is total over effect.status: the runtime reporting a failure is still
@@ -2340,9 +2343,6 @@ Internet-Draft            Agent Action Capsules            November 2026
    discovery and authentication are out of scope for this profile; they
    are expected to be handled via out-of-band tenant configuration or a
    future discovery mechanism.
-
-
-
 
 
 
@@ -2712,14 +2712,14 @@ Internet-Draft            Agent Action Capsules            November 2026
        counterparty_half, counterparty_inclusion.  This registry is
        distinct from, and never a repurposing of, CPB's own purpose
        field on a typed digest reference
-       ([I-D.mih-sokolov-scitt-payload-binding]), which selects among an
-       artifact type's registered digest contexts and is orthogonal to
-       any role a companion profile assigns a digest within a cross-
-       document citation.  Designated-expert guidance: acted_on,
-       responds_to, and ran_under name a citation whose target is
-       outside the citing Capsule's own chain — a different producer or
-       a different stream (Section 5.5.5); a citation to the producer's
-       own same-stream chain parent is never expressed here.
+       ([I-D.mih-sokolov-scitt-payload-binding]), which selects among
+       the digest contexts an artifact type's declaration defines and is
+       orthogonal to any role a companion profile assigns a digest
+       within a cross-document citation.  Designated-expert guidance:
+       acted_on, responds_to, and ran_under name a citation whose target
+       is outside the citing Capsule's own chain — a different producer
+       or a different stream (Section 5.5.5); a citation to the
+       producer's own same-stream chain parent is never expressed here.
        corroborates_source_time is the seeded exception to that same-
        stream/cross-stream framing: it cites, by digest, a signed or
        independently witnessed timestamp supporting a provenance_mode

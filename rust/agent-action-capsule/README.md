@@ -118,9 +118,8 @@ cargo test --locked --all-features
 ```
 
 The tests read `../../vectors/`, `../../provenance-mode-vectors/` and
-`../../spec/REGISTRY.md`. `data/REGISTRY.md` and `data/cpb_provisional.json`
-are byte copies of `spec/REGISTRY.md` and
-`python/agent_action_capsule/data/cpb_provisional.json`; the `drift` test
-fails until a changed source is copied over.
+`../../spec/REGISTRY.md`. `data/REGISTRY.md` is a byte copy of
+`spec/REGISTRY.md`; the `drift` test fails until a changed source is copied
+over.
 
 Licensed under BSD-3-Clause.

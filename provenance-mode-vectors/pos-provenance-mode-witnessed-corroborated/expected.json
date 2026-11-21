@@ -7,8 +7,15 @@
     "provenance_mode": "backfilled",
     "provenance_time_rung": "witnessed"
   },
-  "description": "a backfilled record claiming provenance_mode.time_rung='witnessed' WITH a well-formed references[] entry citing citation_purpose='corroborates_source_time' (all of type/digest_alg/digest non-empty) -> verifies clean; this is the ONLY case where derived.provenance_time_rung='witnessed' (the cap rederived from cited evidence, not from the claim).",
-  "findings": [],
+  "description": "a backfilled record claiming provenance_mode.time_rung='witnessed' WITH a well-formed references[] entry citing citation_purpose='corroborates_source_time' (all of type/digest_alg/digest non-empty) -> verifies ok with no overclaim (its undeclared artifact type is reported Unresolved, informational only); this is the ONLY case where derived.provenance_time_rung='witnessed' (the cap rederived from cited evidence, not from the claim).",
+  "findings": [
+    {
+      "check": 8,
+      "code": "reference_type_unresolved",
+      "detail": "references[0].type is not agent-action-capsule, the one artifact type this verifier accepts; Unresolved (cause: context), informational, not rejected (\u00a75.5.5)",
+      "severity": "info"
+    }
+  ],
   "kind": "positive",
   "ok": true
 }

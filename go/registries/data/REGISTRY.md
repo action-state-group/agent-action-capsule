@@ -316,8 +316,8 @@ later revisions). Governs the `citation_purpose` field of a `references[]`
 entry — a Capsule's citation of a record outside its own `chain` scope (a
 different producer or stream). Distinct from, and never a repurposing of,
 CPB's own `purpose` field on a typed digest reference
-(scitt-payload-binding), which selects among an artifact type's registered
-digest contexts.
+(scitt-payload-binding), which selects among the digest contexts that an
+artifact type's declaration defines.
 
 | Value | Semantics |
 |---|---|

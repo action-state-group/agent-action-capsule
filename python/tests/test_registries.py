@@ -122,26 +122,17 @@ def test_parser_handles_multiline_wrapping(tmp_path: Path):
     assert set(regs["chain.relation"]) == {"confirms", "supersedes"}
 
 
-# ---- Vendored CPB provisional registry -------------------------------------
-def test_cpb_provisional_snapshot_drops_registered_mesh_values():
-    """The vendored CPB provisional snapshot no longer lists the
-    mesh-inference-exchange capsule field values: they are registered (REGISTRY.md
-    §3, §5, §6), so check 8 resolves them as seeded, not provisional."""
-    import json
+# ---- No vendored CPB registry snapshot (#418) -------------------------------
+def test_no_cpb_registry_snapshot_or_loader():
+    """CPB does not authorize artifact-type discovery from an unspecified or
+    mutable registry snapshot, so the package data directory holds none, the
+    package-data list names none, and no loader for one is exposed (#418)."""
+    import agent_action_capsule
+    import agent_action_capsule.registries as registries
 
-    from agent_action_capsule.registries import find_cpb_provisional, load_cpb_provisional_values
-
-    assert load_cpb_provisional_values() == {}
-    doc = json.loads(find_cpb_provisional().read_text(encoding="utf-8"))
-    mesh = doc["provisional_artifact_types"]["mesh-inference-exchange"]
-    assert "capsule_field_values" not in mesh
-    assert "capsule_field_values_source" not in mesh
-
-
-def test_cpb_provisional_missing_snapshot_is_empty_not_error(monkeypatch, tmp_path: Path):
-    """Absence of the snapshot yields {} — provisional resolution is optional
-    enrichment, never a hard dependency (the verifier must still run)."""
-    from agent_action_capsule.registries import load_cpb_provisional_values
-
-    monkeypatch.setenv("AAC_CPB_PROVISIONAL_PATH", str(tmp_path / "nope.json"))
-    assert load_cpb_provisional_values() == {}
+    data = Path(agent_action_capsule.__file__).resolve().parent / "data"
+    assert sorted(p.name for p in data.glob("cpb_*.json")) == []
+    pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+    assert "cpb_" not in pyproject
+    assert not hasattr(registries, "load_cpb_provisional_values")
+    assert not hasattr(registries, "find_cpb_provisional")

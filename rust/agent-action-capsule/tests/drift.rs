@@ -16,11 +16,3 @@ fn assert_same(copy: &str, source: &str) {
 fn registry_is_spec_registry() {
     assert_same("data/REGISTRY.md", "spec/REGISTRY.md");
 }
-
-#[test]
-fn cpb_snapshot_is_python_snapshot() {
-    assert_same(
-        "data/cpb_provisional.json",
-        "python/agent_action_capsule/data/cpb_provisional.json",
-    );
-}
