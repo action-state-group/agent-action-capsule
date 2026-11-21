@@ -400,4 +400,4 @@ this binding only once it passes them.
 
 | # | Point |
 |---|---|
-| RP-1 | The carriage vectors of §7 are checked only by a reference reader written from this text. They are to be run by the first implementation's MCP and A2A entry for `Receive`, and corrected here if that run shows a misreading. |
+| RP-1 | The carriage vectors of §7 are checked only by a reference reader written from this text. They are to be run by the first implementation's MCP and A2A entry for `Receive`, and, if that run shows a misreading, the vectors or this text are corrected here, whichever misread. |

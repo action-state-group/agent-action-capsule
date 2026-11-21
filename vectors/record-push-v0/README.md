@@ -15,7 +15,8 @@ fixed tool definition and extension entry (§2.3 rule 7).
 
 **What they do not pin:** a record or a stamp proof (both are opaque octets here, of no profile),
 the push rule (SF-6, so no case depends on who the sender is), how strictly a proof's JSON is read
-(SF-4), or the values of an answer. The answer objects are those of EBL's receive vectors (§7);
+(SF-4), the values of an answer, or the `A2A-Extensions` service parameter of §4.2 (only the
+Message's own `extensions` member is pinned). The answer objects are those of EBL's receive vectors (§7);
 the cases here use the §3.4 example only to put a well-formed value in the answer position.
 
 **Not yet checked by an implementation.** No implementation serves `record_push` yet (EBL has
