@@ -1438,6 +1438,89 @@ neg_contract_ref_ecma_whitespace = _mutated(pos_example_org_claims_result)
 neg_contract_ref_ecma_whitespace["claims"][0]["contract_ref"] += "\ufeff"
 
 
+
+# --- spec section 4.4: reason ------------------------------------------------
+#     One optional token per requirement claim, display-only. Every fixture
+#     is a copy of a positive with `reason` added (and, where named, one
+#     further field), so stripping `reason` from a positive gives its source
+#     byte for byte.
+#
+#     pos-example-org-reason-result: three registered tokens, each on a claim
+#     its row allows -- claim-1 (met, witnessed) and claim-2 (not_met,
+#     self-attested) carry a counterparty_leg_* token, claim-3 (GAP) a
+#     capsule_* token.
+pos_example_org_reason_result = _untyped(pos_example_org_claims_result)
+pos_example_org_reason_result["claims"][0]["reason"] = "counterparty_leg_signer_not_trusted"
+pos_example_org_reason_result["claims"][1]["reason"] = "counterparty_leg_signature_did_not_verify"
+pos_example_org_reason_result["claims"][2]["reason"] = "capsule_signature_did_not_verify"
+
+#     pos-example-org-reason-unregistered-result: the fourth registered token
+#     on claim-3, and on claim-2 a token the table does not list, which is
+#     valid (a verifier may report it as not recognised).
+pos_example_org_reason_unregistered_result = _untyped(pos_example_org_claims_result)
+pos_example_org_reason_unregistered_result["claims"][1]["reason"] = "example_org_term_not_read"
+pos_example_org_reason_unregistered_result["claims"][2]["reason"] = "capsule_signer_not_trusted"
+
+#     Schema negatives, each failing one rule:
+#     neg-reason-uppercase: claim-3's token breaks the grammar.
+neg_reason_uppercase = _untyped(pos_example_org_reason_result)
+neg_reason_uppercase["claims"][2]["reason"] = "Capsule_signature_did_not_verify"
+
+#     neg-reason-trailing-newline: claim-3's token followed by a newline,
+#     which Python's re `$` would accept and ECMA-262's does not.
+neg_reason_trailing_newline = _untyped(pos_example_org_reason_result)
+neg_reason_trailing_newline["claims"][2]["reason"] = "capsule_signature_did_not_verify\n"
+
+#     neg-reason-list: two tokens on claim-3; a claim carries at most one.
+neg_reason_list = _untyped(pos_example_org_reason_result)
+neg_reason_list["claims"][2]["reason"] = ["capsule_signature_did_not_verify", "capsule_signer_not_trusted"]
+
+#     neg-reason-capsule-code-on-satisfied-claim: a capsule_* token on
+#     claim-2 (not_met, self-attested, SATISFIED). The general placement rule
+#     admits a reason there; the capsule_* row does not.
+neg_reason_capsule_code_on_satisfied_claim = _untyped(pos_example_org_claims_result)
+neg_reason_capsule_code_on_satisfied_claim["claims"][1]["reason"] = "capsule_signature_did_not_verify"
+
+#     neg-reason-counterparty-code-on-unavailable-claim: a counterparty_leg_*
+#     token on claim-3 (GAP). The general placement rule admits a reason
+#     there; the counterparty_leg_* row does not (precedence: an unavailable
+#     claim carries the reason for its sufficiency).
+neg_reason_counterparty_code_on_unavailable_claim = _untyped(pos_example_org_claims_result)
+neg_reason_counterparty_code_on_unavailable_claim["claims"][2]["reason"] = "counterparty_leg_signature_did_not_verify"
+
+#     neg-reason-on-countersigned-claim: claim-1 graded countersigned (one
+#     further field) with an unregistered token: a met claim with nothing
+#     lowered carries no reason.
+neg_reason_on_countersigned_claim = _untyped(pos_example_org_claims_result)
+neg_reason_on_countersigned_claim["claims"][0]["grade"] = "countersigned"
+neg_reason_on_countersigned_claim["claims"][0]["reason"] = "example_org_note"
+
+#     neg-reason-on-out-of-scope-claim: an unregistered token on the
+#     out_of_scope positive's claim-2.
+neg_reason_on_out_of_scope_claim = _untyped(pos_example_org_out_of_scope_result)
+neg_reason_on_out_of_scope_claim["claims"][1]["reason"] = "example_org_note"
+
+#     neg-reason-on-close-claim: an unregistered token on the unilateral
+#     close positive's close-1 (met, self-attested): only a requirement
+#     claim carries a reason. Its records are the positive's.
+neg_reason_on_close_claim = _untyped(pos_example_org_close_unilateral_result)
+neg_reason_on_close_claim["claims"][1]["reason"] = "example_org_note"
+CLOSE_RECORDS["neg-reason-on-close-claim"] = CLOSE_RECORDS["pos-example-org-close-unilateral-result"]
+
+REASON_FIXTURES = {
+    "pos-example-org-reason-result": pos_example_org_reason_result,
+    "pos-example-org-reason-unregistered-result": pos_example_org_reason_unregistered_result,
+    "neg-reason-uppercase": neg_reason_uppercase,
+    "neg-reason-trailing-newline": neg_reason_trailing_newline,
+    "neg-reason-list": neg_reason_list,
+    "neg-reason-capsule-code-on-satisfied-claim": neg_reason_capsule_code_on_satisfied_claim,
+    "neg-reason-counterparty-code-on-unavailable-claim": neg_reason_counterparty_code_on_unavailable_claim,
+    "neg-reason-on-countersigned-claim": neg_reason_on_countersigned_claim,
+    "neg-reason-on-out-of-scope-claim": neg_reason_on_out_of_scope_claim,
+    "neg-reason-on-close-claim": neg_reason_on_close_claim,
+}
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -1524,6 +1607,8 @@ def main() -> int:
     write("neg-calibration-cites-other-record", neg_calibration_cites_other_record)
     write("neg-calibration-with-close-body", neg_calibration_with_close_body)
     write("neg-out-of-scope-on-calibration-claim", neg_out_of_scope_on_calibration_claim)
+    for name, doc in REASON_FIXTURES.items():
+        write(name, doc)
     for name, records in {**CLOSE_RECORDS, **CALIBRATION_RECORDS}.items():
         write(f"{name}.records", records)
     return 0

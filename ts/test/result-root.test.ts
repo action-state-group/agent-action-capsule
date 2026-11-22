@@ -516,6 +516,17 @@ describe("buildResultRoot", () => {
     expect(
       validateEvidenceResult(read("neg-judge-producer-unprefixed-result.json")),
     ).toEqual([]);
+    // section 4.4's reason: a claim member, so the mirror accepts both
+    // positives and, open-world below the top level, every reason negative
+    // too. The schema checker rejects the negatives.
+    for (const name of [
+      "pos-example-org-reason-result.json",
+      "pos-example-org-reason-unregistered-result.json",
+      "neg-reason-uppercase.json",
+      "neg-reason-on-countersigned-claim.json",
+    ]) {
+      expect(validateEvidenceResult(read(name))).toEqual([]);
+    }
     // the prefix is case-sensitive, as the schema's ^x- pattern is
     const source = read("pos-example-org-claims-result.json") as Obj;
     expect(validateEvidenceResult({ ...source, "X-note": 1 })).toEqual([
