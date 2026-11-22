@@ -536,8 +536,8 @@ fn composed_history_vectors() {
     }
 }
 
-/// -03 key sources under `controller_binding` and `same_key` (#663): the
-/// whole `expect`.
+/// -03 key sources under `controller_binding` and `same_key` (#663): every
+/// case of vectors/bundle/composed-key-source/ against its whole `expect`.
 #[test]
 fn composed_key_source_vectors() {
     for case in &cases("composed-key-source", 18) {

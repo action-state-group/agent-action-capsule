@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """``agent_action_capsule.composed`` over the composed/v1 vectors.
 
-The library runs every case of ``vectors/bundle/composed/`` (-01 joins) and
+The library runs every case of ``vectors/bundle/composed/`` (-01 joins),
 ``vectors/bundle/composed-controller-binding/`` (-02 ``controller_binding``
-joins and empty-history members) and is compared with each case's whole
-``expect``, as ``go/bundle`` does. ``test_bundle_composed_cb_vectors.py`` and
+joins and empty-history members), ``vectors/bundle/composed-history/`` (-03
+History members and ``same_key``) and ``vectors/bundle/composed-key-source/``
+(-03 member keys) and is compared with each case's whole ``expect``, as
+``go/bundle`` does. ``test_bundle_composed_cb_vectors.py`` and
 ``test_bundle_composed_vectors.py`` stay the independent readings.
 """
 from __future__ import annotations
