@@ -12,9 +12,29 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: nothing after `go/v0.24.0`, `python/v0.19.0` and `ts/v0.15.0`. The Rust crates keep their own
+Not in any tag yet: nothing after `go/v0.24.0`, `python/v0.19.0` and `ts/v0.16.0`. The `reason` entry below shipped in `ts/v0.16.0` and is listed here until a `go` tag carries it. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
+
+- Evidence Result v0: an optional, display-only claim member `reason` (`spec/evidence-result-v0.md` §4.4, #657), one lowercase token naming why a requirement claim is unavailable or why its grade stopped short of `countersigned`. Four registered tokens (`capsule_signature_did_not_verify`, `capsule_signer_not_trusted`, `counterparty_leg_signature_did_not_verify`, `counterparty_leg_signer_not_trusted`), each bound to the claims it may appear on. A producer writes only registered tokens; a reader accepts an unregistered one (from a later revision) and shows it raw. A verifier never reads it to decide anything, and a renderer labels it as the producer's statement. The schema, its Go copy, Go `evidenceresult.Claim.Reason` and TypeScript `ResultClaim.reason` / `reasonKind` (with `REASON_KINDS`) carry it; two positive and eight negative vectors in `vectors/evidence-result/` pin it. A validator from before this change rejects a claim carrying `reason`, so a producer keeps its `x-` reason member until its readers update.
+
+- Spec: Person Signature v0 (`spec/person-signature-v0.md`, informational). A person's signature,
+  made with the person's own key, over the digest of a record that another party signed, carried
+  beside the record in `person_signatures`, never inside it. The first key type is `webauthn`: an
+  assertion whose challenge is `person-signature/0:<record_digest>`, checked offline against the
+  person keys, relying party id and origins the using profile supplies. A record without one reads
+  `NOT_PRESENT`, "not signed by the person". Conformance vectors: `vectors/person-signature-v0/`
+  (55 cases) with a Python generator and an independent evaluator test (#627).
+
+## ts 0.16.0 — 2026-11-22
+
+Tag `ts/v0.16.0`. The pull requests that changed `ts/` since `ts/v0.15.0`:
+
+- feat(evidence-result): optional display-only claim member reason (#657) (#658)
+
+The changes, from the entries listed under Unreleased since `ts/v0.15.0`: the ones that changed the TypeScript package, and those that changed no package directory (spec, vectors, examples). The Person Signature v0 entry changed the Go and Python packages and stays under Unreleased:
+
+- Evidence Result v0: an optional, display-only claim member `reason` (`spec/evidence-result-v0.md` §4.4, #657), one lowercase token naming why a requirement claim is unavailable or why its grade stopped short of `countersigned`. Four registered tokens (`capsule_signature_did_not_verify`, `capsule_signer_not_trusted`, `counterparty_leg_signature_did_not_verify`, `counterparty_leg_signer_not_trusted`), each bound to the claims it may appear on. A producer writes only registered tokens; a reader accepts an unregistered one (from a later revision) and shows it raw. A verifier never reads it to decide anything, and a renderer labels it as the producer's statement. The schema, its Go copy, Go `evidenceresult.Claim.Reason` and TypeScript `ResultClaim.reason` / `reasonKind` (with `REASON_KINDS`) carry it; two positive and eight negative vectors in `vectors/evidence-result/` pin it. A validator from before this change rejects a claim carrying `reason`, so a producer keeps its `x-` reason member until its readers update.
 
 ## python 0.19.0 — 2026-11-21
 
