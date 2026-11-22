@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.14.0 — 2026-11-22
+
+Tag `crates/agent-action-capsule-v0.14.0`.
+
+- `bundle::composed`: Evidence Bundle -03 History members and the `same_key` join basis (agent-action-capsule#537, #664), at parity with Python, Go and TypeScript on `vectors/bundle/composed-history/`. Consumer: Mesh-LLM/capsules-plugin#331.
+
 ## 0.13.0 — 2026-11-21
 
 Tag `crates/agent-action-capsule-v0.13.0`.
