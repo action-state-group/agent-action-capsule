@@ -973,8 +973,8 @@ A *History* is a responder's answer to one Evidence Request for its
 `full_history` subject under a derivation that counts its evidence stream up
 to one anchor, such as a History card, whose artifact is the UTF-8 JCS
 serialization of a JSON object that states that anchor in its `anchor`
-member, as the History cards of the derivations this document's examples
-name do. It is an artifact answer, so a History
+member, as the cards of `standard_history` and `inference-service-history`
+do. It is an artifact answer, so a History
 member is an `artifact` member: ER's three outcomes are unchanged. It is not
 an Evidence Bundle and has no root record. Each History is still asked for
 and answered by its own request, one subject per request.

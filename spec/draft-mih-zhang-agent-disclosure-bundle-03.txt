@@ -1240,12 +1240,11 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    full_history subject under a derivation that counts its evidence
    stream up to one anchor, such as a History card, whose artifact is
    the UTF-8 JCS serialization of a JSON object that states that anchor
-   in its anchor member, as the History cards of the derivations this
-   document's examples name do.  It is an artifact answer, so a History
-   member is an artifact member: ER's three outcomes are unchanged.  It
-   is not an Evidence Bundle and has no root record.  Each History is
-   still asked for and answered by its own request, one subject per
-   request.
+   in its anchor member, as the cards of standard_history and inference-
+   service-history do.  It is an artifact answer, so a History member is
+   an artifact member: ER's three outcomes are unchanged.  It is not an
+   Evidence Bundle and has no root record.  Each History is still asked
+   for and answered by its own request, one subject per request.
 
    A History member carries, as its body, history:
 
@@ -1282,6 +1281,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    string of unpadded base64url.  Unpadded base64url here is the one
    canonical form of [RFC4648], Section 5: its pad bits are zero, so one
    octet string has one text.  This is the rule a refusal or absence
+   body outside its form already follows (Section 8.2.1): the form is
 
 
 
@@ -1290,7 +1290,6 @@ Mih & Zhang                Expires 6 May 2027                  [Page 23]
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
-   body outside its form already follows (Section 8.2.1): the form is
    what the composing party can check before it composes.  A History
    that is well formed but fails a check below is a failed member, never
    a malformed block.
@@ -1338,6 +1337,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    *Join view.* A carried History member that passes checks 1 to 5 has a
    _key_, its envelope's responder, and a _time_, its anchor
    checkpoint's timestamp.  A History member that is declared missing,
+   is signature-unverified, or fails any of checks 1 to 5 has no join
 
 
 
@@ -1346,7 +1346,6 @@ Mih & Zhang                Expires 6 May 2027                  [Page 24]
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
-   is signature-unverified, or fails any of checks 1 to 5 has no join
    view, and every join naming it is not_derivable (Section 8.2.6).  So
    does a History member whose anchor checkpoint is unverified, or whose
    envelope does not reproduce the member's digest: it is not the
@@ -1390,6 +1389,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    Composition closure covers declared members only.  A participant that
    is in neither members nor not_requested is not visible to a verifier
    from this block (Section 12.1).
+
 
 
 

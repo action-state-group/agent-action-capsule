@@ -341,3 +341,26 @@ def test_history_without_a_cll_verifier_is_unverified_not_failed(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", no_cll)
     history = c._checkpoint_time(b"\xd2\x84")
     assert history == (None, c.HISTORY_UNVERIFIED)
+
+
+def test_same_key_without_a_signature_verifier_is_not_derivable(monkeypatch):
+    """No 'cryptography' installed: a root record's producer signature cannot
+    be checked, so a same_key join between two Bundles is not derivable."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def no_producer_envelope(name, globals=None, locals=None, fromlist=(), level=0):
+        if name.endswith("producer_envelope") or (level and fromlist and "verify_record_signature" in fromlist):
+            raise ImportError("no cryptography")
+        return real_import(name, globals, locals, fromlist, level)
+
+    case = copy.deepcopy(_history_case("history-two-parties"))
+    block = _block(case["container"])
+    block["joins"].append({"members": ["responder-a", "responder-b"], "basis": "same_key", "state": "unjoined"})
+    block["composed_digest"] = c.composed_digest(block)
+    monkeypatch.setattr(builtins, "__import__", no_producer_envelope)
+    composed = _composed(verify_bundle(case["container"]))
+    by_pair = {j.members: j.result for j in composed.joins}
+    assert by_pair[("responder-a", "responder-b")] == "not_derivable"
+    assert c._signer_side(block["members"][0]["bundle"]["records"][0]) is None

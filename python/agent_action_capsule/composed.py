@@ -728,8 +728,12 @@ def _signer_side(record: Mapping[str, Any]) -> _Side | None:
     """A root record's same_key side: its ``key_id`` when its producer
     signature verifies under that key, never a key it merely names; ``None``
     for a record that is unsigned or whose signature does not verify."""
-    from .producer_envelope import AUTHORED, verify_record_signature
-
+    try:
+        from .producer_envelope import AUTHORED, verify_record_signature
+    except ImportError:
+        # No signature verifier installed: the record gives no key, so the
+        # join is not derivable, never a crash.
+        return None
     verdict, _ = verify_record_signature(dict(record))
     key = record.get("key_id")
     if verdict != AUTHORED or not isinstance(key, str):

@@ -972,8 +972,8 @@ reports it as what it is.</t>
 <tt>full_history</tt> subject under a derivation that counts its evidence stream up
 to one anchor, such as a History card, whose artifact is the UTF-8 JCS
 serialization of a JSON object that states that anchor in its <tt>anchor</tt>
-member, as the History cards of the derivations this document's examples
-name do. It is an artifact answer, so a History
+member, as the cards of <tt>standard_history</tt> and <tt>inference-service-history</tt>
+do. It is an artifact answer, so a History
 member is an <tt>artifact</tt> member: ER's three outcomes are unchanged. It is not
 an Evidence Bundle and has no root record. Each History is still asked for
 and answered by its own request, one subject per request.</t>
