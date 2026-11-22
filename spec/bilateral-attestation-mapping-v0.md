@@ -20,6 +20,7 @@ record lacks to be one.
 | SR | `spec/draft-mih-agent-settlement-records-01.md` | the four legs, the `settlement` member, the derived states, and its statement that "The settlement legs are not the bilateral exchange's objects; a deployment can use both, with an action attestation citing a terms leg". SR -01 leaves the `settlement` member's wire as -00 had it (`version` `"0"`, its Changes from -00), so a leg a producer seals under -00 reads the same under -01. SR cites BA -02. The BA text SR's statement relies on, the four exchange objects, is editorially unchanged in -03. This document also relies on text that is new in -03: the definition of "countersign" and the delivery intermediary, which replaces -02's relay and registers with a Transparency Service. -03 also drops -02's section on retention and the decay of the bilateral property. |
 | IP | `spec/interop-profile-v0.md` | the acceptance record, its acceptance receipt and its statement that neither an acknowledgment nor a BA action attestation is an acceptance (§11.1, §11.1.6) |
 | AAC | `spec/draft-mih-scitt-agent-action-capsule-06.md` | `verdict_class`, `references[]` |
+| EB | `spec/draft-mih-zhang-agent-disclosure-bundle-03.md` | the `parent-log-witness/v1` extension kind, its checks and findings, and its Security and Privacy Considerations ("The parent-log-witness/v1 Extension"). It is on this repository's `main`, added at commit `3c808e2` and read at `5a2bc703d10d1cfffc315f45ba32f49d294ead84`, with its verifier `go/bundle/parent_witness.go` |
 | REG | `spec/REGISTRY.md` | `citation_purpose` (§11) |
 | DR | `spec/deal-reconcile-contract-v0.md` | the half, its field commitments, the reconcile |
 
@@ -34,7 +35,7 @@ Each row is read from source at the commit named.
 |---|---|---|
 | SRC-A | A compute-exchange plugin: the settlement legs it seals for a paid exchange (one terms leg per invoice), the session agreement its legs cite, and the payment lifecycle records it seals | release tag `v0.1.23`, commit `54420bc602e8520e7eb061480575d5787d7d4a54` |
 | SRC-B | A marketplace plugin's deal record profile in its two versions: v0 (a closed set of twenty-four record types, per its schema's enum, its typed action records, its settlement notes, its reconcile of two closes and its countersign rung) and v1 (ten record types of its own and sixteen overlay types, per its schema's enum, its sent pairs and its sealed deal report) | commit `546cc0966548de1d32fe942b74151d5805c994bd` |
-| SRC-C | The core the marketplace plugin builds on: the `countersign/v1` entry, the cadence publisher, the settlement-leg builders | commit `47afa723095141e916dc79591795d348278d0af2` |
+| SRC-C | The core the marketplace plugin builds on: the `countersign/v1` entry, the cadence tree and the verifier of its chain, the settlement-leg builders | commit `47afa723095141e916dc79591795d348278d0af2` |
 
 The earlier revision of this mapping read SRC-A at release `v0.1.4`, and SRC-B v0 at another
 location, where its enum had twenty types. §4.1 and §4.2 are re-read at the pins above. Four v0
@@ -109,7 +110,7 @@ Every value of SRC-B v0's `record_type` enum and every typed record of its §9 a
 | B8 | countersign: a `countersign/v1` entry on a deal's Evidence Bundle (SRC-B rung, SRC-C entry) | A signature over one bundle's digest, with `statement.checks`, `recomputed_at`, `scope` | plugin-local | BA-ACK | §5.1 | — |
 | B9 | `close` (close) | The deal's end, its outcome, `actor` and `reason` | plugin-local | none | — | — |
 | B10 | DR half: a final close's `amount` and `currency` commitments (close) | Only a final close with status `received` commits non-empty terms: the delivered price and currency, or the agreed ones where the close names none. Every other close commits the empty text. DR reconciles the two parties' halves. | plugin-local | none | Two independent self-records reconciled by a verifier, like SR's derived state. Neither half is a BA object, and neither is an SR terms leg. | — |
-| B11 | cadence: one cadence-log entry per tick, the `x-cadence-witness/v0` bundle extension (SRC-C) | A fixed-depth tree over each deal's checkpoint plus a filler leaf, published to a witness on the clock alone | plugin-local | BA-REG | §5.2 | — |
+| B11 | cadence: one cadence-log entry per tick, and the `x-cadence-witness/v0` bundle extension that carries a deal checkpoint's chain to it (written by SRC-B, verified by SRC-C) | A fixed-depth tree over each deal's checkpoint plus a filler leaf, published to a witness on the clock alone | plugin-local | BA-REG. Its chain's nearest kind is EB `parent-log-witness/v1`, which it matches link for link (§5.2) | As EB `parent-log-witness/v1`: the registered name; the parent-log members under `parent`, not `cadence`; `earlier` read by its presence, not by `extent`. It adds `state` (and the not-yet-witnessed states that ride in the same member), `extent`, `checkpoint_at`, the deal's `steps_witnessed`, `steps` and `rest`, and a path fixed at 16 hashes (§5.2) | its chain: EB `parent-log-witness/v1` (§5.2) |
 | B12 | `sale` (sale) | The root of a seller's sale to one of several buyers | plugin-local | none | BA has one requester and one performer per exchange. Each buyer's thread is a deal of its own, mapped by the other rows. | — |
 | B13 | `thread`, `thread_opened` (sale) | Registration and opening of one buyer's thread on the sale's log | plugin-local | none | — | — |
 | B14 | `sale_cut`, `sale_close` (sale) | The cut a sale bundle is made at; the end of the sale | plugin-local | none | — | — |
@@ -201,17 +202,69 @@ half. That is not the absence of a `countersign/v1` entry, which SRC-B reports a
 `not_countersigned`. **Classification: plugin-local.** Where the signer is the counterparty, it
 can also issue a BA-ACK, but the BA-ACK does not replace the entry.
 
-### 5.2 Cadence: not without loss
+### 5.2 Cadence: not without loss onto BA; link for link onto EB parent-log-witness/v1
 
-Cadence is not a statement about an exchange, so it maps to no BA object. It is how one party
-publishes its own logs to a witness. Its nearest BA object is BA-REG. Forcing it into BA-REG
-loses the property cadence exists for. Cadence publishes one entry per tick on the clock alone,
-over a fixed-depth tree with a filler leaf and salted leaves at random positions, so a witness
-learns neither how many exchanges there are nor when each happened. BA-REG registers each
+**Onto BA.** Cadence is not a statement about an exchange, so it maps to no BA object. It is how
+one party publishes its own logs to a witness. Its nearest BA object is BA-REG. Forcing it into
+BA-REG loses the property cadence exists for. Cadence publishes one entry per tick on the clock
+alone, over a fixed-depth tree with a filler leaf and salted leaves at random positions, so a
+witness learns neither how many exchanges there are nor when each happened. BA-REG registers each
 attestation itself, which reveals that volume and timing. BA's Privacy Considerations name this
 correlation risk and leave its mitigations TBD. **Classification: plugin-local.** It is
 compatible with BA, because it registers checkpoints that cover the records, and it is a
 candidate input to BA's open mitigation.
+
+**Onto EB.** The chain a cadence bundle carries is EB's `parent-log-witness/v1`: the cadence log
+is EB's parent log, a tick's tree is EB's tree, and a deal's checkpoint is the covered
+checkpoint. Read at the pins, the cryptography is the same in every link:
+
+- **Leaf.** SHA-256 of 0x00 and the JCS of `checkpoint_sha256`, `log_id`, `salt` and `size`, in
+  both.
+- **Node and fold.** SHA-256 of 0x01, left, right. The root is folded from the leaf by the bits
+  of `index` in the same order.
+- **Parent entry.** The root is the 32-octet value of the parent log's entry, proved by a CLL
+  inclusion proof under the parent checkpoint. SRC-C passes the root as hex to CLL's hex form of
+  the same check.
+- **Earlier checkpoint.** It is signed by the same key and has the same log identifier and a
+  smaller MMR size, with a CLL consistency proof to the Bundle's checkpoint.
+- **Signer and receipts.** The parent checkpoint is signed by the key of the Bundle's checkpoint.
+  Its receipts are CLL witness records (`ts_url`, `entry_hash`, `receipt_b64`, `leaf_index`,
+  `tree_size`), the form EB's verifier reads.
+- **Salt.** SRC-B draws a fresh 32-octet salt per leaf, which meets EB's SHOULD of at least 256
+  bits.
+- **Filler and empty leaves.** SRC-B's filler leaf (0x03) and empty leaf (0x02) appear to a
+  verifier only as sibling hashes on a path. EB defines neither and never inspects them.
+
+The two differ in these fields and rules.
+
+| Point | `x-cadence-witness/v0` (SRC-B writes, SRC-C verifies) | EB `parent-log-witness/v1` | Gap |
+|---|---|---|---|
+| Name | a private `x-` kind; bundles before it used `cadence-witness/v0` and `x-deal-cadence-v0`, which SRC-C still reads | a registered kind (`spec/REGISTRY.md`) | cadence lacks the registered name |
+| Parent-log members | under `cadence`: `log_id`, `checkpoint.cose`, `entry_index`, `inclusion_proof`, `witnesses` | the same five under `parent` | cadence lacks `parent`. The contents are the same, only the member name differs |
+| Earlier checkpoint | checked only when `extent` is `"part"`; an `earlier` beside `"all"` is not checked | checked whenever `earlier` is present | cadence lacks presence as the trigger. A cadence block with `extent` `"part"` and no `earlier` fails in SRC-C. EB checks its leaf against the Bundle's own checkpoint, and it fails `parent_witness_leaf_does_not_name_this_checkpoint` |
+| `state` | `"witnessed"`, and the same member carries a not-yet-witnessed chain as `"pending"` (with `tick`, `reason`, `text`, `cadence`), `"scheduled"`, `"unverified"` or `"not_configured"`. SRC-C checks the chain only when `state` is `"witnessed"` | not defined. EB has no not-yet-witnessed block: the block is absent, or its receipts are absent and the result is withheld | cadence adds `state`. Under EB, a member EB does not define is ignored, so a pending block would be checked as a chain and fail with `parent_witness_leaf_does_not_name_this_checkpoint` |
+| `extent` | stated by the producer, `"all"` or `"part"`; SRC-B's own reports read it | MUST be computed by the verifier from the verified checkpoints, as two entry counts, and MUST NOT be read from the block | cadence adds a stated `extent`. EB ignores it |
+| Step counts | `steps_witnessed`, `steps` and `rest` (the not-yet-witnessed remainder), added by SRC-B's deal session | none; the extent is entries, not steps | cadence adds them. EB ignores them |
+| `checkpoint_at` | the tick's time | none | cadence adds it. EB ignores it |
+| Path length | exactly 16 hashes; `index` below 2^16 | 0 to 32 hashes; `index` below 2 to the power of the path length. EB SHOULDs one length for every tree | cadence's 16 is within EB's range. An EB block with any other length fails `cadence_path_malformed` in SRC-C |
+| Integers | read by SRC-C's `JSONUint`, which takes an integral `1.0` when the bundle is decoded to floating point | JSON integers only: `true` and `1.0` are not `1` | cadence can be laxer |
+| Pre-rename log identifier | `deal_log_id` still read where `log_id` is absent | not defined | cadence adds a legacy reader |
+| Findings | `cadence_` names, and `cadence_earlier_checkpoint_not_this_deal` | `parent_witness_` names, and `parent_witness_earlier_checkpoint_not_this_log` | the names differ but the steps are the same. SRC-C checks `index` and `salt` before the path, and EB the path first. EB also fails a non-object block (`parent_witness_malformed`), which SRC-C reads as no claim |
+| Publication discipline | one entry per tick on the clock, a filler leaf, random positions, one fixed depth | not required. EB's Privacy Considerations SHOULD a fresh 256-bit salt and one path length, and say what a witness of the parent log sees | cadence adds the clock and the filler. EB does not need them to verify |
+
+**What this means for the core.** Because every link matches, a cadence chain can be re-carried
+as `parent-log-witness/v1` without new cryptography and without re-witnessing. The re-carried
+block moves the five members from `cadence` to `parent`, carries `earlier` only when the
+covered checkpoint is earlier, and leaves `state`, `extent`, the step counts and
+`checkpoint_at` out or as members EB ignores. A core that verifies `parent-log-witness/v1` in
+place of its own cadence check reads such a block unchanged. It does not read a bundle sealed
+under `x-cadence-witness/v0` or an earlier name until that bundle is re-carried. Re-carrying
+changes the Bundle, and so its bundle digest: a countersignature over the old digest does not
+carry to the new one. It reports no
+not-yet-witnessed state, and it reports extent as entries, not steps. SRC-B's own reports read
+the stated `extent` and the step counts, so they stay plugin-side. **Classification of the
+chain: EB `parent-log-witness/v1`**, once re-carried. The tick schedule and the filler stay
+plugin-local.
 
 ### 5.3 Intent: no slot in BA; an optional reference is enough
 
@@ -313,3 +366,8 @@ the three objects, an IP acceptance record is the nearest existing one.
   carry a BA-RAI marker (B18), if they are to be carried as a BA-ACT. Not decided here.
 - **O3.** Whether an SR delivered leg should accompany a v1 `perform` that delivers, so that
   SRC-B v1 seals the whole core (§5.6). Not decided here.
+- **O4.** For a core that verifies EB `parent-log-witness/v1` in place of its cadence check
+  (§5.2): whether bundles already sealed under `x-cadence-witness/v0` and its earlier names are
+  re-carried, read by a plugin-side verifier, or left unverified by the core; and where a
+  not-yet-witnessed state is reported once the block holds only a witnessed chain. Not decided
+  here.

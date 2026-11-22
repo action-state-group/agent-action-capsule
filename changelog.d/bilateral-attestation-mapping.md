@@ -5,7 +5,9 @@
   a marketplace plugin's deal record profile (v0 and v1), with the countersign and cadence of the core it builds on.
   Each row is a `draft-mih-agent-settlement-records-01` leg, an interop-profile acceptance record,
   plugin-local or not emitted, and names its nearest BA object and what it lacks to be one. Findings: no record
-  either producer seals today is a BA object; countersign and cadence do not fit without loss; BA
+  either producer seals today is a BA object; countersign and cadence do not fit BA without loss; the cadence chain matches the Evidence
+  Bundle `-03` `parent-log-witness/v1` kind link for link, and the mapping lists every member
+  cadence lacks or adds against it; BA
   has no slot for intent, and an optional digest reference carries it with no new member; the
   negotiation trail is plugin-local in both versions, though v1 signs each party's own moves; the
   agreed terms verify without the trail only as an SR terms leg cited by the other side, which v1
