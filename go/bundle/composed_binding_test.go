@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
+	"github.com/action-state-group/agent-action-capsule/go/envelope"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -400,4 +402,64 @@ func TestControllerBindingUnserializableSig(t *testing.T) {
 	// Still held to -02's form: an empty nonce is malformed whatever the key types.
 	record["nonce"] = ""
 	require.False(t, bindingForm(record))
+}
+
+// resealWithVectorKey re-signs a root record after its timestamp changed,
+// with the test-only seed vectors/bundle/composed-controller-binding lists
+// for name, so its time stays signed content.
+func resealWithVectorKey(t *testing.T, record map[string]interface{}, name string) {
+	t.Helper()
+	_, filename, _, _ := runtime.Caller(0)
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(filename), "..", "..", "vectors", "bundle", "composed-controller-binding", "vectors.json"))
+	require.NoError(t, err)
+	var file struct {
+		Keys map[string]struct {
+			Seed string `json:"seed_hex"`
+		} `json:"keys"`
+	}
+	require.NoError(t, json.Unmarshal(data, &file))
+	seed, err := hex.DecodeString(file.Keys[name].Seed)
+	require.NoError(t, err)
+	key := ed25519.NewKeyFromSeed(seed)
+	delete(record, "capsule_id")
+	delete(record, "key_id")
+	delete(record, "signature")
+	id, err := canonical.ComputeCapsuleID(record)
+	require.NoError(t, err)
+	payload, err := hex.DecodeString(id)
+	require.NoError(t, err)
+	mode, err := cbor.CanonicalEncOptions().EncMode()
+	require.NoError(t, err)
+	public := []byte(key.Public().(ed25519.PublicKey))
+	protected, err := mode.Marshal(map[int64]interface{}{1: int64(-8), 3: envelope.ContentType, 4: public})
+	require.NoError(t, err)
+	toBeSigned, err := mode.Marshal([]interface{}{"Signature1", protected, []byte{}, payload})
+	require.NoError(t, err)
+	encoded, err := mode.Marshal(cbor.Tag{Number: 18, Content: []interface{}{protected, map[interface{}]interface{}{}, payload, ed25519.Sign(key, toBeSigned)}})
+	require.NoError(t, err)
+	record["capsule_id"], record["key_id"], record["signature"] = id, hex.EncodeToString(public), hex.EncodeToString(encoded)
+}
+
+// The binding window is half-open and record times compare as instants,
+// fractional seconds included; each record is re-sealed so its time stays
+// signed (bundle -03, Member keys).
+func TestComposedControllerBindingFractionalRecordTime(t *testing.T) {
+	c := bindingCases(t)["controller-binding-linked"]
+	for stamp, derived := range map[string]string{
+		"2026-10-02T12:10:00.5Z":    "agree",
+		"2027-09-30T23:59:59.999Z":  "agree",
+		"2027-10-01T00:00:00.0Z":    "unjoined",
+		"2026-09-30T23:59:59.9Z":    "unjoined",
+		"2026-10-02T12:10:00+00:00": "unjoined",
+	} {
+		container := cloneJSON(t, c.Container)
+		member := composedBlockOf(container)["members"].([]interface{})[0].(map[string]interface{})
+		bundle := member["bundle"].(map[string]interface{})
+		record := bundle["records"].([]interface{})[0].(map[string]interface{})
+		record["timestamp"] = stamp
+		resealWithVectorKey(t, record, "responder-a")
+		bundle["root"] = record["capsule_id"]
+		composed := verifyBlock(t, container, bindingOptions(c))
+		require.Equal(t, derived, composed.Joins[0].Derived, stamp)
+	}
 }

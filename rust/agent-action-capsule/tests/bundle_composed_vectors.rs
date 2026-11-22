@@ -540,7 +540,7 @@ fn composed_history_vectors() {
 /// whole `expect`.
 #[test]
 fn composed_key_source_vectors() {
-    for case in &cases("composed-key-source", 17) {
+    for case in &cases("composed-key-source", 18) {
         let id = case["id"].as_str().unwrap();
         let container = &case["container"];
         let expect = &case["expect"];

@@ -37,8 +37,9 @@ Cases:
   responder-a's key in ``key_id`` but was signed by responder-b's key. Its
   producer signature does not verify under the key it names, so it gives no
   key: ``not_derivable``.
-* ``history-record-unsigned``: responder-a's root record carries no
-  signature: ``not_derivable``.
+* ``history-record-unsigned``: responder-a's root record carries ``key_id``
+  without ``signature``, in a Bundle with no signed checkpoint: a failing
+  producer signature, never a fallback to its log: ``not_derivable``.
 * ``history-member-missing``: history-a declared missing: closure
   ``withheld``, its join ``not_derivable``; the composed digest equals
   ``history-two-parties``.
@@ -701,8 +702,11 @@ def cases() -> list[dict]:
                             "verifies under it, never from what the record states, so responder-b has no key: the "
                             "join with history-a is not_derivable, never agree.", names_a),
         _unsigned_half_case("history-record-unsigned",
-                            "responder-a's root record carries no producer signature: it gives no key, and the "
-                            "same_key join with history-a is not_derivable.", unsigned),
+                            "responder-a's root record carries key_id without signature, in a Bundle with no "
+                            "signed checkpoint or membership. Only one of the two is a failing producer signature, "
+                            "which never falls back to the record's log: no key, and the same_key join with "
+                            "history-a is not_derivable. (An unsigned root, with neither, that its log proves "
+                            "would have a key: vectors/bundle/composed-key-source.)", unsigned),
         case_missing(),
         _failed_history_case("history-anchor-checkpoint-mismatch",
                              "history-a carries a checkpoint other than the one its envelope's anchor.digest names. "

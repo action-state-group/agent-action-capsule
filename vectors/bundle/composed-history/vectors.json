@@ -2004,7 +2004,7 @@
         "composed/v1: Joins",
         "composed/v1: Observers and Redundancy"
       ],
-      "description": "responder-a's root record carries no producer signature: it gives no key, and the same_key join with history-a is not_derivable.",
+      "description": "responder-a's root record carries key_id without signature, in a Bundle with no signed checkpoint or membership. Only one of the two is a failing producer signature, which never falls back to the record's log: no key, and the same_key join with history-a is not_derivable. (An unsigned root, with neither, that its log proves would have a key: vectors/bundle/composed-key-source.)",
       "container": {
         "bundle_version": "2",
         "bundle_kind": "evidence-bundle/v2",

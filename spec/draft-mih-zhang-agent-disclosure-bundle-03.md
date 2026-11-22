@@ -1294,10 +1294,12 @@ derivation for four bases:
   member.
 
   `pointer` is not needed: each key is determined below. A join MAY carry
-  it, as a block written under -02 does; then `pointer` MUST select, in each
-  member's root record, the key determined below for that member, and a
-  `pointer` that selects any other value, or does not resolve, makes the join
-  `not_derivable`. A composing party following this revision SHOULD omit
+  it, as a block written under -02 does; then `pointer` MUST select, in the
+  root record of each member that has one, the key determined below for that
+  member, and a `pointer` that selects any other value there, or does not
+  resolve there, makes the join `not_derivable`. A History member or an
+  empty-history Bundle has no root record, and `pointer` is not checked
+  against it. A composing party following this revision SHOULD omit
   `pointer`. A -02 verifier reads a join without `pointer` as
   `not_derivable`, which never overstates it; a verifier following this
   revision can turn a join that -02 linked into `not_derivable`, when the key
@@ -1315,7 +1317,8 @@ derivation for four bases:
   `unjoined`. On every `same_key` join that derives `unjoined`, a verifier
   reports both keys. A `same_key` join states only that one key signed,
   logged or answered for both members. It is how a party's History attaches
-  to that party's own half of an exchange: the two halves join each other on
+  to that party's own half of an exchange, signed by that party or held in
+  its log: the two halves join each other on
   an identifier they share (for example `pre_agreed_identifier`), and each
   History joins its own party's half on `same_key`.
 
@@ -1343,18 +1346,23 @@ identifier, its time T and the key's source are:
   record's own membership holds under that checkpoint: its entry in
   `completeness_certificate.memberships` names the checkpoint's log
   identifier, has a `leaf_index` of its `seq` minus one and a proof of the
-  checkpoint's MMR size, and that proof verifies against the checkpoint's
-  signed root. A failure elsewhere in the Bundle, such as another record's
+  checkpoint's MMR size whose own `leaf_index` is that same value, and that
+  proof verifies against the checkpoint's signed root. A failure elsewhere in the Bundle, such as another record's
   membership, does not remove the key. Otherwise the member has no key.
-  Source `log_checkpoint`. Such a key states that the key's log holds the
-  root record, not that the key's holder authored it: an unsigned record
-  establishes its place in a log, never its authorship.
+  Source `log_checkpoint`. T is the checkpoint's time, not the record's
+  `timestamp`, because no key signed that `timestamp`; the key signed only the
+  checkpoint. Such a key states that the key's log holds the root record, not
+  that the key's holder authored it: an unsigned record establishes its place
+  in a log, never its authorship. A verifier MUST NOT present a
+  `log_checkpoint` key as the author of a root record.
 
 A key is never read from a value a root record states, because a root
 record can name a key that did not sign or log it. For every
 `controller_binding` and `same_key` join, whatever it derives, a verifier
 reports each member's key source: `history`, `log_checkpoint`,
-`record_signature`, or `none` for a member with no key.
+`record_signature`, or `none` for a member with no key. The source is
+reported whether or not a `pointer` matched it, so a join can report a key
+source beside a `not_derivable` result that a mismatched `pointer` caused.
 
 A join under `pre_agreed_identifier` or `shared_artifact_digest` one of whose
 members is a History member is `not_derivable`: this revision defines no
@@ -1407,7 +1415,8 @@ labels are identical octet sequences.
 
 - both members name the same observer;
 - the two observers have the same `custody_domain`;
-- the two members' root records carry the same `key_id`;
+- the two members' root records carry the same `key_id` (a stated `key_id`
+  can only make a pair redundant here, never link it);
 - the join's basis is `controller_binding`: the holders of the two keys have
   stated that the keys are not independent issuers ({{composed-binding}});
 - the join's basis is `same_key`: one key signed, logged or answered for
@@ -2042,7 +2051,7 @@ Since -02:
   extent of what was witnessed itself. Added Security and Privacy
   Considerations for it.
 - Cites the Checkpointed Local Log -02.
-- `composed/v1` member keys (#663): under `controller_binding` and
+- `composed/v1` member keys: under `controller_binding` and
   `same_key`, a member Bundle's key comes from its root record's verified
   producer signature or, for a root record with neither `signature` nor
   `key_id`, from the Bundle's checkpoint signer when the record's identity

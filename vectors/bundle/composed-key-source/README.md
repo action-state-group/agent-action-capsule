@@ -17,7 +17,8 @@ A member Bundle's key, its time T and the key's source are:
   the checkpoint verifies with every stated copy matching it, the record's
   `capsule_id` recomputes from its content, and its own membership entry
   proves it under that checkpoint (its log, `leaf_index = seq - 1`, the
-  checkpoint's MMR size, a proof against the signed root). A failure elsewhere
+  checkpoint's MMR size, a proof with that same `leaf_index` against the signed
+  root). A failure elsewhere
   in the Bundle does not remove the key.
 
 A key is never read from a value a record states. Under `controller_binding`
@@ -42,6 +43,7 @@ record is unsigned unless the case says otherwise.
 | `key-source-edited-content-proved-id` | unsigned root edited after logging | not derivable | `none` |
 | `key-source-membership-other-log` | root membership names another log | not derivable | `none` |
 | `key-source-membership-size-mismatch` | root proof states another MMR size | not derivable | `none` |
+| `key-source-own-membership-missing` | root carried, its own membership entry removed and listed missing; another record proved | not derivable | `none` |
 | `key-source-proof-leaf-index-mismatch` | root proof states another `leaf_index` than its coordinates | not derivable | `none` |
 | `key-source-stated-root-differs` | checkpoint JSON root differs from its signed form | not derivable | `none` |
 | `key-source-unrelated-membership-fails` | another record's proof broken | `agree` (redundant) | `log_checkpoint` |
@@ -49,7 +51,7 @@ record is unsigned unless the case says otherwise.
 | `key-source-signature-without-key-id` | `signature` only | not derivable | `none` |
 | `key-source-failing-signature` | signature does not verify | not derivable | `none` |
 | `key-source-checkpoint-time-after-revocation` | binding revoked between the records and the checkpoint | `unjoined` | `log_checkpoint` |
-| `key-source-pointer-selects-other-key` | signed records; pointer selects another bound key | not derivable | `record_signature` |
+| `key-source-pointer-selects-other-key` | signed records, each stating the other bound key; the pointer selects that member in both | not derivable | `record_signature` |
 | `key-source-signed-without-pointer` | signed records, no pointer | `agree` (redundant) | `record_signature` |
 | `key-source-same-key-unsigned-logged` | history-a `same_key` responder-a's unsigned, logged root | `agree` (redundant, `same_key`) | `log_checkpoint` |
 

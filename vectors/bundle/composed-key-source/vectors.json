@@ -14,7 +14,7 @@
       "public_key_hex": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
     }
   },
-  "count": 17,
+  "count": 18,
   "cases": [
     {
       "id": "key-source-unsigned-logged-linked",
@@ -4867,7 +4867,7 @@
         "composed/v1: Controller Binding Records",
         "Completeness Claims and Log Membership"
       ],
-      "description": "Both root records are signed. responder-a's record also states responder-b's key in x-counterparty-key, and the join's pointer selects that member. A pointer must select the key read from the record's signature; this one does not: not_derivable.",
+      "description": "Both root records are signed, and each also states the other responder's key in x-counterparty-key. The join's pointer selects that member, so it resolves in both records and selects the two bound keys, but swapped: each is not the key read from its record's signature. A pointer must select that key: not_derivable.",
       "container": {
         "bundle_version": "2",
         "bundle_kind": "evidence-bundle/v2",
@@ -4998,6 +4998,384 @@
                 "observer": "obs-b",
                 "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
                 "outcome": "artifact",
+                "digest": "18472cdc108fa71da34be61bdf399cffbc2f4bac29de5020e86c2ac92451bb81",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "17f38d20d46bf7e23c3cd1924a236af3fb523310054fe385c50ce24f9d2b2d9c",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-b",
+                      "action_type": "fyi",
+                      "operator": "responder-b.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:11:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "4d0c2ac3b851f692b652985e349e55268be73d0b8ecf815df8654d8a97df4cc7",
+                          "agent_output_digest": "f4b4e5e121309c1f13475ce0a60fd8acd33e418fbeb370bb740de596c490edfc",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "x-counterparty-key": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "capsule_id": "17f38d20d46bf7e23c3cd1924a236af3fb523310054fe385c50ce24f9d2b2d9c",
+                      "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4a0582017f38d20d46bf7e23c3cd1924a236af3fb523310054fe385c50ce24f9d2b2d9c5840f360341ba71c56068a83b4feb5886a87f429961164e7641a3ff95d79f7699f56641d5d5c6062e1977f7559d8e9d4ef15fe6e011d3c1e69b2d4c16e522e580b09"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  },
+                  "completeness_certificate": {
+                    "log_id": "log:composed-key-source/responder-b",
+                    "range_root": "6f851624a922a9586142bd087a471f05c266b4e7767d3b9c9067f101634f69c2",
+                    "first_seq": 1,
+                    "last_seq": 1,
+                    "body_digests": [
+                      "17f38d20d46bf7e23c3cd1924a236af3fb523310054fe385c50ce24f9d2b2d9c"
+                    ],
+                    "range_proof": {
+                      "from_seq": 1,
+                      "to_seq": 1,
+                      "size": 1,
+                      "from_index": 0,
+                      "to_index": 0,
+                      "witness": []
+                    },
+                    "memberships": {
+                      "17f38d20d46bf7e23c3cd1924a236af3fb523310054fe385c50ce24f9d2b2d9c": {
+                        "log_coordinates": {
+                          "log_id": "log:composed-key-source/responder-b",
+                          "seq": 1,
+                          "leaf_index": 0
+                        },
+                        "inclusion_proof": {
+                          "v": 1,
+                          "kind": "inclusion",
+                          "size": 1,
+                          "leaf_index": 0,
+                          "witness": [],
+                          "peaks_left": [],
+                          "peaks_right": []
+                        }
+                      }
+                    }
+                  },
+                  "checkpoint": {
+                    "log_id": "log:composed-key-source/responder-b",
+                    "mmr_size": 1,
+                    "root": "6f851624a922a9586142bd087a471f05c266b4e7767d3b9c9067f101634f69c2",
+                    "prev_size": 0,
+                    "prev_root": "",
+                    "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                    "timestamp": "2026-10-02T12:12:00Z",
+                    "cose": "0oRYlqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBeCNsb2c6Y29tcG9zZWQta2V5LXNvdXJjZS9yZXNwb25kZXItYgJ4I2xvZzpjb21wb3NlZC1rZXktc291cmNlL3Jlc3BvbmRlci1iBFggv4bDFfdsWNf2QZ6F8OYZSbfvlr-5S2t2ac35bmoUn8QBJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQFpaXNzdWVkX2F0dDIwMjYtMTAtMDJUMTI6MTI6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVggb4UWJKkiqVhhQr0IekcfBcJmtOd2fTuckGfxAWNPacJvcHJldl9jb21taXRtZW50QFhAsHkyRRax1oYPmpHj77koZmyY28kj3lID5__8cGWnUGfCydN3a5ctceaC63NH1q2zO98HiAFFgX2Yfvg1tZp4Cg"
+                  }
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "controller_binding",
+                "identifier_digest": "ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039",
+                "state": "agree",
+                "pointer": "/x-counterparty-key",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ]
+              }
+            ],
+            "composed_digest": "8a6fd4282a8b68fd4a8d5088a4e337077b6fcb327074ee44b51e7396eb3dcf45"
+          }
+        }
+      },
+      "controller_bindings": [
+        {
+          "binding_version": "controller-binding/0",
+          "claim": "same_controller_asserted",
+          "method": "dual_signature/0",
+          "keys": [
+            "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+            "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
+          ],
+          "issued_at": "2026-10-01T00:00:00Z",
+          "not_before": "2026-10-01T00:00:00Z",
+          "not_after": "2027-10-01T00:00:00Z",
+          "revocation": "revocation_statement/0",
+          "nonce": "ceremony-1",
+          "sigs": [
+            {
+              "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+              "sig": "641b1587c465d276c52a8775db19089474995e4bf5765d70494f943a9614d3a9a68c87dab47df44f9772d0af8d0b01cbabcc59ae47720d2eeef851d98e37d10e"
+            },
+            {
+              "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+              "sig": "f2c2266ab80f7515eedd4b4118ccd93a95772fdbd5be25f5b315cc220ee6b68122c5aeb1b2b1ece73e648b98cda4c3cd2d18cc8f4154668ff6c03389bddf0302"
+            }
+          ]
+        }
+      ],
+      "binding_revocations": [],
+      "expect": {
+        "composed_digest": "8a6fd4282a8b68fd4a8d5088a4e337077b6fcb327074ee44b51e7396eb3dcf45",
+        "canonical_preimage": "{\"joins\":[{\"basis\":\"controller_binding\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/x-counterparty-key\",\"state\":\"agree\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"f5f9f7e56c42db52fd8af1f6dfa018f80d26042fec928ca3ddd4584c41a0ccd7\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"18472cdc108fa71da34be61bdf399cffbc2f4bac29de5020e86c2ac92451bb81\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
+        "status": "withheld",
+        "members": {
+          "responder-a": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "pass",
+              "per_record_membership": "pass"
+            }
+          },
+          "responder-b": {
+            "outcome": "artifact",
+            "body": "carried",
+            "digest": "reproduced",
+            "claims": {
+              "graph_closure": "pass",
+              "interval_coverage": "pass",
+              "per_record_membership": "pass"
+            }
+          }
+        },
+        "composition_closure": {
+          "status": "pass",
+          "missing": []
+        },
+        "joins": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "declared": "agree",
+            "derived": null,
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
+          }
+        ],
+        "corroboration": [
+          {
+            "members": [
+              "responder-a",
+              "responder-b"
+            ],
+            "result": "not_applicable"
+          }
+        ]
+      }
+    },
+    {
+      "id": "key-source-own-membership-missing",
+      "section": [
+        "composed/v1: Joins",
+        "composed/v1: Controller Binding Records",
+        "Completeness Claims and Log Membership"
+      ],
+      "description": "responder-a's unsigned root is carried, but its own membership entry is removed and it is listed in completeness.missing, while another record of the same log is proved under the signed checkpoint. The other record's proof is not the root's own: no key, not_derivable.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "ebb0ec25acbe90424350763e4844827143c7adcffd7c10800f398d457a92a2a6",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b"
+                    },
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a/other",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:09:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "e8c94e3125de9b96d4e31801866ba36a2269a4dfa453801fc62119a3aba97b48",
+                          "agent_output_digest": "fd824bc361ad78db66ec18cb7d1df1c3538cd8f2270f34ac0175369802878723",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "a074e06a196720520ee514a6bfb642cd0b5c087959517f2898982c7ff1077579"
+                          }
+                        }
+                      },
+                      "capsule_id": "aebdff7eb6a74fb5605fa4a4b5c5132f5561471da67e92a0ff168ab99a1854ee",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820aebdff7eb6a74fb5605fa4a4b5c5132f5561471da67e92a0ff168ab99a1854ee5840406c8c3dd71212267110b1ee667fcaccd9885383890d2f9ee0c80e85bae936c4ac6d061b61074a99581d11dee9fb2d5594522baac04a704edfc78a47c831c00b"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all",
+                    "missing": [
+                      "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b"
+                    ]
+                  },
+                  "completeness_certificate": {
+                    "log_id": "log:composed-key-source/responder-a",
+                    "range_root": "d26fbf25db10f868e34fd5109e4cb2990ff589d97f783c1741c7f7c56b3bf68a",
+                    "first_seq": 1,
+                    "last_seq": 2,
+                    "body_digests": [
+                      "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "aebdff7eb6a74fb5605fa4a4b5c5132f5561471da67e92a0ff168ab99a1854ee"
+                    ],
+                    "range_proof": {
+                      "from_seq": 1,
+                      "to_seq": 2,
+                      "size": 3,
+                      "from_index": 0,
+                      "to_index": 1,
+                      "witness": []
+                    },
+                    "memberships": {
+                      "aebdff7eb6a74fb5605fa4a4b5c5132f5561471da67e92a0ff168ab99a1854ee": {
+                        "log_coordinates": {
+                          "log_id": "log:composed-key-source/responder-a",
+                          "seq": 2,
+                          "leaf_index": 1
+                        },
+                        "inclusion_proof": {
+                          "v": 1,
+                          "kind": "inclusion",
+                          "size": 3,
+                          "leaf_index": 1,
+                          "witness": [
+                            "3dabf972a73065dfe8fabcc23f033d3010f48263553016fb6b77e1636de02b69"
+                          ],
+                          "peaks_left": [],
+                          "peaks_right": []
+                        }
+                      }
+                    }
+                  },
+                  "checkpoint": {
+                    "log_id": "log:composed-key-source/responder-a",
+                    "mmr_size": 3,
+                    "root": "d26fbf25db10f868e34fd5109e4cb2990ff589d97f783c1741c7f7c56b3bf68a",
+                    "prev_size": 0,
+                    "prev_root": "",
+                    "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                    "timestamp": "2026-10-02T12:12:00Z",
+                    "cose": "0oRYlqQDeB9hcHBsaWNhdGlvbi9jbGwtY2hlY2twb2ludCtjYm9yD6IBeCNsb2c6Y29tcG9zZWQta2V5LXNvdXJjZS9yZXNwb25kZXItYQJ4I2xvZzpjb21wb3NlZC1rZXktc291cmNlL3Jlc3BvbmRlci1hBFggZ9neYEke-o6zx4kT_iLQ2KkuQWYtbJXCyFWW32dqNq8BJ6BYiqZka2luZG5jbGwtY2hlY2twb2ludGhsb2dfc2l6ZQNpaXNzdWVkX2F0dDIwMjYtMTAtMDJUMTI6MTI6MDBaaXByZXZfc2l6ZQBqY29tbWl0bWVudFgjgVgg0m-_JdsQ-GjjT9UQnkyymQ_1idl_eDwXQcf3xWs79opvcHJldl9jb21taXRtZW50QFhAc6aDjxSY5MiOmYQ5SXH1c0XSZ5W8fVWw-CIAwNXhLhN8xuiQNbXBMvr9Rq37TfBpM3YneaWBcsyRCRsQwBf4CA"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "artifact",
                 "digest": "2ac7fafd1c69ef9a97e8960762312f4de28e9af112e112f29a817e7ffdc64e4d",
                 "bundle": {
                   "bundle_version": "2",
@@ -5107,13 +5485,12 @@
                 "basis": "controller_binding",
                 "identifier_digest": "ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039",
                 "state": "agree",
-                "pointer": "/x-counterparty-key",
                 "compare": [
                   "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
                 ]
               }
             ],
-            "composed_digest": "8b6af36497a28d57dcae393acaa4ccae7b3430c3ec0fb99d97b1eb209044d4da"
+            "composed_digest": "69ee14abf7e122e1761ca61949f7c52dcac94223d49b8a044ddfa8a2503f3ec9"
           }
         }
       },
@@ -5145,8 +5522,8 @@
       ],
       "binding_revocations": [],
       "expect": {
-        "composed_digest": "8b6af36497a28d57dcae393acaa4ccae7b3430c3ec0fb99d97b1eb209044d4da",
-        "canonical_preimage": "{\"joins\":[{\"basis\":\"controller_binding\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039\",\"members\":[\"responder-a\",\"responder-b\"],\"pointer\":\"/x-counterparty-key\",\"state\":\"agree\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"f5f9f7e56c42db52fd8af1f6dfa018f80d26042fec928ca3ddd4584c41a0ccd7\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"2ac7fafd1c69ef9a97e8960762312f4de28e9af112e112f29a817e7ffdc64e4d\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
+        "composed_digest": "69ee14abf7e122e1761ca61949f7c52dcac94223d49b8a044ddfa8a2503f3ec9",
+        "canonical_preimage": "{\"joins\":[{\"basis\":\"controller_binding\",\"compare\":[\"/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest\"],\"identifier_digest\":\"ef43d384ca8aa339985d1137d0743e250cee6fbdaf6644bdc49e820bb4752039\",\"members\":[\"responder-a\",\"responder-b\"],\"state\":\"agree\"}],\"kind\":\"composed/v1\",\"members\":[{\"digest\":\"ebb0ec25acbe90424350763e4844827143c7adcffd7c10800f398d457a92a2a6\",\"id\":\"responder-a\",\"observer\":\"obs-a\",\"outcome\":\"artifact\",\"request_digest\":\"9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12\"},{\"digest\":\"2ac7fafd1c69ef9a97e8960762312f4de28e9af112e112f29a817e7ffdc64e4d\",\"id\":\"responder-b\",\"observer\":\"obs-b\",\"outcome\":\"artifact\",\"request_digest\":\"269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75\"}],\"not_requested\":[],\"observers\":[{\"custody_domain\":\"custody-a.example\",\"id\":\"obs-a\",\"role\":\"responder\"},{\"custody_domain\":\"custody-b.example\",\"id\":\"obs-b\",\"role\":\"responder\"}]}",
         "status": "withheld",
         "members": {
           "responder-a": {
@@ -5154,9 +5531,9 @@
             "body": "carried",
             "digest": "reproduced",
             "claims": {
-              "graph_closure": "pass",
+              "graph_closure": "fail",
               "interval_coverage": "pass",
-              "per_record_membership": "pass"
+              "per_record_membership": "fail"
             }
           },
           "responder-b": {
@@ -5186,7 +5563,7 @@
             "key_sources": [
               {
                 "member": "responder-a",
-                "source": "record_signature"
+                "source": "none"
               },
               {
                 "member": "responder-b",

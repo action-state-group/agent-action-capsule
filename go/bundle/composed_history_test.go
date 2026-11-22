@@ -75,8 +75,8 @@ func TestComposedKeySourceVectors(t *testing.T) {
 		Cases []bindingCase `json:"cases"`
 	}
 	require.NoError(t, decoder.Decode(&file))
-	require.Equal(t, json.Number("17"), file.Count)
-	require.Len(t, file.Cases, 17)
+	require.Equal(t, json.Number("18"), file.Count)
+	require.Len(t, file.Cases, 18)
 	for _, c := range file.Cases {
 		c := c
 		t.Run(c.ID, func(t *testing.T) {

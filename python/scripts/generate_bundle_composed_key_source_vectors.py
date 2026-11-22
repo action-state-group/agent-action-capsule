@@ -84,11 +84,13 @@ def records() -> tuple[dict, dict]:
     return rec_a, rec_b
 
 
-def halves(*, a_record=None, a_records=None, a_logged: bool = True) -> tuple[list[dict], list[dict]]:
+def halves(*, a_record=None, a_records=None, a_logged: bool = True, b_record=None) -> tuple[list[dict], list[dict]]:
     """The two halves, each logged; responder-a's root record unsigned by
     default. ``a_record`` replaces it; ``a_records`` sets responder-a's whole
     log (root first)."""
     rec_a, rec_b = records()
+    if b_record is not None:
+        rec_b = b_record
     root = a_record if a_record is not None else unsign(rec_a)
     log_a = a_records if a_records is not None else [root]
     member_a = (logged_member("responder-a", "obs-a", log_a, A, root) if a_logged else
@@ -312,17 +314,33 @@ def cases() -> list[dict]:
         claims_a=LOGGED, corroboration=NOT_APPLICABLE, bindings=[binding], revocations=[revoked]))
 
     rec_a, rec_b = records()
-    body = {k: v for k, v in rec_a.items() if k not in ("capsule_id", "key_id", "signature")}
-    body["x-counterparty-key"] = B.public_hex
-    named = composed.seal(body, A)
-    members, observers = halves(a_record=named)
+    body_a = {k: v for k, v in rec_a.items() if k not in ("capsule_id", "key_id", "signature")}
+    body_a["x-counterparty-key"] = B.public_hex
+    body_b = {k: v for k, v in rec_b.items() if k not in ("capsule_id", "key_id", "signature")}
+    body_b["x-counterparty-key"] = A.public_hex
+    members, observers = halves(a_record=composed.seal(body_a, A), b_record=composed.seal(body_b, B))
     out.append(make(
         "key-source-pointer-selects-other-key",
-        "Both root records are signed. responder-a's record also states responder-b's key in "
-        "x-counterparty-key, and the join's pointer selects that member. A pointer must select the key read "
-        "from the record's signature; this one does not: not_derivable.",
+        "Both root records are signed, and each also states the other responder's key in "
+        "x-counterparty-key. The join's pointer selects that member, so it resolves in both records and "
+        "selects the two bound keys, but swapped: each is not the key read from its record's signature. A "
+        "pointer must select that key: not_derivable.",
         members, observers, cb_join(binding, "agree", pointer="/x-counterparty-key"), derived=None,
         sources=(RECORD, RECORD), claims_a=LOGGED, corroboration=NOT_APPLICABLE, bindings=[binding]))
+
+    rec_a, _ = records()
+    members, observers = halves(a_records=[unsign(rec_a), other], a_record=unsign(rec_a))
+    bundle = members[0]["bundle"]
+    del bundle["completeness_certificate"]["memberships"][bundle["root"]]
+    bundle["completeness"] = dict(bundle["completeness"], missing=[bundle["root"]])
+    members[0]["digest"] = composed.bundle_digest(bundle)
+    out.append(make(
+        "key-source-own-membership-missing",
+        "responder-a's unsigned root is carried, but its own membership entry is removed and it is listed in "
+        "completeness.missing, while another record of the same log is proved under the signed checkpoint. "
+        "The other record's proof is not the root's own: no key, not_derivable.",
+        members, observers, cb_join(binding, "agree", pointer=None), derived=None, sources=(NONE, RECORD),
+        claims_a=CLAIMS_OWN_MEMBERSHIP_MISSING, corroboration=NOT_APPLICABLE, bindings=[binding]))
 
     rec_a, _ = records()
     members, observers = halves(a_record=rec_a)
@@ -360,6 +378,10 @@ CLAIMS_ROOT_MISSING = {"graph_closure": "fail", "interval_coverage": "pass", "pe
 CLAIMS_EDITED = {"graph_closure": "fail", "interval_coverage": "pass", "per_record_membership": "fail"}
 CLAIMS_MEMBERSHIP_BROKEN = {"graph_closure": "pass", "interval_coverage": "pass", "per_record_membership": "fail"}
 CLAIMS_STATED_ROOT = {"graph_closure": "pass", "interval_coverage": "fail", "per_record_membership": "fail"}
+# A carried root also listed missing fails graph closure, and its seq has no
+# membership entry, so the Bundle's own membership claim fails too; the key
+# rule must not read the other record's proof as the root's.
+CLAIMS_OWN_MEMBERSHIP_MISSING = {"graph_closure": "fail", "interval_coverage": "pass", "per_record_membership": "fail"}
 CLAIMS_UNRELATED_FAIL = {"graph_closure": "pass", "interval_coverage": "pass", "per_record_membership": "fail"}
 
 
