@@ -136,17 +136,22 @@ func TestComposedControllerBindingRevocationMustApply(t *testing.T) {
 
 // A controller_binding join without identifier_digest or pointer names no
 // binding record, so it is not derivable, whatever the verifier received.
+// Bundle -03: a join without identifier_digest names no binding; pointer is
+// optional, since each key is read from its root record's signature (#663).
 func TestComposedControllerBindingJoinWithoutDigest(t *testing.T) {
 	c := bindingCases(t)["controller-binding-linked"]
-	for _, member := range []string{"identifier_digest", "pointer"} {
+	for member, want := range map[string]string{"identifier_digest": "not_derivable", "pointer": "derived_matches"} {
 		container := cloneJSON(t, c.Container)
 		block := composedBlockOf(container)
 		join := block["joins"].([]interface{})[0].(map[string]interface{})
 		delete(join, member)
 		join["state"] = "unjoined"
+		if member == "pointer" {
+			join["state"] = "agree"
+		}
 		reseal(t, block)
 		composed := verifyBlock(t, container, bindingOptions(c))
-		require.Equal(t, "not_derivable", composed.Joins[0].Result, member)
+		require.Equal(t, want, composed.Joins[0].Result, member)
 	}
 }
 
@@ -163,20 +168,19 @@ func cloneJSON(t *testing.T, value map[string]interface{}) map[string]interface{
 
 // A root record's timestamp may carry fractional seconds; the window compares
 // instants. The edit breaks the member digest, not the join's derivation.
-func TestComposedControllerBindingFractionalRecordTime(t *testing.T) {
+// Bundle -03: a root record's time is signed content. Editing it after
+// signing breaks the producer signature, so the record has no key and the
+// join is not derivable, whatever the new time would have given (#663). The
+// instant comparison itself is covered by the History times vectors.
+func TestComposedControllerBindingEditedRecordTime(t *testing.T) {
 	c := bindingCases(t)["controller-binding-linked"]
-	for stamp, derived := range map[string]string{
-		"2026-10-02T12:10:00.5Z":    "agree",
-		"2027-09-30T23:59:59.999Z":  "agree",
-		"2027-10-01T00:00:00.0Z":    "unjoined",
-		"2026-09-30T23:59:59.9Z":    "unjoined",
-		"2026-10-02T12:10:00+00:00": "unjoined",
-	} {
+	for _, stamp := range []string{"2026-10-02T12:10:00.5Z", "2027-10-01T00:00:00.0Z", "2026-10-02T12:10:00+00:00"} {
 		container := cloneJSON(t, c.Container)
 		member := composedBlockOf(container)["members"].([]interface{})[0].(map[string]interface{})
 		member["bundle"].(map[string]interface{})["records"].([]interface{})[0].(map[string]interface{})["timestamp"] = stamp
 		composed := verifyBlock(t, container, bindingOptions(c))
-		require.Equal(t, derived, composed.Joins[0].Derived, stamp)
+		require.Equal(t, "not_derivable", composed.Joins[0].Result, stamp)
+		require.Equal(t, KeySourceNone, composed.Joins[0].KeySources[0].Source, stamp)
 	}
 }
 
@@ -188,8 +192,11 @@ func TestComposedControllerBindingNeedsBothKeys(t *testing.T) {
 	first := members[0].(map[string]interface{})["bundle"].(map[string]interface{})["records"].([]interface{})[0].(map[string]interface{})
 	second := members[1].(map[string]interface{})["bundle"].(map[string]interface{})["records"].([]interface{})[0].(map[string]interface{})
 	second["key_id"] = first["key_id"]
+	// Bundle -03: a record that names another key was not signed by it, so it
+	// has no key and the join is not derivable (#663).
 	composed := verifyBlock(t, container, bindingOptions(c))
-	require.Equal(t, "unjoined", composed.Joins[0].Derived)
+	require.Equal(t, "not_derivable", composed.Joins[0].Result)
+	require.Equal(t, []KeySource{{"responder-a", KeySourceRecordSignature}, {"responder-b", KeySourceNone}}, composed.Joins[0].KeySources)
 }
 
 // signRevocation signs a revocation statement with the vectors' seed for name.

@@ -226,16 +226,6 @@ type bindingSide struct {
 	okAt  bool
 }
 
-// recordSide reads a side from a root record: the key identifier pointer
-// selects, and the record's timestamp. Asserted as a string: two resolved
-// objects would not compare.
-func recordSide(record map[string]interface{}, pointer string) bindingSide {
-	raw, _ := resolvePointer(record, pointer)
-	key, okKey := raw.(string)
-	at, okAt := recordTime(record["timestamp"])
-	return bindingSide{key: key, okKey: okKey, at: at, okAt: okAt}
-}
-
 // checkpointSide reads an empty-history member's side from its signed
 // checkpoint: the key that signed checkpoint.cose and its timestamp. A
 // member without a checkpoint that verifies has no key, so the join is not

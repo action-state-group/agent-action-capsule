@@ -128,6 +128,9 @@ type ComposedJoinResult struct {
 	// HistoryTimes is set for a join between a History member with a join
 	// view and a member with a root record.
 	HistoryTimes *HistoryTimes
+	// KeySources is set on every controller_binding and same_key join: where
+	// each member's key came from (bundle -03, Member keys).
+	KeySources []KeySource
 }
 
 // CorroborationResult reports, per join, what a derived agreement is worth.
@@ -274,6 +277,7 @@ func VerifyComposed(raw interface{}, opts Options) ComposedResult {
 	for _, j := range block.joins {
 		joinResult := deriveJoin(j, byID, missing, opts, views)
 		joinResult.HistoryTimes = historyTimes(j, byID, views)
+		joinResult.KeySources = keySources(j, byID, views)
 		result.Joins = append(result.Joins, joinResult)
 		pair := j.members[0] + "," + j.members[1]
 		switch joinResult.Result {

@@ -108,6 +108,13 @@ fn expect_shape(result: &ComposedResult) -> Value {
                     .map(|k| json!({"member": k.member, "key": k.key}))
                     .collect();
             }
+            if !j.key_sources.is_empty() {
+                value["key_sources"] = j
+                    .key_sources
+                    .iter()
+                    .map(|k| json!({"member": k.member, "source": k.source}))
+                    .collect();
+            }
             if let Some(t) = &j.history_times {
                 value["history_times"] = json!({
                     "history": t.history, "history_time": t.history_time, "record": t.record,
@@ -520,6 +527,38 @@ fn composed_history_vectors() {
             expect,
             &["canonical_preimage", "composed_digest_equals_case"],
         );
+        assert!(
+            same(&expect_shape(composed), &want),
+            "{id}:\n got  {}\n want {}",
+            expect_shape(composed),
+            want
+        );
+    }
+}
+
+/// -03 key sources under `controller_binding` and `same_key` (#663): the
+/// whole `expect`.
+#[test]
+fn composed_key_source_vectors() {
+    for case in &cases("composed-key-source", 17) {
+        let id = case["id"].as_str().unwrap();
+        let container = &case["container"];
+        let expect = &case["expect"];
+        let preimage = composed_digest_preimage(block_of(container)).expect("preimage");
+        assert_eq!(
+            expect["canonical_preimage"].as_str().unwrap().as_bytes(),
+            preimage.as_slice(),
+            "{id}"
+        );
+        let result = verify_bundle_with_options(container, &options_of(case));
+        let composed = composed_of(&result);
+        assert_eq!(
+            expect["status"],
+            json!(composed.status),
+            "{id}: {:?}",
+            composed.findings
+        );
+        let want = expectation(expect, &["canonical_preimage"]);
         assert!(
             same(&expect_shape(composed), &want),
             "{id}:\n got  {}\n want {}",

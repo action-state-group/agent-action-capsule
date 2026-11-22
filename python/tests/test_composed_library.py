@@ -31,6 +31,7 @@ def _cases(name: str) -> list:
 COMPOSED = _cases("composed")
 BINDING = _cases("composed-controller-binding")
 HISTORY = _cases("composed-history")
+KEY_SOURCE = _cases("composed-key-source")
 
 
 def _block(container: dict) -> dict:
@@ -93,6 +94,8 @@ def _join_shape(j: c.ComposedJoinResult) -> dict:
     out = {"members": list(j.members), "declared": j.declared, "derived": j.derived or None, "result": j.result}
     if j.keys:
         out["keys"] = [{"member": k.member, "key": k.key} for k in j.keys]
+    if j.key_sources:
+        out["key_sources"] = [{"member": k.member, "source": k.source} for k in j.key_sources]
     if j.history_times is not None:
         t = j.history_times
         out["history_times"] = {"history": t.history, "history_time": t.history_time, "record": t.record,
@@ -153,6 +156,17 @@ def test_controller_binding_needs_the_delivered_record(case):
     assert composed.corroboration[0].result == "not_applicable"
 
 
+def _composed_generator():
+    import sys
+
+    scripts = str(ROOT / "python" / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import generate_bundle_composed_vectors
+
+    return generate_bundle_composed_vectors
+
+
 def _linked() -> dict:
     return next(x for x in BINDING if x["id"] == "controller-binding-linked")
 
@@ -181,19 +195,27 @@ def test_a_failed_signature_never_corroborates():
         assert composed.corroboration[0].result == "not_applicable", name
 
 
-def test_a_record_under_one_key_is_not_a_pair():
+def test_a_record_naming_another_key_has_no_key():
+    """-03: a root record's key is the one its producer signature verifies
+    under. A record that names another key in key_id was not signed by it,
+    so it has no key and the join is not derivable (#663)."""
     case = _linked()
     container = copy.deepcopy(case["container"])
     members = _block(container)["members"]
     first = members[0]["bundle"]["records"][0]
     second = members[1]["bundle"]["records"][0]
     second["key_id"] = first["key_id"]
-    assert _verify(container, case).joins[0].derived == "unjoined"
+    result = _verify(container, case).joins[0]
+    assert result.derived == "" and result.result == "not_derivable"
+    assert [(k.member, k.source) for k in result.key_sources] == [
+        ("responder-a", c.KEY_SOURCE_RECORD_SIGNATURE), ("responder-b", c.KEY_SOURCE_NONE)]
 
 
-def test_a_join_without_digest_or_pointer_is_not_derivable():
+def test_a_join_without_digest_is_not_derivable_and_pointer_is_optional():
+    """-03: a join without identifier_digest names no binding; pointer is
+    optional, since each key is read from its root record's signature."""
     case = _linked()
-    for member in ("identifier_digest", "pointer"):
+    for member, want in (("identifier_digest", "not_derivable"), ("pointer", "derived_matches")):
         container = copy.deepcopy(case["container"])
         block = _block(container)
         join = block["joins"][0]
@@ -202,8 +224,10 @@ def test_a_join_without_digest_or_pointer_is_not_derivable():
         for m in block["members"]:
             if "bundle" in m:
                 m["digest"] = bundle_digest(m["bundle"])
+        if member == "pointer":
+            join["state"] = "agree"
         block["composed_digest"] = c.composed_digest(block)
-        assert _verify(container, case).joins[0].result == "not_derivable", member
+        assert _verify(container, case).joins[0].result == want, member
 
 
 def test_fractional_record_time_compares_as_an_instant():
@@ -216,7 +240,12 @@ def test_fractional_record_time_compares_as_an_instant():
         "2026-10-02T12:10:00+00:00": "unjoined",
     }.items():
         container = copy.deepcopy(case["container"])
-        _block(container)["members"][0]["bundle"]["records"][0]["timestamp"] = stamp
+        bundle = _block(container)["members"][0]["bundle"]
+        record = {k: v for k, v in bundle["records"][0].items() if k not in ("capsule_id", "key_id", "signature")}
+        record["timestamp"] = stamp
+        # Re-sealed with the vectors' test key, so the time stays signed.
+        bundle["records"][0] = _composed_generator().seal(record, _composed_generator().RESPONDER_A)
+        bundle["root"] = bundle["records"][0]["capsule_id"]
         assert _verify(container, case).joins[0].derived == derived, stamp
 
 
@@ -364,3 +393,14 @@ def test_same_key_without_a_signature_verifier_is_not_derivable(monkeypatch):
     by_pair = {j.members: j.result for j in composed.joins}
     assert by_pair[("responder-a", "responder-b")] == "not_derivable"
     assert c._signer_side(block["members"][0]["bundle"]["records"][0]) is None
+
+
+@pytest.mark.parametrize("case", KEY_SOURCE, ids=[x["id"] for x in KEY_SOURCE])
+def test_key_source_vectors(case):
+    """-03 key sources under controller_binding and same_key (#663): the
+    whole expect."""
+    block = _block(case["container"])
+    assert c.composed_digest_preimage(block).decode() == case["expect"]["canonical_preimage"]
+    composed = _composed(verify_bundle(case["container"], composed_options=_options(case)))
+    assert composed.status == case["expect"]["status"], composed.findings
+    assert expect_shape(composed) == _want(case)

@@ -168,6 +168,15 @@ class JoinKey:
 
 
 @dataclass
+class KeySource:
+    """Where one side's key came from on a controller_binding or same_key
+    join: ``record_signature``, ``log_checkpoint``, ``history`` or ``none``."""
+
+    member: str
+    source: str
+
+
+@dataclass
 class ComposedJoinResult:
     members: tuple[str, str]
     basis: str
@@ -179,6 +188,8 @@ class ComposedJoinResult:
     differences: list = field(default_factory=list)
     #: A same_key join that derives unjoined: each member's key.
     keys: list = field(default_factory=list)
+    #: Every controller_binding and same_key join: each side's key source.
+    key_sources: list = field(default_factory=list)
     history_times: HistoryTimes | None = None
 
 
@@ -331,6 +342,7 @@ def verify_composed(raw: Any, opts: ComposedOptions | None = None, coverage_inpu
             withheld.append(f"join_not_derivable:{pair}")
         result.corroboration.append(_corroboration(j, join_result.derived, by_id, observers))
         join_result.history_times = _history_times(j, by_id, views)
+        join_result.key_sources = _key_sources(j, by_id, views)
 
     if failed:
         result.status, result.findings = "fail", failed + withheld
@@ -673,39 +685,77 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions, 
 
 def _key_sides(j: _Join, members: tuple, views: dict) -> tuple | None:
     """Each member's side of a controller_binding or same_key join, or
-    ``None`` when one has none: not derivable. A History member's side is its
-    join view; an empty-history Bundle's is its signed checkpoint's key and
-    time; a member Bundle with records gives, under controller_binding, the
-    key ``pointer`` selects in its root record and, under same_key, the key
-    its root record's producer signature verifies under."""
-    from .bundle import is_empty_history
-
+    ``None`` when one has none: not derivable. The key and its time come from
+    :func:`_member_key`; under controller_binding a ``pointer``, when present,
+    must select that same key in a root record."""
     sides = []
     for m in members:
-        if m.body is None:
+        found = _member_key(m, views)
+        if found is None:
             return None
-        if m.history:
-            view = views[m.id]
-            sides.append(_Side(view.key, True, view.at, True))
-        elif is_empty_history(m.body):
-            side = _checkpoint_side(m.body)
-            if side is None:
-                return None
-            sides.append(side)
-        else:
+        side, _source = found
+        if j.basis == "controller_binding" and j.pointer is not None and not m.history:
             record = _root_record(m)
-            if record is None:
-                return None
-            if j.basis == "same_key":
-                side = _signer_side(record)
-                if side is None:
+            if record is not None:
+                okay, value = _resolve_pointer(record, j.pointer)
+                if not okay or value != side.key:
                     return None
-            else:
-                if j.pointer is None:
-                    return None
-                side = _record_side(record, j.pointer)
-            sides.append(side)
+        sides.append(side)
     return tuple(sides)
+
+
+KEY_SOURCE_RECORD_SIGNATURE = "record_signature"
+KEY_SOURCE_LOG_CHECKPOINT = "log_checkpoint"
+KEY_SOURCE_HISTORY = "history"
+KEY_SOURCE_NONE = "none"
+
+
+def _member_key(m: _Member, views: dict) -> tuple | None:
+    """A member's key, its time and where the key came from (-03 "Joins"):
+    a History member's join view (``history``); an empty-history Bundle's
+    checkpoint signer at that checkpoint's time (``log_checkpoint``); for a
+    member Bundle with records, the key its root record's producer signature
+    verifies under at the record's time (``record_signature``) or, for a root
+    record that carries neither ``signature`` nor ``key_id``, the key that
+    signed the Bundle's checkpoint at that checkpoint's time, when the record's
+    identity and its own membership under that checkpoint hold
+    (``log_checkpoint``). ``None`` when it has no key: a present signature
+    that fails never falls back to the checkpoint key."""
+    from .bundle import is_empty_history, record_logged_under_checkpoint
+
+    if m.body is None:
+        return None
+    if m.history:
+        view = views.get(m.id)
+        return (_Side(view.key, True, view.at, True), KEY_SOURCE_HISTORY) if view is not None else None
+    if is_empty_history(m.body):
+        side = _checkpoint_side(m.body)
+        return (side, KEY_SOURCE_LOG_CHECKPOINT) if side is not None else None
+    record = _root_record(m)
+    if record is None:
+        return None
+    if "signature" in record or "key_id" in record:
+        side = _signer_side(record)
+        return (side, KEY_SOURCE_RECORD_SIGNATURE) if side is not None else None
+    signed = record_logged_under_checkpoint(m.body, record.get("capsule_id"))
+    if signed is None or not isinstance(signed.get("key_id"), str):
+        return None
+    at = _record_time(signed.get("timestamp"))
+    return _Side(signed["key_id"], True, at or (0, 0), at is not None), KEY_SOURCE_LOG_CHECKPOINT
+
+
+def _key_sources(j: _Join, by_id: dict, views: dict) -> list:
+    """Where each side's key came from, in the join's member order, on every
+    controller_binding and same_key join, whatever it derived. A member with
+    no key reports ``none``."""
+    if j.basis not in _HISTORY_BASES:
+        return []
+    out = []
+    for member_id in j.members:
+        m = by_id[member_id]
+        found = _member_key(m, views) if m.outcome == "artifact" else None
+        out.append(KeySource(member_id, found[1] if found is not None else KEY_SOURCE_NONE))
+    return out
 
 
 def _join_keys(j: _Join, members: tuple, sides: tuple) -> list:
@@ -823,15 +873,6 @@ def _record_time(value: Any) -> tuple[int, int] | None:
         head, fraction = value[:-1].split(".", 1)
         value = f"{head}.{fraction[:9]}Z"
     return parse_utc(value)
-
-
-def _record_side(record: Mapping[str, Any], pointer: str) -> _Side:
-    """The key identifier ``pointer`` selects in a root record, and the
-    record's timestamp. Asserted as a string: two resolved objects would not
-    compare."""
-    _, raw = _resolve_pointer(record, pointer)
-    at = _record_time(record.get("timestamp"))
-    return _Side(raw if isinstance(raw, str) else "", isinstance(raw, str), at or (0, 0), at is not None)
 
 
 def _checkpoint_side(body: Mapping[str, Any]) -> _Side | None:

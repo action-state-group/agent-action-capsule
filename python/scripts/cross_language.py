@@ -141,6 +141,8 @@ def composed_verify(value: dict) -> int:
         # join between a History member and a root record.
         if j.keys:
             join["keys"] = [{"member": x.member, "key": x.key} for x in j.keys]
+        if j.key_sources:
+            join["key_sources"] = [{"member": x.member, "source": x.source} for x in j.key_sources]
         if j.history_times is not None:
             t = j.history_times
             join["history_times"] = {"history": t.history, "history_time": t.history_time, "record": t.record,

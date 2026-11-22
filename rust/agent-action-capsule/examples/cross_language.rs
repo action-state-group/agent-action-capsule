@@ -341,6 +341,13 @@ fn composed_verify(input: &[u8]) -> ExitCode {
                     .map(|k| serde_json::json!({"member": k.member, "key": k.key}))
                     .collect();
             }
+            if !join.key_sources.is_empty() {
+                value["key_sources"] = join
+                    .key_sources
+                    .iter()
+                    .map(|k| serde_json::json!({"member": k.member, "source": k.source}))
+                    .collect();
+            }
             if let Some(t) = &join.history_times {
                 value["history_times"] = serde_json::json!({
                     "history": t.history, "history_time": t.history_time, "record": t.record,

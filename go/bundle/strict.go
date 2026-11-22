@@ -10,6 +10,7 @@ import (
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
 	"github.com/action-state-group/agent-action-capsule/go/disclosure"
 	"github.com/action-state-group/agent-action-capsule/go/envelope"
+	"github.com/action-state-group/agent-action-capsule/go/verify"
 	"github.com/action-state-group/agent-action-capsule/go/witness"
 	"github.com/action-state-group/checkpointed-local-log/go/mmr"
 )
@@ -512,4 +513,58 @@ func membershipSeqs(bundle map[string]interface{}) map[string]int64 {
 		}
 	}
 	return out
+}
+
+// RecordLoggedUnderCheckpoint returns the Bundle's signed checkpoint when the
+// record capsuleID is carried, its identity holds (its capsule_id recomputes
+// from its content) and its own membership entry proves it under that signed
+// checkpoint: the entry names the checkpoint's log_id, has leaf_index = seq-1
+// and the checkpoint's mmr_size, and its proof verifies against the signed
+// root, not a stated one. It answers for this one record only: a failure
+// elsewhere in the Bundle does not change it (bundle -03 "Joins", Member
+// keys, for an unsigned root record).
+func RecordLoggedUnderCheckpoint(bundle map[string]interface{}, capsuleID string) *witness.SignedCheckpoint {
+	certificate, ok := bundle["completeness_certificate"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	claim, signed, _ := VerifyCheckpoint(bundle)
+	if claim.Status != "pass" || signed == nil {
+		return nil
+	}
+	var record map[string]interface{}
+	rawRecords, _ := bundle["records"].([]interface{})
+	for _, raw := range rawRecords {
+		if r, isObject := raw.(map[string]interface{}); isObject && r["capsule_id"] == capsuleID {
+			record = r
+			break
+		}
+	}
+	if record == nil {
+		return nil
+	}
+	identity := verify.Verify(record, nil, nil)
+	if !identity.OK || identity.CapsuleID == nil || *identity.CapsuleID != capsuleID {
+		return nil
+	}
+	members, _ := certificate["memberships"].(map[string]interface{})
+	member, _ := members[capsuleID].(map[string]interface{})
+	coordinates, ok := member["log_coordinates"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	seq, seqOK := integer(coordinates["seq"])
+	leaf, leafOK := integer(coordinates["leaf_index"])
+	if coordinates["log_id"] != signed.LogID || !seqOK || !leafOK || seq < 1 || leaf != seq-1 {
+		return nil
+	}
+	root, err := hex.DecodeString(signed.Root)
+	if err != nil || !hex64RE.MatchString(signed.Root) {
+		return nil
+	}
+	proof, err := parseInclusionProof(member["inclusion_proof"])
+	if err != nil || proof.Size != signed.MMRSize || proof.LeafIndex != uint64(leaf) || !mmr.VerifyHexInclusion(root, signed.MMRSize, uint64(leaf), capsuleID, proof) {
+		return nil
+	}
+	return signed
 }

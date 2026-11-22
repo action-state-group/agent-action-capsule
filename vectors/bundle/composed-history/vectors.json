@@ -352,7 +352,17 @@
               "record": "responder-a",
               "record_time": "2026-10-02T12:10:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -368,7 +378,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -733,7 +753,17 @@
               "record": "responder-a",
               "record_time": "2026-10-02T12:10:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -749,7 +779,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "before"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -1124,7 +1164,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -1140,7 +1190,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -1513,7 +1573,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -1529,7 +1599,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -1884,7 +1964,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "none"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -2230,7 +2320,17 @@
               "record": "responder-a",
               "record_time": "2026-10-02T12:10:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-a",
+                "source": "none"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -2555,7 +2655,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -2571,7 +2681,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -2928,7 +3048,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -2944,7 +3074,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -3300,7 +3440,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -3316,7 +3466,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -3672,7 +3832,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -3688,7 +3858,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -4044,7 +4224,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -4060,7 +4250,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -4416,7 +4616,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -4432,7 +4642,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -4788,7 +5008,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -4804,7 +5034,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -5160,7 +5400,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -5176,7 +5426,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -5532,7 +5792,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -5548,7 +5818,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -5904,7 +6184,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -5920,7 +6210,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -6276,7 +6576,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -6292,7 +6602,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -6649,7 +6969,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "none"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -6665,7 +6995,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -6984,6 +7324,16 @@
               {
                 "member": "responder-a",
                 "key": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af"
+              }
+            ],
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-a",
+                "source": "log_checkpoint"
               }
             ]
           }
@@ -7337,7 +7687,17 @@
               "record": "responder-a",
               "record_time": "2026-10-02T12:10:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              }
+            ]
           },
           {
             "members": [
@@ -7353,7 +7713,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-b",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -7642,7 +8012,17 @@
             ],
             "declared": "one_sided",
             "derived": "one_sided",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-a",
+                "source": "none"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -7935,7 +8315,17 @@
             ],
             "declared": "one_sided",
             "derived": "one_sided",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-a",
+                "source": "log_checkpoint"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -8622,7 +9012,17 @@
             ],
             "declared": "agree",
             "derived": "agree",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "history-b",
+                "source": "history"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -8971,7 +9371,17 @@
               "record": "responder-b",
               "record_time": "2026-10-02T12:11:00Z",
               "relation": "after"
-            }
+            },
+            "key_sources": [
+              {
+                "member": "history-a",
+                "source": "history"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [

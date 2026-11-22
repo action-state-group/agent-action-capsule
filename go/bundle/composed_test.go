@@ -128,6 +128,13 @@ func expectShape(result *ComposedResult) map[string]interface{} {
 			}
 			join["keys"] = keys
 		}
+		if len(j.KeySources) != 0 {
+			sources := []interface{}{}
+			for _, k := range j.KeySources {
+				sources = append(sources, map[string]interface{}{"member": k.Member, "source": k.Source})
+			}
+			join["key_sources"] = sources
+		}
 		if t := j.HistoryTimes; t != nil {
 			join["history_times"] = map[string]interface{}{
 				"history": t.History, "history_time": t.HistoryTime, "record": t.Record,

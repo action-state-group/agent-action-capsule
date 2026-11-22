@@ -163,6 +163,14 @@ async function composedVerify(): Promise<number> {
           reason: "reason" in corroboration ? corroboration.reason : null,
           // -03: present only for a same_key join that derives unjoined, and
           // for a join between a History member and a root record.
+          ...(join.keySources === undefined
+            ? {}
+            : {
+                key_sources: join.keySources.map((k) => ({
+                  member: k.member,
+                  source: k.source,
+                })),
+              }),
           ...(join.keys !== undefined && join.keys.length > 0
             ? { keys: join.keys.map((k) => ({ member: k.member, key: k.key })) }
             : {}),
