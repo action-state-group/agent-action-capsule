@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  asOfDate,
   isCalendarDate,
   laterClaimIds,
   recomputeCounts,
@@ -28,6 +29,9 @@ const POSITIVES = [
   "pos-example-org-applicability-result",
   "pos-example-org-applicability-boundary-result",
   "pos-example-org-applicability-in-force-result",
+  "pos-example-org-applicability-as-of-result",
+  "pos-example-org-applicability-as-of-boundary-result",
+  "pos-example-org-applicability-as-of-undated-result",
   "pos-example-org-reconcile-later-result",
   "pos-example-org-repeated-requirement-result",
   "pos-example-org-requirements-covered-result",
@@ -53,6 +57,10 @@ const REFUSED = [
   "neg-generated-at-impossible",
   "neg-generated-at-without-seconds",
   "neg-not-yet-in-force-without-later",
+  "neg-as-of-ignored",
+  "neg-as-of-after-generated-at",
+  "neg-as-of-not-a-date",
+  "neg-as-of-generated-at-unparseable",
   "neg-requirements-covered-duplicate",
   "neg-requirements-covered-omits-claimed",
   "neg-requirements-covered-unaccounted",
@@ -60,6 +68,7 @@ const REFUSED = [
   // `\s` includes U+FEFF.
   "neg-digest-trailing-newline",
   "neg-applies-from-trailing-newline",
+  "neg-as-of-trailing-newline",
   "neg-contract-ref-ecma-whitespace",
 ];
 
@@ -120,6 +129,34 @@ describe("Result v0 sections 4.2 and 4.3", () => {
     );
     expect(counts.bucketCounts.failed).toBe(1);
     expect(counts.coverage.notYetInForce).toBe(3);
+  });
+
+  it.each([
+    [
+      "neg-as-of-not-a-date",
+      'applicability_as_of: "2026-02-30" is not a calendar date',
+    ],
+    [
+      "neg-as-of-after-generated-at",
+      "applicability_as_of: 2026-09-23 is after the UTC date of generated_at, 2026-09-22",
+    ],
+    [
+      "neg-as-of-generated-at-unparseable",
+      "generated_at: not an RFC 3339 date-time with an offset, and applicability_as_of is stated",
+    ],
+  ])("%s is refused by the as-of rule", (name, finding) => {
+    expect(validateEvidenceResult(vector(name))).toContain(finding);
+  });
+
+  it("judges in force as of applicability_as_of when it is stated", () => {
+    const doc = vector("pos-example-org-applicability-as-of-result");
+    expect(asOfDate(doc)).toBe("2026-03-01");
+    expect([...laterClaimIds(doc)]).toEqual(["claim-2"]);
+    expect(recomputeCounts(doc).coverage.notYetInForce).toBe(1);
+    const { applicability_as_of: _stated, ...withoutAsOf } = doc;
+    expect(asOfDate(withoutAsOf)).toBe("2026-09-22");
+    expect([...laterClaimIds(withoutAsOf)]).toEqual([]);
+    expect(validateEvidenceResult(withoutAsOf)).not.toEqual([]);
   });
 
   it("judges in force by the UTC date of generated_at", () => {

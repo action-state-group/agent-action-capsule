@@ -145,15 +145,21 @@ without `out_of_scope_allowed`, on a typed claim, or with carrier status
 absent with one; two claims of one requirement that disagree on either
 copied fact; and, when a claim is dated, a `generated_at` that is not an RFC
 3339 date-time with an offset or an `applies_from` that is not a calendar
-date. A claim is `later` when `applies_from` is after the UTC date of
-`generated_at` (`laterClaimIds`, `utcDateOf`): it is in no bucket, outside
+date. When the document states `applicability_as_of`, the validator also
+refuses a `generated_at` that does not parse, an `applicability_as_of` that
+is not a calendar date, and one after the UTC date of `generated_at`. A claim
+is `later` when `applies_from` is after the as-of date (`asOfDate`:
+`applicability_as_of` when stated, else the UTC date of `generated_at`;
+`laterClaimIds`, `utcDateOf`): it is in no bucket, outside
 `evaluated_population` and `unknown_count`, and counted as
 `coverage.notYetInForce`. The page draws the fourth bucket only when the
 Result carries it, a "not yet in force" list apart from the buckets, each
 later verdict as "(readiness)", and, whenever a claim is dated, "In force as
 of <date>" with the label that the dates and the switch come from the
 contract and are not re-checked here. `ResultClaim.outOfScopeAllowed`,
-`appliesFrom` and `later` carry the copied facts.
+`appliesFrom` and `later` carry the copied facts. `ResultRoot.applicabilityAsOf`
+carries the producer's stated as-of date; a view that shows it shows
+`generatedAt` beside it, each labeled, never one in place of the other.
 
 **Counts are recomputed from the claims.** Coverage counts evaluations, one
 per claim (`spec/evidence-result-v0.md` §3), so `evaluated_population` and

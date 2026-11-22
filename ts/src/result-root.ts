@@ -147,6 +147,7 @@ export const EXTENSION_PREFIX = "x-";
 export const RESULT_MEMBERS = Object.freeze([
   "result_version",
   "generated_at",
+  "applicability_as_of",
   "claims",
   "aggregate",
   "view",
@@ -380,7 +381,7 @@ export interface ResultClaim {
   readonly outOfScopeAllowed: boolean;
   readonly appliesFrom?: string;
   /**
-   * `appliesFrom` is after the UTC date of `generated_at`: the claim's
+   * `appliesFrom` is after the as-of date (`asOfDate`): the claim's
    * verdict is readiness only, in no bucket and outside the population.
    */
   readonly later: boolean;
@@ -562,6 +563,14 @@ export interface ResultRoot extends RecordTimes {
   readonly form: ResultRootForm;
   readonly generatedAt: string;
   /**
+   * `applicability_as_of` (spec section 4.3): the date the producer says
+   * "in force" is judged against, present only when the document states
+   * it. Stated by the producer, never verified here. A view that
+   * shows it shows `generatedAt` beside it, each labeled, never one in place
+   * of the other.
+   */
+  readonly applicabilityAsOf?: string;
+  /**
    * The coverage a view draws: `evaluatedPopulation` and `unknownCount`
    * recomputed from the claims, `excludedNotApplicable` as stated (see
    * `RecomputedCounts`). The producer's own numbers are `statedCoverage`.
@@ -723,11 +732,24 @@ export function utcDateOf(generatedAt: unknown): string | undefined {
 }
 
 /**
- * The ids of the later claims: `applies_from` after the UTC date of
- * `generated_at` (spec section 4.3). Assumes a document whose dates parse.
+ * The as-of date "in force" is judged against (spec section 4.3):
+ * `applicability_as_of` when the document carries it, else the UTC date of
+ * `generated_at`. Undefined when the date it needs does not parse.
+ */
+export function asOfDate(document: ObjectValue): string | undefined {
+  if (Object.hasOwn(document, "applicability_as_of"))
+    return isCalendarDate(document.applicability_as_of)
+      ? document.applicability_as_of
+      : undefined;
+  return utcDateOf(document.generated_at);
+}
+
+/**
+ * The ids of the later claims: `applies_from` after the as-of date
+ * (`asOfDate`, spec section 4.3). Assumes a document whose dates parse.
  */
 export function laterClaimIds(document: ObjectValue): ReadonlySet<string> {
-  const asOf = utcDateOf(document.generated_at);
+  const asOf = asOfDate(document);
   const later = new Set<string>();
   if (asOf === undefined) return later;
   for (const claim of document.claims as ObjectValue[])
@@ -941,10 +963,26 @@ export function validateEvidenceResult(value: unknown): string[] {
   const dated = claimList.filter((claim) =>
     Object.hasOwn(claim, "applies_from"),
   );
-  if (dated.length > 0) {
-    if (utcDateOf(value.generated_at) === undefined)
+  const statesAsOf = Object.hasOwn(value, "applicability_as_of");
+  if (dated.length > 0 || statesAsOf) {
+    const generated = utcDateOf(value.generated_at);
+    if (generated === undefined)
       findings.push(
-        "generated_at: not an RFC 3339 date-time with an offset, and a claim is dated",
+        statesAsOf
+          ? "generated_at: not an RFC 3339 date-time with an offset, and applicability_as_of is stated"
+          : "generated_at: not an RFC 3339 date-time with an offset, and a claim is dated",
+      );
+    if (statesAsOf && !isCalendarDate(value.applicability_as_of))
+      findings.push(
+        `applicability_as_of: ${JSON.stringify(value.applicability_as_of)} is not a calendar date`,
+      );
+    else if (
+      statesAsOf &&
+      generated !== undefined &&
+      (value.applicability_as_of as string) > generated
+    )
+      findings.push(
+        `applicability_as_of: ${String(value.applicability_as_of)} is after the UTC date of generated_at, ${generated}`,
       );
     dated.forEach((claim) => {
       if (!isCalendarDate(claim.applies_from))
@@ -2064,6 +2102,9 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
     member: carried.member,
     form: carried.form,
     generatedAt: document.generated_at as string,
+    ...(typeof document.applicability_as_of === "string"
+      ? { applicabilityAsOf: document.applicability_as_of }
+      : {}),
     coverage: counts.coverage,
     statedCoverage: {
       evaluatedPopulation: coverage.evaluated_population as number,

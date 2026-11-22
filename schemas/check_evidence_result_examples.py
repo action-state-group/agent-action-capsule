@@ -200,6 +200,13 @@ mechanical half):
      validate and pass revision_findings; the eight schema negatives MUST
      fail, each with a strip-the-rule mutant; the REVISION_NEGATIVES MUST
      pass the schema and fail revision_findings, each flipped by its mutant.
+     The as-of date (applicability_as_of, section 4.3): three positives (as
+     of a date before generated_at, at the UTC-date bound, and on a Result
+     with no dated claim) MUST pass, and four REVISION_NEGATIVES MUST fail:
+     neg-as-of-ignored (the aggregate judged as of generated_at; mutant
+     `as_of_generated_at`), neg-as-of-after-generated-at (mutant
+     `skip_as_of_bound`), neg-as-of-not-a-date and
+     neg-as-of-generated-at-unparseable (mutant `skip_date_parse`).
   14. Which requirements the run covered (spec section 3):
      pos-example-org-requirements-covered-result (the claims positive listing
      its three claimed requirements and req-claim-4, its one exclusion) MUST
@@ -215,12 +222,14 @@ mechanical half):
   15. Patterns are ECMA-262's (JSON Schema 2020-12, section 6.3.3 of the
      validation vocabulary): this checker validates with its own `pattern`
      keyword, which reads `$` and `\s` as ECMA-262 does (`_ecma_regex`), not
-     as Python's `re` does. Three schema negatives MUST fail, each with the
+     as Python's `re` does. Four schema negatives MUST fail, each with the
      mutant that reads `pattern` with plain `re.search` and accepts it:
        - neg-digest-trailing-newline: claim-1's first evidence digest ends
          in "\n" (Python's `$` matches before a final newline).
        - neg-applies-from-trailing-newline: claim-2's applies_from ends in
          "\n" (same).
+       - neg-as-of-trailing-newline: the document's applicability_as_of
+         ends in "\n" (same).
        - neg-contract-ref-ecma-whitespace: claim-1's contract_ref ends in
          U+FEFF (ECMA-262 whitespace; not in Python's `\s`).
      The converse case, a contract_ref holding U+001C (in Python's `\s`,
@@ -594,6 +603,9 @@ POSITIVES = [
     "pos-example-org-applicability-result",
     "pos-example-org-applicability-boundary-result",
     "pos-example-org-applicability-in-force-result",
+    "pos-example-org-applicability-as-of-result",
+    "pos-example-org-applicability-as-of-boundary-result",
+    "pos-example-org-applicability-as-of-undated-result",
     "pos-example-org-reconcile-later-result",
     "pos-example-org-requirements-covered-result",
     "pos-example-org-dataset-result",
@@ -634,6 +646,7 @@ NEGATIVES = [
     "neg-requirements-covered-duplicate",
     "neg-digest-trailing-newline",
     "neg-applies-from-trailing-newline",
+    "neg-as-of-trailing-newline",
     "neg-contract-ref-ecma-whitespace",
     "neg-dataset-ref-without-plan-ref",
     "neg-plan-ref-inline-plan",
@@ -645,6 +658,7 @@ NEGATIVES = [
 PATTERN_NEGATIVES = (
     "neg-digest-trailing-newline",
     "neg-applies-from-trailing-newline",
+    "neg-as-of-trailing-newline",
     "neg-contract-ref-ecma-whitespace",
 )
 
@@ -664,6 +678,10 @@ REVISION_NEGATIVES = [
     ("neg-generated-at-impossible", "skip_date_parse", "the date parse"),
     ("neg-generated-at-without-seconds", "skip_date_parse", "the date parse"),
     ("neg-not-yet-in-force-without-later", "skip_later_count", "the not_yet_in_force count"),
+    ("neg-as-of-ignored", "as_of_generated_at", "judging as of applicability_as_of"),
+    ("neg-as-of-after-generated-at", "skip_as_of_bound", "the as-of bound"),
+    ("neg-as-of-not-a-date", "skip_date_parse", "the date parse"),
+    ("neg-as-of-generated-at-unparseable", "skip_date_parse", "the date parse"),
     ("neg-requirements-covered-omits-claimed", "skip_covered", "the requirements_covered rules"),
     ("neg-requirements-covered-unaccounted", "skip_covered", "the requirements_covered rules"),
 ]
@@ -796,23 +814,35 @@ def revision_findings(doc: EvidenceResultDoc, *, mutant: str | None = None) -> l
     rule to prove a rejection is that rule's: ``trust_buckets``,
     ``skip_rows``, ``population_all_claims`` and ``unknown_all_claims`` (count
     every claim, as before section 4.3), ``skip_later_count``,
-    ``skip_date_parse`` and ``skip_covered`` (section 3's
-    requirements_covered rules)."""
+    ``skip_date_parse``, ``as_of_generated_at`` (ignore applicability_as_of),
+    ``skip_as_of_bound`` (let it follow generated_at's date) and
+    ``skip_covered`` (section 3's requirements_covered rules)."""
     out: list[str] = []
     claims = doc["claims"]
     aggregate = doc["aggregate"]
     coverage = aggregate["coverage"]
     dated = [c for c in claims if "applies_from" in c]
+    stated_as_of = doc.get("applicability_as_of")
+    if mutant == "as_of_generated_at":
+        stated_as_of = None  # the rule switched off: judged as of generated_at, as before section 4.3's as-of date
     later: set[str] = set()
-    if dated and mutant == "skip_date_parse":
+    if (dated or stated_as_of is not None) and mutant == "skip_date_parse":
         # the rule switched off: dates compared as text, nothing parsed
-        as_of_text = doc["generated_at"][:10]
+        as_of_text = stated_as_of if stated_as_of is not None else doc["generated_at"][:10]
         later = {c["id"] for c in dated if c["applies_from"] > as_of_text}
-    elif dated:
+    elif dated or stated_as_of is not None:
         as_of = _utc_date(doc["generated_at"])
         if as_of is None:
             out.append(f"generated_at {doc['generated_at']!r} is not an RFC 3339 date-time with an offset")
             return out
+        if stated_as_of is not None:
+            stated = _calendar_date(stated_as_of)
+            if stated is None:
+                out.append(f"applicability_as_of {stated_as_of!r} is not a calendar date")
+                return out
+            if stated > as_of and mutant != "skip_as_of_bound":
+                out.append(f"applicability_as_of {stated_as_of} is after the UTC date of generated_at, {as_of}")
+            as_of = stated
         for claim in dated:
             applies = _calendar_date(claim["applies_from"])
             if applies is None:
