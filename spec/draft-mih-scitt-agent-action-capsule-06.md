@@ -997,6 +997,20 @@ digest-committed record that the constraint or policy fired and the
 action did not proceed. Recording only successes makes the evidence trail
 survivorship-biased and the refusal path unverifiable.
 
+This requirement binds the producer; it is not a property a verifier can
+check from the Capsules it holds. A blocked or denied Capsule shows that
+the gate fired when that Capsule exists, but a producer that refused and
+recorded nothing looks, at Class 1, the same as one that was never asked.
+Such a Capsule also cannot carry an attested observer of the gate: a
+never-dispatching `verdict_class` requires the derived `effect_mode` to
+be `"not_applicable"`, where the effect-attestation matrix requires
+`effect_attestation` to be absent ({{effect}}). Showing that a refused
+transition is absent needs an artifact over the attempt itself, whose
+collection scope and completeness are established by something other than
+its issuer's word, for example an anchored ledger head or an independent
+run. This revision defines no such artifact and no gate-scoped attestation
+grade.
+
 ### Chained Capsules and human-in-the-loop resolution {#hitl}
 
 Every Capsule that references a prior Capsule carries a digested `chain`
@@ -1025,7 +1039,8 @@ resolution Capsule, preserving the append-only model.
 Concurrent-supersedes rule: the ledger is append-only and totally
 ordered; the earliest capsule in ledger order with `relation=supersedes`
 over a given parent is authoritative; any later supersedes over the same
-parent is structurally valid but MUST surface as a verification finding.
+parent is structurally valid but MUST surface as an informational
+verification finding; it does not affect `ok` ({{verification}}, check 6).
 
 Open-items predicate: an item is open when its Capsule's
 `verdict_class` is one of `deferred`, `needs_decision`,
@@ -1050,7 +1065,11 @@ parent and is the only field {{assurance}}'s `ledger_mode` derivation
 reads. `references` is exclusively for everything else. A `references`
 entry MUST NOT name the same target as `chain.parent_capsule_id` — a
 producer citing its own same-stream parent states that once, in
-`chain`, never redundantly in `references`.
+`chain`, never redundantly in `references`. An entry names that target
+exactly when its `type` is `agent-action-capsule`, its `digest_alg` is
+`SHA-256`, and its `digest` equals `chain.parent_capsule_id`; an entry
+of any other `type` or `digest_alg` over the same hex names a different
+target (Digest as identity, below) and is not a duplicate.
 
 **Shape.** Each `references` entry's identity is a CPB typed digest
 reference {{I-D.mih-sokolov-scitt-payload-binding}}: `{type, digest_alg,
@@ -1061,16 +1080,19 @@ document defines the `references` entry shape, not an exhaustive list
 of what may be cited.
 
 **Digest as identity.** A `references` entry's target is identified
-solely by the `{digest_alg, digest}` pair from its shape (above); no
-producer-local identifier, URI, or other locator carried alongside an
-entry constitutes an alternative identity. Two entries whose
-`{digest_alg, digest}` match MUST be treated as citing the same target
-regardless of any other identifier either carries, and two entries whose
-digests differ MUST NOT be treated as citing the same target merely
-because they share a locator or producer-local identifier. Comparison,
-deduplication, and cross-record correlation over `references` entries
-therefore key on `{digest_alg, digest}` alone: a locator can be
-repointed without altering the entry that carries it; the digest cannot.
+solely by its typed digest, the `{type, digest_alg, digest}` triple from
+its shape (above); no producer-local identifier, URI, or other locator
+carried alongside an entry constitutes an alternative identity. `type`
+is part of the identity because it fixes what the digest was computed
+over: the same digest octets under a different `type` are a different
+claim. Two entries whose `{type, digest_alg, digest}` triples match MUST
+be treated as citing the same target regardless of any other identifier
+either carries, and two entries whose triples differ MUST NOT be treated
+as citing the same target merely because they share a locator or
+producer-local identifier. Comparison, deduplication, and cross-record
+correlation over `references` entries therefore key on that triple
+alone: a locator can be repointed without altering the entry that
+carries it; the digest cannot.
 
 **Why the digest is the identity.** A reference whose identity is a
 name — a URI, a record identifier, a position in some other party's
@@ -1089,8 +1111,8 @@ mechanism that CPB profiles share; the requirement that a cited
 artifact be identified by content rather than by name originates here.
 
 **Identity references, never policy references.** Every `references`
-entry, as defined above, is an IDENTITY reference: its `{digest_alg,
-digest}` pair pins the exact bytes of one target, the same discipline
+entry, as defined above, is an IDENTITY reference: its typed digest
+`{type, digest_alg, digest}` pins the exact bytes of one target, the same discipline
 `capsule_id` gives this Capsule itself ({{identity}}) — for a cited AAC
 Capsule, checking a `references` entry against that Capsule's own
 `capsule_id` computation is exactly this comparison. This profile
@@ -1305,7 +1327,12 @@ its result is not `ok`.
 1. Structural: REQUIRED fields present and typed; `format_version` is exactly
    the string `"4"`; `canonicalization_id` is exactly the string `"jcs"`; and
    no floating-point values occur in digest-bearing fields. Any other format
-   or canonicalization declaration fails closed. A member of the wrong
+   or canonicalization declaration fails closed: `ok` is false and no
+   Capsule ID is recomputed at check 2. The verifier still runs the
+   remaining checks and reports their findings and the derived modes,
+   except the `references` checks ({{xref}}), which run only when
+   `format_version` is `"4"`; like every field `ok` gates, these results
+   carry no trust. A member of the wrong
    JSON type (for example, an array or an object where a string is
    defined) fails this check; the never-reject rule for unregistered
    values (check 8, {{iana}}) applies only to well-typed values.
@@ -1323,7 +1350,11 @@ its result is not `ok`.
    matrix REQUIRES it, or present where it MUST be absent — including
    the planned carve — is a failure ({{effect}}).
 6. Chain semantics (store-level): a missing chain parent is a failure;
-   concurrent supersedes surface as findings per {{hitl}}. A
+   a later concurrent supersedes is an informational finding per
+   {{hitl}}. A verifier given no store does not run these two
+   store-level checks; for a Capsule that carries a `chain` block it
+   reports that they were not run as an informational finding, which
+   does not affect `ok`. A
    `references` entry ({{xref}}) is a different claim: it is informational
    cross-stream correlation, never a chain-integrity input, and a
    verifier MUST NOT treat a `references` entry naming an unresolvable
@@ -1331,7 +1362,9 @@ its result is not `ok`.
    entry that duplicates `chain.parent_capsule_id` is a failure, per the
    boundary rule of {{xref}}.
 7. Assurance reconciliation: rederive the assurance modes from evidence
-   actually verified; report overclaims.
+   actually verified; report overclaims. Only overclaims are reported: a
+   claimed mode that the derived mode outranks (an under-claim) is
+   conforming and does not affect `ok`.
 8. Unknown registry values (`verdict_class`, `decision`,
    `effect.type`, `irreversibility_class`, `effect_attestation`,
    `chain.relation`, `citation_purpose`): report as informational
@@ -1968,6 +2001,18 @@ before publication.
   and signature are byte strings, and no octet follows the envelope or the
   protected map inside its byte string; a verifier rejects any violation
   ({{envelope}}).
+* Reference identity: a `references` target is identified by the whole
+  typed digest `{type, digest_alg, digest}`, and an entry duplicates the
+  chain parent only under type `agent-action-capsule` with `SHA-256`
+  ({{xref}}).
+* Verifier reporting: a fail-closed format or canonicalization declaration
+  still reports the other checks and the derived modes; a verifier given
+  no store reports the store-level chain checks as not run; a later
+  concurrent supersedes and the not-run report are informational; an
+  under-claimed assurance mode is not a finding ({{verification}}).
+* A Capsule on every verdict: the requirement binds the producer and is
+  not checkable from held Capsules; a blocked Capsule cannot
+  carry an attested observer of the gate ({{everyverdict}}).
 * Wire version unchanged: a producer conforming to this revision still
   emits "draft-mih-scitt-agent-action-capsule-05", and verifier acceptance
   of `spec_version` is unchanged ({{identity}}).
