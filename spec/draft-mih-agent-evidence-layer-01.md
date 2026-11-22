@@ -2,7 +2,7 @@
 title: "Evidence Layer"
 abbrev: "Evidence Layer"
 docname: draft-mih-agent-evidence-layer-01
-date: 2026-10-29
+date: 2026-11-21
 category: info
 submissiontype: IETF
 ipr: trust200902
@@ -40,7 +40,7 @@ informative:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-09
+    date: 2026-09-26
   I-D.mih-scitt-checkpointed-local-log:
     title: "The Checkpointed Local Log (CLL)"
     seriesinfo:
@@ -53,16 +53,16 @@ informative:
   I-D.mih-agent-evidence-request:
     title: "An Interaction Model for Requesting Verifiable Evidence"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-evidence-request-01
+      Internet-Draft: draft-mih-agent-evidence-request-03
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-10
+    date: 2026-11-21
   I-D.mih-zhang-agent-disclosure-bundle:
     title: "AAC Evidence Bundle"
     seriesinfo:
-      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-01
+      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-02
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -70,7 +70,7 @@ informative:
       - ins: Y. Zhang
         name: Yiqun Zhang
         organization: Independent
-    date: 2026-10
+    date: 2026-10-31
   I-D.mih-agent-disclosure-envelope:
     title: "Disclosure Envelope Profile for Agent Action Capsules"
     seriesinfo:
@@ -83,12 +83,12 @@ informative:
   I-D.mih-agent-settlement-records:
     title: "Two-Party Settlement Records for Agent Payments"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-settlement-records-00
+      Internet-Draft: draft-mih-agent-settlement-records-01
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-10
+    date: 2026-11-21
 
 --- abstract
 
@@ -545,7 +545,7 @@ substrate it uses, and states which substrate that is.
 
 # Answering a Request {#answers}
 
-{{I-D.mih-agent-evidence-request}} defines six subject forms and three
+{{I-D.mih-agent-evidence-request}} defines seven subject forms and three
 mutually exclusive interaction outcomes. This section states, for each
 subject form, the store-level capability that answers it — it does not
 restate that document's own rules about coverage anchors or refusal
@@ -559,6 +559,7 @@ reasons.
 | `exchange` | resolve every record carrying a `cites` link ({{links}}) whose target is the named exchange half's digest |
 | `full_history` | the store's entire evidence body, subject to whatever disclosure policy governs the interaction ({{retention}}) |
 | `checkpoints` | the commitment substrate's checkpoints and any Receipts or witness records for them ({{substrate}}), requiring no record-level resolution |
+| `checkpoint_range` | as for `checkpoints`, restricted to the checkpoints at the stated checkpoint positions, inclusive; requires no record-level resolution |
 
 ## Three Kinds of "No" {#answers-absence}
 
@@ -881,3 +882,11 @@ Since -00:
   `resolves` links do not change a Close's status.
 - Reconcile and Close: stated that AGREED establishes acknowledgement
   without contest, not acceptance of the Close's contents.
+- Checkpoints: in a Checkpointed Local Log, the size a checkpoint states is
+  its `leaf_count`, which follows from its `log_size`.
+- Answering a Request: added the `checkpoint_range` subject form, the
+  seventh form of the Evidence Request at -03.
+- References: RFC 3986 is added as a normative reference, for
+  `policy_uri`. The Agent Action Capsule profile is cited at -05, the
+  Evidence Request at -03, the Evidence Bundle at -02, the Settlement Records
+  at -01, and the Checkpointed Local Log at -02.

@@ -4,8 +4,8 @@
 
 Network Working Group                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Informational                           29 October 2026
-Expires: 2 May 2027
+Intended status: Informational                          21 November 2026
+Expires: 25 May 2027
 
 
                              Evidence Layer
@@ -49,13 +49,13 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 2 May 2027.
+   This Internet-Draft will expire on 25 May 2027.
 
 
 
-Mih                        Expires 2 May 2027                   [Page 1]
+Mih                        Expires 25 May 2027                  [Page 1]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
 Copyright Notice
@@ -89,19 +89,19 @@ Table of Contents
    9.  Answering a Request . . . . . . . . . . . . . . . . . . . . .  14
      9.1.  Three Kinds of "No" . . . . . . . . . . . . . . . . . . .  15
    10. Reconcile and Close . . . . . . . . . . . . . . . . . . . . .  16
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  17
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  18
-     12.1.  What a Checkpoint Reveals  . . . . . . . . . . . . . . .  18
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  20
-     13.1.  Evidence Layer Epistemic Types . . . . . . . . . . . . .  20
-     13.2.  Evidence Layer Link Types  . . . . . . . . . . . . . . .  21
-     13.3.  Evidence Layer Retention States  . . . . . . . . . . . .  22
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  23
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  23
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  24
-   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  25
-   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  25
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  26
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  18
+   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  19
+     12.1.  What a Checkpoint Reveals  . . . . . . . . . . . . . . .  19
+   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  21
+     13.1.  Evidence Layer Epistemic Types . . . . . . . . . . . . .  21
+     13.2.  Evidence Layer Link Types  . . . . . . . . . . . . . . .  22
+     13.3.  Evidence Layer Retention States  . . . . . . . . . . . .  23
+   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  24
+     14.1.  Normative References . . . . . . . . . . . . . . . . . .  24
+     14.2.  Informative References . . . . . . . . . . . . . . . . .  25
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  26
+   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  26
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  27
 
 
 
@@ -109,9 +109,9 @@ Table of Contents
 
 
 
-Mih                        Expires 2 May 2027                   [Page 2]
+Mih                        Expires 25 May 2027                  [Page 2]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
 1.  Introduction
@@ -165,9 +165,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                   [Page 3]
+Mih                        Expires 25 May 2027                  [Page 3]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    *  *A host-identity scheme.* What a principal_ref (Section 4) names,
@@ -221,9 +221,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                   [Page 4]
+Mih                        Expires 25 May 2027                  [Page 4]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    *Commitment substrate:* the mechanism a store uses to assign append
@@ -277,9 +277,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                   [Page 5]
+Mih                        Expires 25 May 2027                  [Page 5]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    record:
@@ -333,9 +333,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                   [Page 6]
+Mih                        Expires 25 May 2027                  [Page 6]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
     +-----------------------+-----------------------------------------+
@@ -389,9 +389,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                   [Page 7]
+Mih                        Expires 25 May 2027                  [Page 7]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    between two records.  Multiple links, of the same or different types,
@@ -445,9 +445,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                   [Page 8]
+Mih                        Expires 25 May 2027                  [Page 8]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    *disputes:* the carrying record submits the target's claim, for
@@ -501,9 +501,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                   [Page 9]
+Mih                        Expires 25 May 2027                  [Page 9]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    A correction to a record's content is represented by a later record
@@ -557,9 +557,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                  [Page 10]
+Mih                        Expires 25 May 2027                 [Page 10]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
      +-----------------+------------------+--------------------------+
@@ -613,9 +613,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                  [Page 11]
+Mih                        Expires 25 May 2027                 [Page 11]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
 6.2.  Disclosure Records
@@ -669,9 +669,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                  [Page 12]
+Mih                        Expires 25 May 2027                 [Page 12]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    2.  *Authenticated index.* A deterministic structure whose root is
@@ -725,9 +725,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                  [Page 13]
+Mih                        Expires 25 May 2027                 [Page 13]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    *Conformance to this document MUST NOT require any particular
@@ -740,51 +740,86 @@ Internet-Draft               Evidence Layer                 October 2026
 
 9.  Answering a Request
 
-   [I-D.mih-agent-evidence-request] defines six subject forms and three
-   mutually exclusive interaction outcomes.  This section states, for
-   each subject form, the store-level capability that answers it — it
-   does not restate that document's own rules about coverage anchors or
-   refusal reasons.
+   [I-D.mih-agent-evidence-request] defines seven subject forms and
+   three mutually exclusive interaction outcomes.  This section states,
+   for each subject form, the store-level capability that answers it —
+   it does not restate that document's own rules about coverage anchors
+   or refusal reasons.
 
-   +==============+===================================================+
-   | Subject      | Store capability                                  |
-   +==============+===================================================+
-   | record       | resolve one record by record_id/digest —          |
-   |              | operational or authenticated index                |
-   +--------------+---------------------------------------------------+
-   | range        | resolve records at stated positions under the     |
-   |              | substrate's append order, with an inclusion or    |
-   |              | range proof from the authenticated index          |
-   +--------------+---------------------------------------------------+
-   | correlation  | resolve every record whose subject_ref (or an     |
-   |              | equivalent correlation field) matches —           |
-   |              | operational index                                 |
-   +--------------+---------------------------------------------------+
-   | exchange     | resolve every record carrying a cites link        |
-   |              | (Section 5) whose target is the named exchange    |
-   |              | half's digest                                     |
-   +--------------+---------------------------------------------------+
-   | full_history | the store's entire evidence body, subject to      |
-   |              | whatever disclosure policy governs the            |
-   |              | interaction (Section 6)                           |
-   +--------------+---------------------------------------------------+
-   | checkpoints  | the commitment substrate's checkpoints and any    |
-   |              | Receipts or witness records for them (Section 8), |
-   |              | requiring no record-level resolution              |
-   +--------------+---------------------------------------------------+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 25 May 2027                 [Page 14]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
+   +==================+===============================================+
+   | Subject          | Store capability                              |
+   +==================+===============================================+
+   | record           | resolve one record by record_id/digest —      |
+   |                  | operational or authenticated index            |
+   +------------------+-----------------------------------------------+
+   | range            | resolve records at stated positions under the |
+   |                  | substrate's append order, with an inclusion   |
+   |                  | or range proof from the authenticated index   |
+   +------------------+-----------------------------------------------+
+   | correlation      | resolve every record whose subject_ref (or an |
+   |                  | equivalent correlation field) matches —       |
+   |                  | operational index                             |
+   +------------------+-----------------------------------------------+
+   | exchange         | resolve every record carrying a cites link    |
+   |                  | (Section 5) whose target is the named         |
+   |                  | exchange half's digest                        |
+   +------------------+-----------------------------------------------+
+   | full_history     | the store's entire evidence body, subject to  |
+   |                  | whatever disclosure policy governs the        |
+   |                  | interaction (Section 6)                       |
+   +------------------+-----------------------------------------------+
+   | checkpoints      | the commitment substrate's checkpoints and    |
+   |                  | any Receipts or witness records for them      |
+   |                  | (Section 8), requiring no record-level        |
+   |                  | resolution                                    |
+   +------------------+-----------------------------------------------+
+   | checkpoint_range | as for checkpoints, restricted to the         |
+   |                  | checkpoints at the stated checkpoint          |
+   |                  | positions, inclusive; requires no record-     |
+   |                  | level resolution                              |
+   +------------------+-----------------------------------------------+
 
                                  Table 3
-
-
-
-
-
-
-
-Mih                        Expires 2 May 2027                  [Page 14]
-
-Internet-Draft               Evidence Layer                 October 2026
-
 
 9.1.  Three Kinds of "No"
 
@@ -796,6 +831,16 @@ Internet-Draft               Evidence Layer                 October 2026
        (Section 7), that no record occupies the stated position or
        carries the stated identity.  This is the only one of the three
        that is itself checkable by a party other than the store.
+
+
+
+
+
+
+Mih                        Expires 25 May 2027                 [Page 15]
+
+Internet-Draft               Evidence Layer                November 2026
+
 
    2.  *Withheld:* a record or its payload exists but is not disclosed
        under current policy (Section 6).  This is a policy refusal, not
@@ -834,14 +879,6 @@ Internet-Draft               Evidence Layer                 October 2026
    the store does not present its own asserted absence as if it carried
    the same weight.
 
-
-
-
-Mih                        Expires 2 May 2027                  [Page 15]
-
-Internet-Draft               Evidence Layer                 October 2026
-
-
 10.  Reconcile and Close
 
    Two independently held stores are compared under a declared contract
@@ -852,6 +889,14 @@ Internet-Draft               Evidence Layer                 October 2026
       agree under the declared contract or profile.
 
    *  A_ONLY, B_ONLY: a corresponding record was found on one side only.
+
+
+
+
+Mih                        Expires 25 May 2027                 [Page 16]
+
+Internet-Draft               Evidence Layer                November 2026
+
 
    *  CONFLICTING: both sides hold a corresponding record, and the
       records disagree.
@@ -889,15 +934,6 @@ Internet-Draft               Evidence Layer                 October 2026
    store committed a record, and under which key, is profile-defined;
    the record header of Section 4 names neither.
 
-
-
-
-
-Mih                        Expires 2 May 2027                  [Page 16]
-
-Internet-Draft               Evidence Layer                 October 2026
-
-
    *  *CONTESTED:* a counterparty record carries a rebuts link to this
       Close.  While such a link stands, the Close is not AGREED,
       whatever else links to it.
@@ -910,6 +946,14 @@ Internet-Draft               Evidence Layer                 October 2026
    *AGREED is not acceptance.* An acknowledges link establishes receipt,
    not agreement (Section 5).  An automatic acknowledgement of receipt
    and a reviewed acceptance of the Close's population therefore both
+
+
+
+Mih                        Expires 25 May 2027                 [Page 17]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
    make a Close AGREED: AGREED states that the counterparty acknowledged
    the Close and does not contest it, and it does not establish that the
    counterparty accepted the Close's contents.  Whether, and how, a
@@ -942,18 +986,6 @@ Internet-Draft               Evidence Layer                 October 2026
    once a checkpoint has left the store's control; they do nothing for
    one that has not.
 
-
-
-
-
-
-
-
-Mih                        Expires 2 May 2027                  [Page 17]
-
-Internet-Draft               Evidence Layer                 October 2026
-
-
    *Key control is not authority.* That a signature over a record
    verifies against the key named by principal_ref establishes only that
    the signer controlled that key at signing time.  It establishes
@@ -970,6 +1002,14 @@ Internet-Draft               Evidence Layer                 October 2026
    *epistemic_type is assigned once and is load-bearing.* A record
    misclassified at commit — a producer_claim recorded as an
    observed_event, for instance — is not corrected by anything happening
+
+
+
+Mih                        Expires 25 May 2027                 [Page 18]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
    later: no signature, checkpoint, or countersignature changes what
    kind of statement a record was when it was made.  Any correction is a
    new record; the miscategorized original stands and remains readable
@@ -1001,15 +1041,6 @@ Internet-Draft               Evidence Layer                 October 2026
    proof.  A checkpoint carries no record content, but it is not free of
    information.
 
-
-
-
-
-Mih                        Expires 2 May 2027                  [Page 18]
-
-Internet-Draft               Evidence Layer                 October 2026
-
-
    *What a checkpoint reveals.* Every checkpoint states the size of the
    store's committed history: the number of records appended since the
    store's first record, not since the previous checkpoint (in a
@@ -1027,6 +1058,14 @@ Internet-Draft               Evidence Layer                 October 2026
    records only if those records cannot be guessed and confirmed by
    recomputing a digest.  To make that hold, every record MUST include,
    within the bytes from which its commitment-substrate entry is
+
+
+
+Mih                        Expires 25 May 2027                 [Page 19]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
    derived, a value of at least 128 bits drawn from a cryptographically
    secure random source, generated by the store for that record alone
    and never reused.  A value supplied by or known to another party
@@ -1057,15 +1096,6 @@ Internet-Draft               Evidence Layer                 October 2026
    store MAY keep finer-grained times in local state that is neither
    committed nor disclosed.
 
-
-
-
-
-Mih                        Expires 2 May 2027                  [Page 19]
-
-Internet-Draft               Evidence Layer                 October 2026
-
-
    A store operator MAY keep separate stores, each with its own
    commitment substrate and checkpoints, for separate scopes (for
    example, per counterparty), so that a checkpoint shown within one
@@ -1077,6 +1107,20 @@ Internet-Draft               Evidence Layer                 October 2026
    reader that counts, lists, or summarizes records MUST NOT count a
    padding record as a record, and a store MUST NOT return one as
    responsive to a record, correlation, or exchange subject (Section 9).
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 25 May 2027                 [Page 20]
+
+Internet-Draft               Evidence Layer                November 2026
+
 
 13.  IANA Considerations
 
@@ -1117,9 +1161,21 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                  [Page 20]
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 25 May 2027                 [Page 21]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    +=======================+==============================+===========+
@@ -1173,9 +1229,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                  [Page 21]
+Mih                        Expires 25 May 2027                 [Page 22]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
      +==============+===================================+===========+
@@ -1229,9 +1285,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                  [Page 22]
+Mih                        Expires 25 May 2027                 [Page 23]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    +=============+========================================+===========+
@@ -1285,9 +1341,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                  [Page 23]
+Mih                        Expires 25 May 2027                 [Page 24]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
@@ -1316,21 +1372,21 @@ Internet-Draft               Evidence Layer                 October 2026
    [I-D.mih-agent-evidence-request]
               Mih, S., "An Interaction Model for Requesting Verifiable
               Evidence", Work in Progress, Internet-Draft, draft-mih-
-              agent-evidence-request-01, October 2026,
+              agent-evidence-request-03, 21 November 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
-              evidence-request-01>.
+              evidence-request-03>.
 
    [I-D.mih-agent-settlement-records]
               Mih, S., "Two-Party Settlement Records for Agent
               Payments", Work in Progress, Internet-Draft, draft-mih-
-              agent-settlement-records-00, October 2026,
+              agent-settlement-records-01, 21 November 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
-              settlement-records-00>.
+              settlement-records-01>.
 
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-05, September 2026,
+              capsule-05, 26 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
               agent-action-capsule-05>.
 
@@ -1341,9 +1397,9 @@ Internet-Draft               Evidence Layer                 October 2026
 
 
 
-Mih                        Expires 2 May 2027                  [Page 24]
+Mih                        Expires 25 May 2027                 [Page 25]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    [I-D.mih-scitt-checkpointed-local-log]
@@ -1356,9 +1412,9 @@ Internet-Draft               Evidence Layer                 October 2026
    [I-D.mih-zhang-agent-disclosure-bundle]
               Mih, S. and Y. Zhang, "AAC Evidence Bundle", Work in
               Progress, Internet-Draft, draft-mih-zhang-agent-
-              disclosure-bundle-01, October 2026,
+              disclosure-bundle-02, 31 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-zhang-
-              agent-disclosure-bundle-01>.
+              agent-disclosure-bundle-02>.
 
    [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
               Fournet, "CBOR Object Signing and Encryption (COSE)
@@ -1397,9 +1453,9 @@ Change Log
 
 
 
-Mih                        Expires 2 May 2027                  [Page 25]
+Mih                        Expires 25 May 2027                 [Page 26]
 
-Internet-Draft               Evidence Layer                 October 2026
+Internet-Draft               Evidence Layer                November 2026
 
 
    *  Typed links: added and registered amends, disputes, and resolves;
@@ -1409,6 +1465,17 @@ Internet-Draft               Evidence Layer                 October 2026
    *  Reconcile and Close: stated that AGREED establishes
       acknowledgement without contest, not acceptance of the Close's
       contents.
+
+   *  Checkpoints: in a Checkpointed Local Log, the size a checkpoint
+      states is its leaf_count, which follows from its log_size.
+
+   *  Answering a Request: added the checkpoint_range subject form, the
+      seventh form of the Evidence Request at -03.
+
+   *  References: RFC 3986 is added as a normative reference, for
+      policy_uri.  The Agent Action Capsule profile is cited at -05, the
+      Evidence Request at -03, the Evidence Bundle at -02, the
+      Settlement Records at -01, and the Checkpointed Local Log at -02.
 
 Author's Address
 
@@ -1442,15 +1509,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 2 May 2027                  [Page 26]
+Mih                        Expires 25 May 2027                 [Page 27]
