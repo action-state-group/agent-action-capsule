@@ -302,7 +302,7 @@ byte-identical to it.
 | File | Claims carrying `reason` |
 |---|---|
 | `pos-example-org-reason-result.json` | `claim-1` (met, witnessed) `counterparty_leg_signer_not_trusted`; `claim-2` (not_met, self-attested) `counterparty_leg_signature_did_not_verify`; `claim-3` (GAP) `capsule_signature_did_not_verify` |
-| `pos-example-org-reason-unregistered-result.json` | `claim-2` `example_org_term_not_read`, a token the table does not list, which is valid; `claim-3` `capsule_signer_not_trusted` |
+| `pos-example-org-reason-unregistered-result.json` | `claim-2` `later_revision_reason`, a token this table does not list, as a document written under a later revision may carry, which is valid; `claim-3` `capsule_signer_not_trusted` |
 
 Each negative fails the schema for one rule, with a mutant that strips it:
 

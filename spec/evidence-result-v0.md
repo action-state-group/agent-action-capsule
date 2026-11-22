@@ -581,17 +581,22 @@ added by revising this table.
 | Token | Kind | Only on | Meaning |
 |---|---|---|---|
 | `capsule_signature_did_not_verify` | finding | `sufficiency` not `SATISFIED` | A record the claim needed has a signature that did not verify, so the record was not used. |
-| `capsule_signer_not_trusted` | setting | `sufficiency` not `SATISFIED` | A record the claim needed is signed by a key the reader has not chosen to trust, so the record was not used. |
+| `capsule_signer_not_trusted` | setting | `sufficiency` not `SATISFIED` | A record the claim needed is signed by a key outside the keys the producer trusted for this evaluation, so the record was not used. |
 | `counterparty_leg_signature_did_not_verify` | finding | `verdict` `met` or `not_met`, `grade` not `countersigned` | The counterparty's leg was found, and its signature did not verify, so it does not raise the grade. |
-| `counterparty_leg_signer_not_trusted` | setting | `verdict` `met` or `not_met`, `grade` not `countersigned` | The counterparty's leg was found, signed by a key the reader has not chosen to trust, so it does not raise the grade. |
+| `counterparty_leg_signer_not_trusted` | setting | `verdict` `met` or `not_met`, `grade` not `countersigned` | The counterparty's leg was found, signed by a key outside the keys the producer trusted for this evaluation, so it does not raise the grade. |
 
-A `finding` names a check that failed; a `setting` names the reader's trust configuration, and is
-not by itself a sign of tampering.
+A `finding` names a check that failed; a `setting` names the trust configuration the producer
+evaluated with, and is not by itself a sign of tampering. It says nothing about the keys a later
+reader of the Result trusts: a reader who trusts that key re-evaluates to learn what it changes.
 
-**Unregistered tokens.** A token that matches the grammar and is not in the table (from a later
-revision, or a producer's own) is valid. It has no meaning this document defines. A verifier MUST NOT
-reject a document because of it, and MAY report it as not recognised. A producer SHOULD write only
-registered tokens.
+**Producers.** A producer MUST write only tokens registered in the revision it writes under, and
+MUST NOT write `reason` on a `met` or `not_met` claim unless the reason is why the claim's grade is
+not higher. A code a producer needs that the table does not list stays in its own `x-` member (§8a)
+until a revision registers it.
+
+**Unregistered tokens.** A token that matches the grammar and is not in this table (written under a
+later revision) is valid, for forward compatibility only. It has no meaning this document defines.
+A verifier MUST NOT reject a document because of it, and MAY report it as not recognised.
 
 **Display-only.** `reason` is outside every rule that decides anything:
 

@@ -190,7 +190,7 @@ func TestReasonIsDisplayOnly(t *testing.T) {
 	doc, records = load(t, "pos-example-org-reason-unregistered-result")
 	claims, err = Check(doc, records)
 	require.NoError(t, err, "an unregistered token is valid")
-	assert.Equal(t, "example_org_term_not_read", claims[1].Reason)
+	assert.Equal(t, "later_revision_reason", claims[1].Reason)
 }
 
 // A close claim is never accepted unchecked: without the records it cites,

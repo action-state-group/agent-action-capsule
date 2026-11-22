@@ -77,7 +77,7 @@
           "kind": "receipt"
         }
       ],
-      "reason": "example_org_term_not_read",
+      "reason": "later_revision_reason",
       "requirement_ref": "req-claim-2",
       "sufficiency": "SATISFIED",
       "tier": "judged",

@@ -1455,10 +1455,11 @@ pos_example_org_reason_result["claims"][1]["reason"] = "counterparty_leg_signatu
 pos_example_org_reason_result["claims"][2]["reason"] = "capsule_signature_did_not_verify"
 
 #     pos-example-org-reason-unregistered-result: the fourth registered token
-#     on claim-3, and on claim-2 a token the table does not list, which is
-#     valid (a verifier may report it as not recognised).
+#     on claim-3, and on claim-2 a token the table does not list, as a
+#     document written under a later revision may carry: valid for forward
+#     compatibility (a verifier may report it as not recognised).
 pos_example_org_reason_unregistered_result = _untyped(pos_example_org_claims_result)
-pos_example_org_reason_unregistered_result["claims"][1]["reason"] = "example_org_term_not_read"
+pos_example_org_reason_unregistered_result["claims"][1]["reason"] = "later_revision_reason"
 pos_example_org_reason_unregistered_result["claims"][2]["reason"] = "capsule_signer_not_trusted"
 
 #     Schema negatives, each failing one rule:
