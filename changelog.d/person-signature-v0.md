@@ -4,4 +4,4 @@
   assertion whose challenge is `person-signature/0:<record_digest>`, checked offline against the
   person keys, relying party id and origins the using profile supplies. A record without one reads
   `NOT_PRESENT`, "not signed by the person". Conformance vectors: `vectors/person-signature-v0/`
-  (36 cases) with a Python generator and an independent evaluator test (#627).
+  (51 cases) with a Python generator and an independent evaluator test (#627).

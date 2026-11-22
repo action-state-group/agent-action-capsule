@@ -7,18 +7,23 @@ array (or none) and the expected result: each matching person signature's status
 (PS §6.2) and the record's ``person_signature`` status (PS §6.3). The cases cover:
 
 - valid assertions under ES256 and Ed25519 keys, with the UV flag clear, a non-zero signature
-  counter, extra client data members in another order, client data with whitespace, a permitted
-  cross-origin ceremony, and a required UV flag that is set;
+  counter, extra client data members in another order, client data with whitespace or a byte order
+  mark, extension output, a permitted cross-origin ceremony, a required UV flag that is set, and
+  person and excluded keys under an undefined algorithm among the inputs;
 - policy negatives whose assertions are correctly signed over what they hold, so a verifier that
   checks only the signature fails them: a wrong type, a wrong challenge (another record's, the
   digest in hexadecimal, the signed octets with padding), an origin outside the allowed set with
-  the correct relying party hash, a cross-origin ceremony, a wrong relying party, the UP flag
+  the correct relying party hash, cross-origin ceremonies (not allowed, under another top-level
+  origin, with no topOrigin, a topOrigin without crossOrigin), a wrong relying party, the UP flag
   clear, the UV flag clear when required, another valid credential that is not a person key, and a
-  record signer key enrolled as a person key;
-- a bad signature, an ES256 signature as raw r||s, and client data re-serialized after signing;
+  record signer key enrolled as a person key, given as a key or as a raw Ed25519 identifier;
+- a bad signature, an ES256 signature as raw r||s or BER, and client data re-serialized after
+  signing;
 - an unknown key type, an unsupported algorithm, and no person key (``NOT_CHECKED``);
-- malformed objects: an extra member, an upper-case digest, padding in a binary value, a key
-  whose ``spki`` does not match its ``alg``, and authenticator data shorter than 37 octets;
+- malformed objects: an extra or duplicate member, an upper-case digest, padding in a binary
+  value, a key whose ``spki`` does not match its ``alg``; authenticator data that is short, has the
+  AT flag, BS without BE, or extension octets that are not exactly one CBOR map; client data that
+  holds NaN or a duplicate member;
 - no person signature, and one for another record only (``NOT_PRESENT``); and several for one
   record, where any ``PASS`` decides and otherwise any ``FAIL``.
 
@@ -141,9 +146,14 @@ def client_data(challenge: str, *, typ: str = "webauthn.get", origin: str = ORIG
 
 
 def auth_data(*, rp_id: str = RP_ID, up: bool = True, uv: bool = True, be: bool = True, bs: bool = True,
-              counter: int = 0) -> bytes:
-    flags = (0x01 if up else 0) | (0x04 if uv else 0) | (0x08 if be else 0) | (0x10 if bs else 0)
-    return sha(rp_id.encode()) + bytes([flags]) + counter.to_bytes(4, "big")
+              at: bool = False, ed: bool = False, counter: int = 0, tail: bytes = b"") -> bytes:
+    flags = ((0x01 if up else 0) | (0x04 if uv else 0) | (0x08 if be else 0) | (0x10 if bs else 0)
+             | (0x40 if at else 0) | (0x80 if ed else 0))
+    return sha(rp_id.encode()) + bytes([flags]) + counter.to_bytes(4, "big") + tail
+
+
+# A one-entry CBOR map, {"credProps": {"rk": true}}, as extension output (RFC 8949).
+EXTENSIONS = bytes.fromhex("a1") + bytes([0x69]) + b"credProps" + bytes.fromhex("a1") + bytes([0x62]) + b"rk" + b"\xf5"
 
 
 def person_signature(signer: str, digest: str = TARGET, *, challenge: str | None = None,
@@ -169,7 +179,7 @@ def inputs(**over: Any) -> dict:
         "excluded_keys": [key("record-signer")],
         "relying_party_id": RP_ID,
         "allowed_origins": [ORIGIN],
-        "cross_origin": {"allowed": False, "top_origins": []},
+        "allowed_top_origins": [],
         "user_verification_required": False,
     }
     base.update(over)
@@ -236,7 +246,18 @@ def cases() -> list[dict]:
     add(case("valid-cross-origin-allowed", "A cross-origin ceremony the using profile allows, with an allowed top-level origin",
              ["PS §6.1", "PS §6.2 step 5"],
              [person_signature("person-es256", cross_origin=True, top_origin=TOP_ORIGIN)], [ok7], "PASS",
-             cross_origin={"allowed": True, "top_origins": [TOP_ORIGIN]}))
+             allowed_top_origins=[TOP_ORIGIN]))
+    add(case("valid-client-data-bom", "Client data with a leading UTF-8 byte order mark, which UTF-8 decoding removes",
+             ["PS §6.2 step 5"],
+             [person_signature("person-es256", cdata=b"\xef\xbb\xbf" + client_data(b64u(signed_octets(TARGET))))],
+             [ok7], "PASS"))
+    add(case("valid-extensions", "Authenticator data with the ED flag and one CBOR map of extension output",
+             ["PS §6.2 step 6"], [person_signature("person-es256", adata=auth_data(ed=True, tail=EXTENSIONS))],
+             [ok7], "PASS"))
+    rsa_key = {"alg": -257, "spki": key("person-es256")["spki"]}
+    add(case("valid-unsupported-key-in-inputs", "A person key and an excluded key under an undefined algorithm are the same key as no other",
+             ["PS §4.2", "PS §6.2 step 3", "PS §6.2 step 4"], [person_signature("person-es256")], [ok7], "PASS",
+             person_keys=[rsa_key, key("person-es256")], excluded_keys=[rsa_key, key("record-signer")]))
 
     # Absent.
     add(case("not-present", "No person_signatures beside the record: not signed by the person",
@@ -274,7 +295,13 @@ def cases() -> list[dict]:
              ["PS §6.1", "PS §6.2 step 5"],
              [person_signature("person-es256", cross_origin=True, top_origin=OTHER_ORIGIN)],
              [checked("FAIL", "cross-origin")], "FAIL", fails="cross_origin",
-             cross_origin={"allowed": True, "top_origins": [TOP_ORIGIN]}))
+             allowed_top_origins=[TOP_ORIGIN]))
+    add(case("cross-origin-no-top-origin", "crossOrigin is true and topOrigin is absent, under a profile that allows a top-level origin",
+             ["PS §6.1", "PS §6.2 step 5"], [person_signature("person-es256", cross_origin=True)],
+             [checked("FAIL", "cross-origin")], "FAIL", fails="cross_origin", allowed_top_origins=[TOP_ORIGIN]))
+    add(case("top-origin-without-cross-origin", "crossOrigin is false but topOrigin is present, and no top-level origin is allowed",
+             ["PS §6.1", "PS §6.2 step 5"], [person_signature("person-es256", top_origin=TOP_ORIGIN)],
+             [checked("FAIL", "cross-origin")], "FAIL", fails="cross_origin"))
     add(case("wrong-relying-party", "The authenticator data names another relying party id",
              ["PS §6.2 step 6"], [person_signature("person-es256", adata=auth_data(rp_id="other.example"))],
              [checked("FAIL", "wrong relying party")], "FAIL", fails="rp_id"))
@@ -310,6 +337,19 @@ def cases() -> list[dict]:
     add(case("client-data-reserialized", "Client data re-serialized after signing: same members, other octets",
              ["PS §4.2", "PS §6.2 step 5", "PS §6.2 step 7"], [replay],
              [checked("FAIL", "bad signature", flags=flags(), counter=0)], "FAIL", fails="signature"))
+
+    der = base64.urlsafe_b64decode(person_signature("person-es256")["proof"]["signature"] + "==")
+    assert der[1] < 0x80, "short-form length expected"
+    ber = person_signature("person-es256")
+    ber["proof"]["signature"] = b64u(der[:1] + b"\x81" + der[1:])
+    add(case("es256-ber-signature", "An ES256 signature with a long-form length: BER, not DER",
+             ["PS §6.2 step 7"], [ber], [checked("FAIL", "bad signature", flags=flags(), counter=0)], "FAIL",
+             fails="signature"))
+    add(case("excluded-key-raw-identifier", "The record signer's key, given as a raw Ed25519 key identifier, enrolled by mistake",
+             ["PS §4.2", "PS §6.1", "PS §6.2 step 4"], [person_signature("record-signer")],
+             [checked("FAIL", "record signer key")], "FAIL", fails="excluded_key",
+             person_keys=[key("person-es256"), key("record-signer")],
+             excluded_keys=[PRIV["record-signer"].public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex()]))
 
     # Not checked.
     unknown = person_signature("person-es256")
@@ -347,7 +387,34 @@ def cases() -> list[dict]:
              ["PS §4.2", "PS §6.2 step 1"], [mismatch], [checked("FAIL", "malformed")], "FAIL", fails="form"))
     short = person_signature("person-es256", adata=auth_data()[:36])
     add(case("malformed-short-authenticator-data", "Authenticator data of 36 octets",
-             ["PS §6.2 step 6"], [short], [checked("FAIL", "malformed")], "FAIL", fails="form"))
+             ["PS §6.2 step 6"], [short], [checked("FAIL", "malformed")], "FAIL", fails="authenticator_data"))
+    for cid, title, adata in (
+        ("malformed-backup-flags", "The BS flag set while the BE flag is clear", auth_data(be=False, bs=True)),
+        ("malformed-at-flag", "The AT flag set: an assertion carries no attested credential data", auth_data(at=True)),
+        ("malformed-ed-flag-no-extensions", "The ED flag set with no extension octets", auth_data(ed=True)),
+        ("malformed-trailing-octets", "The ED flag clear and one octet after the first 37", auth_data(tail=b"\x00")),
+        ("malformed-octets-after-extensions", "The ED flag set and an octet after the extension map",
+         auth_data(ed=True, tail=EXTENSIONS + b"\x00")),
+    ):
+        add(case(cid, title + "; correctly signed", ["PS §6.2 step 6"], [person_signature("person-es256", adata=adata)],
+                 [checked("FAIL", "malformed")], "FAIL", fails="authenticator_data"))
+    nan = client_data(b64u(signed_octets(TARGET)))[:-1] + b',"extra":NaN}'
+    dup = (b'{"type":"webauthn.get","challenge":"' + b64u(signed_octets(TARGET)).encode()
+           + b'","origin":"' + OTHER_ORIGIN.encode() + b'","origin":"' + ORIGIN.encode() + b'","crossOrigin":false}')
+    for cid, title, cdata in (
+        ("malformed-client-data-nan", "Client data holding NaN, which is not JSON", nan),
+        ("malformed-client-data-duplicate-member", "Client data naming origin twice, the second time an allowed origin", dup),
+    ):
+        add(case(cid, title + "; correctly signed", ["PS §6.2 step 5"], [person_signature("person-es256", cdata=cdata)],
+                 [checked("FAIL", "malformed")], "FAIL", fails="client_data"))
+    dup_ps = person_signature("person-es256")
+    text = json.dumps([dup_ps], separators=(",", ":"))
+    text = text.replace('"key_type":"webauthn"', '"key_type":"example-wallet","key_type":"webauthn"', 1)
+    dup_case = case("malformed-duplicate-member", "A person signature naming key_type twice, given as JSON text",
+                    ["PS §3.1", "PS §6.2 step 1"], None, [checked("FAIL", "malformed")], "FAIL", fails="form")
+    dup_case["person_signatures_json"] = text
+    dup_case["expected"] = dup_case.pop("expected")
+    add(dup_case)
 
     # Several for one record.
     add(case("several-one-passes", "One person signature fails and one passes: the record is PASS",

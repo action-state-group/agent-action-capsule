@@ -20,9 +20,10 @@ uses no repository implementation, and it states every expected status and reaso
 PS §6. The record digests are stand-ins, since the using profile defines the real one (PS §1).
 
 The policy negatives (a wrong type, challenge, origin, cross-origin ceremony, relying party, a
-clear UP or required UV flag, a key that is not a person key, a record signer key) carry
-assertions that are correctly signed over the authenticator data and client data they hold. A
-verifier that checks only the signature therefore fails each of them.
+clear UP or required UV flag, a key that is not a person key, a record signer key) and the
+malformed authenticator data and client data carry assertions that are correctly signed over the
+authenticator data and client data they hold. A verifier that checks only the signature
+therefore fails each of them.
 
 `python/tests/test_person_signature_v0_vectors.py` checks the corpus from the case inputs alone,
 with an evaluator written from PS §3 to §6:
@@ -44,11 +45,16 @@ signatures use deterministic ECDSA (RFC 6979), so the corpus is reproducible. Th
 ## Case format
 
 Each case has `id`, `title`, `cites`, `inputs` (PS §6.1: `target_record_digest`, `person_keys`,
-`excluded_keys`, `relying_party_id`, `allowed_origins`, `cross_origin` and
-`user_verification_required`), `person_signatures` when the record has any, and `expected`:
+`excluded_keys`, `relying_party_id`, `allowed_origins`, `allowed_top_origins` and
+`user_verification_required`), `person_signatures` when the record has any, and `expected`. One
+case, `malformed-duplicate-member`, gives the array instead as JSON text in
+`person_signatures_json`, because a JSON object in `vectors.json` cannot hold a duplicate member.
+`expected` holds:
 
 - `signatures`: one entry per person signature whose `record_digest` equals the target, with its
   `index` in `person_signatures`, `status` and `reason` (PS §6.2). An entry that reached step 7 also
   has `flags` (UP, UV, BE, BS) and `sign_count`, and a `PASS` has `method` (PS §7);
 - `person_signature`: the record's status (PS §6.3);
-- `fails`: the check a negative is there to fail, or `null`.
+- `fails`: the check a negative is there to fail (`form`, `type`, `challenge`, `origin`,
+  `cross_origin`, `client_data`, `authenticator_data`, `rp_id`, `up`, `uv`, `person_key`,
+  `excluded_key` or `signature`), or `null`.

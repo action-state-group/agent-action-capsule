@@ -35,7 +35,7 @@
       }
     }
   },
-  "count": 36,
+  "count": 51,
   "cases": [
     {
       "id": "valid-es256",
@@ -68,10 +68,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -139,10 +136,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -211,10 +205,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -282,10 +273,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -352,10 +340,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -424,10 +409,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -495,10 +477,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": true
       },
       "person_signatures": [
@@ -566,12 +545,9 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": true,
-          "top_origins": [
-            "https://top.example"
-          ]
-        },
+        "allowed_top_origins": [
+          "https://top.example"
+        ],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -587,6 +563,213 @@
             "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
             "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOnRydWUsInRvcE9yaWdpbiI6Imh0dHBzOi8vdG9wLmV4YW1wbGUifQ",
             "signature": "MEUCICyoYu0EdUHSaxZpuTKeXWRpySHbkYiO1vkjuz17kcAFAiEA6M2P1lFgOTsqZsIvAA9m15jbP2S_Ki8RLtZraLmHGEE"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "PASS",
+            "reason": null,
+            "flags": {
+              "up": true,
+              "uv": true,
+              "be": true,
+              "bs": true
+            },
+            "sign_count": 0,
+            "method": "webauthn ES256 over person-signature/0"
+          }
+        ],
+        "person_signature": "PASS",
+        "fails": null
+      }
+    },
+    {
+      "id": "valid-client-data-bom",
+      "title": "Client data with a leading UTF-8 byte order mark, which UTF-8 decoding removes",
+      "cites": [
+        "PS §6.2 step 5"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
+            "client_data_json": "77u_eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQD1XObTjlXXSB07CSNLobZeInaZo83wZRB-AEry89cT2gIgcfZULLinD9JfiU9QX2kIGBJRZtigKhcbLPsfQ6WPpJg"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "PASS",
+            "reason": null,
+            "flags": {
+              "up": true,
+              "uv": true,
+              "be": true,
+              "bs": true
+            },
+            "sign_count": 0,
+            "method": "webauthn ES256 over person-signature/0"
+          }
+        ],
+        "person_signature": "PASS",
+        "fails": null
+      }
+    },
+    {
+      "id": "valid-extensions",
+      "title": "Authenticator data with the ED flag and one CBOR map of extension output",
+      "cites": [
+        "PS §6.2 step 6"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGCdAAAAAKFpY3JlZFByb3BzoWJya_U",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEYCIQCbxWO5mh-Nd35ux-yISF0aBJCwdN5DLkzIS7oSIzrcSwIhANXiNVWL1iq7qV1PVK9Wh821rAAL13t-r3OxMUJ4HYn_"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "PASS",
+            "reason": null,
+            "flags": {
+              "up": true,
+              "uv": true,
+              "be": true,
+              "bs": true
+            },
+            "sign_count": 0,
+            "method": "webauthn ES256 over person-signature/0"
+          }
+        ],
+        "person_signature": "PASS",
+        "fails": null
+      }
+    },
+    {
+      "id": "valid-unsupported-key-in-inputs",
+      "title": "A person key and an excluded key under an undefined algorithm are the same key as no other",
+      "cites": [
+        "PS §4.2",
+        "PS §6.2 step 3",
+        "PS §6.2 step 4"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -257,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -257,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEYCIQDVHvia7rFX8c0CsiHOC1_GPMJQDdKBStMfbfCsH0AnfQIhAKpPUu5oBluuZSwkWjOJIgcG-M_Z27BNeXerDBBExVVG"
           }
         }
       ],
@@ -639,10 +822,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "expected": {
@@ -680,10 +860,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -736,10 +913,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -800,10 +974,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -863,10 +1034,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -926,10 +1094,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -989,10 +1154,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1052,10 +1214,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1115,10 +1274,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1178,12 +1334,9 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": true,
-          "top_origins": [
-            "https://top.example"
-          ]
-        },
+        "allowed_top_origins": [
+          "https://top.example"
+        ],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1199,6 +1352,128 @@
             "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
             "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOnRydWUsInRvcE9yaWdpbiI6Imh0dHBzOi8vb3RoZXIuZXhhbXBsZSJ9",
             "signature": "MEUCIQDgYmyqYCFf0dT0omS5VpVaVSkCnhrpDMFN74zqqoFRvQIgJleddK9Jp5Ou64Trjmqvzmp5ilnf8bU8kWfmXsaiJnw"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "cross-origin"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "cross_origin"
+      }
+    },
+    {
+      "id": "cross-origin-no-top-origin",
+      "title": "crossOrigin is true and topOrigin is absent, under a profile that allows a top-level origin",
+      "cites": [
+        "PS §6.1",
+        "PS §6.2 step 5"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [
+          "https://top.example"
+        ],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOnRydWV9",
+            "signature": "MEUCIQDrqHBTC2BXI9Tp0dqRNuB_Y79zBON6n3wZIcOLn5cIZgIgGTC7_bQJ_WIGUPawAqZmoRb_zCcfJm1cX7PPKQK1AK8"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "cross-origin"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "cross_origin"
+      }
+    },
+    {
+      "id": "top-origin-without-cross-origin",
+      "title": "crossOrigin is false but topOrigin is present, and no top-level origin is allowed",
+      "cites": [
+        "PS §6.1",
+        "PS §6.2 step 5"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlLCJ0b3BPcmlnaW4iOiJodHRwczovL3RvcC5leGFtcGxlIn0",
+            "signature": "MEQCICpYe2zJAt9zkyGa4Cx7GUMRAtt7BxlsKDNZK-mLV5bdAiByKq0xeNWPDeT3F37UTWB6gat_l_4B_JnUv4BBBg922A"
           }
         }
       ],
@@ -1242,10 +1517,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1304,10 +1576,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1367,10 +1636,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": true
       },
       "person_signatures": [
@@ -1430,10 +1696,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1493,10 +1756,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1555,10 +1815,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1625,10 +1882,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1696,10 +1950,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1738,6 +1989,130 @@
       }
     },
     {
+      "id": "es256-ber-signature",
+      "title": "An ES256 signature with a long-form length: BER, not DER",
+      "cites": [
+        "PS §6.2 step 7"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MIFGAiEA1R74mu6xV_HNArIhzgtfxjzCUA3SgUrTH23wrB9AJ30CIQCqT1LuaAZbrmUsJFoziSIHBvjP2duwTXl3qwwQRMVVRg"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "bad signature",
+            "flags": {
+              "up": true,
+              "uv": true,
+              "be": true,
+              "bs": true
+            },
+            "sign_count": 0
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "signature"
+      }
+    },
+    {
+      "id": "excluded-key-raw-identifier",
+      "title": "The record signer's key, given as a raw Ed25519 key identifier, enrolled by mistake",
+      "cites": [
+        "PS §4.2",
+        "PS §6.1",
+        "PS §6.2 step 4"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "excluded_keys": [
+          "0ee5b1a415de2e9c6700dedb9c05a5f3915cc5bc2f3e8a3a2c1c89fcdcc0ab6c"
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "Np1fdWWhPTOXyRh5BSds-pFGYKh0SXDXyiC4pPdPzcD68DC3q_SLtMaAohoOMzWwNVYpOnXFmaOsUQHf5DCGAw"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "record signer key"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "excluded_key"
+      }
+    },
+    {
       "id": "unknown-key-type",
       "title": "A key type this revision does not define never reads as signed",
       "cites": [
@@ -1767,10 +2142,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1830,10 +2202,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1883,10 +2252,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -1946,10 +2312,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -2011,10 +2374,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -2068,10 +2428,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -2131,10 +2488,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -2193,10 +2547,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -2215,6 +2566,464 @@
           }
         }
       ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "authenticator_data"
+      }
+    },
+    {
+      "id": "malformed-backup-flags",
+      "title": "The BS flag set while the BE flag is clear; correctly signed",
+      "cites": [
+        "PS §6.2 step 6"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAVAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIDOtlCj54_XRIL4NJz3j63-gtg_xtTwA1Q5TXTNn7kPRAiEAx9solCcKajki1tQX4ANU7gd9hIojh7faqmk8o04Aew4"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "authenticator_data"
+      }
+    },
+    {
+      "id": "malformed-at-flag",
+      "title": "The AT flag set: an assertion carries no attested credential data; correctly signed",
+      "cites": [
+        "PS §6.2 step 6"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGBdAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIAPdwXnDI6FdLSvBBf-lvVqaKsp765cCCADTyb2af9WHAiEA29aF3ngVsMpaQH66W6OM9qf-nk3ixcXT-q83DzXLTd8"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "authenticator_data"
+      }
+    },
+    {
+      "id": "malformed-ed-flag-no-extensions",
+      "title": "The ED flag set with no extension octets; correctly signed",
+      "cites": [
+        "PS §6.2 step 6"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGCdAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIGaK7Z-kRfzqIIN03N0VI9IYVNiN_5w4C63OJapVPSiHAiEAp5Q2Hpw2on6TE5tx3B33u88XLXGIqz46iN6ZaLkyEsI"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "authenticator_data"
+      }
+    },
+    {
+      "id": "malformed-trailing-octets",
+      "title": "The ED flag clear and one octet after the first 37; correctly signed",
+      "cites": [
+        "PS §6.2 step 6"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDlcm8Sl-9V-zimC6guE766qkStHEdK7a14axpnFqYZYAIgIpEM8hpb7ATGDA7zecblvXKh7DEqMZIvtsu5_jsJkeQ"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "authenticator_data"
+      }
+    },
+    {
+      "id": "malformed-octets-after-extensions",
+      "title": "The ED flag set and an octet after the extension map; correctly signed",
+      "cites": [
+        "PS §6.2 step 6"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGCdAAAAAKFpY3JlZFByb3BzoWJya_UA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEYCIQCzdWPIKKzj6LhiaE0CIEDXA-MT9FG9F5xQV0tWdsmORAIhANTmarnr-vA0VNZx-S7gn64zJpbFvaeADsRcS_YkPzwY"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "authenticator_data"
+      }
+    },
+    {
+      "id": "malformed-client-data-nan",
+      "title": "Client data holding NaN, which is not JSON; correctly signed",
+      "cites": [
+        "PS §6.2 step 5"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlLCJleHRyYSI6TmFOfQ",
+            "signature": "MEUCIQCc8p_wKPgQbr5Gi_ebHRFIAIeX8B91Tvt_Tq0_aNok2AIgZZovZEhs9_9P75w41RgROZo09jFiHMGH7lKN25qe4r8"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "client_data"
+      }
+    },
+    {
+      "id": "malformed-client-data-duplicate-member",
+      "title": "Client data naming origin twice, the second time an allowed origin; correctly signed",
+      "cites": [
+        "PS §6.2 step 5"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9vdGhlci5leGFtcGxlIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQDg16I4VoLohVJ7u8Cj35Y-FsBn18XVdFQHyR8ub81hcAIgCKMG0-cuqmIm_OzXBVt_r1sE2j1yjHbpvQRzKJ_bBPQ"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "client_data"
+      }
+    },
+    {
+      "id": "malformed-duplicate-member",
+      "title": "A person signature naming key_type twice, given as JSON text",
+      "cites": [
+        "PS §3.1",
+        "PS §6.2 step 1"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures_json": "[{\"person_signature_version\":\"person-signature/0\",\"record_digest\":\"b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60\",\"key_type\":\"example-wallet\",\"key_type\":\"webauthn\",\"key\":{\"alg\":-7,\"spki\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA\"},\"proof\":{\"authenticator_data\":\"FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA\",\"client_data_json\":\"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ\",\"signature\":\"MEYCIQDVHvia7rFX8c0CsiHOC1_GPMJQDdKBStMfbfCsH0AnfQIhAKpPUu5oBluuZSwkWjOJIgcG-M_Z27BNeXerDBBExVVG\"}}]",
       "expected": {
         "signatures": [
           {
@@ -2256,10 +3065,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [
@@ -2346,10 +3152,7 @@
         "allowed_origins": [
           "https://rp.example"
         ],
-        "cross_origin": {
-          "allowed": false,
-          "top_origins": []
-        },
+        "allowed_top_origins": [],
         "user_verification_required": false
       },
       "person_signatures": [

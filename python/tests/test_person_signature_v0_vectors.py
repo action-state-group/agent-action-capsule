@@ -47,8 +47,8 @@ PROOF = {"authenticator_data", "client_data_json", "signature"}
 HEX64 = re.compile(r"[0-9a-f]{64}")
 B64U = re.compile(r"[A-Za-z0-9_-]*")
 METHOD = {-7: "webauthn ES256 over person-signature/0", -8: "webauthn EdDSA over person-signature/0"}
-CHECKS = ("form", "type", "challenge", "origin", "cross_origin", "rp_id", "up", "uv", "person_key",
-          "excluded_key", "signature", "client_data_octets")
+CHECKS = ("form", "duplicates", "type", "challenge", "origin", "cross_origin", "rp_id", "up", "uv", "person_key",
+          "excluded_key", "signature", "client_data_octets", "client_data_json", "authenticator_data")
 
 
 class Malformed(Exception):
@@ -90,9 +90,109 @@ def public_key(key: dict) -> tuple[int, bytes, Any]:
     raise AssertionError("only -7 and -8 are defined")
 
 
+def _cbor_item_end(data: bytes, i: int) -> int:
+    """The offset just past one well-formed, definite-length CBOR data item starting at ``i``
+    (RFC 8949 §3). Raises Malformed otherwise. Enough to check that extension output is exactly one
+    map; the values are never interpreted."""
+    if i >= len(data):
+        raise Malformed("cbor")
+    major, info = data[i] >> 5, data[i] & 0x1F
+    i += 1
+    if info < 24:
+        arg = info
+    elif info in (24, 25, 26, 27):
+        n = 1 << (info - 24)
+        if i + n > len(data):
+            raise Malformed("cbor")
+        arg = int.from_bytes(data[i:i + n], "big")
+        i += n
+    else:
+        raise Malformed("cbor: indefinite length or reserved")
+    if major in (0, 1):
+        return i
+    if major in (2, 3):
+        if i + arg > len(data):
+            raise Malformed("cbor")
+        return i + arg
+    if major == 4:
+        for _ in range(arg):
+            i = _cbor_item_end(data, i)
+        return i
+    if major == 5:
+        for _ in range(2 * arg):
+            i = _cbor_item_end(data, i)
+        return i
+    if major == 6:
+        return _cbor_item_end(data, i)
+    return i  # major 7: simple values and floats, argument already consumed
+
+
+def authenticator_data_form(adata: bytes) -> None:
+    """PS §6.2 step 6: an assertion's authenticator data (WebAuthn §6.1)."""
+    if len(adata) < 37:
+        raise Malformed("short")
+    fl = adata[32]
+    if fl & 0x40:
+        raise Malformed("AT set")
+    if fl & 0x10 and not fl & 0x08:
+        raise Malformed("BS without BE")
+    if not fl & 0x80:
+        if len(adata) != 37:
+            raise Malformed("trailing octets")
+        return
+    if len(adata) == 37 or adata[37] >> 5 != 5 or _cbor_item_end(adata, 37) != len(adata):
+        raise Malformed("extensions are not exactly one CBOR map")
+
+
+def _no_duplicates(pairs: list[tuple[str, Any]]) -> dict:
+    out = dict(pairs)
+    if len(out) != len(pairs):
+        raise Malformed("duplicate member")
+    return out
+
+
+def _no_constant(name: str) -> Any:
+    raise Malformed(f"not JSON: {name}")
+
+
+def strict_json(text: str, *, duplicates: bool = True) -> Any:
+    """RFC 8259 JSON, refusing NaN and Infinity and, unless told otherwise, duplicate names."""
+    try:
+        return json.loads(text, parse_constant=_no_constant, object_pairs_hook=_no_duplicates if duplicates else None)
+    except ValueError as e:
+        raise Malformed("json") from e
+
+
+class _Flagged(dict):
+    """An object whose JSON text named a member twice; form() refuses it (PS §3.1)."""
+
+
+def _flag_duplicates(pairs: list[tuple[str, Any]]) -> dict:
+    out = dict(pairs)
+    return _Flagged(out) if len(out) != len(pairs) else out
+
+
+def candidates(case: dict, skip: frozenset[str]) -> list[Any]:
+    if "person_signatures_json" in case:
+        hook = None if "duplicates" in skip else _flag_duplicates
+        return json.loads(case["person_signatures_json"], object_pairs_hook=hook)
+    return case.get("person_signatures", [])
+
+
+def same_key(a: Any, b: dict) -> bool:
+    """PS §4.2. ``a`` is a key in the §4.2 form or a raw Ed25519 key identifier; ``b`` is a
+    candidate's key under -7 or -8. The algorithm is compared first, so an input key under an
+    undefined algorithm is never decoded."""
+    if isinstance(a, str):
+        return b["alg"] == -8 and public_key(b)[1].hex() == a
+    if a.get("alg") != b["alg"]:
+        return False
+    return public_key(a)[1] == public_key(b)[1]
+
+
 def form(ps: Any) -> None:
     """PS §3.1 and, for ``webauthn``, §4.2."""
-    if not isinstance(ps, dict) or set(ps) != MEMBERS:
+    if not isinstance(ps, dict) or isinstance(ps, _Flagged) or set(ps) != MEMBERS:
         raise Malformed("members")
     if ps["person_signature_version"] != VERSION or not isinstance(ps["key_type"], str):
         raise Malformed("version or key_type")
@@ -154,25 +254,25 @@ def _check_one(ps: dict, inp: dict, skip: frozenset[str]) -> dict:
     alg = ps["key"]["alg"]
     if alg not in (-7, -8):
         return {"status": "NOT_CHECKED", "reason": "unsupported algorithm"}
-    try:
-        _, value, pub = public_key(ps["key"])
-    except Malformed:
-        return fail("malformed")
+    pub = public_key(ps["key"])[2]
     # 3. Person key.
     if not inp["person_keys"]:
         return {"status": "NOT_CHECKED", "reason": "no person key"}
-    same = lambda k: (k["alg"], public_key(k)[1]) == (alg, value)  # noqa: E731
-    if "person_key" not in skip and not any(same(k) for k in inp["person_keys"]):
+    if "person_key" not in skip and not any(same_key(k, ps["key"]) for k in inp["person_keys"]):
         return fail("not a person key")
     # 4. Not a record key.
-    if "excluded_key" not in skip and any(same(k) for k in inp["excluded_keys"]):
+    if "excluded_key" not in skip and any(same_key(k, ps["key"]) for k in inp["excluded_keys"]):
         return fail("record signer key")
-    # 5. Client data.
+    # 5. Client data: UTF-8 decoding removes a leading byte order mark.
     cdata = b64u_decode(ps["proof"]["client_data_json"])
     try:
-        cd = json.loads(cdata.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
+        text = cdata.decode("utf-8-sig")
+    except UnicodeDecodeError:
         return fail("malformed")
+    if "client_data_json" in skip:
+        cd = json.loads(text)
+    else:
+        cd = strict_json(text)
     if not isinstance(cd, dict):
         return fail("malformed")
     if "type" not in skip and cd.get("type") != "webauthn.get":
@@ -186,16 +286,15 @@ def _check_one(ps: dict, inp: dict, skip: frozenset[str]) -> dict:
             return fail("wrong challenge")
     if "origin" not in skip and cd.get("origin") not in inp["allowed_origins"]:
         return fail("origin not allowed")
-    if "cross_origin" not in skip:
-        policy = inp["cross_origin"]
-        if cd.get("crossOrigin", False) is not False and not policy["allowed"]:
-            return fail("cross-origin")
-        if "topOrigin" in cd and cd["topOrigin"] not in policy["top_origins"]:
+    if "cross_origin" not in skip and (cd.get("crossOrigin", False) is not False or "topOrigin" in cd):
+        if cd.get("topOrigin") not in inp["allowed_top_origins"]:
             return fail("cross-origin")
     # 6. Authenticator data.
     adata = b64u_decode(ps["proof"]["authenticator_data"])
     if len(adata) < 37:
         return fail("malformed")
+    if "authenticator_data" not in skip:
+        authenticator_data_form(adata)
     fl = adata[32]
     if "rp_id" not in skip and adata[:32] != hashlib.sha256(inp["relying_party_id"].encode()).digest():
         return fail("wrong relying party")
@@ -219,7 +318,7 @@ def evaluate(case: dict, skip: frozenset[str] = frozenset()) -> dict:
     """PS §5 selection and the PS §6.3 record status."""
     inp = case["inputs"]
     results = []
-    for i, ps in enumerate(case.get("person_signatures", [])):
+    for i, ps in enumerate(candidates(case, skip)):
         if isinstance(ps, dict) and ps.get("record_digest") == inp["target_record_digest"]:
             results.append({"index": i, **check_one(ps, inp, skip)})
     statuses = {r["status"] for r in results}
@@ -241,7 +340,7 @@ def test_corpus_shape():
     assert DATA["spec"] == "spec/person-signature-v0.md"
     assert DATA["count"] == len(CASES)
     for c in CASES:
-        assert set(c) <= {"id", "title", "cites", "inputs", "person_signatures", "expected"}
+        assert set(c) <= {"id", "title", "cites", "inputs", "person_signatures", "person_signatures_json", "expected"}
         assert c["cites"] and all(x.startswith("PS §") for x in c["cites"])
 
 
@@ -260,8 +359,10 @@ def test_policy_negatives_are_correctly_signed():
     """PS §9: a verifier that checks only the signature must fail every policy negative."""
     caught = [c["id"] for c in CASES
               if evaluate(c, frozenset(CHECKS) - {"signature", "client_data_octets"}) != expected(c)]
+    # Authenticator data under 37 octets has no flags to read, so every evaluator refuses it.
     policy = [c["id"] for c in CASES if c["expected"]["person_signature"] == "FAIL"
-              and c["expected"]["fails"] not in ("signature", "form")]
+              and c["expected"]["fails"] not in ("signature", "form")
+              and c["id"] != "malformed-short-authenticator-data"]
     assert set(policy) <= set(caught)
     for c in CASES:
         if c["id"] in policy:
@@ -282,6 +383,8 @@ def test_verification_is_repeatable_and_order_free():
     for c in CASES:
         first = evaluate(c)
         assert evaluate(c) == first
+        if "person_signatures_json" in c:
+            continue
         sigs = c.get("person_signatures", [])
         rev = dict(c, person_signatures=list(reversed(sigs)))
         assert evaluate(rev)["person_signature"] == first["person_signature"]

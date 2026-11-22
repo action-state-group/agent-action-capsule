@@ -28,6 +28,8 @@ verifier's inputs, steps and statuses (§6); and what a verifier reports (§7).
 | COSE | RFC 9053 | the algorithm identifiers -7 (ES256) and -8 (EdDSA) |
 | RFC 5280 | RFC 5280, RFC 5480 and RFC 8410 | SubjectPublicKeyInfo for P-256 and Ed25519 public keys |
 | RFC 4648 | RFC 4648 §5 | base64url, without padding |
+| RFC 8259 | RFC 8259 | JSON, for the client data |
+| RFC 8949 | RFC 8949 | a well-formed CBOR map, for authenticator data extensions |
 
 **Does not define:** which key belongs to which person (enrolment); any identity, account or naming
 scheme; any relying party; how a record digest is computed (the using profile defines it); which
@@ -146,8 +148,9 @@ A verifier that implements `webauthn` implements both. A `key` whose `spki` does
 and a verifier reports it `NOT_CHECKED`. The algorithm is read from `key`, never from the proof.
 
 Two keys are **the same key** when they have the same `alg` and the same public key: for -7 the
-same point, and for -8 the same 32 octets. A verifier compares keys this way, never by comparing
-the octets of `spki`.
+same point, and for -8 the same 32 octets. A raw Ed25519 key identifier is the same key as a -8 key
+with the same 32 octets. A verifier compares keys this way, never by comparing the octets of
+`spki`, and a key under an algorithm this revision does not define is the same key as no other.
 
 `proof` is an object with exactly these members, each binary:
 
@@ -194,11 +197,15 @@ The using profile supplies these inputs. A verifier never takes them from the pe
 |---|---|
 | target record digest | the record digest of the signed record, which the verifier computes or obtains by the using profile's rule |
 | person keys | one or more keys, in the form of §4.2 `key`, that the using profile's enrolment accepts as the person's |
-| excluded keys | the keys that signed the signed record or its envelope, in any form the verifier can compare with a person key |
+| excluded keys | the keys that signed the signed record or its envelope, each in the form of §4.2 `key` or as a raw Ed25519 key identifier (IP §5.2) |
 | relying party id | for `webauthn`: the RP ID the person's credential is scoped to |
 | allowed origins | for `webauthn`: the origins at which the signing ceremony may run |
-| cross-origin policy | for `webauthn`: whether a ceremony in a cross-origin frame counts, and if so the allowed top-level origins. When the using profile says nothing, it does not count |
+| allowed top-level origins | for `webauthn`: the top-level origins under which a ceremony in a cross-origin frame counts. When the using profile names none, no cross-origin ceremony counts |
 | user verification required | for `webauthn`: true or false. When the using profile says nothing, false |
+
+The relying party id and the allowed origins belong with the person key: the using profile fixes them
+when it enrols the key, and a verifier obtains them from the same place as the person key, never
+from whoever presents a copy.
 
 ### 6.2 Checking one person signature
 
@@ -215,21 +222,27 @@ this order. The first step that does not succeed gives its status, and the verif
    `record signer key`. This step only rejects a using profile that enrolled a record key by
    mistake. It is not why an agent's key fails; step 3 is (§8.1).
 5. **Client data** (`webauthn`). `client_data_json` is UTF-8 JSON text whose value is an object.
-   Otherwise `FAIL`, reason `malformed`. The verifier parses those exact octets and never
-   serializes them again. Then:
+   The verifier decodes the exact octets as UTF-8, which removes a leading byte order mark, and
+   parses the text as JSON (RFC 8259). Text that is not UTF-8, is not JSON (for example `NaN`),
+   is not an object, or holds a duplicate member name is `FAIL`, reason `malformed`. The verifier
+   never serializes the client data again. Then:
    - `type` is `webauthn.get`. Otherwise `FAIL`, reason `wrong type`.
    - `challenge` is a base64url text whose decoded octets equal the signed octets (§4.1) of this
      person signature. Otherwise `FAIL`, reason `wrong challenge`. A challenge that holds the record
      digest in hexadecimal, or the signed octets with padding or in standard base64, is a wrong
      challenge.
    - `origin` is one of the allowed origins. Otherwise `FAIL`, reason `origin not allowed`.
-   - `crossOrigin` is absent or false, unless the cross-origin policy lets a cross-origin
-     ceremony count. Where `topOrigin` is present, it is one of the allowed top-level origins. Otherwise
-     `FAIL`, reason `cross-origin`.
+   - When `crossOrigin` is true or `topOrigin` is present, `topOrigin` is present and is one of the
+     allowed top-level origins. Otherwise `FAIL`, reason `cross-origin`. A cross-origin ceremony that
+     names no `topOrigin` therefore never counts.
 
    Other members of the client data are ignored, whatever their order.
-6. **Authenticator data** (`webauthn`). `authenticator_data` is at least 37 octets. Otherwise
-   `FAIL`, reason `malformed`. Then:
+6. **Authenticator data** (`webauthn`). `authenticator_data` is an assertion's authenticator data
+   (WebAuthn §6.1): at least 37 octets; the AT flag (bit 6 of octet 32) clear, since an assertion
+   carries no attested credential data; when the ED flag (bit 7) is clear, exactly 37 octets; when
+   it is set, the octets after the first 37 are exactly one well-formed CBOR map (RFC 8949), which
+   the verifier does not otherwise read; and the BS flag (bit 4) clear when the BE flag (bit 3) is
+   clear. Otherwise `FAIL`, reason `malformed`. Then:
    - its first 32 octets equal SHA-256 of the UTF-8 relying party id. Otherwise `FAIL`, reason
      `wrong relying party`.
    - the UP flag (bit 0 of octet 32) is set. Otherwise `FAIL`, reason `user not present`.
@@ -238,7 +251,8 @@ this order. The first step that does not succeed gives its status, and the verif
 
    The signature counter (octets 33 to 36) is reported and never checked (§8.2).
 7. **Signature.** `signature` verifies under `key`, by `key.alg`, over
-   `authenticator_data || SHA-256(client_data_json)`. For -7 it is strict DER. Otherwise `FAIL`,
+   `authenticator_data || SHA-256(client_data_json)`. For -7 it is DER: a BER encoding of the same
+   values, such as a long-form length, does not verify. Otherwise `FAIL`,
    reason `bad signature`.
 
 A person signature that passes every step is `PASS`.
