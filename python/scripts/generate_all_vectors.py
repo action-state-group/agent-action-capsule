@@ -89,6 +89,7 @@ GENERATORS = (
     "generate_personal_history_basic_v0_vectors.py",
     "generate_coverage_declaration_v0_vectors.py",
     "generate_controller_binding_v0_vectors.py",
+    "generate_person_signature_v0_vectors.py",
     "generate_deal_reconcile_v0_vectors.py",
     "generate_standard_history_v0_vectors.py",
     "generate_record_push_vectors.py",

@@ -153,6 +153,13 @@ same-commit files in CI.
   type, and expired, revoked, one-key-signed, same-key, other-keys, no-half-key-bound, forged-credential,
   unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
   `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
+- `person-signature-v0/`: the person signature of `spec/person-signature-v0.md`, a person's own
+  WebAuthn assertion over a signed record's digest, carried beside the record: valid ES256 and
+  Ed25519 assertions, correctly signed policy negatives (type, challenge, origin, cross-origin,
+  relying party, user presence and verification, a key that is not the person's, the record
+  signer's key), bad and raw r||s signatures, unknown key types and algorithms, malformed objects,
+  absent signatures, and several signatures for one record;
+  `python/scripts/generate_person_signature_v0_vectors.py` regenerates them.
 - `deal-reconcile-v0/`: the Evidence Contract `ec:deal-reconcile@1` of
   `spec/deal-reconcile-contract-v0.md`: a deal whose two halves' amount and currency commitments
   open and match, and one whose amount opening fails, with the six tallies and the Evidence Result

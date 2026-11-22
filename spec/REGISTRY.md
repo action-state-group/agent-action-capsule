@@ -501,6 +501,21 @@ with the NIPs (that document's CB-8). Conformance vectors:
 | `bip340` | Key type. The key identifier is a BIP-340 x-only secp256k1 public key, as a Nostr identity is; the key signs a Nostr event (NIP-01) of kind 3374, with no tags, whose `content` is the signed object's version and the SHA-256 of its signed octets (`<version>:<digest>`); `sig` carries the event's `created_at` and its BIP-340 signature. |
 | `3374` | Nostr event kind of the `bip340` signing event. Its events are signatures over one binding record or revocation statement, and are not published. |
 
+### Provisional: person signature key types
+
+**Held for ratification; not yet registered.** `spec/person-signature-v0.md`
+(an informational document, not an Internet-Draft) names the kind of key that
+made a person signature in `key_type` (§3.2). A verifier that meets a token it
+does not know reports that person signature `NOT_CHECKED`, and it never reads
+as signed by the person. A key type is added only by a revision of that
+document, and only for a key that the person holds and that the agent's
+runtime cannot use without the person present. Conformance vectors:
+`vectors/person-signature-v0/`.
+
+| Value | Semantics |
+|---|---|
+| `webauthn` | Key type. The key is a WebAuthn credential's public key, as `{alg, spki}` with COSE algorithm -7 (ES256) or -8 (EdDSA); it signs by a WebAuthn assertion whose challenge is the UTF-8 octets of `person-signature/0:<record_digest>`. |
+
 ## 15. Evidence Bundle countersignature type
 
 Defined in `draft-mih-zhang-agent-disclosure-bundle`,

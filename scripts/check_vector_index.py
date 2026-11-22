@@ -125,6 +125,7 @@ COUNTERS = {
     "vectors/personal-history-outcome-v0/": lambda: cases("vectors/personal-history-outcome-v0/vectors.json"),
     "vectors/coverage-declaration-v0/": lambda: cases("vectors/coverage-declaration-v0/vectors.json"),
     "vectors/controller-binding-v0/": lambda: cases("vectors/controller-binding-v0/vectors.json"),
+    "vectors/person-signature-v0/": lambda: cases("vectors/person-signature-v0/vectors.json"),
     "vectors/deal-reconcile-v0/": lambda: cases("vectors/deal-reconcile-v0/vectors.json"),
     "vectors/standard-history-v0/": lambda: (cases("vectors/standard-history-v0/vectors.json")
                                              + cases("vectors/standard-history-v0/vectors-2.json")
