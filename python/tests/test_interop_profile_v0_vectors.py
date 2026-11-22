@@ -1145,8 +1145,9 @@ def test_contract_pin_shape():
     assert shx(c["document_jcs"].encode()) == c["contract_digest"]
     assert c["contract_ref"] == f"{c['document']['id']}@{c['document']['version']}"
     assert HEX64.match(c["schema"]["sha256"]) and c["schema"]["name"] == "evidence-contract-v0.json"
-    ec_row = next(line for line in BASE_SPEC.read_text(encoding="utf-8")
-                  .splitlines() if line.startswith("| EC |"))
+    # v2 replaces v1's EC row with its own (v2 §11.3.2, P-71); v0 and v1 carry theirs.
+    ec_row = next(line for text in (SPEC.read_text(encoding="utf-8"), BASE_SPEC.read_text(encoding="utf-8"))
+                  for line in text.splitlines() if line.startswith("| EC |"))
     assert c["schema"]["sha256"] in ec_row, "the recorded schema is the one the profile pins as EC"
     for r in c["document"]["requirements"]:
         assert {"id", "profile", "statement"} <= set(r) and "status" not in r and "result" not in r

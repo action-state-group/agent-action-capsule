@@ -1,5 +1,5 @@
 {
-  "_comment": "Maps each in-repo VECTORS.md set to the existing conformance tests that run it, per language. A set with no entry for a language is reported SKIP (vectors/judge/ is checked only by schemas/check_judge_record_examples.py) by scripts/run_vectors.py. python/ts entries are test files, go entries are packages, rust entries are crate:test-binary.",
+  "_comment": "Maps each in-repo VECTORS.md set to the existing conformance tests that run it, per language. A set with no entry for a language is reported SKIP (vectors/judge/ is checked only by schemas/check_judge_record_examples.py, vectors/evidence-contract-obligation/ only by schemas/check_evidence_contract_examples.py) by scripts/run_vectors.py. python/ts entries are test files, go entries are packages, rust entries are crate:test-binary.",
   "vectors/capsule/": {"python": ["test_vectors.py"], "ts": ["conformance.test.ts"], "go": ["./verify"], "rust": ["agent-action-capsule:capsule_vectors"]},
   "provenance-mode-vectors/": {"python": ["test_provenance_mode_vectors.py"], "ts": ["conformance.test.ts"], "go": ["./verify"], "rust": ["agent-action-capsule:capsule_vectors"]},
   "vectors/producer-envelope/": {"python": ["test_producer_envelope.py"], "ts": ["producer-envelope.test.ts"], "go": ["./envelope"], "rust": ["agent-action-capsule:envelope_vectors"]},
@@ -48,6 +48,7 @@
   "vectors/history-frame-v0/": {"python": ["test_history_frame_v0_vectors.py"]},
   "vectors/evidence-result/": {"ts": ["result-root.test.ts", "result-revision.test.ts"], "go": ["./evidenceresult"]},
   "vectors/judge/": {},
+  "vectors/evidence-contract-obligation/": {},
   "vectors/evidence-dataset/": {"go": ["./evidenceplan"]},
   "vectors/deal-reconcile-v0/": {"python": ["test_deal_reconcile_v0_vectors.py"]},
   "vectors/profiles/": {"python": ["test_profile_vectors.py"], "ts": ["profile-vectors.test.ts"], "go": ["./canonical"]},

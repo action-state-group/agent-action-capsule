@@ -108,6 +108,7 @@ COUNTERS = {
     "vectors/anchor-witness-v1/": lambda: cases("vectors/anchor-witness-v1/vectors.json"),
     "vectors/card-registration-v0/": lambda: cases("vectors/card-registration-v0/vectors.json"),
     "vectors/json-nesting/": lambda: cases("vectors/json-nesting/cases.json"),
+    "vectors/evidence-contract-obligation/": lambda: cases("vectors/evidence-contract-obligation/cases.json"),
     "vectors/cbor-nesting/": lambda: cases("vectors/cbor-nesting/cases.json"),
     "vectors/cbor-request-model/": lambda: cases("vectors/cbor-request-model/cases.json"),
     "vectors/minimum-necessary/": lambda: cases("vectors/minimum-necessary/manifest.json"),

@@ -6,10 +6,12 @@ and states as its own, under [Open points](#13-open-points), every requirement t
 document says.
 
 This is revision v2, identified as `evidence-interop/2` (§3.1). It is `evidence-interop/1`
-(`spec/interop-profile-v1.md`, frozen) with two changes: a refusal MAY carry `policy_digest`, the
+(`spec/interop-profile-v1.md`, frozen) with three changes: a refusal MAY carry `policy_digest`, the
 digest of the policy its responder declares, and the refusal's signature covers it when present
-(§6.3; P-69); and the HTTP binding serves the evidence manifest at one fixed path (§11.4.2; P-70),
-an additive rule that changes no signing input. `evidence-interop/1` and `evidence-interop/0` keep their meaning: a
+(§6.3; P-69); the HTTP binding serves the evidence manifest at one fixed path (§11.4.2; P-70),
+an additive rule that changes no signing input; and the Evidence Contract's obligation profile has
+one shape, the native one, with EC re-pinned to the schema that drops the abstract obligation shape
+(§11.3.2; P-71). `evidence-interop/1` and `evidence-interop/0` keep their meaning: a
 responder or verifier that implements several identifiers checks each exchange under the
 identifier it names.
 
@@ -29,22 +31,38 @@ every citation of v1 (§6.3, §7.2, P-65 and the rest) names the same rule here.
    rules v1 states for it, and `evidence-interop/2` has those rules too unless §6.3 below changes
    them.
 2. **Replaced sections.** §3.1, §3.2, §6.3, §10 and §11.5 are replaced by the sections of the
-   same number below. In the **Refusal** paragraph of §7.3, "Rebuild `{issued_at, reason,
-   request_digest}` with JCS" reads "Rebuild the §6.3 signing input of the identifier the request
-   asks for", and the `refusal_signature` row of §7.2 checks that signing input. §11.4.1, §11.4.2,
-   §11.4.7, §11.4.8 and §11.4.9 are replaced in part, by the amendments of
-   [11.4 Carriage and discovery](#114-carriage-and-discovery) below: v1's text of each stands except
-   for the sentences and rows named there.
-3. **Added open points.** §13 gains P-69 and P-70. P-1 to P-68 are carried over as written.
-4. **Unchanged.** Everything else: the Dependency boundary table and its pins (ER -02 included),
-   naming, canonical bytes, the envelope and its material, the absence record, coverage
-   declarations, the properties and statuses of §7, the mapping of §8, the ten §9.1 tokens, the
-   acceptance record, lifecycle links, the Evidence Contract prose, carriage and discovery except
-   for the amendments of 11.4 below, and the security considerations. ER -02's unavailable-window
-   statements stay deferred (P-66); adopting them would take another identifier.
+   same number below. The EC row of the Dependency boundary table and §11.3.2 are replaced by the
+   row and section below; §11.3.5 and §11.3.7 are replaced in part, by the amendments of [11.3
+   Evidence Contract prose](#113-evidence-contract-prose) below. In the **Refusal** paragraph of
+   §7.3, "Rebuild `{issued_at, reason, request_digest}` with JCS" reads "Rebuild the §6.3 signing
+   input of the identifier the request asks for", and the `refusal_signature` row of §7.2 checks
+   that signing input. §11.4.1, §11.4.2, §11.4.7, §11.4.8 and §11.4.9 are replaced in part, by the
+   amendments of [11.4 Carriage and discovery](#114-carriage-and-discovery) below: v1's text of each
+   stands except for the sentences and rows named there.
+3. **Added open points.** §13 gains P-69, P-70 and P-71. P-1 to P-68 are carried over as written,
+   except that P-52 is read as P-71 amends it.
+4. **Unchanged.** Everything else: the Dependency boundary table and its pins (ER -02 included)
+   except the EC row, naming, canonical bytes, the envelope and its material, the absence record,
+   coverage declarations, the properties and statuses of §7, the mapping of §8, the ten §9.1 tokens,
+   the acceptance record, lifecycle links, the Evidence Contract prose except for the amendments of
+   11.3 below, carriage and discovery except for the amendments of 11.4 below, and the security
+   considerations. ER -02's unavailable-window statements stay deferred (P-66); adopting them would
+   take another identifier.
 
 The host profiles that cite `evidence-interop/0` or `evidence-interop/1` stay on the identifier
 they cite until they re-pin.
+
+## Dependency boundary
+
+The EC row of v1's table is replaced by this one. Every other row stands.
+
+| Tag | Document | Revision pinned | What this profile takes from it |
+|---|---|---|---|
+| EC | Evidence Contract v0 schema | `schemas/evidence-contract-v0.json` in this repository, SHA-256 of the file `bf9a1cdee27c8cf6d35b2371fe3b778cf5e1db671dd9c4bce9f503e8842cb78b`: the capsule-engine copy v1 pins (commit `773ae9e96285e4442cab8139923b1479b103e14c`, SHA-256 `6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770`) with its `$id` changed and the abstract obligation shape (`requirementObligationGeneric`) dropped | the contract and every member and value of it (§11.3); the eight-value status, its four-value projection, and per-requirement handling of missing and conflicting evidence |
+
+The pin names the file by its digest, so it fixes the bytes whatever commit carries them. v1's EC
+pin stays v1's: `evidence-interop/0` and `evidence-interop/1` keep the capsule-engine copy, under
+which both obligation shapes are valid [P-71].
 
 ## 3. Versions
 
@@ -63,7 +81,8 @@ properties [P-1].
 
 ### 3.2 Pinned revisions
 
-`evidence-interop/2` pins the revisions in v1's Dependency boundary table. A new revision of any
+`evidence-interop/2` pins the revisions in v1's Dependency boundary table, with the EC row
+replaced as [Dependency boundary](#dependency-boundary) says. A new revision of any
 of those documents does not change what `evidence-interop/2` means. Adopting a new revision
 requires a new profile identifier, except before the profile is first published [P-1].
 
@@ -160,6 +179,74 @@ three ERV A7 members, as in v1 §10.
 
 ## 11. Parts filled by later revisions
 
+### 11.3 Evidence Contract prose
+
+v1 §11.3 stands, read against the EC pin above, with the following amendments [P-71].
+
+#### 11.3.2 Requirements and their profiles
+
+This section replaces v1 §11.3.2.
+
+Each entry of `requirements` MUST match exactly one of eight shapes [EC `$defs/requirement`,
+`oneOf`]. The requirement's `profile` member names which. `profile` takes one of seven values, and a
+contract MAY mix profiles across its requirements [EC].
+
+The obligation profile has one shape, the native, pack-declared one [EC; P-71]. The reason is what
+the native shape carries. It requires a structured `clause` (§11.3.4), which gives a claim its
+`applies_from` (§8.3) and is checked for a calendar date before a contract is evaluated (§11.3.7,
+P-62), and it can carry `out_of_scope_allowed`, which only the native shapes carry (§8.3, P-61).
+The abstract obligation shape of the capsule-engine copy carried a free-form `clause_ref` and
+none of these, so an obligation written in it could be evaluated with neither rule applied.
+
+The outcome profile keeps two shapes, a native and an abstract one. The schema states that those
+two spellings have not been reconciled [EC], and this revision does not choose between them
+[P-52].
+
+| Shape (`$defs`) | `profile` | Required members | Closed |
+|---|---|---|---|
+| native outcome (`requirementOutcomeNative`) | `outcome`, or absent | `id`, `statement`, `evidence_rule`, `forward_verdict`, `backward_verdict` | yes |
+| native obligation (`requirementObligationNative`) | `obligation` | those five, `profile` and `clause` | yes |
+| abstract outcome (`requirementOutcomeGeneric`) | `outcome` | `id`, `profile`, `statement` | yes |
+| process (`requirementProcess`) | `process` | `id`, `profile`, `statement` | no: a typed stub |
+| quality (`requirementQuality`) | `quality` | `id`, `profile`, `statement` | no: a typed stub |
+| human role (`requirementHumanRole`) | `human_role` | `id`, `profile`, `statement` | no: a typed stub |
+| attribution (`requirementAttribution`) | `attribution` | `id`, `profile`, `ref` | yes: a typed stub |
+| settlement (`requirementSettlement`) | `settlement` | `id`, `profile`, `ref` | yes: a typed stub |
+
+How a requirement selects its shape follows from the table. A requirement with no `profile` member
+can only be a native outcome. For `outcome`, a requirement carrying `evidence_rule` can only be
+native, because the abstract shape is closed and does not list it, and one without it can only be
+abstract, because the native shape requires it. Every other value has one shape. So an obligation
+requirement without `evidence_rule` or without `clause`, such as one that cites its clause only by
+`clause_ref`, matches no shape. A contract carrying one is not valid against the pinned schema, so
+it is not a contract version document under `evidence-interop/2` (v1 §11.3.7) [P-46; P-71]. A
+typed stub is a profile whose fields are sketched but not yet normative [EC]. The open stubs
+(process, quality, human role) accept members the schema does not list.
+
+Members that appear in several shapes:
+
+- `id`: non-empty text. The requirement's identifier within the contract. An Evidence Result claim
+  names it as `requirement_ref` [RES §4].
+- `profile`: text, one of `outcome`, `obligation`, `process`, `quality`, `human_role`,
+  `attribution`, `settlement`, used as the table above shows [EC].
+- `statement`: non-empty text. The claim the requirement asks to have established, in words. Every
+  shape but attribution and settlement requires it [EC].
+- `status`, `result`: forbidden in every shape, the open stubs included. The schema gives each the
+  subschema `false`, so a requirement carrying either is invalid. A contract never declares its own
+  outcome [EC `$comment`].
+- `evidence_requirements`: the object of §11.3.3. Allowed in abstract outcome, process and human
+  role.
+- `obligation_refs`: array of non-empty text. References to obligations the requirement relates to.
+  Allowed in abstract outcome, process, quality and human role.
+
+#### 11.3.5 and 11.3.7 amendments
+
+- **§11.3.5.** The title reads "Abstract outcome and stub profile members". Delete the
+  **Abstract obligation** paragraph: the shape it describes is not in the pinned schema.
+- **§11.3.7, Which shape.** Read: "A claim does not record whether an outcome requirement used the
+  native or the abstract shape, and this profile reads both as EC accepts them [P-52]. An
+  obligation requirement has only the native shape (§11.3.2) [P-71]."
+
 ### 11.4 Carriage and discovery
 
 v1 §11.4 stands, with the following amendments. They fill the placeholder v1 §11.4.9 lists as
@@ -220,15 +307,21 @@ lifecycle statement and manifest naming `evidence-interop/2`, the version cases 
 | `carriage-manifest-http-not-jcs`, `carriage-manifest-http-wrong-media-type`, `carriage-manifest-http-duplicate-member`, `carriage-manifest-http-differs` | the manifest fetched over HTTP, pretty-printed instead of in JCS or served as `text/plain` (that copy's `manifest_form` `FAIL`, `manifest_consistency` `PASS`), with a repeated member name (both `FAIL`), and another manifest (`manifest_consistency` `FAIL`); `carriage-invariance` gains the HTTP copy | §11.4.2, §11.4.7, §11.4.8, P-70 |
 
 A second set, `vectors/interop-profile-v2-requirement-facts/`, is the v2 regeneration of the v1
-requirement-facts set, from the same generator with `--set requirement-facts`. The witness Receipt
+requirement-facts set, from the same generator with `--set requirement-facts`. Both v2 sets record
+the EC pin above as their contract's schema; their contract documents are unchanged from v1's and
+valid under either pin. A third set, `vectors/evidence-contract-obligation/`, checks the one
+obligation shape against the pinned schema: a native obligation requirement that is valid
+(`pos-obligation-native`), the same obligation in the abstract shape that is refused
+(`neg-obligation-abstract`), and an abstract outcome requirement that stays valid
+(`pos-outcome-abstract`) (§11.3.2, P-71). `schemas/check_evidence_contract_examples.py` runs it. The witness Receipt
 check of §6.2.2 keeps its set, `vectors/anchor-witness-v1/`. The `evidence-interop/1` sets in
 `vectors/interop-profile-v1/` and `vectors/interop-profile-v1-requirement-facts/` are frozen with
 that revision. The pins, fixture formats and readings of v1 §11.5 hold unchanged.
 
 ## 13. Open points
 
-P-1 to P-68 are carried over from `evidence-interop/1` as written. `evidence-interop/2` is the
-second change to take a new identifier under P-1.
+P-1 to P-68 are carried over from `evidence-interop/1` as written, except P-52 as P-71 amends it.
+`evidence-interop/2` is the second change to take a new identifier under P-1.
 
 - **P-69** The refusal's `policy_digest` (§6.3). ER leaves the refusal's signature format to the
   deployment [ER §4.2 item 4], and ERV A7 fixes three signed members, so a responder that wants
@@ -270,3 +363,23 @@ second change to take a new identifier under P-1.
   open: a requester has no fixed path for a responder that shares its origin with another
   responder, since the path belongs to the origin. This revision adds RFC 8615 and RFC 9110 to the
   references of v1.
+- **P-71** One obligation shape (§11.3.2). The pinned schema of `evidence-interop/1` accepts an
+  obligation requirement in two shapes, the native, pack-declared one and an abstract one, and
+  states that the two have not been reconciled; P-52 left that open. The native shape was ruled the
+  one obligation shape on 2026-10-05. This revision:
+  - re-pins EC to `schemas/evidence-contract-v0.json` in this repository, which is the
+    capsule-engine copy with its `$id` changed and `requirementObligationGeneric` dropped from the
+    schema's `$defs` and from `$defs/requirement`, so `requirements` entries match one of eight
+    shapes;
+  - so refuses an obligation requirement that carries `clause_ref` without `evidence_rule` and
+    `clause`, which `evidence-interop/1` accepts;
+  - leaves the outcome profile's two shapes as they are. P-52 stays open for them, and for what an
+    absent `tier`, `mode` or `measurability` means.
+
+  The change narrows what a valid contract is and changes no signing input, canonical byte rule,
+  member name, status word or §8 mapping. `evidence-interop/2` is not yet published, so EC is
+  re-pinned under the exception of §3.2 and takes no new identifier (P-1). No corpus contract in
+  this repository's vectors uses the abstract obligation shape, and no implementation here
+  validates contracts against the schema, so no verifier result under `evidence-interop/2`
+  changes; only the refused case of `vectors/evidence-contract-obligation/` is written in it.
+  `evidence-interop/0` and `evidence-interop/1` keep v1's EC pin and both obligation shapes.

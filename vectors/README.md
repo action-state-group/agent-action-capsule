@@ -138,6 +138,11 @@ same-commit files in CI.
   present, absent, tampered, stripped, unsigned and malformed, and a `evidence-interop/1` refusal
   that still verifies; `python/scripts/generate_interop_profile_v0_vectors.py --profile 2`
   regenerates them.
+- `evidence-contract-obligation/`: the one obligation shape of
+  `spec/interop-profile-v2.md` §11.3.2 (P-71): a native obligation requirement
+  accepted, the same obligation in the dropped abstract shape refused, and an
+  abstract outcome requirement still accepted. Hand-written;
+  `schemas/check_evidence_contract_examples.py` runs it.
 - `personal-history-basic-v0/`: the acceptance run of
   `spec/personal-agent-history-profile-v0.md` §6.4 (Basic level): one History answered by an
   IP responder at a pinned commit (`responder-run.json`, reproduced by `producer/main.go`), the

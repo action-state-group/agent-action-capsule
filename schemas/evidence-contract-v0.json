@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentactioncapsule.org/schemas/evidence-contract-v0.json",
   "title": "Evidence Contract v0",
-  "description": "The Evidence Contract root abstraction. An Evidence Contract does not say what is true -- it declares what must be established, what evidence is acceptable, what assurance properties are required, how uncertainty is handled, and what consequence follows. `profile` is closed at 7 values and lives per-requirement, not on the root: a contract MAY mix profiles across its own requirements. Two shapes are accepted for the `outcome` and `obligation` profiles: an abstract wire shape (evidence_requirements/adjudication/uncertainty), and capsule-engine's own native pack-declared shape (`EvidenceContract.canonical_dict()`: statement/evidence_rule/forward_verdict/backward_verdict/...), which those profiles implement field-for-field. Both are accepted today; the two spellings have not yet been reconciled into one. `process`/`quality`/`human_role`/`attribution`/`settlement` are typed stubs: their sketched fields are typed here, but the object stays open to extension pending a full normative pass.",
+  "description": "The Evidence Contract root abstraction. An Evidence Contract does not say what is true -- it declares what must be established, what evidence is acceptable, what assurance properties are required, how uncertainty is handled, and what consequence follows. `profile` is closed at 7 values and lives per-requirement, not on the root: a contract MAY mix profiles across its own requirements. The `obligation` profile has one shape, the native pack-declared one (`EvidenceContract.canonical_dict()`: statement/evidence_rule/forward_verdict/backward_verdict/clause/...): the native shape was ruled the one obligation shape on 2026-10-05, and the abstract obligation shape (`clause_ref` without `evidence_rule`) is no longer accepted. The `outcome` profile still accepts two shapes, an abstract wire shape (evidence_requirements/adjudication/uncertainty) and the native pack-declared shape; those two spellings have not yet been reconciled into one. `process`/`quality`/`human_role`/`attribution`/`settlement` are typed stubs: their sketched fields are typed here, but the object stays open to extension pending a full normative pass.",
   "$comment": "No requirement $def in this schema exposes a `status`/`result` property, on ANY profile branch, including the permissive stubs -- 'status': false / 'result': false below are deliberate forbids, not omissions. Spec §5.2: 'The evidence record never self-declares that it satisfies a requirement; the Evidence Contract defines sufficiency.' bundleAssertionStatus / contractResult / verdict ($defs below) are runtime outputs of evaluating a contract against evidence -- never contract-declarable fields.",
   "$defs": {
     "epistemicType": {
@@ -245,24 +245,6 @@
         "obligation_refs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
       }
     },
-    "requirementObligationGeneric": {
-      "description": "A sketch: a versioned obligation reference bound to evidence requirements.",
-      "type": "object",
-      "required": ["id", "profile", "statement", "clause_ref"],
-      "additionalProperties": false,
-      "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "profile": { "const": "obligation" },
-        "status": false,
-        "result": false,
-        "statement": { "type": "string", "minLength": 1 },
-        "clause_ref": { "type": "string", "minLength": 1 },
-        "required_role": { "type": "string" },
-        "evidence_requirements": { "$ref": "#/$defs/evidenceRequirements" },
-        "retention_check": { "type": "string" },
-        "exceptions": { "type": "array", "items": { "type": "string" } }
-      }
-    },
     "requirementProcess": {
       "description": "Typed stub -- fields sketched, not exhaustively normative; open to extension pending a full normative pass on this profile.",
       "type": "object",
@@ -355,7 +337,6 @@
         { "$ref": "#/$defs/requirementOutcomeNative" },
         { "$ref": "#/$defs/requirementOutcomeGeneric" },
         { "$ref": "#/$defs/requirementObligationNative" },
-        { "$ref": "#/$defs/requirementObligationGeneric" },
         { "$ref": "#/$defs/requirementProcess" },
         { "$ref": "#/$defs/requirementQuality" },
         { "$ref": "#/$defs/requirementHumanRole" },
