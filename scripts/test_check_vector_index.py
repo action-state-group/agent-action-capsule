@@ -33,9 +33,9 @@ def test_missing_row_fails(tmp_path, monkeypatch, capsys):
 
 
 def test_drifted_count_fails(tmp_path, monkeypatch, capsys):
-    text = real_index().replace("| record, verify | 119 |", "| record, verify | 118 |")
+    text = real_index().replace("| record, verify | 121 |", "| record, verify | 120 |")
     code, out = run_with(tmp_path, monkeypatch, text, capsys)
-    assert code == 1 and "118 cases for vectors/capsule/" in out
+    assert code == 1 and "120 cases for vectors/capsule/" in out
 
 
 def test_duplicate_and_garbled_rows_fail(tmp_path, monkeypatch, capsys):
