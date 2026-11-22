@@ -1,0 +1,12 @@
+{
+  "draft": "draft-mih-zhang-agent-disclosure-bundle-03 (composed/v1: History Members)",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_bundle_composed_history_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "ec71eb6e2b7f7a040573253cbbd8f02fafa8d00c046b2eabd410938e0d290a26",
+      "count": 30
+    }
+  ]
+}

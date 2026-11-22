@@ -7,6 +7,11 @@ block's own result, each member's, composition closure, each join's declared
 and derived state and what a derived agreement is worth are reported with the
 same tokens as the Go reference.
 
+A History answer is an ``artifact`` member with ``form`` ``history``
+(draft-mih-zhang-agent-disclosure-bundle-03, "History Members"); its
+``same_key`` join to its party's half of a deal is derived in
+:func:`_same_key_state`.
+
 The ``controller_binding`` join basis reads its binding record through the one
 binding verifier, :mod:`agent_action_capsule.controller_binding`, at both root
 records' timestamps. Bundle -02's own rules sit on top of it and nowhere else
@@ -38,8 +43,13 @@ _RECORD_TIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2
 
 _OUTCOMES = {"artifact": "bundle", "refusal": "refusal", "absence": "absence"}
 _JOIN_BASES = frozenset(
-    {"pre_agreed_identifier", "shared_artifact_digest", "issued_receipt", "same_interval", "controller_binding"}
+    {"pre_agreed_identifier", "shared_artifact_digest", "issued_receipt", "same_interval", "controller_binding",
+     "same_key"}
 )
+#: The one member ``form`` -03 defines: a History answer ("History Members").
+FORM_HISTORY = "history"
+_HISTORY_FIELDS = ("request_digest", "artifact_digest")
+_B64URL = re.compile(r"[A-Za-z0-9_-]*")
 _JOIN_STATES = frozenset({"agree", "mismatch", "unjoined", "one_sided"})
 
 _DIGEST_ERRORS = (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError)
@@ -57,6 +67,11 @@ class ComposedOptions:
 
     refusal_signature: SignatureVerifier | None = None
     response_signature: SignatureVerifier | None = None
+    #: Checks a History answer's signature under the deployment's profile
+    #: (-03 "History Members"); :func:`evidence_interop_signature` is the
+    #: evidence-interop one. Without it a History is signature-unverified, and
+    #: a ``same_key`` join on it is not derivable.
+    history_signature: SignatureVerifier | None = None
     #: Binding records delivered beside the Bundle, and the revocation
     #: statements, that a controller_binding join is derived from (-02,
     #: "Controller Binding Records"). A join whose record was not delivered is
@@ -90,6 +105,15 @@ class ComposedMemberResult:
     bundle: Any = None
     refusal_signature: str = ""
     response_signature: str = ""
+    #: ``history`` for a History member, else ``""``.
+    form: str = ""
+    history_signature: str = ""
+    #: ``verified``, ``mismatch``, ``invalid``, ``unverified`` (no CLL
+    #: checkpoint reference here) or ``absent``; ``""`` when no
+    #: History answer is carried.
+    anchor_checkpoint: str = ""
+    #: The anchor checkpoint's signed ``timestamp`` when it verified.
+    anchor_time: str = ""
 
 
 @dataclass
@@ -122,6 +146,8 @@ class ComposedJoinResult:
     #: ``derived_matches``, ``join_state_mismatch`` or ``not_derivable``.
     result: str = ""
     differences: list = field(default_factory=list)
+    #: Why a ``same_key`` join derived as it did, when a step names a finding.
+    findings: list = field(default_factory=list)
 
 
 @dataclass
@@ -151,6 +177,11 @@ class ComposedResult:
     composition_closure: CompositionClosureResult | None = None
     joins: list = field(default_factory=list)
     corroboration: list = field(default_factory=list)
+    #: ``{"histories", "halves", "pointer"}`` for each pair of History
+    #: members, ascending, that derived joins relate: each History ``agree``
+    #: with its party's half on ``same_key``, and the two halves ``agree`` on
+    #: ``pre_agreed_identifier`` at ``pointer`` (-03 "History Members").
+    related_histories: list = field(default_factory=list)
 
 
 @dataclass
@@ -162,6 +193,14 @@ class _Member:
     digest: str = ""
     body: dict | None = None
     response: dict | None = None
+    form: str | None = None
+    anchor_checkpoint: str | None = None
+    # Set while the member is verified, read by its same_key joins.
+    signature_state: str = ""
+    anchor_at: tuple[int, int] | None = None
+    # The carried body reproduced its digest and, for a History, names the
+    # member's request: only then do its joins read it.
+    sound: bool = False
 
 
 @dataclass
@@ -258,6 +297,7 @@ def verify_composed(raw: Any, opts: ComposedOptions | None = None, coverage_inpu
             withheld.append(f"join_not_derivable:{pair}")
         result.corroboration.append(_corroboration(j, join_result.derived, by_id, observers))
 
+    result.related_histories = _related_histories(result.joins, by_id, block.joins)
     if failed:
         result.status, result.findings = "fail", failed + withheld
     elif withheld:
@@ -270,7 +310,7 @@ def verify_composed(raw: Any, opts: ComposedOptions | None = None, coverage_inpu
 def _verify_member(m: _Member, declared_missing: bool, opts: ComposedOptions, coverage_inputs: Mapping[str, Any]):
     from .bundle import bundle_digest, verify_bundle
 
-    out = ComposedMemberResult(m.id, m.observer, m.outcome)
+    out = ComposedMemberResult(m.id, m.observer, m.outcome, form=m.form or "")
     closure: list = []
     failed: list = []
     withheld: list = []
@@ -288,7 +328,9 @@ def _verify_member(m: _Member, declared_missing: bool, opts: ComposedOptions, co
         out.body = "carried"
 
     computed = ""
-    if m.outcome == "artifact":
+    if m.form == FORM_HISTORY:
+        computed = _verify_history(m, out, failed, withheld, opts)
+    elif m.outcome == "artifact":
         try:
             computed = bundle_digest(m.body)
         except _DIGEST_ERRORS:
@@ -320,6 +362,7 @@ def _verify_member(m: _Member, declared_missing: bool, opts: ComposedOptions, co
             failed.append(f"member_request_digest_mismatch:{m.id}")
     if computed and computed == m.digest:
         out.digest = "reproduced"
+        m.sound = not any(f in out.findings for f in _UNSOUND)
     else:
         out.digest = "mismatch"
         out.findings.append("member_digest_mismatch")
@@ -332,6 +375,94 @@ def _verify_member(m: _Member, declared_missing: bool, opts: ComposedOptions, co
         elif out.refusal_signature == REFUSAL_SIGNATURE_UNVERIFIED:
             withheld.append(f"refusal_signature_unverified:{m.id}")
     return out, closure, failed, withheld
+
+
+def _verify_history(m: _Member, out: ComposedMemberResult, failed: list, withheld: list, opts: ComposedOptions) -> str:
+    """A carried History answer (-03 "History Members"): its digest, its
+    request binding, its signature under the deployment's profile and its
+    anchor checkpoint, whose signed timestamp is the anchor time. Returns the
+    recomputed digest. The History's own properties are its profile's and are
+    not checked here."""
+    body = m.body or {}
+    try:
+        computed = json_digest(body)
+    except _DIGEST_ERRORS:
+        computed = ""
+    if body.get("request_digest") != m.request_digest:
+        out.findings.append("request_digest_mismatch")
+        failed.append(f"member_request_digest_mismatch:{m.id}")
+    m.signature_state = out.history_signature = _signature_state(opts.history_signature, body)
+    if out.history_signature == REFUSAL_SIGNATURE_INVALID:
+        out.findings.append("history_signature_invalid")
+        failed.append(f"history_signature_invalid:{m.id}")
+    elif out.history_signature == REFUSAL_SIGNATURE_UNVERIFIED:
+        withheld.append(f"history_signature_unverified:{m.id}")
+    out.anchor_checkpoint, timestamp = _anchor_checkpoint(m.anchor_checkpoint, body["anchor"]["digest"])
+    if out.anchor_checkpoint in ("mismatch", "invalid"):
+        out.findings.append(f"history_anchor_checkpoint_{out.anchor_checkpoint}")
+        failed.append(f"history_anchor_checkpoint_{out.anchor_checkpoint}:{m.id}")
+    elif out.anchor_checkpoint == "verified":
+        m.anchor_at = _record_time(timestamp)
+        out.anchor_time = timestamp
+    return computed
+
+
+def _anchor_checkpoint(encoded: str | None, anchor_digest: str) -> tuple[str, str]:
+    """``(state, timestamp)`` for a History's ``anchor_checkpoint``: its
+    SHA-256 must be the signed anchor digest and it must verify under its own
+    key. A verifier without the CLL checkpoint reference cannot verify it and
+    reports it ``unverified``: there is then no anchor time."""
+    from .bundle import _b64url_decode
+
+    if encoded is None:
+        return "absent", ""
+    try:
+        octets = _b64url_decode(encoded)
+    except (ValueError, TypeError):
+        return "invalid", ""
+    if hashlib.sha256(octets).hexdigest() != anchor_digest:
+        return "mismatch", ""
+    try:
+        from cll.checkpoint import verify_checkpoint_cose_offline
+    except ImportError:
+        return "unverified", ""
+    try:
+        verified = verify_checkpoint_cose_offline(octets)
+    except ImportError:
+        return "unverified", ""
+    except (ValueError, TypeError):
+        return "invalid", ""
+    if not verified.ok or verified.decoded is None or _record_time(verified.decoded.timestamp) is None:
+        # A signed time that is not an RFC 3339 UTC instant is not a checkpoint
+        # this document reads (the Go CLL reference refuses it outright).
+        return "invalid", ""
+    return "verified", verified.decoded.timestamp
+
+
+#: The members an evidence-interop envelope signs, when present
+#: (``spec/interop-profile-v0.md`` §6.2; unchanged in /1 and /2).
+_INTEROP_SIGNED = ("profile", "request_digest", "subject", "derivation", "anchor", "artifact_digest",
+                   "verification", "responder", "issued_at")
+_INTEROP_PROFILES = frozenset({"evidence-interop/0", "evidence-interop/1", "evidence-interop/2"})
+
+
+def evidence_interop_signature(envelope: Mapping[str, Any]) -> str:
+    """A ``history_signature`` verifier for the evidence-interop profiles:
+    Ed25519 by ``responder`` over the JCS of the signed members present.
+    Another profile is ``signature_unverified``."""
+    from .interop_profile._common import ed25519_verify_hex
+
+    if envelope.get("profile") not in _INTEROP_PROFILES:
+        return REFUSAL_SIGNATURE_UNVERIFIED
+    try:
+        body = jcs({k: envelope[k] for k in _INTEROP_SIGNED if k in envelope})
+    except _DIGEST_ERRORS:
+        return REFUSAL_SIGNATURE_INVALID
+    sig = envelope.get("sig")
+    if not isinstance(sig, str) or _HEX128.fullmatch(sig) is None:
+        return REFUSAL_SIGNATURE_INVALID
+    verified = ed25519_verify_hex(envelope.get("responder"), sig, body)
+    return REFUSAL_SIGNATURE_VERIFIED if verified else REFUSAL_SIGNATURE_INVALID
 
 
 def _signature_state(verifier: SignatureVerifier | None, value: Mapping[str, Any]) -> str:
@@ -358,7 +489,12 @@ def _root_record(m: _Member) -> dict | None:
 
 def _derive_join(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions) -> ComposedJoinResult:
     out = ComposedJoinResult(j.members, j.basis, j.state)
-    out.derived, out.differences = _derived_state(j, by_id, missing, opts)
+    if j.basis == "same_key":
+        out.derived, finding = _same_key_state(j, by_id, missing)
+        if finding:
+            out.findings.append(finding)
+    else:
+        out.derived, out.differences = _derived_state(j, by_id, missing, opts)
     if out.derived == "":
         out.result = "not_derivable"
     elif out.derived == j.state:
@@ -449,6 +585,88 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions):
     return "agree", []
 
 
+def _same_key_state(j: _Join, by_id: dict, missing: dict) -> tuple[str, str]:
+    """A ``same_key`` join's derived state and finding (-03 "History
+    Members"), in the order the text states its steps: the first that applies
+    decides. ``""`` is not derivable."""
+    from .bundle import is_empty_history
+    from .producer_envelope import AUTHORED, verify_record_signature
+
+    a, b = by_id[j.members[0]], by_id[j.members[1]]
+    history, other = (a, b) if a.form == FORM_HISTORY else (b, a)
+    # 1. A member listed in missing.
+    if missing.get(history.id) or missing.get(other.id):
+        return "", ""
+    # 2. The other member is not an artifact with records.
+    if other.outcome != "artifact" or (other.body is not None and is_empty_history(other.body)):
+        return "unjoined", ""
+    # 3. A body that did not verify as carried, or a History answer whose
+    #    signature is not verified.
+    if not (history.sound and other.sound) or history.signature_state != REFUSAL_SIGNATURE_VERIFIED:
+        return "", ""
+    # 4. The half's root record is not signed: its producer signature must
+    #    verify, under its key_id, over its recomputed Capsule ID.
+    record = _root_record(other)
+    if record is None or verify_record_signature(dict(record))[0] != AUTHORED or not _names_itself(record):
+        return "", "half_signature_unverified"
+    # 5. The key that signed the half is not the History's responder.
+    if record.get("key_id") != history.body.get("responder"):
+        return "unjoined", "history_key_differs"
+    # 6. No anchor time, or no time on the half.
+    at = _record_time(record.get("timestamp"))
+    if history.anchor_at is None or at is None:
+        return "", "history_anchor_time_unknown"
+    # 7. A History as of an anchor before the deal is not about the deal.
+    if history.anchor_at < at:
+        return "unjoined", "history_anchor_predates_deal"
+    return "agree", ""
+
+
+#: A body with one of these findings did not verify as carried, and its
+#: same_key joins do not read it.
+_UNSOUND = ("request_digest_mismatch", "response_request_digest_mismatch", "response_artifact_digest_mismatch")
+
+
+def _names_itself(record: Mapping[str, Any]) -> bool:
+    """The Capsule ID recomputed from the record is the ``capsule_id`` it
+    carries, so the signed record is the one the Bundle names."""
+    from .canonical import compute_capsule_id
+
+    try:
+        return compute_capsule_id(dict(record)) == record.get("capsule_id")
+    except (TypeError, ValueError, FloatInDigestError, UnsafeIntegerError, RecursionError):
+        return False
+
+
+def _related_histories(joins: list, by_id: dict, block_joins: list) -> list:
+    """History pairs related only through derived agreements: each History
+    with its party's half on ``same_key``, and the two halves on
+    ``pre_agreed_identifier``. Each pair names the halves and the pointer
+    that linked them: the relation is only as strong as the identifier that
+    pointer selects. Being carried in one block relates nothing."""
+    halves: dict = {}
+    links: dict = {}
+    for j, declared in zip(joins, block_joins):
+        if j.derived != "agree":
+            continue
+        if j.basis == "same_key":
+            a, b = j.members
+            history, half = (a, b) if by_id[a].form == FORM_HISTORY else (b, a)
+            halves.setdefault(history, set()).add(half)
+        elif j.basis == "pre_agreed_identifier":
+            links.setdefault(j.members, []).append(declared.pointer)
+    related = []
+    ids = sorted(halves)
+    for i, first in enumerate(ids):
+        for second in ids[i + 1:]:
+            for x in sorted(halves[first]):
+                for y in sorted(halves[second]):
+                    pair = tuple(sorted((x, y)))
+                    for pointer in sorted(links.get(pair, [])):
+                        related.append({"histories": [first, second], "halves": list(pair), "pointer": pointer})
+    return related
+
+
 def _identifier_matches(record: Mapping[str, Any], pointer: str, digest: str) -> bool:
     okay, value = _resolve_pointer(record, pointer)
     if not okay or not isinstance(value, str):
@@ -474,6 +692,10 @@ def _corroboration(j: _Join, derived: str, by_id: dict, observers: dict) -> Corr
     # their keys are not independent issuers (bundle -02).
     if j.basis == "controller_binding":
         out.reasons.append("controller_binding")
+    # A same_key agreement is one key's: a party's History never corroborates
+    # its own half (-03 "History Members").
+    if j.basis == "same_key":
+        out.reasons.append("same_key")
     if out.reasons:
         out.result = "redundant"
         out.reason = out.reasons[0]
@@ -701,16 +923,23 @@ def composed_digest_preimage(raw: Any) -> bytes:
     return jcs(
         {
             "kind": COMPOSED_KIND,
-            "members": [
-                {"id": m.id, "observer": m.observer, "request_digest": m.request_digest, "outcome": m.outcome,
-                 "digest": m.digest}
-                for m in members
-            ],
+            "members": [_member_declaration(m) for m in members],
             "observers": [{"id": o.id, "role": o.role, "custody_domain": o.custody} for o in observers],
             "joins": join_values,
             "not_requested": sorted(block.not_requested),
         }
     )
+
+
+def _member_declaration(m: _Member) -> dict:
+    """A member's entry in the digest input: its five declarations, plus
+    ``form`` when it carries one (-03), so a block without History members
+    keeps its -02 digest."""
+    value = {"id": m.id, "observer": m.observer, "request_digest": m.request_digest, "outcome": m.outcome,
+             "digest": m.digest}
+    if m.form is not None:
+        value["form"] = m.form
+    return value
 
 
 def _join_key(j: _Join) -> str:
@@ -769,8 +998,11 @@ def _parse_composed(raw: Any) -> tuple[_Block, str]:
     if not isinstance(join_list, list):
         return block, "joins"
     seen: set = set()
+    forms = {m.id: m.form for m in block.members}
     for i, item in enumerate(join_list):
         join, reason = _parse_join(item, member_ids)
+        if not reason:
+            reason = _join_names_history(join, forms)
         if reason:
             return block, f"join:{i}:{reason}"
         key = _join_key(join)
@@ -818,6 +1050,8 @@ def _parse_member(raw: Any, observers: set) -> tuple[_Member, str]:
         return m, "digest"
     if not isinstance(m.outcome, str) or m.outcome not in _OUTCOMES:
         return m, "outcome"
+    if "form" in raw or "anchor_checkpoint" in raw:
+        return _parse_history_member(m, raw)
     body_key = _OUTCOMES[m.outcome]
     # A body under another outcome's member name would convert one outcome
     # into another; the outcomes are never converted.
@@ -850,6 +1084,53 @@ def _parse_member(raw: Any, observers: set) -> tuple[_Member, str]:
             return m, "absence_body"
     m.body = body
     return m, ""
+
+
+def _parse_history_member(m: _Member, raw: Mapping[str, Any]) -> tuple[_Member, str]:
+    """A History member (-03 "History Members"): ``form`` ``history`` under
+    the ``artifact`` outcome, its body ``history``, no ``bundle`` or
+    ``response``, and ``anchor_checkpoint`` only here."""
+    if raw.get("form") != FORM_HISTORY or m.outcome != "artifact":
+        return m, "form"
+    m.form = FORM_HISTORY
+    if any(key in raw for key in ("bundle", "response", "refusal", "absence")):
+        return m, "body_outcome_conflict"
+    if "anchor_checkpoint" in raw:
+        encoded = raw["anchor_checkpoint"]
+        if not isinstance(encoded, str) or _B64URL.fullmatch(encoded) is None:
+            return m, "anchor_checkpoint"
+        m.anchor_checkpoint = encoded
+    if "history" not in raw:
+        return m, ""
+    body = raw["history"]
+    anchor = body.get("anchor") if isinstance(body, dict) else None
+    if (
+        not isinstance(body, dict)
+        or not all(_is_digest(body.get(name)) for name in _HISTORY_FIELDS)
+        or not isinstance(anchor, dict)
+        or not _is_digest(anchor.get("digest"))
+        or not _is_digest(body.get("responder"))
+        or not isinstance(body.get("derivation"), str)
+        or not isinstance(body.get("issued_at"), str)
+        or not isinstance(body.get("sig"), str)
+    ):
+        return m, "history_body"
+    m.body = body
+    return m, ""
+
+
+def _join_names_history(j: _Join, forms: Mapping[str, str | None]) -> str:
+    """-03 "Block": a join naming a History member is ``same_key``, and a
+    ``same_key`` join names exactly one and carries none of ``pointer``,
+    ``identifier_digest`` and ``compare``."""
+    histories = sum(forms[i] == FORM_HISTORY for i in j.members)
+    if j.basis != "same_key":
+        return "join_names_history_member" if histories else ""
+    if histories != 1:
+        return "same_key_members"
+    if j.pointer is not None or j.identifier is not None or j.compare_carried:
+        return "same_key_shape"
+    return ""
 
 
 def _parse_join(raw: Any, members: set) -> tuple[_Join, str]:

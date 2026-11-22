@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -43,6 +44,10 @@ type ResponseSignatureVerifier func(response map[string]interface{}) string
 type Options struct {
 	RefusalSignature  RefusalSignatureVerifier
 	ResponseSignature ResponseSignatureVerifier
+	// HistorySignature checks a History answer's signature (bundle -03,
+	// "History Members"); EvidenceInteropSignature is the evidence-interop
+	// one.
+	HistorySignature HistorySignatureVerifier
 	// ControllerBindings are the binding records delivered beside the
 	// Bundle, and BindingRevocations the revocation statements, that a
 	// controller_binding join is derived from (bundle -02, "Controller
@@ -87,6 +92,17 @@ type ComposedMemberResult struct {
 	// ResponseSignature is set for an artifact member that carries its
 	// response, in the refusal signature states.
 	ResponseSignature string
+	// Form is "history" for a History member (bundle -03), else empty.
+	Form string
+	// HistorySignature is set for a carried History answer, in the refusal
+	// signature states.
+	HistorySignature string
+	// AnchorCheckpoint is "verified", "mismatch", "invalid" or "absent" for a
+	// carried History answer; AnchorTime is its signed timestamp when it
+	// verified. (The Python reference adds "unverified" when it runs without
+	// its optional CLL checkpoint reference; this package always has one.)
+	AnchorCheckpoint string
+	AnchorTime       string
 }
 
 // CompositionClosureResult is the fourth completeness claim.
@@ -121,6 +137,9 @@ type ComposedJoinResult struct {
 	// Result is "derived_matches", "join_state_mismatch" or "not_derivable".
 	Result      string
 	Differences []JoinDifference
+	// Findings says why a same_key join derived as it did, when a step names
+	// a finding.
+	Findings []string
 }
 
 // CorroborationResult reports, per join, what a derived agreement is worth.
@@ -156,13 +175,16 @@ type ComposedResult struct {
 	CompositionClosure *CompositionClosureResult
 	Joins              []ComposedJoinResult
 	Corroboration      []CorroborationResult
+	// RelatedHistories are the History member pairs that derived joins
+	// relate (bundle -03, "History Members").
+	RelatedHistories []RelatedHistories
 }
 
 var labelRE = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
 
 var (
 	composedOutcomes = map[string]string{"artifact": "bundle", "refusal": "refusal", "absence": "absence"}
-	joinBases        = map[string]bool{"pre_agreed_identifier": true, "shared_artifact_digest": true, "issued_receipt": true, "same_interval": true, "controller_binding": true}
+	joinBases        = map[string]bool{"pre_agreed_identifier": true, "shared_artifact_digest": true, "issued_receipt": true, "same_interval": true, "controller_binding": true, "same_key": true}
 	joinStates       = map[string]bool{"agree": true, "mismatch": true, "unjoined": true, "one_sided": true}
 )
 
@@ -172,6 +194,10 @@ type composedMember struct {
 	// response is an artifact member's signed response envelope without its
 	// artifact bytes, when carried: what binds the artifact to its request.
 	response map[string]interface{}
+	// form is FormHistory for a History member; anchorCheckpoint its
+	// anchor_checkpoint when carried.
+	form             string
+	anchorCheckpoint *string
 }
 
 type composedObserver struct{ id, role, custody string }
@@ -228,9 +254,15 @@ func VerifyComposed(raw interface{}, opts Options) ComposedResult {
 	}
 
 	byID := make(map[string]composedMember, len(block.members))
+	histories := map[string]historyState{}
+	sound := map[string]bool{}
 	for _, m := range block.members {
 		byID[m.id] = m
-		member, memberClosure, memberFailed, memberWithheld := verifyMember(m, missing[m.id], opts)
+		member, memberClosure, memberFailed, memberWithheld, history := verifyMember(m, missing[m.id], opts)
+		histories[m.id] = history
+		sound[m.id] = member.Digest == "reproduced" && !slices.ContainsFunc(member.Findings, func(f string) bool {
+			return f == "request_digest_mismatch" || f == "response_request_digest_mismatch" || f == "response_artifact_digest_mismatch"
+		})
 		result.Members = append(result.Members, member)
 		closureFindings = append(closureFindings, memberClosure...)
 		failed = append(failed, memberFailed...)
@@ -255,7 +287,7 @@ func VerifyComposed(raw interface{}, opts Options) ComposedResult {
 		observers[o.id] = o
 	}
 	for _, j := range block.joins {
-		joinResult := deriveJoin(j, byID, missing, opts)
+		joinResult := deriveJoin(j, byID, missing, sound, histories, opts)
 		result.Joins = append(result.Joins, joinResult)
 		pair := j.members[0] + "," + j.members[1]
 		switch joinResult.Result {
@@ -267,6 +299,7 @@ func VerifyComposed(raw interface{}, opts Options) ComposedResult {
 		result.Corroboration = append(result.Corroboration, corroboration(j, joinResult.Derived, byID, observers))
 	}
 
+	result.RelatedHistories = relatedHistories(result.Joins, block.joins, byID)
 	switch {
 	case len(failed) != 0:
 		result.Status = "fail"
@@ -280,28 +313,31 @@ func VerifyComposed(raw interface{}, opts Options) ComposedResult {
 	return result
 }
 
-func verifyMember(m composedMember, declaredMissing bool, opts Options) (ComposedMemberResult, []string, []string, []string) {
-	out := ComposedMemberResult{ID: m.id, Observer: m.observer, Outcome: m.outcome, Digest: "not_shown"}
+func verifyMember(m composedMember, declaredMissing bool, opts Options) (ComposedMemberResult, []string, []string, []string, historyState) {
+	out := ComposedMemberResult{ID: m.id, Observer: m.observer, Outcome: m.outcome, Digest: "not_shown", Form: m.form}
 	var closure, failed, withheld []string
+	var history historyState
 	switch {
 	case declaredMissing && m.body != nil:
 		out.Body = "carried"
 		closure = append(closure, "missing_member_carries_body:"+m.id)
 	case declaredMissing:
 		out.Body = "declared_missing"
-		return out, nil, nil, nil
+		return out, nil, nil, nil, history
 	case m.body == nil:
 		out.Body = "absent"
 		closure = append(closure, "member_body_absent:"+m.id)
 		out.Findings = append(out.Findings, "member_body_absent")
-		return out, closure, nil, nil
+		return out, closure, nil, nil, history
 	default:
 		out.Body = "carried"
 	}
 
 	var computed string
 	var err error
-	if m.outcome == "artifact" {
+	if m.form == FormHistory {
+		computed, history, err = verifyHistory(m, &out, &failed, &withheld, opts)
+	} else if m.outcome == "artifact" {
 		computed, err = BundleDigest(m.body)
 		verification := VerifyBundleWithOptions(m.body, opts)
 		out.Bundle = &verification
@@ -362,7 +398,7 @@ func verifyMember(m composedMember, declaredMissing bool, opts Options) (Compose
 			withheld = append(withheld, "refusal_signature_unverified:"+m.id)
 		}
 	}
-	return out, closure, failed, withheld
+	return out, closure, failed, withheld, history
 }
 
 // rootRecord returns the carried member bundle's root record, or nil.
@@ -383,9 +419,16 @@ func rootRecord(m composedMember) map[string]interface{} {
 	return nil
 }
 
-func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options) ComposedJoinResult {
+func deriveJoin(j composedJoin, byID map[string]composedMember, missing, sound map[string]bool, histories map[string]historyState, opts Options) ComposedJoinResult {
 	out := ComposedJoinResult{Members: j.members, Basis: j.basis, Declared: j.state}
-	out.Derived, out.Differences = derivedState(j, byID, missing, opts)
+	if j.basis == "same_key" {
+		var finding string
+		if out.Derived, finding = sameKeyState(j, byID, missing, sound, histories); finding != "" {
+			out.Findings = append(out.Findings, finding)
+		}
+	} else {
+		out.Derived, out.Differences = derivedState(j, byID, missing, opts)
+	}
 	switch {
 	case out.Derived == "":
 		out.Result = "not_derivable"
@@ -531,6 +574,11 @@ func corroboration(j composedJoin, derived string, byID map[string]composedMembe
 	if j.basis == "controller_binding" {
 		out.Reasons = append(out.Reasons, "controller_binding")
 	}
+	// A same_key agreement is one key's: a party's History never corroborates
+	// its own half (bundle -03, "History Members").
+	if j.basis == "same_key" {
+		out.Reasons = append(out.Reasons, "same_key")
+	}
 	if len(out.Reasons) != 0 {
 		out.Result = "redundant"
 		out.Reason = out.Reasons[0]
@@ -566,9 +614,15 @@ func ComposedDigestPreimage(raw interface{}) ([]byte, error) {
 	sort.Slice(members, func(i, k int) bool { return members[i].id < members[k].id })
 	memberValues := make([]interface{}, len(members))
 	for i, m := range members {
-		memberValues[i] = map[string]interface{}{
+		value := map[string]interface{}{
 			"id": m.id, "observer": m.observer, "request_digest": m.requestDigest, "outcome": m.outcome, "digest": m.digest,
 		}
+		// A member's form enters the digest input only when it carries one
+		// (bundle -03), so blocks without History members keep their digest.
+		if m.form != "" {
+			value["form"] = m.form
+		}
+		memberValues[i] = value
 	}
 	observers := append([]composedObserver(nil), block.observers...)
 	sort.Slice(observers, func(i, k int) bool { return observers[i].id < observers[k].id })
@@ -685,8 +739,15 @@ func parseComposed(raw interface{}) (composedBlock, string) {
 		return block, "joins"
 	}
 	seen := map[string]bool{}
+	forms := make(map[string]string, len(block.members))
+	for _, m := range block.members {
+		forms[m.id] = m.form
+	}
 	for i, rawJoin := range joinList {
 		j, reason := parseJoin(rawJoin, memberIDs)
+		if reason == "" {
+			reason = joinNamesHistory(j, forms)
+		}
 		if reason != "" {
 			return block, "join:" + strconv.Itoa(i) + ":" + reason
 		}
@@ -740,6 +801,11 @@ func parseMember(raw interface{}, observers map[string]bool) (composedMember, st
 	bodyKey, known := composedOutcomes[m.outcome]
 	if !outcomeOK || !known {
 		return m, "outcome"
+	}
+	_, hasForm := value["form"]
+	_, hasAnchor := value["anchor_checkpoint"]
+	if hasForm || hasAnchor {
+		return parseHistoryMember(m, value)
 	}
 	// A body under another outcome's member name would convert one outcome
 	// into another; the outcomes are never converted.
