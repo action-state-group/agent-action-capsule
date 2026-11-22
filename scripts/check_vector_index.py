@@ -104,6 +104,7 @@ COUNTERS = {
     "vectors/record-push-v0/": lambda: cases("vectors/record-push-v0/carriage.json"),
     "vectors/checkpoint-consistency/": lambda: cases("vectors/checkpoint-consistency/vectors.json"),
     "vectors/evidence-layer/padding/": lambda: cases("vectors/evidence-layer/padding/cases.json"),
+    "vectors/evidence-layer/retention/": lambda: cases("vectors/evidence-layer/retention/cases.json"),
     "vectors/cll-material/": lambda: cases("vectors/cll-material/cases.json"),
     "vectors/anchor-witness-v1/": lambda: cases("vectors/anchor-witness-v1/vectors.json"),
     "vectors/card-registration-v0/": lambda: cases("vectors/card-registration-v0/vectors.json"),
