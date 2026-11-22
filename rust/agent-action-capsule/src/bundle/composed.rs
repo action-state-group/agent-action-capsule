@@ -1,8 +1,10 @@
 //! The `composed/v1` Evidence Bundle extension
-//! (`draft-mih-zhang-agent-disclosure-bundle-02`, "The composed/v1
+//! (`draft-mih-zhang-agent-disclosure-bundle-02` and `-03`, "The composed/v1
 //! Extension"). Port of `go/bundle/composed.go` and `composed_binding.go`,
-//! checked against `vectors/bundle/composed/` and
-//! `vectors/bundle/composed-controller-binding/`.
+//! checked against `vectors/bundle/composed/`,
+//! `vectors/bundle/composed-controller-binding/` and
+//! `vectors/bundle/composed-history/` (-03 History members and the
+//! `same_key` join basis, as `python/agent_action_capsule/composed.py`).
 //!
 //! A `controller_binding` join reads a binding record only through
 //! `evidence_request::controller_binding::verify`, the one Controller Binding
@@ -12,10 +14,13 @@
 //! records' timestamps. It reports no binding property.
 
 use super::{
-    bundle_digest, is_empty_history, signed_checkpoint, verify_bundle_with_options, BundleOptions,
-    VerificationResult,
+    bundle_digest, is_b64url, is_empty_history, signed_checkpoint, verify_bundle_with_options,
+    BundleOptions, VerificationResult, B64,
 };
-use crate::{canonical, verify};
+use crate::ed25519_strict::strict_ed25519;
+use crate::{canonical, envelope, verify};
+use base64::Engine as _;
+use ed25519_dalek::{Signature, Verifier as _, VerifyingKey};
 use evidence_request::controller_binding::{self, PROPERTY_FORM};
 use evidence_request::status::Status;
 use evidence_request::time::{parse_utc, UtcTime};
@@ -29,6 +34,33 @@ pub const COMPOSED_KIND: &str = "composed/v1";
 pub const SIGNATURE_VERIFIED: &str = "verified";
 pub const SIGNATURE_INVALID: &str = "invalid";
 pub const SIGNATURE_UNVERIFIED: &str = "signature_unverified";
+
+/// A History member check's states (-03 "History Members").
+pub const HISTORY_MATCHES: &str = "matches";
+pub const HISTORY_MISMATCH: &str = "mismatch";
+
+/// The bases that derive with a History member (-03 "Joins"); any other is
+/// not derivable with one.
+const HISTORY_BASES: [&str; 2] = ["controller_binding", "same_key"];
+/// The envelope profiles whose member names and signature -03 reads.
+const HISTORY_PROFILES: [&str; 3] = [
+    "evidence-interop/0",
+    "evidence-interop/1",
+    "evidence-interop/2",
+];
+/// The members covered by the envelope signature, when present
+/// (evidence-interop §6.2; one list for every profile identifier).
+const ENVELOPE_SIGNED: [&str; 9] = [
+    "profile",
+    "request_digest",
+    "subject",
+    "derivation",
+    "anchor",
+    "artifact_digest",
+    "verification",
+    "responder",
+    "issued_at",
+];
 
 /// Checks a carried signed refusal, or an artifact member's signed response
 /// envelope, under the deployment's signature profile. It returns
@@ -58,6 +90,24 @@ pub struct ComposedDigestResult {
     pub matches: bool,
 }
 
+/// A carried History member's checks (-03 "History Members"): the envelope
+/// signature (`verified`, `invalid` or `signature_unverified`), the artifact,
+/// request and artifact-anchor digests (`matches` or `mismatch`), and the
+/// anchor checkpoint (`verified`, `mismatch` when its digest is not
+/// `anchor.digest`, or `invalid`). `key` and `time` are its join view, set
+/// only when every check passed.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HistoryMemberResult {
+    pub derivation: Value,
+    pub envelope_signature: String,
+    pub artifact_digest: String,
+    pub request_digest: String,
+    pub artifact_anchor: String,
+    pub anchor_checkpoint: String,
+    pub key: Option<String>,
+    pub time: Option<String>,
+}
+
 /// One member: its outcome, whether its body is carried or declared missing,
 /// whether the body reproduces its digest, and, for a carried artifact, the
 /// member Evidence Bundle's own verification. The member's claims are its
@@ -76,6 +126,7 @@ pub struct ComposedMemberResult {
     pub bundle: Option<Box<VerificationResult>>,
     pub refusal_signature: Option<String>,
     pub response_signature: Option<String>,
+    pub history: Option<HistoryMemberResult>,
 }
 
 /// The fourth completeness claim.
@@ -102,6 +153,25 @@ pub struct JoinDifference {
     pub values: Vec<JoinValue>,
 }
 
+/// A History's time against a root record's, as facts (-03 "Joins", History
+/// times): `relation` is `before`, `equal` or `after`, the History's time
+/// relative to the record's, compared as instants.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HistoryTimes {
+    pub history: String,
+    pub history_time: String,
+    pub record: String,
+    pub record_time: String,
+    pub relation: String,
+}
+
+/// One member's key on a `same_key` join that derives `unjoined`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JoinKey {
+    pub member: String,
+    pub key: String,
+}
+
 /// A join: the declared state, the derived state (`None` when not
 /// derivable), and whether they match.
 #[derive(Debug, Clone, PartialEq)]
@@ -113,6 +183,9 @@ pub struct ComposedJoinResult {
     /// `derived_matches`, `join_state_mismatch` or `not_derivable`.
     pub result: String,
     pub differences: Vec<JoinDifference>,
+    /// A `same_key` join that derives `unjoined`: each member's key.
+    pub keys: Vec<JoinKey>,
+    pub history_times: Option<HistoryTimes>,
 }
 
 /// Per join, what a derived agreement is worth. Results are never combined
@@ -160,6 +233,15 @@ struct Member {
     /// An artifact member's signed response envelope without its artifact
     /// bytes, when carried: what binds the artifact to its request.
     response: Option<Map<String, Value>>,
+    /// The carried body is a History (`history`), not a Bundle.
+    history: bool,
+}
+
+/// A History member's join view: its responder key and anchor time.
+struct HistoryView {
+    key: String,
+    at: Option<UtcTime>,
+    time: String,
 }
 
 struct Observer {
@@ -218,6 +300,7 @@ fn join_basis(s: &str) -> bool {
             | "issued_receipt"
             | "same_interval"
             | "controller_binding"
+            | "same_key"
     )
 }
 
@@ -362,13 +445,24 @@ fn parse_member(raw: &Value, observers: &HashSet<String>) -> Result<Member, &'st
         _ => return Err("digest"),
     }
     let outcome = outcome.ok_or("outcome")?;
-    let body_key = outcome_body_key(outcome).ok_or("outcome")?;
+    let mut body_key = outcome_body_key(outcome).ok_or("outcome")?;
+    if outcome == "artifact" && value.contains_key("history") {
+        if value.contains_key("bundle") {
+            return Err("artifact_body_conflict");
+        }
+        body_key = "history";
+    }
     // A body under another outcome's member name would convert one outcome
     // into another; the outcomes are never converted.
-    for other in ["bundle", "refusal", "absence"] {
+    for other in ["bundle", "history", "refusal", "absence"] {
         if other != body_key && value.contains_key(other) {
             return Err("body_outcome_conflict");
         }
+    }
+    if value.contains_key("response") && body_key == "history" {
+        // The envelope is the History's response, and it is digest-covered;
+        // a response member beside it is not.
+        return Err("history_response");
     }
     let mut response = None;
     if let Some(raw_response) = value.get("response") {
@@ -391,12 +485,19 @@ fn parse_member(raw: &Value, observers: &HashSet<String>) -> Result<Member, &'st
         digest: digest.unwrap_or_default().to_string(),
         body: None,
         response,
+        history: false,
     };
     let Some(raw_body) = value.get(body_key) else {
         return Ok(member);
     };
     let body = raw_body.as_object().ok_or("body")?;
-    match outcome {
+    match body_key {
+        "history" => {
+            if !history_shape(body) {
+                return Err("history_body");
+            }
+            member.history = true;
+        }
         "refusal" => {
             if !is_digest(body.get("request_digest"))
                 || !is_text(body.get("reason"))
@@ -422,6 +523,34 @@ fn parse_member(raw: &Value, observers: &HashSet<String>) -> Result<Member, &'st
     }
     member.body = Some(body.clone());
     Ok(member)
+}
+
+/// Unpadded base64url octets, or `None`.
+fn b64url(value: Option<&Value>) -> Option<Vec<u8>> {
+    match value {
+        Some(Value::String(s)) if is_b64url(s) => B64.decode(s).ok(),
+        _ => None,
+    }
+}
+
+/// The `history` body's form (-03 "History Members"); a body outside it makes
+/// the block malformed.
+fn history_shape(body: &Map<String, Value>) -> bool {
+    let Some(env) = body.get("envelope").and_then(Value::as_object) else {
+        return false;
+    };
+    let subject = matches!(env.get("subject"),
+        Some(Value::Object(s)) if s.len() == 1 && s.get("full_history") == Some(&Value::Null));
+    let anchor = env.get("anchor").and_then(Value::as_object);
+    subject
+        && env.contains_key("derivation")
+        && is_digest(env.get("responder"))
+        && is_text(env.get("sig"))
+        && b64url(env.get("artifact")).is_some()
+        && is_digest(env.get("artifact_digest"))
+        && is_digest(env.get("request_digest"))
+        && anchor.is_some_and(|a| is_digest(a.get("digest")))
+        && b64url(body.get("anchor_checkpoint")).is_some()
 }
 
 fn parse_join(raw: &Value, members: &HashSet<String>) -> Result<Join, &'static str> {
@@ -481,6 +610,11 @@ fn parse_join(raw: &Value, members: &HashSet<String>) -> Result<Join, &'static s
             }
         }
         j.compare_carried = true;
+    }
+    if j.basis == "same_key" && (j.pointer.is_some() || j.identifier.is_some() || j.compare_carried)
+    {
+        // same_key reads each member's own key: nothing to select or compare.
+        return Err("same_key_members");
     }
     Ok(j)
 }
@@ -655,10 +789,23 @@ pub fn verify_composed(raw: &Value, opts: &BundleOptions) -> ComposedResult {
     }
 
     let mut by_id: HashMap<&str, &Member> = HashMap::new();
+    let mut views: HashMap<&str, HistoryView> = HashMap::new();
     for m in &block.members {
         by_id.insert(m.id.as_str(), m);
         let (member, member_closure, member_failed, member_withheld) =
             verify_member(m, missing.contains(&m.id), opts);
+        if let Some(h) = &member.history {
+            if let (Some(key), Some(time)) = (&h.key, &h.time) {
+                views.insert(
+                    m.id.as_str(),
+                    HistoryView {
+                        key: key.clone(),
+                        at: record_time(&Value::String(time.clone())),
+                        time: time.clone(),
+                    },
+                );
+            }
+        }
         result.members.push(member);
         closure_findings.extend(member_closure);
         failed.extend(member_failed);
@@ -694,7 +841,7 @@ pub fn verify_composed(raw: &Value, opts: &BundleOptions) -> ComposedResult {
     let observers: HashMap<&str, &Observer> =
         block.observers.iter().map(|o| (o.id.as_str(), o)).collect();
     for j in &block.joins {
-        let join_result = derive_join(j, &by_id, &missing, opts);
+        let mut join_result = derive_join(j, &by_id, &missing, opts, &views);
         let pair = format!("{},{}", j.members[0], j.members[1]);
         match join_result.result.as_str() {
             "join_state_mismatch" => failed.push(format!("join_state_mismatch:{pair}")),
@@ -707,6 +854,7 @@ pub fn verify_composed(raw: &Value, opts: &BundleOptions) -> ComposedResult {
             &by_id,
             &observers,
         ));
+        join_result.history_times = history_times(j, &by_id, &views);
         result.joins.push(join_result);
     }
 
@@ -736,6 +884,7 @@ fn verify_member(m: &Member, declared_missing: bool, opts: &BundleOptions) -> Me
         bundle: None,
         refusal_signature: None,
         response_signature: None,
+        history: None,
     };
     let (mut closure, mut failed, mut withheld) = (Vec::new(), Vec::new(), Vec::new());
     match (declared_missing, &m.body) {
@@ -759,7 +908,12 @@ fn verify_member(m: &Member, declared_missing: bool, opts: &BundleOptions) -> Me
     let body_value = Value::Object(body.clone());
 
     let computed: Option<String>;
-    if m.outcome == "artifact" {
+    if m.history {
+        let (digest, history_failed, history_withheld) = verify_history(m, &mut out);
+        computed = digest;
+        failed.extend(history_failed);
+        withheld.extend(history_withheld);
+    } else if m.outcome == "artifact" {
         computed = bundle_digest(&body_value).ok();
         let verification = verify_bundle_with_options(&body_value, opts);
         out.bundle = Some(Box::new(verification));
@@ -803,6 +957,12 @@ fn verify_member(m: &Member, declared_missing: bool, opts: &BundleOptions) -> Me
         out.digest = "mismatch".to_string();
         out.findings.push("member_digest_mismatch".to_string());
         closure.push(format!("member_digest_mismatch:{}", m.id));
+        if let Some(h) = &mut out.history {
+            // An envelope that does not reproduce the declared digest is not
+            // the History the composed digest names: it has no join view.
+            h.key = None;
+            h.time = None;
+        }
     }
     if m.outcome == "refusal" {
         let state = signature_state(opts.composed.refusal_signature, body);
@@ -832,8 +992,174 @@ fn signature_state(
     }
 }
 
+/// Checks a carried History member (-03 "History Members", checks 1 to 5)
+/// and fills `out.history`. Returns the recomputed member digest (the
+/// envelope's) and the failed and withheld findings. The body's shape was
+/// checked when the block was parsed.
+fn verify_history(
+    m: &Member,
+    out: &mut ComposedMemberResult,
+) -> (Option<String>, Vec<String>, Vec<String>) {
+    let empty = Map::new();
+    let body = m.body.as_ref().unwrap_or(&empty);
+    let env = body
+        .get("envelope")
+        .and_then(Value::as_object)
+        .unwrap_or(&empty);
+    let text = |name: &str| env.get(name).and_then(Value::as_str).unwrap_or_default();
+    let anchor = env
+        .get("anchor")
+        .and_then(Value::as_object)
+        .and_then(|a| a.get("digest"))
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let computed = canonical::json_digest(&Value::Object(env.clone())).ok();
+
+    let profile = env.get("profile").and_then(Value::as_str);
+    let envelope_signature = if profile.is_some_and(|p| HISTORY_PROFILES.contains(&p)) {
+        if envelope_signature_verifies(env) {
+            SIGNATURE_VERIFIED
+        } else {
+            SIGNATURE_INVALID
+        }
+    } else {
+        SIGNATURE_UNVERIFIED
+    };
+    let sha = |data: &[u8]| hex::encode(<sha2::Sha256 as sha2::Digest>::digest(data));
+    let state = |ok: bool| {
+        if ok {
+            HISTORY_MATCHES
+        } else {
+            HISTORY_MISMATCH
+        }
+    };
+    let artifact = b64url(env.get("artifact")).unwrap_or_default();
+    let artifact_digest = state(sha(&artifact) == text("artifact_digest"));
+    let request_digest = state(text("request_digest") == m.request_digest);
+    let artifact_anchor = state(artifact_anchor(&artifact).as_deref() == Some(anchor));
+    let checkpoint = b64url(body.get("anchor_checkpoint")).unwrap_or_default();
+    let mut timestamp = None;
+    let anchor_checkpoint = if sha(&checkpoint) != anchor {
+        HISTORY_MISMATCH
+    } else {
+        timestamp = checkpoint_time(&checkpoint);
+        if timestamp.is_some() {
+            SIGNATURE_VERIFIED
+        } else {
+            SIGNATURE_INVALID
+        }
+    };
+
+    let (mut failed, mut withheld) = (Vec::new(), Vec::new());
+    let mut findings = Vec::new();
+    for (state, finding) in [
+        (
+            envelope_signature,
+            "history_envelope_signature_invalid".to_string(),
+        ),
+        (
+            artifact_digest,
+            "history_artifact_digest_mismatch".to_string(),
+        ),
+        (
+            request_digest,
+            "history_request_digest_mismatch".to_string(),
+        ),
+        (
+            artifact_anchor,
+            "history_artifact_anchor_mismatch".to_string(),
+        ),
+        (
+            anchor_checkpoint,
+            format!("history_anchor_checkpoint_{anchor_checkpoint}"),
+        ),
+    ] {
+        if state == SIGNATURE_INVALID || state == HISTORY_MISMATCH {
+            failed.push(format!("{finding}:{}", m.id));
+            findings.push(finding);
+        }
+    }
+    out.findings.extend(findings);
+    if envelope_signature == SIGNATURE_UNVERIFIED {
+        withheld.push(format!("history_signature_unverified:{}", m.id));
+    }
+    let view = failed.is_empty() && withheld.is_empty() && timestamp.is_some();
+    out.history = Some(HistoryMemberResult {
+        derivation: env.get("derivation").cloned().unwrap_or(Value::Null),
+        envelope_signature: envelope_signature.to_string(),
+        artifact_digest: artifact_digest.to_string(),
+        request_digest: request_digest.to_string(),
+        artifact_anchor: artifact_anchor.to_string(),
+        anchor_checkpoint: anchor_checkpoint.to_string(),
+        key: view.then(|| text("responder").to_string()),
+        time: if view { timestamp } else { None },
+    });
+    (computed, failed, withheld)
+}
+
+/// Ed25519 by `responder` over the UTF-8 JCS of the envelope's signed members
+/// that are present (evidence-interop §6.2), under strict Ed25519 as the
+/// Python reference reads it.
+fn envelope_signature_verifies(env: &Map<String, Value>) -> bool {
+    let signed: Map<String, Value> = ENVELOPE_SIGNED
+        .iter()
+        .filter_map(|k| env.get(*k).map(|v| (k.to_string(), v.clone())))
+        .collect();
+    let Ok(input) = canonical::jcs(&Value::Object(signed)) else {
+        return false;
+    };
+    let hex_of = |name: &str, len: usize| match env.get(name) {
+        Some(Value::String(s))
+            if s.len() == len
+                && s.bytes()
+                    .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) =>
+        {
+            hex::decode(s).ok()
+        }
+        _ => None,
+    };
+    let (Some(key), Some(sig)) = (hex_of("responder", 64), hex_of("sig", 128)) else {
+        return false;
+    };
+    let (Ok(key), Ok(sig)) = (<[u8; 32]>::try_from(key), <[u8; 64]>::try_from(sig)) else {
+        return false;
+    };
+    strict_ed25519(&key, &sig)
+        && VerifyingKey::from_bytes(&key)
+            .is_ok_and(|k| k.verify(&input, &Signature::from_bytes(&sig)).is_ok())
+}
+
+/// The `anchor` member of an artifact that is the UTF-8 JCS of a JSON
+/// object, or `None` when it is not one (a value JCS cannot write, or octets
+/// that are not exactly that serialization, which a duplicate member never
+/// is).
+fn artifact_anchor(artifact: &[u8]) -> Option<String> {
+    let value: Value = serde_json::from_slice(artifact).ok()?;
+    if !value.is_object() || canonical::jcs(&value).ok()? != artifact {
+        return None;
+    }
+    value.get("anchor")?.as_str().map(str::to_string)
+}
+
+/// The `timestamp` of a CLL COSE checkpoint in the one form the interop
+/// profile fixes (tagged COSE_Sign1, an empty unprotected header) that
+/// verifies under its own key, or `None`. CLL is always linked here, so the
+/// reference's `unverified` state (no CLL verifier) never arises.
+fn checkpoint_time(cose: &[u8]) -> Option<String> {
+    if !envelope::is_tagged_sign1_with_empty_unprotected(cose) {
+        return None;
+    }
+    let verified = cll::checkpoint::verify_checkpoint_cose_offline(cose);
+    let decoded = verified.decoded.filter(|_| verified.ok)?;
+    record_time(&Value::String(decoded.timestamp.clone()))?;
+    Some(decoded.timestamp)
+}
+
 /// The carried member bundle's root record, or `None`.
 fn root_record(m: &Member) -> Option<&Map<String, Value>> {
+    if m.history {
+        return None;
+    }
     let body = m.body.as_ref()?;
     let root = body.get("root")?.as_str()?;
     body.get("records")?
@@ -848,8 +1174,9 @@ fn derive_join(
     by_id: &HashMap<&str, &Member>,
     missing: &HashSet<String>,
     opts: &BundleOptions,
+    views: &HashMap<&str, HistoryView>,
 ) -> ComposedJoinResult {
-    let (derived, differences) = derived_state(j, by_id, missing, opts);
+    let (derived, differences, keys) = derived_state(j, by_id, missing, opts, views);
     let result = match &derived {
         None => "not_derivable",
         Some(d) if *d == j.state => "derived_matches",
@@ -862,108 +1189,132 @@ fn derive_join(
         derived,
         result: result.to_string(),
         differences,
+        keys,
+        history_times: None,
     }
 }
 
+type Derived = (Option<String>, Vec<JoinDifference>, Vec<JoinKey>);
+
+/// The derived state (`None`: not derivable), the differences of a derived
+/// mismatch, and, for a `same_key` join that derives `unjoined`, each
+/// member's key.
 fn derived_state(
     j: &Join,
     by_id: &HashMap<&str, &Member>,
     missing: &HashSet<String>,
     opts: &BundleOptions,
-) -> (Option<String>, Vec<JoinDifference>) {
+    views: &HashMap<&str, HistoryView>,
+) -> Derived {
     let a = by_id[j.members[0].as_str()];
     let b = by_id[j.members[1].as_str()];
+    let none = || (None, Vec::new(), Vec::new());
+    let state = |s: &str| (Some(s.to_string()), Vec::new(), Vec::new());
     // A join with a declared-missing artifact member (listed in `missing` and
     // carrying no body) is not derivable, whatever its other member is.
     if [a, b]
         .iter()
         .any(|m| m.outcome == "artifact" && missing.contains(&m.id) && m.body.is_none())
     {
-        return (None, Vec::new());
+        return none();
+    }
+    let keyed = HISTORY_BASES.contains(&j.basis.as_str());
+    // A History member derives only through its join view, and only on the
+    // bases -03 defines a derivation for with one.
+    let histories: Vec<&Member> = [a, b].into_iter().filter(|m| m.history).collect();
+    if !histories.is_empty()
+        && (!keyed || histories.iter().any(|m| !views.contains_key(m.id.as_str())))
+    {
+        return none();
     }
     // An artifact member counts as having records unless its carried Bundle
-    // is an empty-history Bundle, which shows no history.
+    // is an empty-history Bundle, which shows no history. A History member
+    // with a join view counts as having records.
     let (mut with_records, mut empty) = (Vec::new(), Vec::new());
     for m in [a, b] {
         if m.outcome != "artifact" {
             continue;
         }
         match &m.body {
-            Some(body) if is_empty_history(body) => empty.push(m),
+            Some(body) if !m.history && is_empty_history(body) => empty.push(m),
             _ => with_records.push(m),
         }
     }
-    let state = |s: &str| (Some(s.to_string()), Vec::new());
     match with_records.len() {
         0 => return state("unjoined"),
         1 => {
-            if empty.is_empty() || j.basis != "controller_binding" {
+            if empty.is_empty() || !keyed {
                 return state("one_sided");
             }
-            // controller_binding still derives against an empty-history
-            // member, from the key that signed its checkpoint at that
-            // checkpoint's time.
-            let full = with_records[0];
-            let Some(pointer) = &j.pointer else {
-                return (None, Vec::new());
+            // controller_binding and same_key still derive against an
+            // empty-history member, from the key that signed its checkpoint
+            // at that checkpoint's time.
+            let Some([x, y]) = key_sides(j, [with_records[0], empty[0]], views) else {
+                return none();
             };
-            let (Some(record), Some(side)) = (
-                root_record(full),
-                empty[0].body.as_ref().and_then(checkpoint_side),
-            ) else {
-                return (None, Vec::new());
-            };
-            return match controller_binding_link(j, &record_side(record, pointer), &side, opts) {
-                (_, false) => (None, Vec::new()),
+            return match keyed_link(j, &x, &y, opts) {
+                (_, false) => none(),
                 (true, true) => state("one_sided"),
-                (false, true) => state("unjoined"),
+                (false, true) => (
+                    Some("unjoined".to_string()),
+                    Vec::new(),
+                    join_keys(j, [with_records[0], empty[0]], [&x, &y]),
+                ),
             };
         }
         _ => {}
     }
-    let (Some(ra), Some(rb)) = (root_record(a), root_record(b)) else {
-        return (None, Vec::new());
-    };
-    let (va_doc, vb_doc) = (Value::Object(ra.clone()), Value::Object(rb.clone()));
-    let linked = match j.basis.as_str() {
-        "pre_agreed_identifier" => match (&j.pointer, &j.identifier) {
-            (Some(pointer), Some(identifier)) => {
-                identifier_matches(&va_doc, pointer, identifier)
-                    && identifier_matches(&vb_doc, pointer, identifier)
+    if keyed {
+        let Some([x, y]) = key_sides(j, [a, b], views) else {
+            return none();
+        };
+        match keyed_link(j, &x, &y, opts) {
+            (_, false) => return none(),
+            (false, true) => {
+                return (
+                    Some("unjoined".to_string()),
+                    Vec::new(),
+                    join_keys(j, [a, b], [&x, &y]),
+                );
             }
-            _ => false,
-        },
-        "shared_artifact_digest" => match &j.pointer {
-            Some(pointer) => matches!(
-                (resolve_pointer(&va_doc, pointer), resolve_pointer(&vb_doc, pointer)),
-                (Some(Value::String(x)), Some(Value::String(y))) if x == y
-            ),
-            None => false,
-        },
-        "controller_binding" => {
-            let Some(pointer) = &j.pointer else {
-                return (None, Vec::new());
-            };
-            match controller_binding_link(
-                j,
-                &record_side(ra, pointer),
-                &record_side(rb, pointer),
-                opts,
-            ) {
-                (_, false) => return (None, Vec::new()),
-                (linked, true) => linked,
-            }
+            (true, true) => {}
         }
-        _ => return (None, Vec::new()),
-    };
-    if !linked {
-        return state("unjoined");
+    } else {
+        let (Some(ra), Some(rb)) = (root_record(a), root_record(b)) else {
+            return none();
+        };
+        let (va_doc, vb_doc) = (Value::Object(ra.clone()), Value::Object(rb.clone()));
+        let linked = match j.basis.as_str() {
+            "pre_agreed_identifier" => match (&j.pointer, &j.identifier) {
+                (Some(pointer), Some(identifier)) => {
+                    identifier_matches(&va_doc, pointer, identifier)
+                        && identifier_matches(&vb_doc, pointer, identifier)
+                }
+                _ => false,
+            },
+            "shared_artifact_digest" => match &j.pointer {
+                Some(pointer) => matches!(
+                    (resolve_pointer(&va_doc, pointer), resolve_pointer(&vb_doc, pointer)),
+                    (Some(Value::String(x)), Some(Value::String(y))) if x == y
+                ),
+                None => false,
+            },
+            _ => return none(),
+        };
+        if !linked {
+            return state("unjoined");
+        }
     }
+    // A History member has no root record: no compare pointer resolves in it.
+    let docs = (
+        root_record(a).map(|r| Value::Object(r.clone())),
+        root_record(b).map(|r| Value::Object(r.clone())),
+    );
     let mut differences = Vec::new();
     for pointer in &j.compare {
         let (va, vb) = (
-            resolve_pointer(&va_doc, pointer),
-            resolve_pointer(&vb_doc, pointer),
+            docs.0.as_ref().and_then(|d| resolve_pointer(d, pointer)),
+            docs.1.as_ref().and_then(|d| resolve_pointer(d, pointer)),
         );
         if let (Some(x), Some(y)) = (va, vb) {
             if let (Ok(jx), Ok(jy)) = (canonical::jcs(x), canonical::jcs(y)) {
@@ -991,8 +1342,117 @@ fn derived_state(
     if differences.is_empty() {
         state("agree")
     } else {
-        (Some("mismatch".to_string()), differences)
+        (Some("mismatch".to_string()), differences, Vec::new())
     }
+}
+
+/// Each member's side of a `controller_binding` or `same_key` join, or
+/// `None` when one has none: not derivable. A History member's side is its
+/// join view; an empty-history Bundle's is its signed checkpoint's key and
+/// time; a member Bundle with records gives, under `controller_binding`, the
+/// key `pointer` selects in its root record and, under `same_key`, the key
+/// its root record's producer signature verifies under.
+fn key_sides(
+    j: &Join,
+    members: [&Member; 2],
+    views: &HashMap<&str, HistoryView>,
+) -> Option<[BindingSide; 2]> {
+    let side = |m: &Member| -> Option<BindingSide> {
+        let body = m.body.as_ref()?;
+        if m.history {
+            let view = views.get(m.id.as_str())?;
+            return Some(BindingSide {
+                key: Some(view.key.clone()),
+                at: view.at,
+            });
+        }
+        if is_empty_history(body) {
+            return checkpoint_side(body);
+        }
+        let record = root_record(m)?;
+        if j.basis == "same_key" {
+            signer_side(record)
+        } else {
+            Some(record_side(record, j.pointer.as_deref()?))
+        }
+    };
+    Some([side(members[0])?, side(members[1])?])
+}
+
+/// Each member's key, in the join's member order, for a `same_key` join that
+/// derives `unjoined`.
+fn join_keys(j: &Join, members: [&Member; 2], sides: [&BindingSide; 2]) -> Vec<JoinKey> {
+    if j.basis != "same_key" {
+        return Vec::new();
+    }
+    j.members
+        .iter()
+        .map(|id| {
+            let side = if members[0].id == *id {
+                sides[0]
+            } else {
+                sides[1]
+            };
+            JoinKey {
+                member: id.clone(),
+                key: side.key.clone().unwrap_or_default(),
+            }
+        })
+        .collect()
+}
+
+/// `(linked, derivable)` for a `controller_binding` or `same_key` join.
+fn keyed_link(j: &Join, a: &BindingSide, b: &BindingSide, opts: &BundleOptions) -> (bool, bool) {
+    if j.basis == "same_key" {
+        return (a.key.is_some() && a.key == b.key, true);
+    }
+    controller_binding_link(j, a, b, opts)
+}
+
+/// A root record's `same_key` side: its `key_id` when its producer signature
+/// verifies under that key, never a key it merely names; `None` for a record
+/// that is unsigned or whose signature does not verify.
+fn signer_side(record: &Map<String, Value>) -> Option<BindingSide> {
+    let (verdict, _) = envelope::verify_record_signature(&Value::Object(record.clone()));
+    if verdict != envelope::AUTHORED {
+        return None;
+    }
+    Some(BindingSide {
+        key: Some(record.get("key_id")?.as_str()?.to_string()),
+        at: record.get("timestamp").and_then(record_time),
+    })
+}
+
+/// For a join between a History member with a join view and a member with a
+/// root record: both times and how they compare, as facts.
+fn history_times(
+    j: &Join,
+    by_id: &HashMap<&str, &Member>,
+    views: &HashMap<&str, HistoryView>,
+) -> Option<HistoryTimes> {
+    let (a, b) = (by_id[j.members[0].as_str()], by_id[j.members[1].as_str()]);
+    for (history, other) in [(a, b), (b, a)] {
+        let Some(view) = views.get(history.id.as_str()) else {
+            continue;
+        };
+        let record = root_record(other)?;
+        let stated = record.get("timestamp")?;
+        let at = record_time(stated)?;
+        let mine = view.at?;
+        let relation = match mine.cmp(&at) {
+            std::cmp::Ordering::Less => "before",
+            std::cmp::Ordering::Greater => "after",
+            std::cmp::Ordering::Equal => "equal",
+        };
+        return Some(HistoryTimes {
+            history: history.id.clone(),
+            history_time: view.time.clone(),
+            record: other.id.clone(),
+            record_time: stated.as_str()?.to_string(),
+            relation: relation.to_string(),
+        });
+    }
+    None
 }
 
 fn identifier_matches(record: &Value, pointer: &str, digest: &str) -> bool {
@@ -1048,6 +1508,10 @@ fn corroboration(
     // their keys are not independent issuers (bundle -02).
     if j.basis == "controller_binding" {
         out.reasons.push("controller_binding".to_string());
+    }
+    // A same_key agreement is one key signing or answering for both members.
+    if j.basis == "same_key" {
+        out.reasons.push("same_key".to_string());
     }
     if let Some(first) = out.reasons.first() {
         out.result = "redundant".to_string();

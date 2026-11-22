@@ -337,18 +337,56 @@ func composedVerify(in io.Reader, out, errOut io.Writer) int {
 			if composed.Corroboration[i].Reason != "" {
 				reason = composed.Corroboration[i].Reason
 			}
-			joins[i] = map[string]interface{}{
+			value := map[string]interface{}{
 				"members": []interface{}{join.Members[0], join.Members[1]}, "declared": join.Declared,
 				"derived": derived, "result": join.Result,
 				"corroboration": composed.Corroboration[i].Result, "reason": reason,
 			}
+			// -03: present only for a same_key join that derives unjoined, and
+			// for a join between a History member and a root record.
+			if len(join.Keys) != 0 {
+				keys := make([]interface{}, len(join.Keys))
+				for k, key := range join.Keys {
+					keys[k] = map[string]interface{}{"member": key.Member, "key": key.Key}
+				}
+				value["keys"] = keys
+			}
+			if t := join.HistoryTimes; t != nil {
+				value["history_times"] = map[string]interface{}{
+					"history": t.History, "history_time": t.HistoryTime, "record": t.Record,
+					"record_time": t.RecordTime, "relation": t.Relation,
+				}
+			}
+			joins[i] = value
+		}
+		var histories []interface{}
+		for _, m := range composed.Members {
+			h := m.History
+			if h == nil {
+				continue
+			}
+			orNil := func(v string) interface{} {
+				if v == "" {
+					return nil
+				}
+				return v
+			}
+			histories = append(histories, map[string]interface{}{
+				"id": m.ID, "envelope_signature": h.EnvelopeSignature, "artifact_digest": h.ArtifactDigest,
+				"request_digest": h.RequestDigest, "artifact_anchor": h.ArtifactAnchor,
+				"anchor_checkpoint": h.AnchorCheckpoint, "key": orNil(h.Key), "time": orNil(h.Time),
+			})
 		}
 		findings := make([]interface{}, 0, len(composed.Findings))
 		for _, finding := range composed.Findings {
 			findings = append(findings, finding)
 		}
 		sort.Slice(findings, func(i, k int) bool { return findings[i].(string) < findings[k].(string) })
-		line, err := canonical.JCS(map[string]interface{}{"status": composed.Status, "findings": findings, "joins": joins})
+		report := map[string]interface{}{"status": composed.Status, "findings": findings, "joins": joins}
+		if len(histories) != 0 {
+			report["histories"] = histories
+		}
+		line, err := canonical.JCS(report)
 		if err != nil {
 			fmt.Fprintln(errOut, err)
 			return 2

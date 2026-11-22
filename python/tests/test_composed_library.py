@@ -30,6 +30,7 @@ def _cases(name: str) -> list:
 
 COMPOSED = _cases("composed")
 BINDING = _cases("composed-controller-binding")
+HISTORY = _cases("composed-history")
 
 
 def _block(container: dict) -> dict:
@@ -59,6 +60,14 @@ def expect_shape(result: c.ComposedResult) -> dict:
                 "artifact_digest": binding("response_artifact_digest_mismatch"),
                 "signature": m.response_signature,
             }
+        if m.history is not None:
+            h = m.history
+            member["history_member"] = {
+                "derivation": h.derivation, "envelope_signature": h.envelope_signature,
+                "artifact_digest": h.artifact_digest, "request_digest": h.request_digest,
+                "artifact_anchor": h.artifact_anchor, "anchor_checkpoint": h.anchor_checkpoint,
+                "key": h.key or None, "time": h.time or None,
+            }
         members[m.id] = member
     closure = {"status": result.composition_closure.status, "missing": list(result.composition_closure.missing)}
     if result.composition_closure.status == "withheld":
@@ -75,12 +84,20 @@ def expect_shape(result: c.ComposedResult) -> dict:
         "status": result.status,
         "members": members,
         "composition_closure": closure,
-        "joins": [
-            {"members": list(j.members), "declared": j.declared, "derived": j.derived or None, "result": j.result}
-            for j in result.joins
-        ],
+        "joins": [_join_shape(j) for j in result.joins],
         "corroboration": corroboration,
     }
+
+
+def _join_shape(j: c.ComposedJoinResult) -> dict:
+    out = {"members": list(j.members), "declared": j.declared, "derived": j.derived or None, "result": j.result}
+    if j.keys:
+        out["keys"] = [{"member": k.member, "key": k.key} for k in j.keys]
+    if j.history_times is not None:
+        t = j.history_times
+        out["history_times"] = {"history": t.history, "history_time": t.history_time, "record": t.record,
+                                "record_time": t.record_time, "relation": t.relation}
+    return out
 
 
 def _want(case: dict) -> dict:
@@ -266,3 +283,84 @@ def test_an_unserializable_sig_is_malformed_under_ed25519_and_unimplemented_othe
             m["digest"] = bundle_digest(m["bundle"])
     block["composed_digest"] = c.composed_digest(block)
     assert _verify(container, case, [record]).joins[0].derived == "unjoined"
+
+
+@pytest.mark.parametrize("case", HISTORY, ids=[x["id"] for x in HISTORY])
+def test_history_vectors(case):
+    """-03 History members and the same_key basis: the whole expect, or, for a
+    malformed block, a failed check with no composition result."""
+    composed = _composed(verify_bundle(case["container"], composed_options=_options(case)))
+    if case["expect"].get("malformed"):
+        assert composed.status == "fail" and composed.malformed and not composed.joins, composed.findings
+        return
+    block = _block(case["container"])
+    assert c.composed_digest_preimage(block).decode() == case["expect"]["canonical_preimage"]
+    assert composed.status == case["expect"]["status"], composed.findings
+    assert expect_shape(composed) == _want(case)
+
+
+def test_history_member_missing_keeps_the_composed_digest():
+    by_id = {x["id"]: x for x in HISTORY}
+    assert by_id["history-member-missing"]["expect"]["composed_digest"] == \
+        by_id["history-two-parties"]["expect"]["composed_digest"]
+
+
+def _history_case(case_id: str) -> dict:
+    return next(x for x in HISTORY if x["id"] == case_id)
+
+
+def test_history_without_an_ed25519_verifier_is_unverified_not_a_crash(monkeypatch):
+    """No 'cryptography' installed: the envelope signature is not checked,
+    which is neither failed nor absent, and the History has no join view."""
+    from agent_action_capsule.interop_profile import _common
+
+    def missing(*_args, **_kwargs):
+        raise ImportError("no cryptography")
+
+    monkeypatch.setattr(_common, "ed25519_verify_hex", missing)
+    composed = _composed(verify_bundle(_history_case("history-two-parties")["container"]))
+    assert composed.status == "withheld", composed.findings
+    for m in composed.members:
+        if m.history is not None:
+            assert m.history.envelope_signature == c.REFUSAL_SIGNATURE_UNVERIFIED and not m.history.key
+    assert {j.result for j in composed.joins if "history-a" in j.members} == {"not_derivable"}
+
+
+def test_history_without_a_cll_verifier_is_unverified_not_failed(monkeypatch):
+    """No CLL verifier installed: the anchor checkpoint is unverified, the
+    block is withheld, never failed."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def no_cll(name, *args, **kwargs):
+        if name.startswith("cll"):
+            raise ImportError("no cll")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", no_cll)
+    history = c._checkpoint_time(b"\xd2\x84")
+    assert history == (None, c.HISTORY_UNVERIFIED)
+
+
+def test_same_key_without_a_signature_verifier_is_not_derivable(monkeypatch):
+    """No 'cryptography' installed: a root record's producer signature cannot
+    be checked, so a same_key join between two Bundles is not derivable."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def no_producer_envelope(name, globals=None, locals=None, fromlist=(), level=0):
+        if name.endswith("producer_envelope") or (level and fromlist and "verify_record_signature" in fromlist):
+            raise ImportError("no cryptography")
+        return real_import(name, globals, locals, fromlist, level)
+
+    case = copy.deepcopy(_history_case("history-two-parties"))
+    block = _block(case["container"])
+    block["joins"].append({"members": ["responder-a", "responder-b"], "basis": "same_key", "state": "unjoined"})
+    block["composed_digest"] = c.composed_digest(block)
+    monkeypatch.setattr(builtins, "__import__", no_producer_envelope)
+    composed = _composed(verify_bundle(case["container"]))
+    by_pair = {j.members: j.result for j in composed.joins}
+    assert by_pair[("responder-a", "responder-b")] == "not_derivable"
+    assert c._signer_side(block["members"][0]["bundle"]["records"][0]) is None
