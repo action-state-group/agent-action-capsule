@@ -2,7 +2,7 @@
 title: "Two-Party Settlement Records for Agent Payments"
 abbrev: "Agent Settlement Records"
 docname: draft-mih-agent-settlement-records-01
-date: 2026-10-31
+date: 2026-11-21
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -50,16 +50,16 @@ informative:
   I-D.mih-agent-bilateral-attestation:
     title: "Bilateral Attestation of Cross-Organization Agent Actions"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-bilateral-attestation-02
+      Internet-Draft: draft-mih-agent-bilateral-attestation-03
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-09-13
+    date: 2026-10-28
   I-D.mih-sokolov-scitt-payload-binding:
     title: "Canonicalization Declaration for SCITT Signed Statements"
     seriesinfo:
-      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-05
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-06
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -67,11 +67,11 @@ informative:
       - ins: A. Sokolov
         name: Anton Sokolov
         organization: Tyche Institute
-    date: 2026-09-11
+    date: 2026-10-25
   I-D.mih-zhang-agent-disclosure-bundle:
     title: "AAC Evidence Bundle"
     seriesinfo:
-      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-00
+      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-02
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -79,17 +79,17 @@ informative:
       - ins: Y. Zhang
         name: Yiqun Zhang
         organization: Independent
-    date: 2026-09
+    date: 2026-10-31
   I-D.mih-scitt-agent-action-capsule-sel-disc:
   I-D.mih-agent-evidence-request:
     title: "An Interaction Model for Requesting Verifiable Evidence"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-evidence-request-00
+      Internet-Draft: draft-mih-agent-evidence-request-03
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-09-26
+    date: 2026-11-21
   I-D.ryan-httpauth-payment:
   I-D.dogru-cedulon-core:
   X402:
@@ -773,7 +773,7 @@ The rules:
    ASCII octets of a JWS compact serialization). A sealer MUST NOT parse
    and re-serialize the object before digesting it, and MUST NOT apply RFC
    8785 to it unless the type says so. This is the rule that
-   {{I-D.mih-sokolov-scitt-payload-binding}}, Section 4.4, names
+   {{I-D.mih-sokolov-scitt-payload-binding}}, Section 5.4, names
    `as-transmitted`: no canonicalization, SHA-256 over the exact octet
    sequence the carrying format already fixes, written as 64 lowercase hex
    characters. A wrapped type's octet definition ({{iana-wrapped}}) plays
@@ -813,7 +813,7 @@ object as a whole, so the octets are the RFC 8785 form of the JSON envelope
 object (`format`, `payload`, `signature`); the EIP-712 signature covers the
 typed-data hash, not JSON octets, so this canonical form does not affect the
 signature. In the terms of {{I-D.mih-sokolov-scitt-payload-binding}}, that
-type selects `jcs` (Section 4.1) rather than `as-transmitted`, because the
+type selects `jcs` (Section 5.1) rather than `as-transmitted`, because the
 container defines no byte sequence to select.
 
 {::comment}
@@ -1388,6 +1388,13 @@ before publication.
   signature with an R of small or mixed order is still found. Security
   Considerations says that the absence of `wrapped_resigned` does not clear
   the sealer ({{security}}).
+* References: the informative references are updated to the current
+  revisions, draft-mih-agent-bilateral-attestation-03,
+  draft-mih-sokolov-scitt-payload-binding-06,
+  draft-mih-zhang-agent-disclosure-bundle-02 and
+  draft-mih-agent-evidence-request-03. Section pointers into
+  draft-mih-sokolov-scitt-payload-binding follow its renumbering
+  (`jcs` is Section 5.1 and `as-transmitted` is Section 5.4).
 * Wire unchanged: the `settlement` member's `version` is still `"0"`
   ({{settlement-member}}).
 
