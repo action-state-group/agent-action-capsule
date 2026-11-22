@@ -240,6 +240,27 @@ func isDigestValue(v any) bool {
 
 var hex128 = regexp.MustCompile(`^[0-9a-f]{128}$`)
 
+// EnvelopeSigningInput is the artifact response envelope's signing input
+// (interop profile §6.2): UTF-8 of JCS of the signed members that are
+// present. v1 and v2 change no envelope signing input. It is nil when JCS
+// cannot represent them.
+func EnvelopeSigningInput(env map[string]any) []byte {
+	signed := map[string]any{}
+	for _, k := range envelopeSigned {
+		if v, ok := env[k]; ok {
+			signed[k] = v
+		}
+	}
+	return jcsOrNil(signed)
+}
+
+// EnvelopeSignatureHolds reports whether env's sig is responder's Ed25519
+// signature over EnvelopeSigningInput(env).
+func EnvelopeSignatureHolds(env map[string]any) bool {
+	body := EnvelopeSigningInput(env)
+	return body != nil && verifyHexSignature(env["responder"], env["sig"], body)
+}
+
 // verifyHexSignature is a strict Ed25519 check over message for the §5.2
 // hex forms of a key and a signature; false when either form is wrong. Every
 // interop-profile signature (envelope, refusal, acceptance) is checked here,

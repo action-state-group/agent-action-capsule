@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
-//! The `composed/v1` Evidence Bundle extension: `vectors/bundle/composed/`
-//! and `vectors/bundle/composed-controller-binding/`, read as
-//! `go/bundle/composed_test.go` and `composed_binding_test.go` read them.
+//! The `composed/v1` Evidence Bundle extension: `vectors/bundle/composed/`,
+//! `vectors/bundle/composed-controller-binding/` and
+//! `vectors/bundle/composed-history/`, read as `go/bundle/composed_test.go`,
+//! `composed_binding_test.go` and `python/tests/test_composed_library.py`
+//! read them.
 
 use agent_action_capsule::bundle::{
     composed_digest, composed_digest_preimage, verify_bundle_strict, verify_bundle_with_options,
@@ -76,6 +78,14 @@ fn expect_shape(result: &ComposedResult) -> Value {
                 "signature": signature,
             });
         }
+        if let Some(h) = &m.history {
+            member["history_member"] = json!({
+                "derivation": h.derivation, "envelope_signature": h.envelope_signature,
+                "artifact_digest": h.artifact_digest, "request_digest": h.request_digest,
+                "artifact_anchor": h.artifact_anchor, "anchor_checkpoint": h.anchor_checkpoint,
+                "key": h.key, "time": h.time,
+            });
+        }
         members.insert(m.id.clone(), member);
     }
     let closure = result.composition_closure.as_ref().unwrap();
@@ -87,10 +97,24 @@ fn expect_shape(result: &ComposedResult) -> Value {
         .joins
         .iter()
         .map(|j| {
-            json!({
+            let mut value = json!({
                 "members": j.members, "declared": j.declared,
                 "derived": j.derived, "result": j.result,
-            })
+            });
+            if !j.keys.is_empty() {
+                value["keys"] = j
+                    .keys
+                    .iter()
+                    .map(|k| json!({"member": k.member, "key": k.key}))
+                    .collect();
+            }
+            if let Some(t) = &j.history_times {
+                value["history_times"] = json!({
+                    "history": t.history, "history_time": t.history_time, "record": t.record,
+                    "record_time": t.record_time, "relation": t.relation,
+                });
+            }
+            value
         })
         .collect();
     let corroboration: Vec<Value> = result
@@ -454,4 +478,53 @@ fn an_unserializable_sig_is_malformed_under_ed25519_and_unimplemented_otherwise(
     // Still held to -02's form: an empty nonce is malformed whatever the key types.
     record["nonce"] = json!("");
     assert_eq!(derive_with(&record).0.as_deref(), Some("unjoined"));
+}
+
+/// -03 History members and the `same_key` basis: the whole `expect`, or, for
+/// a malformed block, a failed check with no composition result.
+#[test]
+fn composed_history_vectors() {
+    let cases = cases("composed-history", 21);
+    let digest_of = |id: &str| {
+        cases.iter().find(|c| c["id"] == json!(id)).unwrap()["expect"]["composed_digest"].clone()
+    };
+    assert_eq!(
+        digest_of("history-member-missing"),
+        digest_of("history-two-parties")
+    );
+    for case in &cases {
+        let id = case["id"].as_str().unwrap();
+        let container = &case["container"];
+        let expect = &case["expect"];
+        let result = verify_bundle_with_options(container, &options_of(case));
+        let composed = composed_of(&result);
+        if expect.get("malformed") == Some(&json!(true)) {
+            assert_eq!(composed.status, "fail", "{id}");
+            assert!(composed.malformed, "{id}: {:?}", composed.findings);
+            assert!(composed.joins.is_empty(), "{id}");
+            continue;
+        }
+        let preimage = composed_digest_preimage(block_of(container)).expect("preimage");
+        assert_eq!(
+            expect["canonical_preimage"].as_str().unwrap().as_bytes(),
+            preimage.as_slice(),
+            "{id}"
+        );
+        assert_eq!(
+            expect["status"],
+            json!(composed.status),
+            "{id}: {:?}",
+            composed.findings
+        );
+        let want = expectation(
+            expect,
+            &["canonical_preimage", "composed_digest_equals_case"],
+        );
+        assert!(
+            same(&expect_shape(composed), &want),
+            "{id}:\n got  {}\n want {}",
+            expect_shape(composed),
+            want
+        );
+    }
 }

@@ -87,6 +87,8 @@ type ComposedMemberResult struct {
 	// ResponseSignature is set for an artifact member that carries its
 	// response, in the refusal signature states.
 	ResponseSignature string
+	// History is set for a carried History member (bundle -03).
+	History *HistoryMemberResult
 }
 
 // CompositionClosureResult is the fourth completeness claim.
@@ -121,6 +123,11 @@ type ComposedJoinResult struct {
 	// Result is "derived_matches", "join_state_mismatch" or "not_derivable".
 	Result      string
 	Differences []JoinDifference
+	// Keys is set on a same_key join that derives unjoined: each member's key.
+	Keys []JoinKey
+	// HistoryTimes is set for a join between a History member with a join
+	// view and a member with a root record.
+	HistoryTimes *HistoryTimes
 }
 
 // CorroborationResult reports, per join, what a derived agreement is worth.
@@ -162,8 +169,11 @@ var labelRE = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
 
 var (
 	composedOutcomes = map[string]string{"artifact": "bundle", "refusal": "refusal", "absence": "absence"}
-	joinBases        = map[string]bool{"pre_agreed_identifier": true, "shared_artifact_digest": true, "issued_receipt": true, "same_interval": true, "controller_binding": true}
-	joinStates       = map[string]bool{"agree": true, "mismatch": true, "unjoined": true, "one_sided": true}
+	joinBases        = map[string]bool{"pre_agreed_identifier": true, "shared_artifact_digest": true, "issued_receipt": true, "same_interval": true, "controller_binding": true, "same_key": true}
+	// bodyKeys are every member body name; an artifact member carries bundle
+	// or history.
+	bodyKeys   = []string{"bundle", "history", "refusal", "absence"}
+	joinStates = map[string]bool{"agree": true, "mismatch": true, "unjoined": true, "one_sided": true}
 )
 
 type composedMember struct {
@@ -172,6 +182,8 @@ type composedMember struct {
 	// response is an artifact member's signed response envelope without its
 	// artifact bytes, when carried: what binds the artifact to its request.
 	response map[string]interface{}
+	// history is true when the carried body is a History, not a Bundle.
+	history bool
 }
 
 type composedObserver struct{ id, role, custody string }
@@ -228,10 +240,15 @@ func VerifyComposed(raw interface{}, opts Options) ComposedResult {
 	}
 
 	byID := make(map[string]composedMember, len(block.members))
+	views := map[string]historyView{}
 	for _, m := range block.members {
 		byID[m.id] = m
 		member, memberClosure, memberFailed, memberWithheld := verifyMember(m, missing[m.id], opts)
 		result.Members = append(result.Members, member)
+		if member.History != nil && member.History.Key != "" {
+			at, _ := recordTime(member.History.Time)
+			views[m.id] = historyView{key: member.History.Key, at: at, time: member.History.Time}
+		}
 		closureFindings = append(closureFindings, memberClosure...)
 		failed = append(failed, memberFailed...)
 		withheld = append(withheld, memberWithheld...)
@@ -255,7 +272,8 @@ func VerifyComposed(raw interface{}, opts Options) ComposedResult {
 		observers[o.id] = o
 	}
 	for _, j := range block.joins {
-		joinResult := deriveJoin(j, byID, missing, opts)
+		joinResult := deriveJoin(j, byID, missing, opts, views)
+		joinResult.HistoryTimes = historyTimes(j, byID, views)
 		result.Joins = append(result.Joins, joinResult)
 		pair := j.members[0] + "," + j.members[1]
 		switch joinResult.Result {
@@ -301,7 +319,12 @@ func verifyMember(m composedMember, declaredMissing bool, opts Options) (Compose
 
 	var computed string
 	var err error
-	if m.outcome == "artifact" {
+	if m.history {
+		var historyFailed, historyWithheld []string
+		computed, historyFailed, historyWithheld = verifyHistory(m, &out)
+		failed = append(failed, historyFailed...)
+		withheld = append(withheld, historyWithheld...)
+	} else if m.outcome == "artifact" {
 		computed, err = BundleDigest(m.body)
 		verification := VerifyBundleWithOptions(m.body, opts)
 		out.Bundle = &verification
@@ -345,6 +368,11 @@ func verifyMember(m composedMember, declaredMissing bool, opts Options) (Compose
 		out.Digest = "mismatch"
 		out.Findings = append(out.Findings, "member_digest_mismatch")
 		closure = append(closure, "member_digest_mismatch:"+m.id)
+		if out.History != nil {
+			// An envelope that does not reproduce the declared digest is not
+			// the History the composed digest names: it has no join view.
+			out.History.Key, out.History.Time = "", ""
+		}
 	}
 	if m.outcome == "refusal" {
 		out.RefusalSignature = RefusalSignatureUnverified
@@ -367,7 +395,7 @@ func verifyMember(m composedMember, declaredMissing bool, opts Options) (Compose
 
 // rootRecord returns the carried member bundle's root record, or nil.
 func rootRecord(m composedMember) map[string]interface{} {
-	if m.body == nil {
+	if m.body == nil || m.history {
 		return nil
 	}
 	root, ok := m.body["root"].(string)
@@ -383,9 +411,9 @@ func rootRecord(m composedMember) map[string]interface{} {
 	return nil
 }
 
-func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options) ComposedJoinResult {
+func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options, views map[string]historyView) ComposedJoinResult {
 	out := ComposedJoinResult{Members: j.members, Basis: j.basis, Declared: j.state}
-	out.Derived, out.Differences = derivedState(j, byID, missing, opts)
+	out.Derived, out.Differences, out.Keys = derivedState(j, byID, missing, opts, views)
 	switch {
 	case out.Derived == "":
 		out.Result = "not_derivable"
@@ -397,89 +425,108 @@ func deriveJoin(j composedJoin, byID map[string]composedMember, missing map[stri
 	return out
 }
 
-func derivedState(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options) (string, []JoinDifference) {
+// derivedState returns the derived state ("" when not derivable), the
+// differences of a derived mismatch, and, for a same_key join that derives
+// unjoined, each member's key.
+func derivedState(j composedJoin, byID map[string]composedMember, missing map[string]bool, opts Options, views map[string]historyView) (string, []JoinDifference, []JoinKey) {
 	a, b := byID[j.members[0]], byID[j.members[1]]
 	// A join with a declared-missing artifact member (listed in missing and
 	// carrying no body) is not derivable, whatever its other member is.
 	for _, m := range []composedMember{a, b} {
 		if m.outcome == "artifact" && missing[m.id] && m.body == nil {
-			return "", nil
+			return "", nil, nil
+		}
+	}
+	// A History member derives only through its join view, and only on the
+	// bases -03 defines a derivation for with one.
+	for _, m := range []composedMember{a, b} {
+		if _, viewed := views[m.id]; m.history && (!historyBases[j.basis] || !viewed) {
+			return "", nil, nil
 		}
 	}
 	// An artifact member counts as having records unless its carried Bundle
-	// is an empty-history Bundle, which shows no history.
+	// is an empty-history Bundle, which shows no history. A History member
+	// with a join view counts as having records.
 	var withRecords, empty []composedMember
 	for _, m := range []composedMember{a, b} {
 		switch {
 		case m.outcome != "artifact":
-		case m.body != nil && EmptyHistory(m.body):
+		case !m.history && m.body != nil && EmptyHistory(m.body):
 			empty = append(empty, m)
 		default:
 			withRecords = append(withRecords, m)
 		}
 	}
+	keyed := historyBases[j.basis]
 	switch len(withRecords) {
 	case 0:
-		return "unjoined", nil
+		return "unjoined", nil, nil
 	case 1:
-		if len(empty) == 0 || j.basis != "controller_binding" {
-			return "one_sided", nil
+		if len(empty) == 0 || !keyed {
+			return "one_sided", nil, nil
 		}
-		// controller_binding still derives against an empty-history member,
-		// from the key that signed its checkpoint at that checkpoint's time.
-		full := withRecords[0]
-		if j.pointer == nil {
-			return "", nil
+		// controller_binding and same_key still derive against an
+		// empty-history member, from the key that signed its checkpoint at
+		// that checkpoint's time.
+		sides, ok := keySides(j, []composedMember{withRecords[0], empty[0]}, views)
+		if !ok {
+			return "", nil, nil
 		}
-		record := rootRecord(full)
-		side, keyed := checkpointSide(empty[0].body)
-		if record == nil || !keyed {
-			return "", nil
-		}
-		linked, derivable := controllerBindingLink(j, recordSide(record, *j.pointer), side, opts)
+		linked, derivable := keyedLink(j, sides[0], sides[1], opts)
 		switch {
 		case !derivable:
-			return "", nil
+			return "", nil, nil
 		case linked:
-			return "one_sided", nil
+			return "one_sided", nil, nil
 		}
-		return "unjoined", nil
-	}
-	ra, rb := rootRecord(a), rootRecord(b)
-	if ra == nil || rb == nil {
-		return "", nil
+		return "unjoined", nil, nil
 	}
 	var linked bool
-	switch j.basis {
-	case "pre_agreed_identifier":
-		linked = j.pointer != nil && j.identifier != nil &&
-			identifierMatches(ra, *j.pointer, *j.identifier) && identifierMatches(rb, *j.pointer, *j.identifier)
-	case "shared_artifact_digest":
-		if j.pointer != nil {
-			va, okA := resolvePointer(ra, *j.pointer)
-			vb, okB := resolvePointer(rb, *j.pointer)
-			sa, strA := va.(string)
-			sb, strB := vb.(string)
-			linked = okA && okB && strA && strB && sa == sb
-		}
-	case "controller_binding":
-		if j.pointer == nil {
-			return "", nil
+	if keyed {
+		sides, ok := keySides(j, []composedMember{a, b}, views)
+		if !ok {
+			return "", nil, nil
 		}
 		var derivable bool
-		if linked, derivable = controllerBindingLink(j, recordSide(ra, *j.pointer), recordSide(rb, *j.pointer), opts); !derivable {
-			return "", nil
+		if linked, derivable = keyedLink(j, sides[0], sides[1], opts); !derivable {
+			return "", nil, nil
 		}
-	default:
-		return "", nil
-	}
-	if !linked {
-		return "unjoined", nil
+		if !linked {
+			var keys []JoinKey
+			if j.basis == "same_key" {
+				keys = []JoinKey{{Member: a.id, Key: sides[0].key}, {Member: b.id, Key: sides[1].key}}
+			}
+			return "unjoined", nil, keys
+		}
+	} else {
+		ra, rb := rootRecord(a), rootRecord(b)
+		if ra == nil || rb == nil {
+			return "", nil, nil
+		}
+		switch j.basis {
+		case "pre_agreed_identifier":
+			linked = j.pointer != nil && j.identifier != nil &&
+				identifierMatches(ra, *j.pointer, *j.identifier) && identifierMatches(rb, *j.pointer, *j.identifier)
+		case "shared_artifact_digest":
+			if j.pointer != nil {
+				va, okA := resolvePointer(ra, *j.pointer)
+				vb, okB := resolvePointer(rb, *j.pointer)
+				sa, strA := va.(string)
+				sb, strB := vb.(string)
+				linked = okA && okB && strA && strB && sa == sb
+			}
+		default:
+			return "", nil, nil
+		}
+		if !linked {
+			return "unjoined", nil, nil
+		}
 	}
 	var differences []JoinDifference
 	for _, pointer := range j.compare {
-		va, okA := resolvePointer(ra, pointer)
-		vb, okB := resolvePointer(rb, pointer)
+		// A History member has no root record: no compare pointer resolves in it.
+		va, okA := resolveInRoot(a, pointer)
+		vb, okB := resolveInRoot(b, pointer)
 		if okA && okB {
 			ja, errA := canonical.JCS(va)
 			jb, errB := canonical.JCS(vb)
@@ -493,9 +540,19 @@ func derivedState(j composedJoin, byID map[string]composedMember, missing map[st
 		}})
 	}
 	if len(differences) != 0 {
-		return "mismatch", differences
+		return "mismatch", differences, nil
 	}
-	return "agree", nil
+	return "agree", nil, nil
+}
+
+// resolveInRoot resolves pointer in a member's root record; it never resolves
+// in a History member.
+func resolveInRoot(m composedMember, pointer string) (interface{}, bool) {
+	record := rootRecord(m)
+	if record == nil {
+		return nil, false
+	}
+	return resolvePointer(record, pointer)
 }
 
 func identifierMatches(record map[string]interface{}, pointer, digest string) bool {
@@ -530,6 +587,10 @@ func corroboration(j composedJoin, derived string, byID map[string]composedMembe
 	// their keys are not independent issuers (bundle -02).
 	if j.basis == "controller_binding" {
 		out.Reasons = append(out.Reasons, "controller_binding")
+	}
+	// A same_key agreement is one key signing or answering for both members.
+	if j.basis == "same_key" {
+		out.Reasons = append(out.Reasons, "same_key")
 	}
 	if len(out.Reasons) != 0 {
 		out.Result = "redundant"
@@ -741,12 +802,23 @@ func parseMember(raw interface{}, observers map[string]bool) (composedMember, st
 	if !outcomeOK || !known {
 		return m, "outcome"
 	}
+	if _, history := value["history"]; history && m.outcome == "artifact" {
+		if _, bundle := value["bundle"]; bundle {
+			return m, "artifact_body_conflict"
+		}
+		bodyKey = "history"
+	}
 	// A body under another outcome's member name would convert one outcome
 	// into another; the outcomes are never converted.
-	for _, other := range composedOutcomes {
+	for _, other := range bodyKeys {
 		if _, present := value[other]; present && other != bodyKey {
 			return m, "body_outcome_conflict"
 		}
+	}
+	if _, present := value["response"]; present && bodyKey == "history" {
+		// The envelope is the History's response, and it is digest-covered;
+		// a response member beside it is not.
+		return m, "history_response"
 	}
 	if rawResponse, present := value["response"]; present {
 		response, ok := rawResponse.(map[string]interface{})
@@ -763,12 +835,17 @@ func parseMember(raw interface{}, observers map[string]bool) (composedMember, st
 	if !ok {
 		return m, "body"
 	}
-	switch m.outcome {
-	case "refusal":
+	switch {
+	case bodyKey == "history":
+		if !historyShape(body) {
+			return m, "history_body"
+		}
+		m.history = true
+	case m.outcome == "refusal":
 		if !isDigest(body["request_digest"]) || !isString(body["reason"]) || !isString(body["issued_at"]) {
 			return m, "refusal_body"
 		}
-	case "absence":
+	case m.outcome == "absence":
 		window, windowOK := body["window"].(map[string]interface{})
 		if !isDigest(body["request_digest"]) || !windowOK || !isString(window["from"]) || !isString(window["to"]) {
 			return m, "absence_body"
@@ -840,6 +917,10 @@ func parseJoin(raw interface{}, members map[string]bool) (composedJoin, string) 
 			j.compare = append(j.compare, pointer)
 		}
 		j.compareCarried = true
+	}
+	if j.basis == "same_key" && (j.pointer != nil || j.identifier != nil || j.compareCarried) {
+		// same_key reads each member's own key: nothing to select or compare.
+		return j, "same_key_members"
 	}
 	return j, ""
 }

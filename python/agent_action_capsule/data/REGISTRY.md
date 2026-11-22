@@ -475,6 +475,12 @@ then, the binding is used beside the composition, under issuer independence
 (`spec/interop-profile-v0.md` §6.7.4). Conformance vectors:
 `vectors/bundle/composed-controller-binding/` (the join) and
 `vectors/controller-binding-v0/` (the binding record under issuer independence).
+**`-03` registers `same_key`** with its derivation, and defines the History
+member ("History Members"), which `controller_binding` and `same_key` also
+derive with. A `-02` verifier reads a block that carries `same_key` or a
+`history` body as malformed, so a producer MUST NOT put either in a
+`composed/v1` block until `-03` is posted; from then on it MAY. Conformance
+vectors: `vectors/bundle/composed-history/`.
 
 | Value | Defined by | Semantics |
 |---|---|---|
@@ -483,6 +489,7 @@ then, the binding is used beside the composition, under issuer independence
 | `issued_receipt` | `-01`, reserved | No derivation: a verifier reports the join `not_derivable`. |
 | `same_interval` | `-01`, reserved | No derivation: a verifier reports the join `not_derivable`. |
 | `controller_binding` | `-02` | `identifier_digest` is the binding digest of a controller binding record delivered beside the block (SHA-256 of the UTF-8 JCS of the record without `sigs`), and `pointer` selects a key identifier in each member root record, for example `key_id`. The two members are linked when a delivered record with that digest applies to the two selected values: it is well formed, both keys signed it under a method the verifier implements, each root record's `timestamp` is in its window, and no received revocation statement applies at or before either. No record with that digest, only well-formed ones under a method the verifier does not implement, or a join without `pointer` or `identifier_digest` is `not_derivable`; any other record with that digest that does not apply (malformed, not signed by both keys, other keys, outside its window, revoked) leaves them `unjoined`. A `controller_binding` join that derives `agree` is redundant, never corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
+| `same_key` | `-03` | No `pointer`, `identifier_digest` or `compare`. Each member's key is a History member's envelope `responder` (once its envelope and anchor checkpoint verify), a member Bundle's root record's verified producer signature key (never a value the record states), or an empty-history Bundle's checkpoint signer; the members are linked when the two keys are equal. A member without a key is `not_derivable`, except a refusal or absence, which the state rules decide. Against an empty-history Bundle, linked is `one_sided`. A `same_key` join that derives `agree` is redundant, never corroborating. It states that one key answered or signed for both members, never that a History counts the other member's record. |
 
 ### Provisional: controller binding key types and signing event kind
 

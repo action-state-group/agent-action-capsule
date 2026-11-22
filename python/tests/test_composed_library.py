@@ -30,6 +30,7 @@ def _cases(name: str) -> list:
 
 COMPOSED = _cases("composed")
 BINDING = _cases("composed-controller-binding")
+HISTORY = _cases("composed-history")
 
 
 def _block(container: dict) -> dict:
@@ -59,6 +60,14 @@ def expect_shape(result: c.ComposedResult) -> dict:
                 "artifact_digest": binding("response_artifact_digest_mismatch"),
                 "signature": m.response_signature,
             }
+        if m.history is not None:
+            h = m.history
+            member["history_member"] = {
+                "derivation": h.derivation, "envelope_signature": h.envelope_signature,
+                "artifact_digest": h.artifact_digest, "request_digest": h.request_digest,
+                "artifact_anchor": h.artifact_anchor, "anchor_checkpoint": h.anchor_checkpoint,
+                "key": h.key or None, "time": h.time or None,
+            }
         members[m.id] = member
     closure = {"status": result.composition_closure.status, "missing": list(result.composition_closure.missing)}
     if result.composition_closure.status == "withheld":
@@ -75,12 +84,20 @@ def expect_shape(result: c.ComposedResult) -> dict:
         "status": result.status,
         "members": members,
         "composition_closure": closure,
-        "joins": [
-            {"members": list(j.members), "declared": j.declared, "derived": j.derived or None, "result": j.result}
-            for j in result.joins
-        ],
+        "joins": [_join_shape(j) for j in result.joins],
         "corroboration": corroboration,
     }
+
+
+def _join_shape(j: c.ComposedJoinResult) -> dict:
+    out = {"members": list(j.members), "declared": j.declared, "derived": j.derived or None, "result": j.result}
+    if j.keys:
+        out["keys"] = [{"member": k.member, "key": k.key} for k in j.keys]
+    if j.history_times is not None:
+        t = j.history_times
+        out["history_times"] = {"history": t.history, "history_time": t.history_time, "record": t.record,
+                                "record_time": t.record_time, "relation": t.relation}
+    return out
 
 
 def _want(case: dict) -> dict:
@@ -266,3 +283,23 @@ def test_an_unserializable_sig_is_malformed_under_ed25519_and_unimplemented_othe
             m["digest"] = bundle_digest(m["bundle"])
     block["composed_digest"] = c.composed_digest(block)
     assert _verify(container, case, [record]).joins[0].derived == "unjoined"
+
+
+@pytest.mark.parametrize("case", HISTORY, ids=[x["id"] for x in HISTORY])
+def test_history_vectors(case):
+    """-03 History members and the same_key basis: the whole expect, or, for a
+    malformed block, a failed check with no composition result."""
+    composed = _composed(verify_bundle(case["container"], composed_options=_options(case)))
+    if case["expect"].get("malformed"):
+        assert composed.status == "fail" and composed.malformed and not composed.joins, composed.findings
+        return
+    block = _block(case["container"])
+    assert c.composed_digest_preimage(block).decode() == case["expect"]["canonical_preimage"]
+    assert composed.status == case["expect"]["status"], composed.findings
+    assert expect_shape(composed) == _want(case)
+
+
+def test_history_member_missing_keeps_the_composed_digest():
+    by_id = {x["id"]: x for x in HISTORY}
+    assert by_id["history-member-missing"]["expect"]["composed_digest"] == \
+        by_id["history-two-parties"]["expect"]["composed_digest"]

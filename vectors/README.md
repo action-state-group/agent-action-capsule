@@ -118,6 +118,15 @@ same-commit files in CI.
   type not implemented), and joins with an empty-history member (linked:
   `one_sided`; revoked: `unjoined`; no checkpoint: not derivable);
   `python/scripts/generate_bundle_composed_cb_vectors.py` regenerates them.
+- `bundle/composed-history/`: History members and the `same_key` join basis of
+  Evidence Bundle -03's `composed/v1`: two parties' halves of one exchange
+  joined on its identifier, each party's History tied to its own half by
+  `same_key` (redundant, never corroborating), a History anchored before the
+  exchange (still `agree`, times reported as facts), a key mismatch, root
+  records whose key is not their verified signer, failed and unverified
+  History members, refused and empty-history halves, two Histories under
+  `controller_binding`, and malformed blocks;
+  `python/scripts/generate_bundle_composed_history_vectors.py` regenerates them.
 - `judgment/`: PROVISIONAL judgment extension cases (the `x-judgment-v1`
   Capsule member: `rubric_digest`, `rubric_version`, `judge_parameters_digest`,
   schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are
