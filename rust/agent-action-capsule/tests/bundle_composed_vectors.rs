@@ -484,7 +484,7 @@ fn an_unserializable_sig_is_malformed_under_ed25519_and_unimplemented_otherwise(
 /// a malformed block, a failed check with no composition result.
 #[test]
 fn composed_history_vectors() {
-    let cases = cases("composed-history", 21);
+    let cases = cases("composed-history", 30);
     let digest_of = |id: &str| {
         cases.iter().find(|c| c["id"] == json!(id)).unwrap()["expect"]["composed_digest"].clone()
     };

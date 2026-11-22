@@ -247,6 +247,18 @@ fn decode_envelope(data: &[u8]) -> Result<Envelope, String> {
     })
 }
 
+/// Whether `data` is a COSE_Sign1 in the one form the evidence-interop
+/// profile fixes for a `cll-checkpoint` (§6.2.1): CBOR tag 18 around a
+/// four-element array whose unprotected header is an empty map. Read with
+/// this module's strict reader; the signature is not checked here.
+pub(crate) fn is_tagged_sign1_with_empty_unprotected(data: &[u8]) -> bool {
+    let Ok(Item::Tag(18, content)) = decode_all(data) else {
+        return false;
+    };
+    matches!(*content, Item::Array(ref items)
+        if items.len() == 4 && matches!(&items[1], Item::Map(pairs) if pairs.is_empty()))
+}
+
 /// The CBOR data items this profile distinguishes. Floats and simple values
 /// are only ever wrong here, so they collapse into `Other`, which keeps the
 /// encoded bytes for map-key equality.

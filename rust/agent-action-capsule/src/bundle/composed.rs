@@ -1141,9 +1141,14 @@ fn artifact_anchor(artifact: &[u8]) -> Option<String> {
     value.get("anchor")?.as_str().map(str::to_string)
 }
 
-/// The `timestamp` of a CLL COSE checkpoint that verifies under its own key,
-/// or `None`.
+/// The `timestamp` of a CLL COSE checkpoint in the one form the interop
+/// profile fixes (tagged COSE_Sign1, an empty unprotected header) that
+/// verifies under its own key, or `None`. CLL is always linked here, so the
+/// reference's `unverified` state (no CLL verifier) never arises.
 fn checkpoint_time(cose: &[u8]) -> Option<String> {
+    if !envelope::is_tagged_sign1_with_empty_unprotected(cose) {
+        return None;
+    }
     let verified = cll::checkpoint::verify_checkpoint_cose_offline(cose);
     let decoded = verified.decoded.filter(|_| verified.ok)?;
     record_time(&Value::String(decoded.timestamp.clone()))?;
@@ -1250,7 +1255,11 @@ fn derived_state(
             return match keyed_link(j, &x, &y, opts) {
                 (_, false) => none(),
                 (true, true) => state("one_sided"),
-                (false, true) => state("unjoined"),
+                (false, true) => (
+                    Some("unjoined".to_string()),
+                    Vec::new(),
+                    join_keys(j, [with_records[0], empty[0]], [&x, &y]),
+                ),
             };
         }
         _ => {}
@@ -1262,21 +1271,11 @@ fn derived_state(
         match keyed_link(j, &x, &y, opts) {
             (_, false) => return none(),
             (false, true) => {
-                let keys = if j.basis == "same_key" {
-                    vec![
-                        JoinKey {
-                            member: a.id.clone(),
-                            key: x.key.unwrap_or_default(),
-                        },
-                        JoinKey {
-                            member: b.id.clone(),
-                            key: y.key.unwrap_or_default(),
-                        },
-                    ]
-                } else {
-                    Vec::new()
-                };
-                return (Some("unjoined".to_string()), Vec::new(), keys);
+                return (
+                    Some("unjoined".to_string()),
+                    Vec::new(),
+                    join_keys(j, [a, b], [&x, &y]),
+                );
             }
             (true, true) => {}
         }
@@ -1378,6 +1377,28 @@ fn key_sides(
         }
     };
     Some([side(members[0])?, side(members[1])?])
+}
+
+/// Each member's key, in the join's member order, for a `same_key` join that
+/// derives `unjoined`.
+fn join_keys(j: &Join, members: [&Member; 2], sides: [&BindingSide; 2]) -> Vec<JoinKey> {
+    if j.basis != "same_key" {
+        return Vec::new();
+    }
+    j.members
+        .iter()
+        .map(|id| {
+            let side = if members[0].id == *id {
+                sides[0]
+            } else {
+                sides[1]
+            };
+            JoinKey {
+                member: id.clone(),
+                key: side.key.clone().unwrap_or_default(),
+            }
+        })
+        .collect()
 }
 
 /// `(linked, derivable)` for a `controller_binding` or `same_key` join.

@@ -50,6 +50,15 @@ that derives `unjoined` also reports both keys (`keys`).
 | `history-envelope-signature-invalid` | history-a's envelope signed by another key | not derivable | `fail` |
 | `history-artifact-anchor-mismatch` | history-a's card states another anchor | not derivable | `fail` |
 | `history-profile-not-implemented` | history-a's envelope names `x-example-profile/0` | signature unverified; not derivable | `withheld` |
+| `history-artifact-digest-mismatch` | history-a's envelope signs a wrong `artifact_digest` | not derivable | `fail` |
+| `history-request-digest-mismatch` | history-a's envelope answers another request | not derivable | `fail` |
+| `history-anchor-checkpoint-invalid` | history-a's anchor checkpoint signature does not verify | not derivable | `fail` |
+| `history-anchor-checkpoint-unprotected-header` | history-a's anchor checkpoint has an unprotected header entry (not the one form) | not derivable | `fail` |
+| `history-artifact-not-jcs` | history-a's card is not in JCS form | not derivable | `fail` |
+| `history-profile-not-a-string` | history-a's envelope profile is an array | signature unverified; not derivable | `withheld` |
+| `history-envelope-digest-mismatch` | history-a's envelope passes every check but is not the declared member digest | not derivable | `fail` (closure) |
+| `history-empty-history-half-other-key` | history-b joined to responder-a's empty-history Bundle | `unjoined`, both keys | `pass` |
+| `history-member-listed-missing-carries-body` | history-a listed missing but carrying its body | joins derive | `fail` (closure) |
 | `history-refused-half` | responder-a refused | same_key `one_sided` | `withheld` (refusal signature unverified) |
 | `history-empty-history-half` | responder-a is an empty-history Bundle | same_key `one_sided` | `pass` |
 | `history-pre-agreed-identifier-not-derivable` | a `pre_agreed_identifier` join naming history-a | not derivable | `withheld` |
@@ -61,7 +70,10 @@ that derives `unjoined` also reports both keys (`keys`).
 | `history-malformed-noncanonical-base64url` | a base64url text with nonzero pad bits | malformed | `fail` |
 | `history-malformed-same-key-pointer` | a `same_key` join with `pointer` | malformed | `fail` |
 
-A malformed block reports no composition result; its `expect` is
+An anchor checkpoint this verifier cannot check (no CLL verifier installed) is
+`unverified`: withheld, no join view; no vector covers it, since every
+verifier of these vectors has one. A malformed block reports no composition
+result; its `expect` is
 `{"status": "fail", "malformed": true}`.
 
 The Python test (`python/tests/test_bundle_composed_history_vectors.py`)

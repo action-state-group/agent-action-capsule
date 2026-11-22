@@ -304,6 +304,19 @@ func keySides(j composedJoin, members []composedMember, views map[string]history
 	return sides, true
 }
 
+// joinKeys returns each member's key, in the join's member order, for a
+// same_key join that derives unjoined.
+func joinKeys(j composedJoin, members []composedMember, sides []bindingSide) []JoinKey {
+	if j.basis != "same_key" {
+		return nil
+	}
+	byID := map[string]string{}
+	for i, m := range members {
+		byID[m.id] = sides[i].key
+	}
+	return []JoinKey{{Member: j.members[0], Key: byID[j.members[0]]}, {Member: j.members[1], Key: byID[j.members[1]]}}
+}
+
 // keyedLink is the linkage of a controller_binding or same_key join.
 func keyedLink(j composedJoin, a, b bindingSide, opts Options) (linked, derivable bool) {
 	if j.basis == "same_key" {

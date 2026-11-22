@@ -48,12 +48,14 @@ _JOIN_BASES = frozenset(
 _HISTORY_BASES = frozenset({"controller_binding", "same_key"})
 #: The envelope profiles whose member names and signature -03 reads ("History Members").
 _HISTORY_PROFILES = frozenset({"evidence-interop/0", "evidence-interop/1", "evidence-interop/2"})
-_B64URL = re.compile(r"[A-Za-z0-9_-]*")
 
 HISTORY_VERIFIED = "verified"
 HISTORY_INVALID = "invalid"
 HISTORY_MATCHES = "matches"
 HISTORY_MISMATCH = "mismatch"
+#: An anchor checkpoint this verifier cannot check (no CLL verifier
+#: installed): neither failed nor verified, and no join view.
+HISTORY_UNVERIFIED = "unverified"
 _JOIN_STATES = frozenset({"agree", "mismatch", "unjoined", "one_sided"})
 
 _DIGEST_ERRORS = (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError)
@@ -452,12 +454,17 @@ def _verify_history(m: _Member, out: ComposedMemberResult) -> tuple[str, list, l
     except _DIGEST_ERRORS:
         computed = ""
 
-    if env.get("profile") in _HISTORY_PROFILES:
+    profile = env.get("profile")
+    h.envelope_signature = REFUSAL_SIGNATURE_UNVERIFIED
+    if isinstance(profile, str) and profile in _HISTORY_PROFILES:
         signing_input = envelope_signing_input(env)
-        ok = signing_input is not None and ed25519_verify_hex(env["responder"], env["sig"], signing_input)
-        h.envelope_signature = HISTORY_VERIFIED if ok else HISTORY_INVALID
-    else:
-        h.envelope_signature = REFUSAL_SIGNATURE_UNVERIFIED
+        try:
+            ok = signing_input is not None and ed25519_verify_hex(env["responder"], env["sig"], signing_input)
+            h.envelope_signature = HISTORY_VERIFIED if ok else HISTORY_INVALID
+        except ImportError:
+            # No Ed25519 verifier installed: the signature is not checked,
+            # which is neither failed nor absent.
+            pass
     artifact = _b64url(env["artifact"]) or b""
     h.artifact_digest = HISTORY_MATCHES if hashlib.sha256(artifact).hexdigest() == env["artifact_digest"] else HISTORY_MISMATCH
     h.request_digest = HISTORY_MATCHES if env["request_digest"] == m.request_digest else HISTORY_MISMATCH
@@ -467,8 +474,7 @@ def _verify_history(m: _Member, out: ComposedMemberResult) -> tuple[str, list, l
     if hashlib.sha256(checkpoint).hexdigest() != env["anchor"]["digest"]:
         h.anchor_checkpoint = HISTORY_MISMATCH
     else:
-        timestamp = _checkpoint_time(checkpoint)
-        h.anchor_checkpoint = HISTORY_VERIFIED if timestamp is not None else HISTORY_INVALID
+        timestamp, h.anchor_checkpoint = _checkpoint_time(checkpoint)
 
     for state, finding in (
         (h.envelope_signature, "history_envelope_signature_invalid"),
@@ -482,6 +488,8 @@ def _verify_history(m: _Member, out: ComposedMemberResult) -> tuple[str, list, l
             failed.append(f"{finding}:{m.id}")
     if h.envelope_signature == REFUSAL_SIGNATURE_UNVERIFIED:
         withheld.append(f"history_signature_unverified:{m.id}")
+    if h.anchor_checkpoint == HISTORY_UNVERIFIED:
+        withheld.append(f"history_anchor_checkpoint_unverified:{m.id}")
     if not failed and not withheld and timestamp is not None:
         h.key, h.time = env["responder"], timestamp
     return computed, failed, withheld
@@ -513,19 +521,34 @@ def _artifact_anchor(artifact: bytes) -> Any:
     return value.get("anchor")
 
 
-def _checkpoint_time(cose: bytes) -> str | None:
-    """The ``timestamp`` of a CLL COSE checkpoint that verifies under its own
-    key, or ``None``."""
+def _checkpoint_time(cose: bytes) -> tuple[str | None, str]:
+    """``(timestamp, state)`` of an anchor checkpoint: ``verified`` with its
+    timestamp when it is a CLL COSE checkpoint in the one form the interop
+    profile fixes (tagged COSE_Sign1, an empty unprotected header) that
+    verifies under its own key; ``invalid`` otherwise; ``unverified`` when no
+    CLL verifier is installed."""
     try:
+        import cbor2
         from cll.checkpoint import verify_checkpoint_cose_offline
-
+    except ImportError:
+        return None, HISTORY_UNVERIFIED
+    try:
+        tagged = cbor2.loads(cose)
+        value = tagged.value if isinstance(tagged, cbor2.CBORTag) and tagged.tag == 18 else None
+        if not (isinstance(value, (list, tuple)) and len(value) == 4 and isinstance(value[1], Mapping)
+                and len(value[1]) == 0):
+            return None, HISTORY_INVALID
         verified = verify_checkpoint_cose_offline(cose)
-    except (ImportError, ValueError, TypeError):
-        return None
+    except ImportError:
+        return None, HISTORY_UNVERIFIED
+    except (ValueError, TypeError, cbor2.CBORDecodeError):
+        return None, HISTORY_INVALID
     if not verified.ok or verified.decoded is None:
-        return None
+        return None, HISTORY_INVALID
     timestamp = verified.decoded.timestamp
-    return timestamp if isinstance(timestamp, str) and _record_time(timestamp) is not None else None
+    if not isinstance(timestamp, str) or _record_time(timestamp) is None:
+        return None, HISTORY_INVALID
+    return timestamp, HISTORY_VERIFIED
 
 
 def _root_record(m: _Member) -> dict | None:
@@ -596,7 +619,9 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions, 
         linked, derivable = _keyed_link(j, sides[0], sides[1], opts)
         if not derivable:
             return "", [], []
-        return ("one_sided" if linked else "unjoined"), [], []
+        if linked:
+            return "one_sided", [], []
+        return "unjoined", [], _join_keys(j, (with_records[0], empty[0]), sides)
     if keyed:
         sides = _key_sides(j, (a, b), views)
         if sides is None:
@@ -605,8 +630,7 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions, 
         if not derivable:
             return "", [], []
         if not linked:
-            keys = [JoinKey(a.id, sides[0].key), JoinKey(b.id, sides[1].key)] if j.basis == "same_key" else []
-            return "unjoined", [], keys
+            return "unjoined", [], _join_keys(j, (a, b), sides)
     else:
         ra, rb = _root_record(a), _root_record(b)
         if ra is None or rb is None:
@@ -682,6 +706,15 @@ def _key_sides(j: _Join, members: tuple, views: dict) -> tuple | None:
                 side = _record_side(record, j.pointer)
             sides.append(side)
     return tuple(sides)
+
+
+def _join_keys(j: _Join, members: tuple, sides: tuple) -> list:
+    """Each member's key, in the join's member order, for a same_key join
+    that derives unjoined."""
+    if j.basis != "same_key":
+        return []
+    by_id = {m.id: side.key for m, side in zip(members, sides)}
+    return [JoinKey(member, by_id[member]) for member in j.members]
 
 
 def _keyed_link(j: _Join, a: _Side, b: _Side, opts: ComposedOptions) -> tuple[bool, bool]:

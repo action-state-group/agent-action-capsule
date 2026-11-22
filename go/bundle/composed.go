@@ -468,7 +468,8 @@ func derivedState(j composedJoin, byID map[string]composedMember, missing map[st
 		// controller_binding and same_key still derive against an
 		// empty-history member, from the key that signed its checkpoint at
 		// that checkpoint's time.
-		sides, ok := keySides(j, []composedMember{withRecords[0], empty[0]}, views)
+		pair := []composedMember{withRecords[0], empty[0]}
+		sides, ok := keySides(j, pair, views)
 		if !ok {
 			return "", nil, nil
 		}
@@ -479,7 +480,7 @@ func derivedState(j composedJoin, byID map[string]composedMember, missing map[st
 		case linked:
 			return "one_sided", nil, nil
 		}
-		return "unjoined", nil, nil
+		return "unjoined", nil, joinKeys(j, pair, sides)
 	}
 	var linked bool
 	if keyed {
@@ -492,11 +493,7 @@ func derivedState(j composedJoin, byID map[string]composedMember, missing map[st
 			return "", nil, nil
 		}
 		if !linked {
-			var keys []JoinKey
-			if j.basis == "same_key" {
-				keys = []JoinKey{{Member: a.id, Key: sides[0].key}, {Member: b.id, Key: sides[1].key}}
-			}
-			return "unjoined", nil, keys
+			return "unjoined", nil, joinKeys(j, []composedMember{a, b}, sides)
 		}
 	} else {
 		ra, rb := rootRecord(a), rootRecord(b)

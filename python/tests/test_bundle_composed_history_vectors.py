@@ -61,7 +61,13 @@ def _time(text: str) -> datetime:
     return datetime.fromisoformat(text.replace("Z", "+00:00"))
 
 
-def _checkpoint(cose: bytes):
+def _checkpoint(cose: bytes, *, one_form: bool = False):
+    """A CLL COSE checkpoint that verifies; with ``one_form``, only in the
+    interop profile's one form: tag 18 and an empty unprotected header."""
+    if one_form:
+        tagged = cbor2.loads(cose)
+        if not (isinstance(tagged, cbor2.CBORTag) and tagged.tag == 18 and len(tagged.value[1]) == 0):
+            return None
     verified = verify_checkpoint_cose_offline(cose)
     return verified.decoded if verified.ok else None
 
@@ -76,9 +82,9 @@ def _history_view(member: dict) -> tuple[dict, tuple[str, str] | None]:
     except ValueError:
         anchor_ok = False
     cp = _b64u(member["history"]["anchor_checkpoint"])
-    decoded = _checkpoint(cp) if _sha(cp) == env["anchor"]["digest"] else None
+    decoded = _checkpoint(cp, one_form=True) if _sha(cp) == env["anchor"]["digest"] else None
     signature = "signature_unverified"
-    if env.get("profile") in PROFILES:
+    if isinstance(env.get("profile"), str) and env["profile"] in PROFILES:
         body = _jcs({k: env[k] for k in SIGNED if k in env})
         signature = "verified" if _ed25519(env["responder"], body, env["sig"]) else "invalid"
     checks = {
@@ -136,7 +142,7 @@ def _derive(case: dict, join: dict, views: dict) -> tuple[str | None, list]:
     members = {m["id"]: m for m in block["members"]}
     missing = set(block.get("missing", []))
     a, b = (members[i] for i in join["members"])
-    if any(m["id"] in missing for m in (a, b)):
+    if any(m["id"] in missing and "history" not in m and "bundle" not in m for m in (a, b)):
         return None, []
     histories = [m for m in (a, b) if "history" in m]
     if histories and (join["basis"] not in ("same_key", "controller_binding") or any(m["id"] not in views
@@ -173,7 +179,11 @@ def _derive(case: dict, join: dict, views: dict) -> tuple[str | None, list]:
         sa, sb = side(with_records[0]), side(empty[0])
         if sa is None or sb is None:
             return None, []
-        return ("one_sided" if linked(sa, sb) else "unjoined"), []
+        if linked(sa, sb):
+            return "one_sided", []
+        by = {with_records[0]["id"]: sa[0], empty[0]["id"]: sb[0]}
+        keys = [{"member": i, "key": by[i]} for i in join["members"]] if join["basis"] == "same_key" else []
+        return "unjoined", keys
     if join["basis"] == "pre_agreed_identifier":
         ra, rb = _root(a), _root(b)
         token = join["pointer"].split("/")[1:]
@@ -260,4 +270,4 @@ def test_malformed_cases_break_the_rule_they_name(case_id):
 def test_every_case_is_covered():
     malformed = {c["id"] for c in CASES if c["expect"].get("malformed")}
     assert malformed == set(MALFORMED_RULE)
-    assert DATA["count"] == len(CASES) == 21
+    assert DATA["count"] == len(CASES) == 30

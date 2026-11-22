@@ -51,6 +51,16 @@ Cases:
 * ``history-profile-not-implemented``: history-a's envelope names a profile
   this revision does not read: signature-unverified, ``withheld``, its join
   ``not_derivable``.
+* ``history-artifact-digest-mismatch``, ``history-request-digest-mismatch``,
+  ``history-anchor-checkpoint-invalid`` (its signature does not verify),
+  ``history-anchor-checkpoint-unprotected-header`` (not the one form),
+  ``history-artifact-not-jcs``: each a failed member with no join view.
+* ``history-profile-not-a-string``: signature-unverified, ``withheld``.
+* ``history-envelope-digest-mismatch``: every check passes but the envelope is
+  not the declared member digest: closure fails, no join view.
+* ``history-empty-history-half-other-key``: same_key against an empty-history
+  Bundle under another key: ``unjoined`` with both keys.
+* ``history-member-listed-missing-carries-body``: closure fails; joins derive.
 * ``history-refused-half``: responder-a refused; history-a's same_key join
   with that refusal is ``one_sided``.
 * ``history-empty-history-half``: responder-a answered with an empty-history
@@ -80,6 +90,7 @@ import copy
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generate_bundle_composed_cb_vectors as cbv  # noqa: E402
@@ -127,24 +138,31 @@ def history_request(member_id: str) -> dict:
 
 
 def history_member(member_id: str, observer: str, key: composed.Key, timestamp: str, *, signer: composed.Key | None = None,
-                   profile: str = PROFILE, card_anchor: str | None = None, checkpoint: bytes | None = None,
-                   subject: dict | None = None) -> dict:
+                   profile: Any = PROFILE, card_anchor: str | None = None, checkpoint: bytes | None = None,
+                   subject: dict | None = None, anchor_octets=None, artifact_text=None,
+                   artifact_digest: str | None = None, envelope_request_digest: str | None = None,
+                   member_digest: str | None = None) -> dict:
     """A History member: ``key``'s envelope over an illustrative card, as of
-    its own log's checkpoint at ``timestamp``."""
+    its own log's checkpoint at ``timestamp``. ``anchor_octets`` turns the
+    checkpoint's octets into the anchor's (the anchor digest follows them);
+    ``checkpoint`` carries other octets than the anchor names; the remaining
+    keywords set one envelope or member value to a wrong one."""
     anchor_cp = history_checkpoint(key, member_id, timestamp)
+    if anchor_octets is not None:
+        anchor_cp = anchor_octets(anchor_cp)
     anchor = composed.sha256_hex(anchor_cp)
     card = {"anchor": card_anchor or anchor, "derivation": DERIVATION, "since": "2026-09",
             "in_window": {"counted": 1, "not_counted": 0, "of": 1}}
-    artifact = composed.jcs(card)
+    artifact = composed.jcs(card) if artifact_text is None else artifact_text(card)
     request_digest = composed.sha256_hex(composed.jcs(history_request(member_id)))
-    signed = {"profile": profile, "request_digest": request_digest,
+    signed = {"profile": profile, "request_digest": envelope_request_digest or request_digest,
               "subject": subject if subject is not None else {"full_history": None}, "derivation": DERIVATION,
-              "anchor": {"digest": anchor}, "artifact_digest": composed.sha256_hex(artifact),
+              "anchor": {"digest": anchor}, "artifact_digest": artifact_digest or composed.sha256_hex(artifact),
               "responder": key.public_hex, "issued_at": composed.t(40)}
     envelope = dict(signed, sig=(signer or key).private.sign(composed.jcs(signed)).hex(),
                     artifact=composed._b64u(artifact))
     return {"id": member_id, "observer": observer, "request_digest": request_digest, "outcome": "artifact",
-            "digest": composed.sha256_hex(composed.jcs(envelope)),
+            "digest": member_digest or composed.sha256_hex(composed.jcs(envelope)),
             "history": {"envelope": envelope, "anchor_checkpoint": composed._b64u(checkpoint or anchor_cp)}}
 
 
@@ -391,11 +409,13 @@ def case_missing() -> dict:
     return case
 
 
-def _failed_history_case(case_id: str, description: str, a_kwargs: dict, checks: dict, status: str = "fail") -> dict:
+def _failed_history_case(case_id: str, description: str, a_kwargs: dict, checks: dict, status: str = "fail",
+                         digest: str = "reproduced") -> dict:
     members, observers = parties(a_kwargs=a_kwargs)
     joins = reference_joins()
     expect = reference_members_expect()
     expect["history-a"] = history_expect(None, None, **checks)
+    expect["history-a"]["digest"] = digest
     joins_expect = reference_joins_expect()
     joins_expect[0] = join_expect(["history-a", "responder-a"], "agree", None)
     corro = copy.deepcopy(REFERENCE_CORROBORATION)
@@ -403,6 +423,93 @@ def _failed_history_case(case_id: str, description: str, a_kwargs: dict, checks:
     return make_case(case_id, description, members, observers, joins, status=status, members_expect=expect,
                      joins_expect=_ordered(joins_expect, joins),
                      corroboration_expect=_ordered_corroboration(corro, joins), section=SECTIONS)
+
+
+def bad_signature(cose: bytes) -> bytes:
+    """The checkpoint with the last octet of its signature changed."""
+    return cose[:-1] + bytes([cose[-1] ^ 1])
+
+
+def unprotected_header(cose: bytes) -> bytes:
+    """The checkpoint with one unprotected header entry: the signature does
+    not cover the unprotected header, so it still verifies."""
+    tagged = composed_cbor2().loads(cose)
+    protected, _, payload, signature = tagged.value
+    return composed_cbor2().dumps(composed_cbor2().CBORTag(18, [protected, {"x-note": "added"}, payload, signature]))
+
+
+def composed_cbor2():
+    import cbor2
+
+    return cbor2
+
+
+def case_envelope_digest_mismatch() -> dict:
+    members, observers = parties(a_kwargs={"member_digest": "3" * 64})
+    joins = reference_joins()
+    expect = reference_members_expect()
+    expect["history-a"] = history_expect(None, None)
+    expect["history-a"]["digest"] = "mismatch"
+    joins_expect = reference_joins_expect()
+    joins_expect[0] = join_expect(["history-a", "responder-a"], "agree", None)
+    corro = copy.deepcopy(REFERENCE_CORROBORATION)
+    corro[0] = corroboration(["history-a", "responder-a"], NOT_APPLICABLE)
+    case = make_case(
+        "history-envelope-digest-mismatch",
+        "history-a's envelope passes all five checks, but its digest is not the member digest the block declares. "
+        "It is not the History the composed digest names: composition closure fails and it has no join view.",
+        members, observers, joins, status="fail", members_expect=expect,
+        joins_expect=_ordered(joins_expect, joins), corroboration_expect=_ordered_corroboration(corro, joins),
+        section=SECTIONS + [S_CLOSURE])
+    case["expect"]["composition_closure"] = {"status": "fail", "missing": []}
+    return case
+
+
+def case_empty_half_other_key() -> dict:
+    members, observers = parties()
+    bundle = cbv.empty_history_bundle(A)
+    members[0] = dict(members[0], digest=composed.bundle_digest(bundle), bundle=bundle)
+    joins = [same_key("history-b", "responder-a", "unjoined")]
+    empty = {"outcome": "artifact", "body": "carried", "digest": "reproduced", "claims": composed.MEMBER_CLAIMS_DEPTH0,
+             "history": {"state": "none", "since": cbv.EMPTY_CHECKPOINT_TIME}}
+    expect = {"responder-a": empty, "responder-b": HALF, "history-a": history_expect(A, AFTER),
+              "history-b": history_expect(B, AFTER)}
+    return make_case(
+        "history-empty-history-half-other-key",
+        "history-b joined on same_key to responder-a's empty-history Bundle, whose checkpoint responder-a's key "
+        "signed. The keys differ: unjoined, as declared, and the verifier reports both keys.",
+        members, observers, joins, status="pass", members_expect=expect,
+        joins_expect=[join_expect(["history-b", "responder-a"], "unjoined", "unjoined",
+                                  keys=[{"member": "history-b", "key": B.public_hex},
+                                        {"member": "responder-a", "key": A.public_hex}])],
+        corroboration_expect=[corroboration(["history-b", "responder-a"], NOT_APPLICABLE)], section=SECTIONS)
+
+
+def case_missing_carries_body() -> dict:
+    members, observers = parties()
+    joins = reference_joins()
+    comp = composed.block(members, observers, joins)
+    comp["missing"] = ["history-a"]
+    digest, preimage = composed.composed_digest(comp)
+    expect = reference_members_expect()
+    return {
+        "id": "history-member-listed-missing-carries-body",
+        "section": SECTIONS + [S_CLOSURE],
+        "description": "history-a is listed in missing but still carries its body: composition closure fails. A "
+                       "join naming it still derives from the carried body.",
+        "container": composed.container(comp),
+        "controller_bindings": [],
+        "binding_revocations": [],
+        "expect": {
+            "composed_digest": digest,
+            "canonical_preimage": preimage,
+            "status": "fail",
+            "members": expect,
+            "composition_closure": {"status": "fail", "missing": ["history-a"]},
+            "joins": _ordered(reference_joins_expect(), joins),
+            "corroboration": _ordered_corroboration(REFERENCE_CORROBORATION, joins),
+        },
+    }
 
 
 def case_refused_half() -> dict:
@@ -592,6 +699,36 @@ def cases() -> list[dict]:
                              "its join is not_derivable and the block is withheld.",
                              {"profile": "x-example-profile/0"}, {"envelope_signature": "signature_unverified"},
                              status="withheld"),
+        _failed_history_case("history-artifact-digest-mismatch",
+                             "history-a's envelope signs an artifact_digest that is not the SHA-256 of its artifact "
+                             "octets: the member fails, and its join is not_derivable.",
+                             {"artifact_digest": "1" * 64}, {"artifact_digest": "mismatch"}),
+        _failed_history_case("history-request-digest-mismatch",
+                             "history-a's envelope answers another request than the member's request_digest names: "
+                             "the member fails, and its join is not_derivable.",
+                             {"envelope_request_digest": "2" * 64}, {"request_digest": "mismatch"}),
+        _failed_history_case("history-anchor-checkpoint-invalid",
+                             "history-a's anchor checkpoint is the one its envelope names, but its signature does not "
+                             "verify: the member fails, and its join is not_derivable.",
+                             {"anchor_octets": bad_signature}, {"anchor_checkpoint": "invalid"}),
+        _failed_history_case("history-anchor-checkpoint-unprotected-header",
+                             "history-a's anchor checkpoint carries an entry in its unprotected header. Its signature "
+                             "still verifies, but it is not the one form the interop profile fixes for a checkpoint "
+                             "(tagged COSE_Sign1, an empty unprotected header): the member fails, and its join is "
+                             "not_derivable.", {"anchor_octets": unprotected_header},
+                             {"anchor_checkpoint": "invalid"}),
+        _failed_history_case("history-artifact-not-jcs",
+                             "history-a's artifact is the card with whitespace, not its JCS serialization: it does "
+                             "not state its anchor in the one form a History artifact takes, so check 4 fails.",
+                             {"artifact_text": lambda card: json.dumps(card, indent=1).encode()},
+                             {"artifact_anchor": "mismatch"}),
+        _failed_history_case("history-profile-not-a-string",
+                             "history-a's envelope profile is an array, not a profile identifier: the verifier reads "
+                             "no profile it implements, so the signature is unverified and the block is withheld.",
+                             {"profile": []}, {"envelope_signature": "signature_unverified"}, status="withheld"),
+        case_envelope_digest_mismatch(),
+        case_empty_half_other_key(),
+        case_missing_carries_body(),
         case_refused_half(),
         case_empty_half(),
         case_pre_agreed_not_derivable(),

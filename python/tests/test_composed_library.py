@@ -303,3 +303,41 @@ def test_history_member_missing_keeps_the_composed_digest():
     by_id = {x["id"]: x for x in HISTORY}
     assert by_id["history-member-missing"]["expect"]["composed_digest"] == \
         by_id["history-two-parties"]["expect"]["composed_digest"]
+
+
+def _history_case(case_id: str) -> dict:
+    return next(x for x in HISTORY if x["id"] == case_id)
+
+
+def test_history_without_an_ed25519_verifier_is_unverified_not_a_crash(monkeypatch):
+    """No 'cryptography' installed: the envelope signature is not checked,
+    which is neither failed nor absent, and the History has no join view."""
+    from agent_action_capsule.interop_profile import _common
+
+    def missing(*_args, **_kwargs):
+        raise ImportError("no cryptography")
+
+    monkeypatch.setattr(_common, "ed25519_verify_hex", missing)
+    composed = _composed(verify_bundle(_history_case("history-two-parties")["container"]))
+    assert composed.status == "withheld", composed.findings
+    for m in composed.members:
+        if m.history is not None:
+            assert m.history.envelope_signature == c.REFUSAL_SIGNATURE_UNVERIFIED and not m.history.key
+    assert {j.result for j in composed.joins if "history-a" in j.members} == {"not_derivable"}
+
+
+def test_history_without_a_cll_verifier_is_unverified_not_failed(monkeypatch):
+    """No CLL verifier installed: the anchor checkpoint is unverified, the
+    block is withheld, never failed."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def no_cll(name, *args, **kwargs):
+        if name.startswith("cll"):
+            raise ImportError("no cll")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", no_cll)
+    history = c._checkpoint_time(b"\xd2\x84")
+    assert history == (None, c.HISTORY_UNVERIFIED)

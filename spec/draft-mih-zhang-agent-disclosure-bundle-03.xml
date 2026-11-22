@@ -970,7 +970,10 @@ reports it as what it is.</t>
           <name>History Members</name>
           <t>A <em>History</em> is a responder's answer to one Evidence Request for its
 <tt>full_history</tt> subject under a derivation that counts its evidence stream up
-to one anchor, such as a History card. It is an artifact answer, so a History
+to one anchor, such as a History card, whose artifact is the UTF-8 JCS
+serialization of a JSON object that states that anchor in its <tt>anchor</tt>
+member, as the History cards of the derivations this document's examples
+name do. It is an artifact answer, so a History
 member is an <tt>artifact</tt> member: ER's three outcomes are unchanged. It is not
 an Evidence Bundle and has no root record. Each History is still asked for
 and answered by its own request, one subject per request.</t>
@@ -984,7 +987,8 @@ members as the Minimum Evidence Interoperability Profile <xref target="EVIDENCE-
 names them, under its profile identifiers <tt>evidence-interop/0</tt>,
 <tt>evidence-interop/1</tt> and <tt>evidence-interop/2</tt>: <tt>profile</tt>, <tt>request_digest</tt>,
 <tt>subject</tt>, <tt>derivation</tt>, <tt>anchor</tt> (with <tt>anchor.digest</tt>), <tt>artifact_digest</tt>,
-<tt>responder</tt>, <tt>issued_at</tt>, <tt>sig</tt> and <tt>artifact</tt> (unpadded base64url).</t>
+<tt>verification</tt> when present, <tt>responder</tt>, <tt>issued_at</tt>, <tt>sig</tt> and
+<tt>artifact</tt> (unpadded base64url).</t>
             </li>
             <li>
               <t><tt>anchor_checkpoint</tt>: the checkpoint that <tt>anchor.digest</tt> names, as the
@@ -1008,7 +1012,10 @@ string of unpadded base64url; when <tt>artifact_digest</tt>, <tt>request_digest<
 <tt>anchor.digest</tt> is not a <tt>digest-hex</tt>; or when <tt>anchor_checkpoint</tt> is not a
 string of unpadded base64url. Unpadded base64url here is the one canonical
 form of <xref target="RFC4648"/>, Section 5: its pad bits are zero, so one octet string
-has one text.</t>
+has one text. This is the rule a refusal or absence body outside its form
+already follows (<xref target="composed-block"/>): the form is what the composing party
+can check before it composes. A History that is well formed but fails a
+check below is a failed member, never a malformed block.</t>
           <t>A verifier checks a carried History member as follows, and reports each
 result on the member:</t>
           <ol spacing="normal" type="1"><li>
@@ -1018,7 +1025,8 @@ over the UTF-8 JCS serialization of the object made of those of
 <tt>profile</tt>, <tt>request_digest</tt>, <tt>subject</tt>, <tt>derivation</tt>, <tt>anchor</tt>,
 <tt>artifact_digest</tt>, <tt>verification</tt>, <tt>responder</tt> and <tt>issued_at</tt> that are
 present. A signature that does not verify is failed. An envelope under
-any other <tt>profile</tt> is signature-unverified, as a refusal under a profile
+any other <tt>profile</tt>, or one the verifier cannot check because it has no
+Ed25519 verifier, is signature-unverified, as a refusal under a profile
 the verifier does not implement is (<xref target="composed-members"/>): neither failed
 nor absent.</t>
             </li>
@@ -1031,15 +1039,17 @@ nor absent.</t>
             </li>
             <li>
               <t><strong>Artifact anchor.</strong> The artifact octets are the UTF-8 JCS serialization
-of a JSON object whose <tt>anchor</tt> member equals <tt>anchor.digest</tt>; a History
-card states the anchor it is as of.</t>
+of a JSON object whose <tt>anchor</tt> member equals <tt>anchor.digest</tt>.</t>
             </li>
             <li>
               <t><strong>Anchor checkpoint.</strong> SHA-256 of the <tt>anchor_checkpoint</tt> octets equals
-<tt>anchor.digest</tt>, and those octets are a CLL COSE checkpoint that verifies
-under its own key. The responder signed <tt>anchor.digest</tt>, so the
-checkpoint's <tt>timestamp</tt> is the responder's statement of when its History
-is as of.</t>
+<tt>anchor.digest</tt>, and those octets are a CLL COSE checkpoint in the one
+form <xref target="EVIDENCE-INTEROP"/> fixes for a checkpoint (a tagged COSE_Sign1
+with an empty unprotected header) that verifies under its own key. A
+verifier that cannot verify a CLL COSE checkpoint reports the checkpoint
+unverified: neither failed nor verified. The responder signed
+<tt>anchor.digest</tt>, so the checkpoint's <tt>timestamp</tt> is the responder's
+statement of when its History is as of.</t>
             </li>
           </ol>
           <t>A failed check 1 to 5 is a failed check of the member. It is not a fourth
@@ -1050,7 +1060,10 @@ derivation's own check, and nothing in this document reads them.</t>
 <em>key</em>, its envelope's <tt>responder</tt>, and a <em>time</em>, its anchor checkpoint's
 <tt>timestamp</tt>. A History member that is declared missing, is
 signature-unverified, or fails any of checks 1 to 5 has no join view, and
-every join naming it is <tt>not_derivable</tt> (<xref target="composed-joins"/>).</t>
+every join naming it is <tt>not_derivable</tt> (<xref target="composed-joins"/>). So does a
+History member whose anchor checkpoint is unverified, or whose <tt>envelope</tt>
+does not reproduce the member's <tt>digest</tt>: it is not the History the composed
+digest names.</t>
         </section>
         <section anchor="composed-closure">
           <name>Composition Closure</name>
@@ -1316,7 +1329,8 @@ the two selected values, with T the <tt>timestamp</tt> of each root record
 (<xref target="I-D.mih-scitt-agent-action-capsule"/>). A verifier that received no
 record with that digest, or only well-formed records with that digest whose
 <tt>method</tt> or key types it does not implement, reports the join as
-<tt>not_derivable</tt>; so does a join without <tt>pointer</tt> or <tt>identifier_digest</tt>. Any other record with
+<tt>not_derivable</tt>; so does a join without <tt>identifier_digest</tt>, or without
+<tt>pointer</tt> when a member is a member Bundle with records. Any other record with
 that digest that does not apply (malformed, not signed by both keys, other
 keys, outside its window, or revoked) leaves the members unjoined. A join on this basis states that the
 two root records are under keys whose holders bound them, as both of them
@@ -1364,8 +1378,8 @@ A join with a member that has no key, other than a refusal or absence,
 which the state rules above already decide, is <tt>not_derivable</tt>. Against
 an empty-history Bundle, linked gives <tt>one_sided</tt> and not linked gives
 <tt>unjoined</tt>, as for <tt>controller_binding</tt>. Both members with records and
-linked gives <tt>agree</tt>; with different keys, <tt>unjoined</tt>, and a verifier
-reports both keys. A <tt>same_key</tt> join states only that one key signed or
+linked gives <tt>agree</tt>; with different keys, <tt>unjoined</tt>. On every <tt>same_key</tt>
+join that derives <tt>unjoined</tt>, a verifier reports both keys. A <tt>same_key</tt> join states only that one key signed or
 answered for both members. It is how a party's History attaches to that
 party's own half of an exchange: the two halves join each other on an
 identifier they share (for example <tt>pre_agreed_identifier</tt>), and each
@@ -1378,12 +1392,13 @@ derivation for a History member on those bases.</t>
           <t><strong>History times.</strong> For every join between a History member with a join view
 and a member with a root record, a verifier reports the History's time, the
 root record's <tt>timestamp</tt>, and whether the History's time is before, equal
-to or after it, compared as instants. These are facts the two members state;
-they derive no join state. A History anchored before a record is the
-History the other party could see before that record; a History anchored at
-or after it may count it, or not, as its own derivation decides. A verifier
-MUST NOT present the comparison as showing that a History counts or omits
-that record.</t>
+to or after it, compared as instants to the nanosecond (fractional digits
+beyond the ninth are ignored). These are facts the two members state; they
+derive no join state. A History anchored before a record is a History as of
+a time before that record; a History anchored at or after it may count that
+record, or not, as its own derivation decides. A verifier MUST NOT present
+the comparison as showing that a History counts or omits that record, or
+that it was available to anyone at its anchor time.</t>
           <t><strong>Histories under two keys.</strong> Two History members whose keys differ are
 separate subjects. A verifier MUST NOT present them together, as one view,
 as comparable, or as parties to one exchange, except through a path of joins
@@ -2368,7 +2383,7 @@ the same values and policy.</t>
       </references>
       <references anchor="sec-informative-references">
         <name>Informative References</name>
-        <reference anchor="EVIDENCE-INTEROP" target="https://github.com/action-state-group/agent-action-capsule/blob/main/spec/interop-profile-v2.md">
+        <reference anchor="EVIDENCE-INTEROP" target="https://github.com/action-state-group/agent-action-capsule/blob/105231a8560fd0ff8a8b3dc0597efcff5c67c176/spec/interop-profile-v2.md">
           <front>
             <title>Minimum Evidence Interoperability Profile</title>
             <author>
@@ -2433,7 +2448,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 1979?>
+    <?line 1994?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>

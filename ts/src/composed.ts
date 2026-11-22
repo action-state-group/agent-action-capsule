@@ -7,7 +7,17 @@ import {
   type BindingReport,
   type Instant,
 } from "./controller-binding.js";
-import { decodeCose, signedCheckpointFields } from "./cll-checkpoint.js";
+import {
+  decodeCose,
+  loadCheckpointMetadata,
+  signedCheckpointFields,
+} from "./cll-checkpoint.js";
+import {
+  CborMap,
+  CborTag,
+  decodeWellFormedItem,
+  type CborValue,
+} from "./cose-receipt.js";
 import { verifyEd25519Strict } from "./ed25519-strict.js";
 import { isHex64, jcs, jsonDigest, sha256Hex } from "./json.js";
 import { verifyRecordSignature } from "./producer-envelope-verification.js";
@@ -96,7 +106,8 @@ export interface HistoryMemberResult {
   readonly artifactDigest: "matches" | "mismatch";
   readonly requestDigest: "matches" | "mismatch";
   readonly artifactAnchor: "matches" | "mismatch";
-  readonly anchorCheckpoint: "verified" | "mismatch" | "invalid";
+  /** `unverified`: no CLL checkpoint verifier is available. */
+  readonly anchorCheckpoint: "verified" | "mismatch" | "invalid" | "unverified";
   readonly key?: string;
   readonly time?: string;
 }
@@ -963,6 +974,22 @@ async function keySides(
   return sides;
 }
 
+/**
+ * Each member's key, in the join's member order, for a same_key join that
+ * derives unjoined.
+ */
+function joinKeys(
+  j: Join,
+  members: readonly Member[],
+  sides: readonly BindingSide[],
+): { keys?: { member: string; key: string }[] } {
+  if (j.basis !== "same_key") return {};
+  const byMember = new Map(members.map((m, i) => [m.id, sides[i]!.key!]));
+  return {
+    keys: j.members.map((member) => ({ member, key: byMember.get(member)! })),
+  };
+}
+
 /** `{linked, derivable}` for a controller_binding or same_key join. */
 async function keyedLink(
   j: Join,
@@ -1039,7 +1066,12 @@ async function derivedState(
       options,
     );
     if (!derivable) return { differences: [] };
-    return { derived: linked ? "one_sided" : "unjoined", differences: [] };
+    if (linked) return { derived: "one_sided", differences: [] };
+    return {
+      derived: "unjoined",
+      differences: [],
+      ...joinKeys(j, [withRecords[0]!, empty[0]!], sides),
+    };
   }
   if (keyed) {
     const sides = await keySides(j, [a, b], views, checkpoints);
@@ -1055,14 +1087,7 @@ async function derivedState(
       return {
         derived: "unjoined",
         differences: [],
-        ...(j.basis === "same_key"
-          ? {
-              keys: [
-                { member: a.id, key: sides[0]!.key! },
-                { member: b.id, key: sides[1]!.key! },
-              ],
-            }
-          : {}),
+        ...joinKeys(j, [a, b], sides),
       };
   } else {
     const ra = rootRecord(a);
@@ -1351,6 +1376,39 @@ function artifactAnchor(artifact: Uint8Array): unknown {
 }
 
 /**
+ * An anchor checkpoint's timestamp and state: `verified` when it is a CLL
+ * COSE checkpoint in the one form the interop profile fixes (tagged
+ * COSE_Sign1, an empty unprotected header) that verifies under its own key;
+ * `invalid` otherwise; `unverified` when no CLL verifier is available.
+ */
+async function checkpointTime(cose: Uint8Array): Promise<{
+  timestamp?: string;
+  state: "verified" | "invalid" | "unverified";
+}> {
+  const verify = await loadCheckpointMetadata();
+  if (verify === undefined) return { state: "unverified" };
+  let outer: CborValue;
+  try {
+    outer = decodeWellFormedItem(cose, true);
+  } catch {
+    return { state: "invalid" };
+  }
+  if (
+    !(outer instanceof CborTag) ||
+    outer.tag !== 18n ||
+    !Array.isArray(outer.value) ||
+    outer.value.length !== 4 ||
+    !(outer.value[1] instanceof CborMap) ||
+    outer.value[1].entries.length !== 0
+  )
+    return { state: "invalid" };
+  const stated = (await signedCheckpointFields(cose, verify))?.timestamp;
+  return isString(stated) && parseRecordTime(stated) !== undefined
+    ? { timestamp: stated, state: "verified" }
+    : { state: "invalid" };
+}
+
+/**
  * Check a carried History member (-03 "History Members", checks 1 to 5). The
  * body's shape was checked when the block was parsed.
  */
@@ -1373,23 +1431,32 @@ async function verifyHistory(m: Member): Promise<{
   let envelopeSignature: HistoryMemberResult["envelopeSignature"] =
     "signature_unverified";
   if (isString(env.profile) && HISTORY_PROFILES.has(env.profile)) {
-    let verified = false;
     const signed: Obj = {};
     for (const name of ENVELOPE_SIGNED)
       if (Object.hasOwn(env, name)) signed[name] = env[name];
+    let signingInput: Uint8Array | undefined;
     try {
-      const sig = env.sig as string;
-      verified =
-        SIGNATURE_HEX.test(sig) &&
-        (await verifyEd25519Strict(
+      signingInput = jcs(signed);
+    } catch {
+      signingInput = undefined;
+    }
+    const sig = env.sig as string;
+    if (signingInput === undefined || !SIGNATURE_HEX.test(sig))
+      envelopeSignature = "invalid";
+    else
+      try {
+        envelopeSignature = (await verifyEd25519Strict(
           hexBytes(env.responder as string),
           hexBytes(sig),
-          jcs(signed),
-        ));
-    } catch {
-      verified = false;
-    }
-    envelopeSignature = verified ? "verified" : "invalid";
+          signingInput,
+        ))
+          ? "verified"
+          : "invalid";
+      } catch {
+        // Only SubtleCrypto throws here (no Ed25519): the signature is not
+        // checked, which is neither failed nor absent.
+        envelopeSignature = "signature_unverified";
+      }
   }
   const artifact = decodeCose(env.artifact) ?? new Uint8Array();
   const artifactDigest: HistoryMemberResult["artifactDigest"] =
@@ -1406,15 +1473,8 @@ async function verifyHistory(m: Member): Promise<{
   let timestamp: string | undefined;
   if ((await sha256Hex(checkpoint)) !== anchorDigest)
     anchorCheckpoint = "mismatch";
-  else {
-    const fields = await signedCheckpointFields(checkpoint);
-    const stated = fields?.timestamp;
-    timestamp =
-      isString(stated) && parseRecordTime(stated) !== undefined
-        ? stated
-        : undefined;
-    anchorCheckpoint = timestamp !== undefined ? "verified" : "invalid";
-  }
+  else
+    ({ timestamp, state: anchorCheckpoint } = await checkpointTime(checkpoint));
   const findings: string[] = [];
   const failed: string[] = [];
   const withheld: string[] = [];
@@ -1431,6 +1491,8 @@ async function verifyHistory(m: Member): Promise<{
     }
   if (envelopeSignature === "signature_unverified")
     withheld.push(`history_signature_unverified:${m.id}`);
+  if (anchorCheckpoint === "unverified")
+    withheld.push(`history_anchor_checkpoint_unverified:${m.id}`);
   const view =
     failed.length === 0 && withheld.length === 0 && timestamp !== undefined
       ? { key: env.responder as string, time: timestamp }

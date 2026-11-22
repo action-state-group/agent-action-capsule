@@ -26,8 +26,8 @@ func historyCases(t *testing.T) []bindingCase {
 		Cases []bindingCase `json:"cases"`
 	}
 	require.NoError(t, decoder.Decode(&file))
-	require.Equal(t, json.Number("21"), file.Count)
-	require.Len(t, file.Cases, 21)
+	require.Equal(t, json.Number("30"), file.Count)
+	require.Len(t, file.Cases, 30)
 	return file.Cases
 }
 
