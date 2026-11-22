@@ -12,9 +12,57 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in a `ts` tag yet: everything after `ts/v0.14.0`. The Go and Python entries up to `go/v0.24.0` and `python/v0.18.0` are also listed under those tags. The Rust crates keep their own
+Not in any tag yet: nothing after `go/v0.24.0`, `python/v0.19.0` and `ts/v0.15.0`. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
+
+## python 0.19.0 — 2026-11-21
+
+Tag `python/v0.19.0`. The pull requests that changed `python/` since `python/v0.18.0`:
+
+- feat(spec): register a Standard History card on a SCITT transparency service (#639) (#641)
+- feat(vectors): record push carriage vectors over MCP and A2A (RP-1) (#632)
+- feat(spec): give the ranged checkpoints form its own token, checkpoint_range (#644) (#645)
+- chore: re-vendor the CPB registry snapshots from scitt-payload-binding b4af581 (#642) (#643)
+
+The changes, from the changelog fragments folded in this release, and the entries that changed no Python package directory (the witnessed checkpoint follow-up draft):
+
+- Spec: a holder MAY register a Standard History card on a SCITT transparency service
+  (`spec/standard-history-v0.md` §13, #639). A card statement is a Transparent Statement under the
+  holder key over the SHA-256 of the card octets, with RFC 9942 Receipts in its `receipts` header,
+  carried beside the card; the new check `card_registered` reports `PASS` when a Receipt by a service
+  the relying party lists covers it, with the registration time when the Receipt carries one. It shows
+  that the card existed by that time (a passing Receipt with no time shows only that the service
+  logged the statement) and nothing else: `anchor_inclusion` stays `NOT_CHECKED` (IP P-13 stays open for
+  cards), it does not show that the holder registered no other card (SH-18), and it does not
+  check the counts. Opt-in; no card, token, counting table or wording pack changes. 49 vectors in
+  `vectors/card-registration-v0/`.
+- Python, Go and TypeScript: `check_card_registered` and `check_card_statement` (Go `CheckCardRegistered`, TypeScript `checkCardRegistered`) in the
+  witness modules run those vectors.
+
+- **Breaking** for readers of the unposted Evidence Request -03: the ranged checkpoints subject is now its own subject form, `checkpoint_range` with content `[a, b]` (`spec/draft-mih-agent-evidence-request-03`, §3.1 and §8.1.3), and `checkpoints` is again only the content-free form, exactly as posted in -02. A list of the forms a responder answers names each by its own token, so a responder whose full checkpoint list outgrows one answer stops listing `checkpoints` and still lists `checkpoint_range` and the history cards; the Privacy Considerations note what that tells a reader. `{"checkpoints": [a, b]}` is now `request_malformed`. The released Python 0.17.0 and 0.18.0 and Go 0.22.0 and 0.23.0 readers accept `{"checkpoints": [a, b]}` and reject `{"checkpoint_range": [a, b]}`; upgrade them together. Python adds `SUBJECT_CHECKPOINT_RANGE` and Go adds `SubjectCheckpointRange` (and drops `Subject.Ranged`); `SUBJECT_FORMS` and `SubjectForms` stay the six forms of -02's §3.1 table, so a manifest built from them for `evidence-interop/1`, which pins -02, names no token beyond that profile, and a list of the -03 forms adds the new constant. `vectors/evidence-request/checkpoints-range.json` is rewritten with the new token and two more MUST-reject request cases (`neg-checkpoints-content-range`, `neg-checkpoint-range-null`). ([#644](https://github.com/action-state-group/agent-action-capsule/issues/644))
+
+- Add `vectors/record-push-v0/`, carriage vectors for the record push binding over MCP and A2A (RP-1): the `record_push` tool call and the A2A `Message`, strict base64url members, an error against an answer, how a sender classifies a reply, and the fixed tool definition and extension entry. They pin the carriage only, and no implementation runs them yet.
+
+- The vendored CPB registry snapshots (`cpb_registry.json` in Python, `cpb_provisional.json` in Python, Go, TypeScript and Rust) are re-vendored from `scitt-payload-binding@b4af581`. The `mesh-inference-exchange` `reference` now reads "`action-state-group/capsule-emit-mesh` @ `9be03df`" with no dangling " —", and the `trace-trust-record` `reference` now carries its whole wrapped Reference field instead of its first line. Verifier output does not change. ([#642](https://github.com/action-state-group/agent-action-capsule/issues/642))
+
+- Spec: `spec/witnessed-checkpoint-v0.md` (Informational, pre-Internet-Draft) defines the witnessed checkpoint follow-up between the two sides of a book: a stamp proof of `spec/shelf-forms-v0.md` with the witness receipts the holder holds for its shelf checkpoint (CLL `WitnessRecord`) and a CLL consistency proof from a shelf checkpoint the receiver kept, the receiver's checks and answer, an unauthenticated ask whose answer is always empty, and their carriage over MCP (the tool `witnessed_checkpoint`) and A2A, reusing `spec/bindings/record-push-v0.md`. No vectors yet (open point WC-1).
+
+## ts 0.15.0 — 2026-11-21
+
+Tag `ts/v0.15.0`. The pull requests that changed `ts/` since `ts/v0.14.0`:
+
+- feat(spec): register a Standard History card on a SCITT transparency service (#639) (#641)
+- chore: re-vendor the CPB registry snapshots from scitt-payload-binding b4af581 (#642) (#643)
+- feat(spec): Evidence Request -03, history_card/2 and a checkpoints range (#630)
+- refactor(ts): outcome-report matches the case record from its sealed fields (#343) (#612)
+- feat: adopt checkpointed-local-log 0.9.0 (CLL -02 checkpoint sub) across four languages (#611)
+- chore: drop the stale mesh-inference-exchange capsule_field_values from the CPB snapshots (#602) (#605)
+- chore: re-vendor the CPB registry snapshots; drop the withdrawn jcs-n context (#600) (#601)
+- fix!: verify producer signatures under jcs only; the withdrawn jcs-n is invalid (capsule-emit#447) (#599)
+- feat(ts): verifyRetainedHead for ladder rung 6 (#513) (#592)
+
+The changes, from the changelog fragments folded in this release and every entry listed under Unreleased since `ts/v0.14.0`, including the ones that changed no TypeScript package directory (spec, vectors):
 
 - Spec: Evidence Result v0's `ClaimType` gains `calibration` (`spec/evidence-result-v0.md` §4.1,
   AAC#548), the claim the outcome-report reader's calibration reading (#488) reads. It keeps every
