@@ -46,8 +46,9 @@ signatures use deterministic ECDSA (RFC 6979), so the corpus is reproducible. Th
 
 Each case has `id`, `title`, `cites`, `inputs` (PS §6.1: `target_record_digest`, `person_keys`,
 `excluded_keys`, `relying_party_id`, `allowed_origins`, `allowed_top_origins` and
-`user_verification_required`), `person_signatures` when the record has any, and `expected`. One
-case, `malformed-duplicate-member`, gives the array instead as JSON text in
+`user_verification_required`), `person_signatures` when the record has any, and `expected`. Three
+cases, `malformed-duplicate-member`, `malformed-duplicate-key-member` and
+`malformed-duplicate-proof-member`, give the array instead as JSON text in
 `person_signatures_json`, because a JSON object in `vectors.json` cannot hold a duplicate member.
 `expected` holds:
 

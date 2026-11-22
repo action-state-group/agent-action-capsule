@@ -35,7 +35,7 @@
       }
     }
   },
-  "count": 51,
+  "count": 55,
   "cases": [
     {
       "id": "valid-es256",
@@ -2874,6 +2874,124 @@
       }
     },
     {
+      "id": "malformed-indefinite-length-extensions",
+      "title": "Extension output as an indefinite-length map; correctly signed",
+      "cites": [
+        "PS §6.2 step 6"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGCdAAAAAL9icmv1_w",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEUCIQCJHr6y4WldqzNyoTtiC_Sb-0mGKzRFkvbgouKUWDacTQIgLRay2khTBQTgdX2J_2ZRYlZkNlzZ66zOjrQKsoR9MGU"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "authenticator_data"
+      }
+    },
+    {
+      "id": "malformed-cbor-simple-value",
+      "title": "Extension output holding a two-octet simple value below 32, which CBOR forbids; correctly signed",
+      "cites": [
+        "PS §6.2 step 6"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures": [
+        {
+          "person_signature_version": "person-signature/0",
+          "record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+          "key_type": "webauthn",
+          "key": {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          "proof": {
+            "authenticator_data": "FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGCdAAAAAKFhePgY",
+            "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ",
+            "signature": "MEQCIAKdVWZ3nly9IcV6_ayfxV-Z8haIgNUX8X2Rss4FEBEMAiAeghIqIyfYzQ7ydU-VnR_1FT56gLWpYOcPZ-NwfxC_Ow"
+          }
+        }
+      ],
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "authenticator_data"
+      }
+    },
+    {
       "id": "malformed-client-data-nan",
       "title": "Client data holding NaN, which is not JSON; correctly signed",
       "cites": [
@@ -3024,6 +3142,98 @@
         "user_verification_required": false
       },
       "person_signatures_json": "[{\"person_signature_version\":\"person-signature/0\",\"record_digest\":\"b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60\",\"key_type\":\"example-wallet\",\"key_type\":\"webauthn\",\"key\":{\"alg\":-7,\"spki\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA\"},\"proof\":{\"authenticator_data\":\"FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA\",\"client_data_json\":\"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ\",\"signature\":\"MEYCIQDVHvia7rFX8c0CsiHOC1_GPMJQDdKBStMfbfCsH0AnfQIhAKpPUu5oBluuZSwkWjOJIgcG-M_Z27BNeXerDBBExVVG\"}}]",
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "form"
+      }
+    },
+    {
+      "id": "malformed-duplicate-key-member",
+      "title": "A person signature whose key names alg twice, given as JSON text",
+      "cites": [
+        "PS §3.1",
+        "PS §4.2",
+        "PS §6.2 step 1"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures_json": "[{\"person_signature_version\":\"person-signature/0\",\"record_digest\":\"b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60\",\"key_type\":\"webauthn\",\"key\":{\"alg\":-8,\"alg\":-7,\"spki\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA\"},\"proof\":{\"authenticator_data\":\"FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA\",\"client_data_json\":\"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ\",\"signature\":\"MEYCIQDVHvia7rFX8c0CsiHOC1_GPMJQDdKBStMfbfCsH0AnfQIhAKpPUu5oBluuZSwkWjOJIgcG-M_Z27BNeXerDBBExVVG\"}}]",
+      "expected": {
+        "signatures": [
+          {
+            "index": 0,
+            "status": "FAIL",
+            "reason": "malformed"
+          }
+        ],
+        "person_signature": "FAIL",
+        "fails": "form"
+      }
+    },
+    {
+      "id": "malformed-duplicate-proof-member",
+      "title": "A person signature whose proof names signature twice, given as JSON text",
+      "cites": [
+        "PS §3.1",
+        "PS §4.2",
+        "PS §6.2 step 1"
+      ],
+      "inputs": {
+        "target_record_digest": "b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60",
+        "person_keys": [
+          {
+            "alg": -7,
+            "spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA"
+          },
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEACeF7YZil9FDRPrtKkLn71fZS9lh_EVDxZ_Ld-EmQCI8"
+          }
+        ],
+        "excluded_keys": [
+          {
+            "alg": -8,
+            "spki": "MCowBQYDK2VwAyEADuWxpBXeLpxnAN7bnAWl85FcxbwvPoo6LByJ_NzAq2w"
+          }
+        ],
+        "relying_party_id": "rp.example",
+        "allowed_origins": [
+          "https://rp.example"
+        ],
+        "allowed_top_origins": [],
+        "user_verification_required": false
+      },
+      "person_signatures_json": "[{\"person_signature_version\":\"person-signature/0\",\"record_digest\":\"b6d37300385c4ab8ed6e764db21a50bae3179a26bd256759c409062aa77f7f60\",\"key_type\":\"webauthn\",\"key\":{\"alg\":-7,\"spki\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFfD3E_umtNT2VDh7b0yA0qOcFnYyqhPq77ghuUp2-BfdpUqz6XLYjFFXBEDOY7XtRmmYZp9M3J08T0s7ArYBrA\"},\"proof\":{\"signature\":\"AA\",\"authenticator_data\":\"FLNs1nWKasQSamX7gv1PuWAJm0QtjvKcngu-8THUqGAdAAAAAA\",\"client_data_json\":\"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiY0dWeWMyOXVMWE5wWjI1aGRIVnlaUzh3T21JMlpETTNNekF3TXpnMVl6UmhZamhsWkRabE56WTBaR0l5TVdFMU1HSmhaVE14TnpsaE1qWmlaREkxTmpjMU9XTTBNRGt3TmpKaFlUYzNaamRtTmpBIiwib3JpZ2luIjoiaHR0cHM6Ly9ycC5leGFtcGxlIiwiY3Jvc3NPcmlnaW4iOmZhbHNlfQ\",\"signature\":\"MEYCIQDVHvia7rFX8c0CsiHOC1_GPMJQDdKBStMfbfCsH0AnfQIhAKpPUu5oBluuZSwkWjOJIgcG-M_Z27BNeXerDBBExVVG\"}}]",
       "expected": {
         "signatures": [
           {

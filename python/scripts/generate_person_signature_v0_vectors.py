@@ -22,8 +22,9 @@ array (or none) and the expected result: each matching person signature's status
 - an unknown key type, an unsupported algorithm, and no person key (``NOT_CHECKED``);
 - malformed objects: an extra or duplicate member, an upper-case digest, padding in a binary
   value, a key whose ``spki`` does not match its ``alg``; authenticator data that is short, has the
-  AT flag, BS without BE, or extension octets that are not exactly one CBOR map; client data that
-  holds NaN or a duplicate member;
+  AT flag, BS without BE, or extension octets that are not exactly one well-formed definite-length
+  CBOR map; client data that holds NaN or a duplicate member; duplicate members inside key or
+  proof;
 - no person signature, and one for another record only (``NOT_PRESENT``); and several for one
   record, where any ``PASS`` decides and otherwise any ``FAIL``.
 
@@ -395,6 +396,10 @@ def cases() -> list[dict]:
         ("malformed-trailing-octets", "The ED flag clear and one octet after the first 37", auth_data(tail=b"\x00")),
         ("malformed-octets-after-extensions", "The ED flag set and an octet after the extension map",
          auth_data(ed=True, tail=EXTENSIONS + b"\x00")),
+        ("malformed-indefinite-length-extensions", "Extension output as an indefinite-length map",
+         auth_data(ed=True, tail=bytes.fromhex("bf6272") + b"k" + bytes.fromhex("f5ff"))),
+        ("malformed-cbor-simple-value", "Extension output holding a two-octet simple value below 32, which CBOR forbids",
+         auth_data(ed=True, tail=bytes.fromhex("a16178f818"))),
     ):
         add(case(cid, title + "; correctly signed", ["PS §6.2 step 6"], [person_signature("person-es256", adata=adata)],
                  [checked("FAIL", "malformed")], "FAIL", fails="authenticator_data"))
@@ -415,6 +420,19 @@ def cases() -> list[dict]:
     dup_case["person_signatures_json"] = text
     dup_case["expected"] = dup_case.pop("expected")
     add(dup_case)
+    for cid, title, old, new in (
+        ("malformed-duplicate-key-member", "A person signature whose key names alg twice, given as JSON text",
+         '"key":{"alg":-7', '"key":{"alg":-8,"alg":-7'),
+        ("malformed-duplicate-proof-member", "A person signature whose proof names signature twice, given as JSON text",
+         '"proof":{', '"proof":{"signature":"AA",'),
+    ):
+        nested = case(cid, title, ["PS §3.1", "PS §4.2", "PS §6.2 step 1"], None, [checked("FAIL", "malformed")],
+                      "FAIL", fails="form")
+        nested["person_signatures_json"] = json.dumps([person_signature("person-es256")],
+                                                       separators=(",", ":")).replace(old, new, 1)
+        assert new in nested["person_signatures_json"]
+        nested["expected"] = nested.pop("expected")
+        add(nested)
 
     # Several for one record.
     add(case("several-one-passes", "One person signature fails and one passes: the record is PASS",

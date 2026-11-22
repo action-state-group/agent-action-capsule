@@ -108,6 +108,8 @@ def _cbor_item_end(data: bytes, i: int) -> int:
         i += n
     else:
         raise Malformed("cbor: indefinite length or reserved")
+    if major == 7 and info == 24 and arg < 32:
+        raise Malformed("cbor: simple value in two octets below 32")
     if major in (0, 1):
         return i
     if major in (2, 3):
@@ -201,14 +203,14 @@ def form(ps: Any) -> None:
     if ps["key_type"] != "webauthn":
         return
     key, proof = ps["key"], ps["proof"]
-    if not isinstance(key, dict) or set(key) != {"alg", "spki"}:
+    if not isinstance(key, dict) or isinstance(key, _Flagged) or set(key) != {"alg", "spki"}:
         raise Malformed("key members")
     if not isinstance(key["alg"], int) or isinstance(key["alg"], bool):
         raise Malformed("alg")
     b64u_decode(key["spki"])
     if key["alg"] in (-7, -8):
         public_key(key)
-    if not isinstance(proof, dict) or set(proof) != PROOF:
+    if not isinstance(proof, dict) or isinstance(proof, _Flagged) or set(proof) != PROOF:
         raise Malformed("proof members")
     for name in PROOF:
         b64u_decode(proof[name])
@@ -232,7 +234,8 @@ def check_one(ps: dict, inp: dict, skip: frozenset[str] = frozenset()) -> dict:
     try:
         return _check_one(ps, inp, skip)
     except Malformed:
-        # Reached only by a defective evaluator that skips the form check (step 1).
+        # Malformed client data (step 5) or authenticator data (step 6), or, for a defective
+        # evaluator that skips the form check, any value step 1 would have refused.
         return {"status": "FAIL", "reason": "malformed"}
 
 

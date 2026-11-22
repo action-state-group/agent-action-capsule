@@ -240,8 +240,9 @@ this order. The first step that does not succeed gives its status, and the verif
 6. **Authenticator data** (`webauthn`). `authenticator_data` is an assertion's authenticator data
    (WebAuthn §6.1): at least 37 octets; the AT flag (bit 6 of octet 32) clear, since an assertion
    carries no attested credential data; when the ED flag (bit 7) is clear, exactly 37 octets; when
-   it is set, the octets after the first 37 are exactly one well-formed CBOR map (RFC 8949), which
-   the verifier does not otherwise read; and the BS flag (bit 4) clear when the BE flag (bit 3) is
+   it is set, the octets after the first 37 are exactly one well-formed CBOR map (RFC 8949) in which
+   every item has a definite length, as authenticators encode extension output; the verifier does
+   not otherwise read it; and the BS flag (bit 4) clear when the BE flag (bit 3) is
    clear. Otherwise `FAIL`, reason `malformed`. Then:
    - its first 32 octets equal SHA-256 of the UTF-8 relying party id. Otherwise `FAIL`, reason
      `wrong relying party`.

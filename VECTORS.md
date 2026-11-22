@@ -128,7 +128,7 @@ its 11 `record_signatures`.
 | `vectors/card-registration-v0/` | `spec/standard-history-v0.md` §13 | verify | 49 |
 | `vectors/coverage-declaration-v0/` | `spec/interop-profile-v0.md` §6.7 | evaluate, verify | 13 |
 | `vectors/controller-binding-v0/` | `spec/controller-binding-v0.md` | verify | 42 |
-| `vectors/person-signature-v0/` | `spec/person-signature-v0.md` | verify | 51 |
+| `vectors/person-signature-v0/` | `spec/person-signature-v0.md` | verify | 55 |
 | `vectors/personal-history-basic-v0/` | `spec/personal-agent-history-profile-v0.md` §6.4 (Basic) | respond, verify | 23 |
 | `vectors/personal-history-outcome-v0/` | `spec/personal-agent-history-outcome-v0.md` (Outcome) | respond, evaluate | 29 |
 | `vectors/standard-history-v0/` | `spec/standard-history-v0.md` (`standard_history/1` to `standard_history/4`) | evaluate, report | 77 |
