@@ -251,6 +251,7 @@ fn decode_envelope(data: &[u8]) -> Result<Envelope, String> {
 /// profile fixes for a `cll-checkpoint` (§6.2.1): CBOR tag 18 around a
 /// four-element array whose unprotected header is an empty map. Read with
 /// this module's strict reader; the signature is not checked here.
+#[cfg(feature = "bundle")]
 pub(crate) fn is_tagged_sign1_with_empty_unprotected(data: &[u8]) -> bool {
     let Ok(Item::Tag(18, content)) = decode_all(data) else {
         return false;
