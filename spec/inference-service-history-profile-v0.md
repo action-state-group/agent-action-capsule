@@ -449,7 +449,8 @@ A record is in a period by the time the node's stream committed it.
    unit's cells for a period in a counts member, or one result's cells for a period in verdict
    counts (§5.3), each with its total. Under `/1`:
    - a dimension cell is listed only for a dimension value the period counted at least once, so a
-     withheld cell holds at least 1, and one withheld `below_floor` at most `floor` − 1; a
+     withheld cell holds at least 1, and one withheld `below_floor` at most `floor` − 1 (so no
+     dimension cell is withheld `below_floor` under a floor of 1); a
      published total is at least its published cells plus one for each withheld cell, at most its
      published cells plus `floor` − 1 for each where every withheld cell is `below_floor`, and
      equals its published cells when none is withheld;

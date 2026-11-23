@@ -358,6 +358,21 @@ fn a_rest_beyond_what_cells_under_the_floor_hold_does_not_add_up_under_1() {
 }
 
 #[test]
+fn nothing_is_withheld_under_a_floor_of_1_under_1() {
+    let d1 = def(PROFILE_1, 1);
+    let base = built(&d1, &[1, 1]);
+    for total_why in ["complementary", "below_floor"] {
+        let cells = json!([
+            cell(Some("m0"), None, Some("below_floor")),
+            cell(Some("m1"), None, Some("below_floor")),
+            cell(None, None, Some(total_why)),
+        ]);
+        let why = check(&d1, &with_cells(&base, cells), &[1, 1]).unwrap_err();
+        assert!(why.starts_with("period_floor"), "{total_why}: {why}");
+    }
+}
+
+#[test]
 fn a_total_withheld_complementary_needs_two_models_under_the_floor() {
     let d1 = def(PROFILE_1, 5);
     let base = built(&d1, &[9, 3]);

@@ -337,6 +337,8 @@ def table_ok(parts: list[dict], total: dict | None, floor: int, revision1: bool)
     withheld ``complementary`` only beside two or more cells suppressed ``below_floor``."""
     hidden = [c for c in parts if c["value"] is None]
     all_below = all(c["suppressed"] == "below_floor" for c in hidden)
+    if revision1 and floor <= 1 and any(c["suppressed"] == "below_floor" for c in hidden):
+        return False  # a listed cell holds at least 1, which no floor of 1 withholds
     if total is None:
         return True
     if total["value"] is not None:

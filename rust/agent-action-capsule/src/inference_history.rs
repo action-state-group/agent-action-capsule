@@ -1176,6 +1176,16 @@ fn check_cells(cells: &Value, floor: u64, unit: &str, rule: Rule) -> Result<Vec<
         return Err(bad("a period has no single total"));
     };
     let models: Vec<&Cell> = out.iter().filter(|c| c.model.is_some()).collect();
+    // Under `/1` a listed cell holds at least 1, which a floor of 1 never
+    // withholds.
+    if rule == Rule::Pinned
+        && floor <= 1
+        && models
+            .iter()
+            .any(|c| matches!(&c.value, Err(why) if why == "below_floor"))
+    {
+        return Err(bad("a model is withheld under a floor of 1"));
+    }
     if let Ok(total) = total.value {
         if models.iter().filter(|c| c.value.is_err()).count() == 1 {
             return Err(bad("a suppressed cell can be derived from the total"));

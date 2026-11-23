@@ -910,15 +910,21 @@ func floorOK(d any, env map[string]any) bool {
 // is withheld complementary only beside two or more cells withheld
 // below_floor.
 func tableOK(parts []map[string]any, total map[string]any, floor uint64, revision1 bool) bool {
-	if total == nil {
-		return true
-	}
-	hidden, allBelow := uint64(0), true
+	hidden, allBelow, anyBelow := uint64(0), true, false
 	for _, c := range parts {
 		if c["value"] == nil {
 			hidden++
 			allBelow = allBelow && c["suppressed"] == "below_floor"
+			anyBelow = anyBelow || c["suppressed"] == "below_floor"
 		}
+	}
+	// Under Profile1 a listed cell holds at least 1, which a floor of 1
+	// never withholds.
+	if revision1 && floor <= 1 && anyBelow {
+		return false
+	}
+	if total == nil {
+		return true
 	}
 	if total["value"] != nil {
 		if hidden == 1 {

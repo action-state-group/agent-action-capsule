@@ -143,6 +143,8 @@ func TestTableOKByRevision(t *testing.T) {
 		{"floor 1: nothing withheld", []map[string]any{part(uint64(1), ""), part(uint64(1), "")}, total(uint64(2), ""), 1, true, true},
 		{"floor 2: two 1s beside 7 and 9", []map[string]any{part(nil, b), part(nil, b), part(uint64(7), "")}, total(uint64(9), ""), 2, true, false},
 		{"no total", []map[string]any{part(nil, b), part(nil, b)}, nil, 5, true, true},
+		{"floor 1: two withheld beside a withheld total", []map[string]any{part(nil, b), part(nil, b)}, total(nil, cmp), 1, true, false},
+		{"floor 1: two withheld beside a total withheld below it", []map[string]any{part(nil, b), part(nil, b)}, total(nil, b), 1, true, false},
 		{"floor 2: two under the floor, total 3", []map[string]any{part(nil, b), part(nil, b)}, total(uint64(3), ""), 2, true, false},
 		{"10 and two under the floor beside 19", []map[string]any{part(uint64(10), ""), part(nil, b), part(nil, b)},
 			total(uint64(19), ""), 5, true, false},
