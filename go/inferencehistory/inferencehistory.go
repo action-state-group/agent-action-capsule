@@ -2,7 +2,7 @@
 
 // Package inferencehistory evaluates a History under the Inference-Service
 // History Profile v0 (spec/inference-service-history-profile-v0.md,
-// inference-service-history/0, cited as ISH), at its Standard and Detailed
+// inference-service-history/0 and /1, cited as ISH), at its Standard and Detailed
 // levels: the acceptance of an answer under the Minimum Evidence
 // Interoperability Profile (ISH §8.1), the History properties (ISH §8.3),
 // the coverage report (ISH §4.2), what a verifier shows of witness
@@ -30,9 +30,14 @@ import (
 	"github.com/action-state-group/agent-action-capsule/go/internal/ed25519strict"
 )
 
-// Profile is the History profile's identifier, the `profile` member of a
-// definition (ISH §4.1).
+// Profile is the History profile's frozen revision, the `profile` member of
+// a definition (ISH §4.1).
 const Profile = "inference-service-history/0"
+
+// Profile1 is the revision that also withholds a total that pins two or more
+// cells withheld under the floor (ISH §6.2 item 3, SH-8). A definition names
+// Profile or Profile1, and period_floor checks the rule of the one it names.
+const Profile1 = "inference-service-history/1"
 
 // The History levels (ISH §3).
 const (
@@ -338,7 +343,7 @@ func definitionForm(d any) bool {
 	default:
 		return false
 	}
-	if m["profile"] != Profile || m["kind"] != "projection" || !equal(m["embeds"], []any{"history_card/1"}) ||
+	if (m["profile"] != Profile && m["profile"] != Profile1) || m["kind"] != "projection" || !equal(m["embeds"], []any{"history_card/1"}) ||
 		!equal(m["subjects"], []any{"full_history"}) {
 		return false
 	}
@@ -874,7 +879,7 @@ func floorOK(d any, env map[string]any) bool {
 		}
 		for unit := range perUnit {
 			var total map[string]any
-			hidden := 0
+			var parts []map[string]any
 			for _, c := range all {
 				if str(c["unit"]) != unit {
 					continue
@@ -883,14 +888,63 @@ func floorOK(d any, env map[string]any) bool {
 					if total == nil {
 						total = c
 					}
-				} else if c["value"] == nil {
-					hidden++
+				} else {
+					parts = append(parts, c)
 				}
 			}
-			if total != nil && total["value"] != nil && hidden == 1 {
+			if !tableOK(parts, total, floor, get(d, "profile") == Profile1) {
 				return false
 			}
 		}
+	}
+	return true
+}
+
+// tableOK is ISH §6.2 item 3 over one table, its dimension cells and its
+// total: a published total never stands beside exactly one withheld cell.
+// Under Profile1 a cell is listed only when counted, so each withheld cell
+// holds at least 1 and the published ones never exceed the total, equalling it
+// when none is withheld; a published total whose rest (the total less the
+// published cells) is the number of two or more cells withheld, all
+// below_floor, or that number times floor-1 fixes each of them; and a total
+// is withheld complementary only beside two or more cells withheld
+// below_floor.
+func tableOK(parts []map[string]any, total map[string]any, floor uint64, revision1 bool) bool {
+	if total == nil {
+		return true
+	}
+	hidden, allBelow := uint64(0), true
+	var published uint64
+	for _, c := range parts {
+		if c["value"] == nil {
+			hidden++
+			allBelow = allBelow && c["suppressed"] == "below_floor"
+			continue
+		}
+		n, _ := evidencerequest.UintValue(c["value"])
+		if published+n < published {
+			return false
+		}
+		published += n
+	}
+	if total["value"] != nil {
+		if hidden == 1 {
+			return false
+		}
+		if !revision1 {
+			return true
+		}
+		t, _ := evidencerequest.UintValue(total["value"])
+		if published > t || t-published < hidden || (hidden == 0 && t != published) {
+			return false
+		}
+		rest := t - published
+		// rest == hidden*(floor-1), without the product overflowing.
+		pins := hidden >= 2 && (rest == hidden || (rest%hidden == 0 && rest/hidden == floor-1))
+		return !(allBelow && pins)
+	}
+	if revision1 && total["suppressed"] == "complementary" {
+		return hidden >= 2 && allBelow
 	}
 	return true
 }

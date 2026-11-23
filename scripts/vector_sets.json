@@ -49,6 +49,7 @@
   "vectors/inference-service-history-v0/": {"python": ["test_inference_service_history_v0_vectors.py"]},
   "vectors/inference-service-history-v0-interop-v1/": {"python": ["test_inference_service_history_v0_interop_v1_vectors.py"]},
   "vectors/inference-service-history-verdicts-v0/": {"python": ["test_inference_service_history_verdicts_v0_vectors.py"], "rust": ["agent-action-capsule:inference_history_verdicts_vectors"]},
+  "vectors/inference-service-history-v1/": {"python": ["test_inference_service_history_v1_vectors.py"], "go": ["./inferencehistory"], "rust": ["agent-action-capsule:inference_history_vectors"]},
   "vectors/history-frame-v0/": {"python": ["test_history_frame_v0_vectors.py"]},
   "vectors/evidence-result/": {"ts": ["result-root.test.ts", "result-revision.test.ts"], "go": ["./evidenceresult"]},
   "vectors/judge/": {},

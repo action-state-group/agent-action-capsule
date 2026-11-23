@@ -16,7 +16,7 @@ pins one table and one pack. Seven instances exist, defined by four documents:
 | SH | `spec/standard-history-v0.md` | `standard_history/1` to `standard_history/4` |
 | PH | `spec/personal-agent-history-profile-v0.md`, Basic level | `personal_history_basic/1` |
 | PO | `spec/personal-agent-history-outcome-v0.md`, Outcome level | `personal_history_outcome/1` |
-| ISH | `spec/inference-service-history-profile-v0.md`, Standard and Detailed levels | `inference-service-history/0` |
+| ISH | `spec/inference-service-history-profile-v0.md`, Standard and Detailed levels | `inference-service-history/0`, `inference-service-history/1` |
 
 Restating them as instances moves no wire byte. Every request, envelope, card, artifact,
 definition and refusal of the four is what its own document already says, and so is every
@@ -195,7 +195,7 @@ together, by sharing a label, or by both verifying.
 Two counts over overlapping intervals can be subtracted, and the difference can be one deal or
 one exchange. ISH's period rules bound that for its own Standard level (ISH §6). The frame
 restates ISH §6.1 item 8 as it stands, and does not extend it: a node that serves Standard
-Histories under `inference-service-history/0` MUST NOT serve a `standard_history/1` or
+Histories under `inference-service-history/0` or `/1` MUST NOT serve a `standard_history/1` or
 `standard_history/2` card under the same key, because two such cards at consecutive checkpoints could be subtracted to isolate one
 exchange the periods protect. A subject key that serves both is out of conformance by ISH's text
 already; SH states the same exposure for its own cards (SH §9 "Differencing").
@@ -300,7 +300,7 @@ values are non-empty text strings.
 Each instance identifier pins the bytes of its counting table and its wording pack immutably: the
 files §6.1 lists, whose digests are the ones §6.1 lists. Any change to either file's bytes is a new
 version of the instance identifier (`standard_history/2`, `personal_history_basic/2`,
-`personal_history_outcome/2`, `inference-service-history/1`), with new documents and new
+`personal_history_outcome/2`, `inference-service-history/2`), with new documents and new
 digests, listed by a revision of this document. Nothing is changed in place, including a change
 that would leave a digest unchanged.
 
@@ -330,7 +330,9 @@ already signs (the token, the definition's `name`, or the definition's `profile`
 | `policy_digest` | `policy_octets` | `none` | `none` | `period_policy_jcs` | `none` |
 | `container` | `none` | `one_file` | `one_file` | `none` | `none` |
 
-ISH's two levels share one identifier, one counting table and one wording pack. SH's four tokens
+ISH's two levels share one identifier, one counting table and one wording pack, in each of its two
+revisions, `inference-service-history/0` and `/1`, whose documents differ only in their
+`instance` and fixed `profile`. SH's four tokens
 share the SH column, and each pins its own counting table and wording pack. Each instance's
 documents and digests:
 
@@ -343,6 +345,7 @@ documents and digests:
 | `personal_history_basic/1` | `spec/history-frame/personal-history-basic-1-table.json`: `d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1` | `spec/history-frame/personal-history-basic-1-pack.json`: `b3e4868affdaeede5eeadb0d909d4e4f665260d6a68a3c10896ab9a0abf6be60` |
 | `personal_history_outcome/1` | `spec/history-frame/personal-history-outcome-1-table.json`: `a332d408c5ea2566b8f650769f92044c1b075c028cfcd64b112b626fc7b7e97c` | `spec/history-frame/personal-history-outcome-1-pack.json`: `00dce14b0bfdda0187b274727dd34d7b6a8bd5d5bf3884b934f6840604fc6d47` |
 | `inference-service-history/0` | `spec/history-frame/inference-service-history-0-table.json`: `3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057` | `spec/history-frame/inference-service-history-0-pack.json`: `693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82` |
+| `inference-service-history/1` | `spec/history-frame/inference-service-history-1-table.json`: `591090aab054e05bec51d823c2d36645c637cd09baf81366af9bdb02ea9f5e7f` | `spec/history-frame/inference-service-history-1-pack.json`: `d5f5c2f807335fdc8d003ae04fecc87bcdcbaad1ed54cb30f1c496901826718b` |
 
 This table names this repository's identifiers only. A host's own definition under an instance
 (for example an ISH definition a host publishes, which conforms by its digest, ISH §4.1) is not an
@@ -384,8 +387,9 @@ property-checked string (`pack_binding`, `pack_form`); and a pack naming another
 and `python/tests/test_history_frame_v0_vectors.py` checks them.
 
 The generators of `vectors/standard-history-v0/`, `vectors/personal-history-basic-v0/`,
-`vectors/personal-history-outcome-v0/`, `vectors/inference-service-history-v0/` and
-`vectors/inference-service-history-v0-interop-v1/` load the same documents through
+`vectors/personal-history-outcome-v0/`, `vectors/inference-service-history-v0/`,
+`vectors/inference-service-history-v0-interop-v1/` and `vectors/inference-service-history-v1/` load
+the same documents through
 `python/scripts/history_frame.py` (§6.3). Those sets are unchanged by this revision.
 
 ## 8. Security and privacy considerations
