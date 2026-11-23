@@ -684,4 +684,4 @@ them gives every result it gave before.
 |---|---|
 | agent-action-capsule#458 | the `bip340` key type and how it signs (§3.3, §4.1, §9.3), the optional `key_types` member, and CB-8 and CB-9 |
 | agent-action-capsule#482 | a revocation list a using profile declares complete (§5.1, §9.4), under which `controller_binding_revocation` can be `PASS` (§6.1); CB-1 narrowed |
-| evidencebook#780 | for a record with an attested time, a revocation statement counts only when, besides `revoked_at` ≤ T, its earliest anchor is not later than that time (§5.2, §9.5); the times a verifier reports (§7 item 1); CB-10. Results for a record with no attested time are unchanged |
+| agent-action-capsule#681 | for a record with an attested time, a revocation statement counts only when, besides `revoked_at` ≤ T, its earliest anchor is not later than that time (§5.2, §9.5); the times a verifier reports (§7 item 1); CB-10. Results for a record with no attested time are unchanged |
