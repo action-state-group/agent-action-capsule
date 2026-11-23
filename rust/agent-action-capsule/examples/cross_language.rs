@@ -324,19 +324,59 @@ fn composed_verify(input: &[u8]) -> ExitCode {
         .iter()
         .zip(&composed.corroboration)
         .map(|(join, corroboration)| {
-            serde_json::json!({
+            let mut value = serde_json::json!({
                 "members": join.members,
                 "declared": join.declared,
                 "derived": join.derived,
                 "result": join.result,
                 "corroboration": corroboration.result,
                 "reason": corroboration.reason,
-            })
+            });
+            // -03: present only for a same_key join that derives unjoined, and
+            // for a join between a History member and a root record.
+            if !join.keys.is_empty() {
+                value["keys"] = join
+                    .keys
+                    .iter()
+                    .map(|k| serde_json::json!({"member": k.member, "key": k.key}))
+                    .collect();
+            }
+            if !join.key_sources.is_empty() {
+                value["key_sources"] = join
+                    .key_sources
+                    .iter()
+                    .map(|k| serde_json::json!({"member": k.member, "source": k.source}))
+                    .collect();
+            }
+            if let Some(t) = &join.history_times {
+                value["history_times"] = serde_json::json!({
+                    "history": t.history, "history_time": t.history_time, "record": t.record,
+                    "record_time": t.record_time, "relation": t.relation,
+                });
+            }
+            value
         })
         .collect();
     let mut findings = composed.findings.clone();
     findings.sort();
-    let line = serde_json::json!({"status": composed.status, "findings": findings, "joins": joins});
+    let mut line =
+        serde_json::json!({"status": composed.status, "findings": findings, "joins": joins});
+    let histories: Vec<Value> = composed
+        .members
+        .iter()
+        .filter_map(|m| {
+            let h = m.history.as_ref()?;
+            Some(serde_json::json!({
+                "id": m.id, "envelope_signature": h.envelope_signature,
+                "artifact_digest": h.artifact_digest, "request_digest": h.request_digest,
+                "artifact_anchor": h.artifact_anchor, "anchor_checkpoint": h.anchor_checkpoint,
+                "key": h.key, "time": h.time,
+            }))
+        })
+        .collect();
+    if !histories.is_empty() {
+        line["histories"] = Value::Array(histories);
+    }
     match canonical::jcs(&line) {
         Ok(bytes) => {
             println!("{}", String::from_utf8_lossy(&bytes));

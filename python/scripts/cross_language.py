@@ -133,19 +133,32 @@ def composed_verify(value: dict) -> int:
     )
     extensions = verify_bundle(value["container"], composed_options=options).extensions
     composed = next(e.composed for e in extensions if e.composed is not None)
-    print(
-        jcs(
-            {
-                "status": composed.status,
-                "findings": sorted(composed.findings),
-                "joins": [
-                    {"members": list(j.members), "declared": j.declared, "derived": j.derived or None,
-                     "result": j.result, "corroboration": k.result, "reason": k.reason or None}
-                    for j, k in zip(composed.joins, composed.corroboration)
-                ],
-            }
-        ).decode()
-    )
+    joins = []
+    for j, k in zip(composed.joins, composed.corroboration):
+        join = {"members": list(j.members), "declared": j.declared, "derived": j.derived or None,
+                "result": j.result, "corroboration": k.result, "reason": k.reason or None}
+        # -03: present only for a same_key join that derives unjoined, and for a
+        # join between a History member and a root record.
+        if j.keys:
+            join["keys"] = [{"member": x.member, "key": x.key} for x in j.keys]
+        if j.key_sources:
+            join["key_sources"] = [{"member": x.member, "source": x.source} for x in j.key_sources]
+        if j.history_times is not None:
+            t = j.history_times
+            join["history_times"] = {"history": t.history, "history_time": t.history_time, "record": t.record,
+                                     "record_time": t.record_time, "relation": t.relation}
+        joins.append(join)
+    out = {"status": composed.status, "findings": sorted(composed.findings), "joins": joins}
+    histories = [
+        {"id": m.id, "envelope_signature": m.history.envelope_signature, "artifact_digest": m.history.artifact_digest,
+         "request_digest": m.history.request_digest, "artifact_anchor": m.history.artifact_anchor,
+         "anchor_checkpoint": m.history.anchor_checkpoint, "key": m.history.key or None,
+         "time": m.history.time or None}
+        for m in composed.members if m.history is not None
+    ]
+    if histories:
+        out["histories"] = histories
+    print(jcs(out).decode())
     return 0
 
 

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.14.0 — 2026-11-22
+
+Tag `crates/agent-action-capsule-v0.14.0`.
+
+- `bundle::composed`: Evidence Bundle -03 History members and the `same_key` join basis (agent-action-capsule#537, #664), at parity with Python, Go and TypeScript on `vectors/bundle/composed-history/`. Consumer: Mesh-LLM/capsules-plugin#331.
+
+## 0.13.0 — 2026-11-21
+
+Tag `crates/agent-action-capsule-v0.13.0`.
+
 - The optional `evidence-request` dependency accepts `>=0.4.0, <0.9.0`, so the workspace builds against `evidence-request` 0.8.0 (`checkpoint_range`, AAC#645).
 - Registry data only, no code change: the embedded `cpb_provisional.json` is re-vendored from `scitt-payload-binding@b4af581` (#643), and the embedded `data/REGISTRY.md` gains the `standard_history/4` row (#636).
 - `witness::check_card_registered` and `witness::check_card_statement` (feature `strict`): the
