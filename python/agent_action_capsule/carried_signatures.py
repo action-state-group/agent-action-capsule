@@ -93,7 +93,11 @@ def three_member_refusal_signing_input(refusal: Mapping[str, Any]) -> bytes | No
 def verify_three_member_refusal(refusal: Mapping[str, Any]) -> str:
     """The refusal's ``sig`` under its ``key_id`` in
     :data:`THREE_MEMBER_REFUSAL`. A refusal in this profile carries ``sig``,
-    so it is never signature-unverified."""
+    so it is never signature-unverified; one :func:`refusal_profile` reads in
+    another profile, or in none, is not checked here and is
+    signature-unverified."""
+    if refusal_profile(refusal) != THREE_MEMBER_REFUSAL:
+        return _UNVERIFIED
     message = three_member_refusal_signing_input(refusal)
     if message is None:
         return _INVALID
@@ -102,7 +106,11 @@ def verify_three_member_refusal(refusal: Mapping[str, Any]) -> str:
 
 def verify_whole_refusal(refusal: Mapping[str, Any]) -> str:
     """The refusal's ``signature`` under its ``key_id`` over the JCS of the
-    refusal without ``signature``, in :data:`WHOLE_REFUSAL`."""
+    refusal without ``signature``, in :data:`WHOLE_REFUSAL`. A refusal
+    :func:`refusal_profile` reads in another profile, or in none, is not
+    checked here and is signature-unverified."""
+    if refusal_profile(refusal) != WHOLE_REFUSAL:
+        return _UNVERIFIED
     if "key_id" not in refusal and "signature" not in refusal:
         return _UNVERIFIED
     try:
@@ -115,10 +123,7 @@ def verify_whole_refusal(refusal: Mapping[str, Any]) -> str:
 def verify_carried_refusal(refusal: Mapping[str, Any]) -> str:
     """A carried refusal's signature in the profile :func:`refusal_profile`
     reads it in."""
-    profile = refusal_profile(refusal)
-    if profile is None:
-        return _UNVERIFIED
-    if profile == THREE_MEMBER_REFUSAL:
+    if refusal_profile(refusal) == THREE_MEMBER_REFUSAL:
         return verify_three_member_refusal(refusal)
     return verify_whole_refusal(refusal)
 

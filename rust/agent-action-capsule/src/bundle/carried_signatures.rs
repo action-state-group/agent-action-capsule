@@ -63,10 +63,10 @@ pub fn carried_response_profile(response: &Map<String, Value>) -> Option<&'stati
 
 /// A carried refusal's signature in the profile it is read in.
 pub fn verify_carried_refusal(refusal: &Map<String, Value>) -> &'static str {
-    match carried_refusal_profile(refusal) {
-        None => SIGNATURE_UNVERIFIED,
-        Some(THREE_MEMBER_REFUSAL) => verify_three_member_refusal(refusal),
-        Some(_) => verify_whole_refusal(refusal),
+    if carried_refusal_profile(refusal) == Some(THREE_MEMBER_REFUSAL) {
+        verify_three_member_refusal(refusal)
+    } else {
+        verify_whole_refusal(refusal)
     }
 }
 
@@ -121,8 +121,13 @@ pub fn three_member_refusal_signing_input(refusal: &Map<String, Value>) -> Optio
 }
 
 /// The refusal's `sig` under its `key_id` in [`THREE_MEMBER_REFUSAL`]. A
-/// refusal in this profile carries `sig`, so it is never signature-unverified.
+/// refusal in this profile carries `sig`, so it is never signature-unverified;
+/// one [`carried_refusal_profile`] reads in another profile, or in none, is
+/// not checked here and is signature-unverified.
 pub fn verify_three_member_refusal(refusal: &Map<String, Value>) -> &'static str {
+    if carried_refusal_profile(refusal) != Some(THREE_MEMBER_REFUSAL) {
+        return SIGNATURE_UNVERIFIED;
+    }
     match three_member_refusal_signing_input(refusal) {
         Some(input) => verifies(refusal.get("key_id"), refusal.get("sig"), &input),
         None => SIGNATURE_INVALID,
@@ -130,8 +135,13 @@ pub fn verify_three_member_refusal(refusal: &Map<String, Value>) -> &'static str
 }
 
 /// The refusal's `signature` under its `key_id` over the JCS of the refusal
-/// without `signature`, in [`WHOLE_REFUSAL`].
+/// without `signature`, in [`WHOLE_REFUSAL`]. A refusal
+/// [`carried_refusal_profile`] reads in another profile, or in none, is not
+/// checked here and is signature-unverified.
 pub fn verify_whole_refusal(refusal: &Map<String, Value>) -> &'static str {
+    if carried_refusal_profile(refusal) != Some(WHOLE_REFUSAL) {
+        return SIGNATURE_UNVERIFIED;
+    }
     if !refusal.contains_key("key_id") && !refusal.contains_key("signature") {
         return SIGNATURE_UNVERIFIED;
     }

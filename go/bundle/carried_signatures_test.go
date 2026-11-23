@@ -97,6 +97,26 @@ func TestCarriedSignatureProfileVectors(t *testing.T) {
 	}
 }
 
+// TestCarriedSignaturePerProfileVerifiers: each per-profile verifier, used
+// alone as a hook, gives the case's state for an object in its profile and
+// signature-unverified for any other.
+func TestCarriedSignaturePerProfileVerifiers(t *testing.T) {
+	objects, _ := signatureProfileVectors(t)
+	perProfile := map[string]map[string]func(map[string]interface{}) string{
+		"refusal":  {ThreeMemberRefusalProfile: VerifyThreeMemberRefusal, WholeRefusalProfile: VerifyWholeRefusal},
+		"response": {DigestBoundArtifactResponseProfile: VerifyDigestBoundArtifactResponse},
+	}
+	for _, c := range objects {
+		for profile, verify := range perProfile[c.Kind] {
+			want := RefusalSignatureUnverified
+			if c.Expected.Profile != nil && *c.Expected.Profile == profile {
+				want = c.Expected.State
+			}
+			require.Equal(t, want, verify(c.Object), "%s %s", c.ID, profile)
+		}
+	}
+}
+
 func signingInputOf(t *testing.T, profile string, object map[string]interface{}) []byte {
 	t.Helper()
 	switch profile {

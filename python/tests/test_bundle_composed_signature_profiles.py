@@ -49,6 +49,21 @@ def test_object_case(case):
     assert state == case["expect"]["state"]
 
 
+PER_PROFILE = {
+    "refusal": {cs.THREE_MEMBER_REFUSAL: cs.verify_three_member_refusal, cs.WHOLE_REFUSAL: cs.verify_whole_refusal},
+    "response": {cs.DIGEST_BOUND_ARTIFACT_RESPONSE: cs.verify_digest_bound_artifact_response},
+}
+
+
+@pytest.mark.parametrize("case", DATA["cases"], ids=lambda c: c["id"])
+def test_per_profile_verifier(case):
+    """Each per-profile verifier, used alone as a hook, gives the case's state
+    for an object in its profile and signature_unverified for any other."""
+    for profile, verify in PER_PROFILE[case["kind"]].items():
+        want = case["expect"]["state"] if case["expect"]["profile"] == profile else REFUSAL_SIGNATURE_UNVERIFIED
+        assert verify(case["object"]) == want, profile
+
+
 @pytest.mark.parametrize("case", [c for c in DATA["cases"] if "signing_input_hex" in c], ids=lambda c: c["id"])
 def test_signing_input(case):
     obj = case["object"]

@@ -117,11 +117,15 @@ export function threeMemberRefusalSigningInput(
 
 /**
  * The refusal's `sig` under its `key_id` in {@link THREE_MEMBER_REFUSAL}. A
- * refusal in this profile carries `sig`, so it is never signature-unverified.
+ * refusal in this profile carries `sig`, so it is never signature-unverified;
+ * one {@link carriedRefusalProfile} reads in another profile, or in none, is
+ * not checked here and is signature-unverified.
  */
 export async function verifyThreeMemberRefusal(
   refusal: Obj,
 ): Promise<CarriedSignatureState> {
+  if (carriedRefusalProfile(refusal) !== THREE_MEMBER_REFUSAL)
+    return "signature_unverified";
   const input = threeMemberRefusalSigningInput(refusal);
   if (input === undefined) return "invalid";
   return verifies(refusal.key_id, refusal.sig, input);
@@ -129,11 +133,15 @@ export async function verifyThreeMemberRefusal(
 
 /**
  * The refusal's `signature` under its `key_id` over the JCS of the refusal
- * without `signature`, in {@link WHOLE_REFUSAL}.
+ * without `signature`, in {@link WHOLE_REFUSAL}. A refusal
+ * {@link carriedRefusalProfile} reads in another profile, or in none, is not
+ * checked here and is signature-unverified.
  */
 export async function verifyWholeRefusal(
   refusal: Obj,
 ): Promise<CarriedSignatureState> {
+  if (carriedRefusalProfile(refusal) !== WHOLE_REFUSAL)
+    return "signature_unverified";
   if (!has(refusal, "key_id") && !has(refusal, "signature"))
     return "signature_unverified";
   // setMember: plain assignment would turn a member named `__proto__` into

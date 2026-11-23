@@ -14,6 +14,9 @@ import {
   verifyBundle,
   verifyCarriedRefusal,
   verifyCarriedResponse,
+  verifyDigestBoundArtifactResponse,
+  verifyThreeMemberRefusal,
+  verifyWholeRefusal,
   type ComposedResult,
 } from "../src/index.js";
 
@@ -98,6 +101,28 @@ describe("composed/v1 carried signature profiles", () => {
         ).toBe(c.signing_input_hex);
       }
     });
+
+  it("gives each per-profile verifier's state, unverified outside its profile", async () => {
+    const perProfile: Record<
+      string,
+      Record<string, (o: Obj) => Promise<string>>
+    > = {
+      refusal: {
+        "three-member-refusal/v1": verifyThreeMemberRefusal,
+        "whole-refusal/v1": verifyWholeRefusal,
+      },
+      response: {
+        "digest-bound-artifact-response/v1": verifyDigestBoundArtifactResponse,
+      },
+    };
+    for (const c of FILE.cases)
+      for (const [profile, verify] of Object.entries(perProfile[c.kind]!))
+        expect(await verify(c.object), `${c.id} ${profile}`).toBe(
+          c.expect.profile === profile
+            ? c.expect.state
+            : "signature_unverified",
+        );
+  });
 
   for (const c of FILE.composed_cases)
     it(c.id, async () => {

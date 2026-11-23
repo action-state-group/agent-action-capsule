@@ -7,8 +7,10 @@
 use agent_action_capsule::bundle::{
     artifact_response_signing_input, carried_refusal_profile, carried_response_profile,
     three_member_refusal_signing_input, verify_bundle_with_options, verify_carried_refusal,
-    verify_carried_response, BundleOptions, ComposedOptions, COMPOSED_KIND,
+    verify_carried_response, verify_digest_bound_artifact_response, verify_three_member_refusal,
+    verify_whole_refusal, BundleOptions, ComposedOptions, COMPOSED_KIND,
     DIGEST_BOUND_ARTIFACT_RESPONSE, SIGNATURE_INVALID, SIGNATURE_UNVERIFIED, THREE_MEMBER_REFUSAL,
+    WHOLE_REFUSAL,
 };
 use agent_action_capsule::verify::decode_capsule_json;
 use serde_json::{json, Map, Value};
@@ -66,6 +68,36 @@ fn object_cases() {
             _ => continue,
         };
         assert_eq!(hex::encode(got.unwrap()), want, "{id}");
+    }
+}
+
+#[test]
+fn per_profile_verifiers() {
+    type Verify = fn(&Map<String, Value>) -> &'static str;
+    let refusal: [(&str, Verify); 2] = [
+        (THREE_MEMBER_REFUSAL, verify_three_member_refusal),
+        (WHOLE_REFUSAL, verify_whole_refusal),
+    ];
+    let response: [(&str, Verify); 1] = [(
+        DIGEST_BOUND_ARTIFACT_RESPONSE,
+        verify_digest_bound_artifact_response,
+    )];
+    for case in vectors()["cases"].as_array().unwrap() {
+        let id = case["id"].as_str().unwrap();
+        let object = case["object"].as_object().unwrap();
+        let verifiers: &[(&str, Verify)] = if case["kind"] == "refusal" {
+            &refusal
+        } else {
+            &response
+        };
+        for (profile, verify) in verifiers {
+            let want = if case["expect"]["profile"] == *profile {
+                case["expect"]["state"].as_str().unwrap()
+            } else {
+                SIGNATURE_UNVERIFIED
+            };
+            assert_eq!(verify(object), want, "{id} {profile}");
+        }
     }
 }
 

@@ -75,14 +75,10 @@ func CarriedResponseProfile(response map[string]interface{}) string {
 // VerifyCarriedRefusal checks a carried refusal's signature in the profile
 // CarriedRefusalProfile reads it in. It is a RefusalSignatureVerifier.
 func VerifyCarriedRefusal(refusal map[string]interface{}) string {
-	switch CarriedRefusalProfile(refusal) {
-	case "":
-		return RefusalSignatureUnverified
-	case ThreeMemberRefusalProfile:
+	if CarriedRefusalProfile(refusal) == ThreeMemberRefusalProfile {
 		return VerifyThreeMemberRefusal(refusal)
-	default:
-		return VerifyWholeRefusal(refusal)
 	}
+	return VerifyWholeRefusal(refusal)
 }
 
 // VerifyCarriedResponse checks a carried response's signature. It is a
@@ -106,8 +102,12 @@ func ThreeMemberRefusalSigningInput(refusal map[string]interface{}) (input []byt
 
 // VerifyThreeMemberRefusal checks the refusal's sig under its key_id in
 // ThreeMemberRefusalProfile. A refusal in this profile carries sig, so it is
-// never signature-unverified.
+// never signature-unverified; one CarriedRefusalProfile reads in another
+// profile, or in none, is not checked here and is signature-unverified.
 func VerifyThreeMemberRefusal(refusal map[string]interface{}) string {
+	if CarriedRefusalProfile(refusal) != ThreeMemberRefusalProfile {
+		return RefusalSignatureUnverified
+	}
 	input, ok := ThreeMemberRefusalSigningInput(refusal)
 	if !ok {
 		return RefusalSignatureInvalid
@@ -116,8 +116,13 @@ func VerifyThreeMemberRefusal(refusal map[string]interface{}) string {
 }
 
 // VerifyWholeRefusal checks the refusal's signature under its key_id over
-// the JCS of the refusal without signature, in WholeRefusalProfile.
+// the JCS of the refusal without signature, in WholeRefusalProfile. A
+// refusal CarriedRefusalProfile reads in another profile, or in none, is not
+// checked here and is signature-unverified.
 func VerifyWholeRefusal(refusal map[string]interface{}) string {
+	if CarriedRefusalProfile(refusal) != WholeRefusalProfile {
+		return RefusalSignatureUnverified
+	}
 	_, hasKey := refusal["key_id"]
 	_, hasSignature := refusal["signature"]
 	if !hasKey && !hasSignature {
