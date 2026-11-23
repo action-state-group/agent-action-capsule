@@ -948,7 +948,6 @@ func tableOK(parts []map[string]any, total map[string]any, floor uint64, revisio
 			return false
 		}
 		rest := t - published
-		// Cells withheld below the floor hold at most floor-1 each.
 		// Cells withheld below the floor hold at most floor-1 each: rest is
 		// at most hidden*(floor-1), compared without the product overflowing.
 		if allBelow && hidden > 0 && (rest/hidden > floor-1 || (rest/hidden == floor-1 && rest%hidden > 0)) {
