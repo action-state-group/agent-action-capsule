@@ -40,6 +40,7 @@
   "vectors/cbor-request-model/": {"python": ["test_cbor_request_model_vectors.py"], "go": ["./evidencerequest"], "rust": ["evidence-request:cbor_request_model"]},
   "vectors/coverage-declaration-v0/": {"python": ["test_coverage_declaration_v0_vectors.py"]},
   "vectors/controller-binding-v0/": {"python": ["test_controller_binding_v0_vectors.py", "test_controller_binding_library.py"], "ts": ["controller-binding-vectors.test.ts"], "go": ["./controllerbinding"], "rust": ["evidence-request:controller_binding_vectors"]},
+  "vectors/controller-binding-v0-anchoring/": {"python": ["test_controller_binding_v0_anchoring_vectors.py"]},
   "vectors/person-signature-v0/": {"python": ["test_person_signature_v0_vectors.py"]},
   "vectors/personal-history-basic-v0/": {"python": ["test_personal_history_basic_v0_vectors.py"], "go": ["./personalhistory"]},
   "vectors/personal-history-outcome-v0/": {"python": ["test_personal_history_outcome_v0_vectors.py"]},

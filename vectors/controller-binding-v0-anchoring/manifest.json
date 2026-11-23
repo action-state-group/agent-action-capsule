@@ -1,0 +1,13 @@
+{
+  "set": "aac-controller-binding-v0-anchoring",
+  "status": "Conformance vectors for revocation against a time a third party attests in the informational Controller Binding v0 (spec/controller-binding-v0.md §5.2, §10.1). Every key is a test key derived from a public seed; never use one for anything else.",
+  "spec": "spec/controller-binding-v0.md",
+  "generator": "python/scripts/generate_controller_binding_v0_anchoring_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "3ab992449bd156f6fe100883dda3222a826b496d893dde6ff90e3420e608114b",
+      "count": 18
+    }
+  ]
+}

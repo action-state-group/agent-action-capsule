@@ -168,6 +168,14 @@ same-commit files in CI.
   type, and expired, revoked, one-key-signed, same-key, other-keys, no-half-key-bound, forged-credential,
   unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
   `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
+- `controller-binding-v0-anchoring/`: revocation against a time a third party attests
+  (`spec/controller-binding-v0.md` §5.2): stamped halves, and revocation statements anchored
+  before, at and after the stamps, unanchored, dated between signing and stamping or after the
+  stamps, with two anchors or two stamps, in a declared list, and with anchors or stamps that do not
+  count (by a bound key, by an attester the profile does not accept, forged, over another statement,
+  dated after E); `python/scripts/generate_controller_binding_v0_anchoring_vectors.py`
+  regenerates them. Checked by the specification's own evaluator only: no implementation in this
+  repository applies §5.2 yet.
 - `person-signature-v0/`: the person signature of `spec/person-signature-v0.md`, a person's own
   WebAuthn assertion over a signed record's digest, carried beside the record: valid ES256 and
   Ed25519 assertions, correctly signed policy negatives (type, challenge, origin, cross-origin,

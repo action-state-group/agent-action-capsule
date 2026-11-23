@@ -557,7 +557,7 @@ def test_one_key_signed_carries_a_valid_signature_by_one_bound_key():
 
 
 def test_spec_lists_every_case():
-    section = SPEC_TEXT.split("## 10. Vectors", 1)[1].split("\n## ", 1)[0]
+    section = SPEC_TEXT.split("## 10. Vectors", 1)[1].split("\n## ", 1)[0].split("\n### 10.1 ", 1)[0]
     assert set(re.findall(r"^\| `([a-z0-9-]+)` \|", section, re.M)) == {c["id"] for c in CASES}
 
 

@@ -15,7 +15,8 @@ signatures show. It does not show who controls either key, and it never establis
 
 **Owns:** the binding record, its member names and signing input (§3, §4), the claim types and
 their verification methods (§3.2), the key types and how each signs (§3.3, §4.1), the revocation
-statement (§5), the declaration of a complete revocation list (§5.1), the binding properties (§6),
+statement (§5), the declaration of a complete revocation list (§5.1), when a revocation counts
+against a time a third party attests (§5.2), the binding properties (§6),
 what a verifier reports (§7), and the `controller_binding` join basis derivation that EB `-02`
 adopts (§8).
 
@@ -53,7 +54,8 @@ Terms from IP §1 are used unchanged. This document adds:
   be made at one moment, and nothing in the record shows when either was made. `issued_at` is the
   time the signers state (CB-2).
 - **In effect at T:** a binding is in effect at time T when `not_before` ≤ T < `not_after` and no
-  revocation statement that applies (§5) has `revoked_at` ≤ T.
+  revocation statement that applies (§5) has `revoked_at` ≤ T, except that for a record with an
+  attested time a statement also needs an anchor by that time (§5.2).
 
 All values follow IP §5.2: digests and key identifiers are 64 lowercase hexadecimal characters, a
 key identifier is a raw Ed25519 public key, signatures are Ed25519, and times are RFC 3339 UTC with
@@ -209,7 +211,9 @@ binding's digest, `key_id` is one of its `keys`, and `sig` verifies. From `revok
 binding is not in effect. A binding revoked after T was in effect at T. `revoked_at` is the revoking
 key holder's statement, and nothing stops it from being dated earlier than the statement was made.
 A key holder who backdates a revocation removes the binding's effect on the pairs it covered. Those
-pairs then go back to where they would be with no binding (§6.2), never above.
+pairs then go back to where they would be with no binding (§6.2), never above. For a record a third
+party attests, a backdated `revoked_at` alone does not do this: the statement must also be attested
+by the record's attested time (§5.2).
 
 Revocation statements are delivered beside the binding, and how is the using profile's choice. This
 revision registers no place to fetch them from (CB-1). A verifier therefore knows only of the
@@ -257,7 +261,8 @@ When the list's octets are not a JSON array, it has no entries, and the declarat
 A declaration that counts is the asserting party's statement, not the verifier's finding. It shows
 that no statement in the list applies at T, and nothing more. A statement made after `as_of`, even
 one whose `revoked_at` is earlier than T, can still withdraw the binding (§5), and the list does
-not exclude it.
+not exclude it. For a member with an attested time, it does so only when it is also anchored by
+that time (§5.2).
 
 A declaration is not signed in this revision, so whoever supplies a verifier's inputs could write
 any `asserted_by` and `max_age`. A verifier MUST take the declaration, `max_age` included, only
@@ -267,19 +272,68 @@ channel, not as authenticated. The using profile is what makes the declaration t
 party's, as it makes the list's octets theirs by pinning them. A signed declaration is still open
 (CB-1).
 
+### 5.2 Against a time a third party attests
+
+Either bound key can sign a revocation statement, and `revoked_at` is that key holder's own
+statement (§5). Under §5 alone, a key holder who wants a binding gone from an earlier record can
+sign a revocation long after that record, date it before the record, and remove the binding's
+effect on it. Where a third party attests when the record existed, this section closes that: the
+statement must also be attested to have existed by then. It only adds a requirement. A statement
+that does not count under §5 does not count under this section either.
+
+- A member's **attested time** is a time, attested by a party other than either key holder, by
+  which the member existed: for example the time of a timestamp over its octets, or of a witnessed
+  checkpoint of a log that holds it. A using profile gives the verifier these attestations, and
+  says whose it accepts. When several count for one member, its attested time is the earliest
+  `attested_at` among them: anyone can have a record's public octets attested again later, and a
+  later time would only let more statements count. A member with none has no attested time.
+- An **anchor** of a revocation statement is a time, attested by a party other than either key
+  holder, by which the statement existed: for example a timestamp, or a witnessed checkpoint of a
+  log, over the SHA-256 of the UTF-8 of JCS of the statement (all five members). This names a
+  statement the same way whether it was delivered alone or as an entry of a list (§5.1). The time
+  the party that attests the member states it received the statement is an anchor too.
+
+A statement that applies (§5) **counts at** a member whose T is the member's own time (§6.1):
+
+- when the member has no attested time: `revoked_at` ≤ T, as in §5, unchanged;
+- when the member has an attested time: `revoked_at` ≤ T, as in §5, **and** its earliest anchor is
+  not later than the member's attested time. A statement with no anchor does not count at such a
+  member, whatever its `revoked_at`.
+
+So a statement dated before a member, but first anchored after the member's attested time, leaves
+the binding in effect for that member. One anchored at or before that time, and dated at or before
+T, withdraws it. The time a statement counts from, at an attested member, is the later of its
+`revoked_at` and its earliest anchor (its **anchored time**); at another member it is `revoked_at`.
+
+An attestation counts, as an attested time or as an anchor, only when its attesting party is
+neither bound key and is one the using profile accepts, it verifies by its own method, and its
+time is not later than the evaluation time E (§5.1). A verifier MUST take attestations only through
+the using profile's channel, as the profile pins them, and MUST NOT accept one from either key
+holder or from the party presenting the evidence the binding is used for. A declared list (§5.1) is
+not an anchor for its entries. This revision registers no attestation format (CB-10). The vectors
+fix one for themselves only (§10.1).
+
+`controller_binding_revocation` is about the binding at every T asked about (§6.1). So for a pair,
+the protection holds only when both members have an attested time: a statement that counts at an
+unattested member, under §5, withdraws the binding for the pair. Results for a member with no
+attested time are unchanged, and so is every result where no member has one. The window (§6.1) and
+a declared list (§5.1) are judged at T, as before. The `controller_binding` join of §8 asks about
+each root record's `timestamp` and names no attested time, and so is unchanged.
+
 ## 6. Binding properties
 
 ### 6.1 The properties
 
 A verifier reports each property in the IP §7.1 vocabulary, with its method. T is the time or times
-the binding is asked about: for a pair under IP §6.7.4, each member's `issued_at`.
+the binding is asked about: for a pair under IP §6.7.4, each member's `issued_at`. A member may
+also have an attested time (§5.2), which only adds a requirement for a revocation to count.
 
 | Property | Check |
 |---|---|
 | `controller_binding_form` | the record is well formed (§3.1, §3.2) |
 | `controller_binding_signatures` | both entries of `sigs` are present, name `keys` in order, and verify over the signing input by each key's type (§4, §4.1), with no third entry; `NOT_CHECKED` when the verifier does not implement `method` or a key type in `key_types` |
 | `controller_binding_window` | the binding is in its window at every T: `not_before` ≤ T < `not_after`. The window is the signers' statement; the check is against it, not against when the keys were in fact held |
-| `controller_binding_revocation` | `FAIL` when a received revocation statement applies with `revoked_at` ≤ some T, from a declared list (§5.1) or delivered otherwise; otherwise `PASS` when a declaration counts (§5.1); otherwise `NOT_CHECKED`, because a statement the verifier did not receive cannot be excluded (CB-1) |
+| `controller_binding_revocation` | `FAIL` when a received revocation statement applies and counts at some member (§5, §5.2), from a declared list (§5.1) or delivered otherwise; otherwise `PASS` when a declaration counts (§5.1); otherwise `NOT_CHECKED`, because a statement the verifier did not receive cannot be excluded (CB-1) |
 | `controller_binding_credential` | `same_organization_credentialed` only: the credential is present, hashes to `credential.digest`, verifies by `credential.method` under `credential.issuer`, `credential.issuer` is accepted by the relying party's trust policy, and the credential names both bound keys. `FAIL` when any of these fails, as `responder_trust` does for an unaccepted key (IP §7.2). `NOT_PRESENT` when it was not delivered, `NOT_CHECKED` when the verifier does not implement `credential.method`, `INCONCLUSIVE` when the trust policy cannot decide |
 
 When `controller_binding_form` is `FAIL`, no other binding property is reported. A property that
@@ -316,7 +370,9 @@ above it. A verifier uses every binding it received for the pair (§9.1).
 ## 7. What a verifier reports
 
 1. The claim type, the two bound keys, `delegator` where present, the window, and every property
-   of §6 that applies.
+   of §6 that applies. For each T, the member's attested time and who attests it, or that it has
+   none (§5.2). When `controller_binding_revocation` is `FAIL`, the time the statement counts from:
+   its anchored time at a member with an attested time, its `revoked_at` at another.
 2. **What the binding proves.** When `controller_binding_form` and `controller_binding_signatures`
    are both `PASS`, whatever the window and revocation, a verifier reports that the binding proves
    *control of each key when it signed the record*: whoever held each private key signed these
@@ -480,6 +536,26 @@ count, or a list that cannot be read, gives `NOT_CHECKED`, never `FAIL`. Only a 
 applies gives `FAIL`, so a party that can corrupt a list's delivery cannot use it to stop a binding
 from applying.
 
+### 9.5 A backdated revocation
+
+Either key holder can sign a revocation statement and choose its `revoked_at` (§5). For a record no
+third party attests, nothing better is available: the same parties state the record's own time.
+For a record with an attested time, §5.2 also requires an anchor by that time, so a statement first
+anchored after that time leaves the binding in effect for the record, whatever its `revoked_at`. A key
+holder who means to revoke before a record is attested has the statement attested first. For a
+pair, this holds only when both members have an attested time (§5.2).
+
+The attested time is the earliest that counts, because a record's octets can be attested again at
+any later time, and a later attested time would let a later anchor count. The rule never counts a
+statement that §5 alone would not: it compares `revoked_at` with the record's own time as before.
+
+An anchor bounds when a statement existed, not when it was made. A statement made earlier than its
+anchor is treated as if made at the anchor, so a binding a key holder did withdraw in time can still
+apply to a record attested between the two. That is the conservative direction: the pair is
+reported as redundant (§9.1). Attested times and anchors are only as good as the parties the using
+profile accepts: a party that can attest a false early time for a statement can withdraw a binding
+from records it did not cover. A verifier takes neither from a key holder or the presenter (§5.2).
+
 ## 10. Vectors
 
 The vectors are in `vectors/controller-binding-v0/`.
@@ -545,6 +621,45 @@ These formats are fixed for the vectors only and are not registered:
 
 No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it (IP P-60).
 
+### 10.1 Revocation against an attested time
+
+The vectors for §5.2 are in `vectors/controller-binding-v0-anchoring/`.
+`python/scripts/generate_controller_binding_v0_anchoring_vectors.py` generates them, and
+`python/tests/test_controller_binding_v0_anchoring_vectors.py` checks them. Each case is a pair of
+agreeing halves and a binding of their two keys, as in §10, with a revocation statement by a bound
+key, and **stamps** over the halves and **anchors** over the statement. A stamp that counts gives
+its half an attested time; each half's T stays its `issued_at`. Each case reports, beside the
+binding properties, each half's T and attested time, and the time a statement that counts is
+counted from.
+
+These formats are fixed for the vectors only and are not registered:
+
+- the time attestation: `attested_at`, `attester`, `subject` and `sig`, where `sig` is Ed25519 by
+  `attester` over UTF-8 of JCS of the other members. It is a stamp when `subject` is the SHA-256 of
+  a half's octets, and an anchor when it is the SHA-256 of UTF-8 of JCS of a revocation statement;
+- the parties a using profile accepts: `pins.trust_policy.time_attesters`.
+
+| Case | What it shows |
+|---|---|
+| `anchored-after-the-stamp` | `revoked_at` before the halves, anchored after their stamps: it does not count, revocation `NOT_CHECKED`, the binding applies: `FAIL`, redundant |
+| `anchored-before-the-stamp` | `revoked_at` before the halves, anchored before their stamps: revocation `FAIL`, the binding does not apply, `NOT_CHECKED` |
+| `anchored-at-the-stamp` | anchored at the stamps' own time: the anchor is not later than the attested time, revocation `FAIL` |
+| `not-anchored-stamped` | `revoked_at` before the halves, no anchor, halves stamped: it counts at no attested half, revocation `NOT_CHECKED`, the binding applies |
+| `not-anchored-not-stamped` | the same with no stamps: no half has an attested time, so §5 applies unchanged: revocation `FAIL` |
+| `one-half-stamped` | no anchor, the first half stamped and the second not: the statement counts at the second half under §5, revocation `FAIL` |
+| `revoked-between-signing-and-stamp` | dated after the halves were signed and before they were stamped, anchored before the stamps: `revoked_at` is later than each T, so it does not count, as under §5: revocation `NOT_CHECKED` |
+| `revoked-at-after-the-stamp` | anchored before the stamps but dated after them: revocation `NOT_CHECKED`, the binding applies |
+| `earliest-anchor-counts` | two anchors, one after the stamps and one before: the earliest counts, revocation `FAIL` |
+| `earliest-stamp-counts` | two stamps over each half, before and after the only anchor: the earliest stamp is the attested time, revocation `NOT_CHECKED` |
+| `anchor-by-bound-key` | the anchor is attested by a bound key that the using profile also accepts as an attester: not an anchor, revocation `NOT_CHECKED`, the binding applies |
+| `anchor-attester-not-accepted` | the anchor is attested by a key the using profile does not accept: not an anchor, revocation `NOT_CHECKED` |
+| `anchor-forged` | the anchor names an accepted attester and is signed by another key: not an anchor, revocation `NOT_CHECKED` |
+| `anchor-other-statement` | the anchor's `subject` is another statement's digest: not an anchor for this one, revocation `NOT_CHECKED` |
+| `stamp-by-bound-key` | the halves' stamps are attested by a bound key that the using profile also accepts: no half has an attested time, §5 applies, revocation `FAIL` |
+| `stamp-after-evaluation-time` | the halves' stamps are dated after E: they do not count, §5 applies, revocation `FAIL` |
+| `complete-list-entry-anchored` | stamped halves and a list declared complete (§5.1) holding the statement, anchored before the stamps: the entry counts, revocation `FAIL` |
+| `complete-list-entry-not-anchored` | the same list with no anchor: the entry does not count, the declaration counts, revocation `PASS`, the binding applies |
+
 ## 11. Open points
 
 | Id | Point |
@@ -558,6 +673,7 @@ No case reaches `issuer_independence` `PASS`. Nothing in this revision gives it 
 | CB-7 | A revocation the producer of a `composed/v1` block did not have makes a declared `agree` a `join_state_mismatch` (§8.3). A later EB revision may report that join as `not_derivable`, or as a finding on the join alone, rather than failing the block. |
 | CB-8 | The Nostr event kind of §4.1, 3374, is chosen from the kinds no NIP lists. It is provisional in `REGISTRY.md` and not registered with the NIPs. |
 | CB-9 | Showing a `bip340` key. Whether a using profile lists a binding record, or only its digest, where anyone can read it is the using profile's choice (§9.3). A binding verifies the same either way. |
+| CB-10 | Attestation formats (§5.2). No format is registered for an attested time or for an anchor of a revocation statement; a using profile names its own, and whose attestations it accepts. The vectors fix one for themselves only (§10.1). A registered form would let every verifier check a statement's anchor without the profile's channel. This is CB-2's question for the revocation statement rather than the binding record. |
 
 ## 12. Changes
 
@@ -568,3 +684,4 @@ them gives every result it gave before.
 |---|---|
 | agent-action-capsule#458 | the `bip340` key type and how it signs (§3.3, §4.1, §9.3), the optional `key_types` member, and CB-8 and CB-9 |
 | agent-action-capsule#482 | a revocation list a using profile declares complete (§5.1, §9.4), under which `controller_binding_revocation` can be `PASS` (§6.1); CB-1 narrowed |
+| evidencebook#780 | for a record with an attested time, a revocation statement counts only when, besides `revoked_at` ≤ T, its earliest anchor is not later than that time (§5.2, §9.5); the times a verifier reports (§7 item 1); CB-10. Results for a record with no attested time are unchanged |
