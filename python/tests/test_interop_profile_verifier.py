@@ -44,6 +44,7 @@ from agent_action_capsule.interop_profile import (  # noqa: E402
 from agent_action_capsule.interop_profile import carriage as carriage_mod  # noqa: E402
 from agent_action_capsule.interop_profile import cll as cll_mod  # noqa: E402
 from agent_action_capsule.interop_profile import exchange as exchange_mod  # noqa: E402
+from agent_action_capsule.interop_profile._common import ENVELOPE_SIGNED  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "python" / "agent_action_capsule" / "interop_profile"
@@ -538,7 +539,7 @@ def test_section_10_1_closing_sentences():
     reply, _ = _verify_c(env)
     assert reply.status("verification_binding") == "FAIL"
     env["verification"][1]["digest"] = sha(bytes(proof))
-    body = {k: env[k] for k in exchange_mod._ENVELOPE_SIGNED if k in env}
+    body = {k: env[k] for k in ENVELOPE_SIGNED if k in env}
     env["sig"] = _responder_key().sign(jcs(body)).hex()
     reply, _ = _verify_c(env)
     assert reply.status("envelope_signature") == "PASS"
@@ -1001,7 +1002,7 @@ def _rebuild_c(checkpoint=None, consistency=None, entries=None, coverage=None, r
         request["derivation"] = env["derivation"] = derivation
     request_octets = jcs(request)
     env["request_digest"] = sha(request_octets)
-    env["sig"] = _responder_key().sign(jcs({k: env[k] for k in exchange_mod._ENVELOPE_SIGNED if k in env})).hex()
+    env["sig"] = _responder_key().sign(jcs({k: env[k] for k in ENVELOPE_SIGNED if k in env})).hex()
     verifier = InteropVerifier(SECTION_10_TRUST, VerificationPolicy(), "2026-10-12T01:00:00Z", contract=CONTRACT)
     reply = verifier.verify([Exchange(Message(request_octets, "application/json"),
                                       [Message(jcs(env), "application/json")])], requirements=["r-record"]
@@ -1055,7 +1056,7 @@ def test_anchor_not_the_checkpoint_fails_step_6():
     request = {"coverage": {"expected_pin": other}, "nonce": "step 6", "profile": "evidence-interop/0",
                "subject": env["subject"]}
     env["request_digest"] = sha(jcs(request))
-    env["sig"] = _responder_key().sign(jcs({k: env[k] for k in exchange_mod._ENVELOPE_SIGNED if k in env})).hex()
+    env["sig"] = _responder_key().sign(jcs({k: env[k] for k in ENVELOPE_SIGNED if k in env})).hex()
     verifier = InteropVerifier(SECTION_10_TRUST, VerificationPolicy(), "2026-10-12T01:00:00Z", contract=CONTRACT)
     reply = verifier.verify([Exchange(Message(jcs(request), "application/json"), [Message(jcs(env), "application/json")])],
                             requirements=["r-record"]).exchanges[0].replies[0]

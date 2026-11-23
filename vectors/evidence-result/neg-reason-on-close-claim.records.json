@@ -1,0 +1,35 @@
+[
+  {
+    "book_id": "example-org",
+    "committed_at": "2026-09-02T00:05:00Z",
+    "epistemic_type": "producer_claim",
+    "event_time_claim": "2026-09-02T00:00:00Z",
+    "links": [
+      {
+        "target": "5653a61b4ed088f818552f3e386bfdbc0c4272f99d8fc5084ce38b86e7f4398b",
+        "type": "closes"
+      }
+    ],
+    "record_type": "close",
+    "seq": 41,
+    "statement": {
+      "closed_at": "2026-09-02T00:05:00Z",
+      "counts_by_kind": {
+        "observation": 3
+      },
+      "epistemic_type": "producer_claim",
+      "head": {
+        "digest": "77aefa563af72b23bdbb81cdc3f0174a85d6eebda0e39be1870df43f01201cc2",
+        "digest_alg": "SHA-256"
+      },
+      "period": {
+        "end": "2026-09-02T00:00:00Z",
+        "start": "2026-09-01T00:00:00Z"
+      },
+      "record_id": "example-org#41",
+      "record_version": "close/v1"
+    },
+    "subject_ref": "ec:example-org-outcomes-reconcile:2026-09-25@1",
+    "v": 1
+  }
+]

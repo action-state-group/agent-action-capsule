@@ -90,6 +90,8 @@ COUNTERS = {
     "vectors/bundle/vectors.json": lambda: cases("vectors/bundle/vectors.json"),
     "vectors/bundle/composed/": lambda: cases("vectors/bundle/composed/vectors.json"),
     "vectors/bundle/composed-controller-binding/": lambda: cases("vectors/bundle/composed-controller-binding/vectors.json"),
+    "vectors/bundle/composed-history/": lambda: cases("vectors/bundle/composed-history/vectors.json"),
+    "vectors/bundle/composed-key-source/": lambda: cases("vectors/bundle/composed-key-source/vectors.json"),
     "vectors/bundle/non-record-leaves/": lambda: cases("vectors/bundle/non-record-leaves/vectors.json"),
     "vectors/bundle/certificate-mode/": lambda: cases("vectors/bundle/certificate-mode/vectors.json"),
     "vectors/bundle/category-coverage/": lambda: cases("vectors/bundle/category-coverage/vectors.json"),
@@ -126,6 +128,7 @@ COUNTERS = {
     "vectors/personal-history-outcome-v0/": lambda: cases("vectors/personal-history-outcome-v0/vectors.json"),
     "vectors/coverage-declaration-v0/": lambda: cases("vectors/coverage-declaration-v0/vectors.json"),
     "vectors/controller-binding-v0/": lambda: cases("vectors/controller-binding-v0/vectors.json"),
+    "vectors/person-signature-v0/": lambda: cases("vectors/person-signature-v0/vectors.json"),
     "vectors/deal-reconcile-v0/": lambda: cases("vectors/deal-reconcile-v0/vectors.json"),
     "vectors/standard-history-v0/": lambda: (cases("vectors/standard-history-v0/vectors.json")
                                              + cases("vectors/standard-history-v0/vectors-2.json")

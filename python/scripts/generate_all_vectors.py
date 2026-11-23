@@ -75,6 +75,8 @@ GENERATORS = (
     "generate_bundle_composed_vectors.py",
     # Reuses the composed generator's records, keys and block helpers.
     "generate_bundle_composed_cb_vectors.py",
+    "generate_bundle_composed_history_vectors.py",
+    "generate_bundle_composed_key_source_vectors.py",
     "generate_bundle_strict_vectors.py",
     # Reuses the strict generator's records, keys and checkpoint signer.
     "generate_bundle_02_vectors.py",
@@ -90,6 +92,7 @@ GENERATORS = (
     "generate_personal_history_basic_v0_vectors.py",
     "generate_coverage_declaration_v0_vectors.py",
     "generate_controller_binding_v0_vectors.py",
+    "generate_person_signature_v0_vectors.py",
     "generate_deal_reconcile_v0_vectors.py",
     "generate_standard_history_v0_vectors.py",
     "generate_record_push_vectors.py",
