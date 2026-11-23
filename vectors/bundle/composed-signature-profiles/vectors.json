@@ -816,14 +816,14 @@
       "section": [
         "composed/v1: Carried Signature Profiles"
       ],
-      "description": "Signed in three-member-refusal/v1 by a key of small order (the identity point) with R the identity and S zero, which verifies any message. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
+      "description": "Signed in three-member-refusal/v1 by a key of small order (the identity point) with R = [r]B and S = r, which verifies any message and fails only the small-order key condition. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
       "kind": "refusal",
       "object": {
         "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
         "reason": "policy_declined",
         "issued_at": "2026-11-22T12:00:00Z",
         "key_id": "0100000000000000000000000000000000000000000000000000000000000000",
-        "sig": "01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "sig": "03e8ae5e37a9142dbd714bb1d4ad5fc550d0be132b7aab5b905202b9030eb123714c2f6e23fdb8b63927927bb679078f093ad4214286d066e4c7ffd2961b4f0b"
       },
       "expect": {
         "profile": "three-member-refusal/v1",
@@ -856,14 +856,14 @@
       "section": [
         "composed/v1: Carried Signature Profiles"
       ],
-      "description": "Signed in whole-refusal/v1 by a key of small order (the identity point) with R the identity and S zero, which verifies any message. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
+      "description": "Signed in whole-refusal/v1 by a key of small order (the identity point) with R = [r]B and S = r, which verifies any message and fails only the small-order key condition. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
       "kind": "refusal",
       "object": {
         "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
         "reason": "policy_declined",
         "issued_at": "2026-11-22T12:00:00Z",
         "key_id": "0100000000000000000000000000000000000000000000000000000000000000",
-        "signature": "01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "signature": "03e8ae5e37a9142dbd714bb1d4ad5fc550d0be132b7aab5b905202b9030eb123714c2f6e23fdb8b63927927bb679078f093ad4214286d066e4c7ffd2961b4f0b"
       },
       "expect": {
         "profile": "whole-refusal/v1",
@@ -896,7 +896,7 @@
       "section": [
         "composed/v1: Carried Signature Profiles"
       ],
-      "description": "Signed in digest-bound-artifact-response/v1 by a key of small order (the identity point) with R the identity and S zero, which verifies any message. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
+      "description": "Signed in digest-bound-artifact-response/v1 by a key of small order (the identity point) with R = [r]B and S = r, which verifies any message and fails only the small-order key condition. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
       "kind": "response",
       "object": {
         "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
@@ -905,7 +905,7 @@
         "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
         "issued_at": "2026-11-22T12:00:00Z",
         "key_id": "0100000000000000000000000000000000000000000000000000000000000000",
-        "sig": "01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        "sig": "03e8ae5e37a9142dbd714bb1d4ad5fc550d0be132b7aab5b905202b9030eb123714c2f6e23fdb8b63927927bb679078f093ad4214286d066e4c7ffd2961b4f0b"
       },
       "expect": {
         "profile": "digest-bound-artifact-response/v1",

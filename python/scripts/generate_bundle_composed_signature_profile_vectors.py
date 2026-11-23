@@ -22,6 +22,7 @@ included in ``SHA256SUMS`` but never rewritten. The run is deterministic.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -29,6 +30,8 @@ from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+from agent_action_capsule._ed25519_cofactored import BASE, encode, mul
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ed25519_forgeries as forgeries  # noqa: E402
@@ -46,10 +49,13 @@ ARTIFACT_RESPONSE_TYPE = "evidence-artifact-response/v1"
 
 RESPONDER = composed.RESPONDER_A
 OTHER = composed.RESPONDER_B
-#: The identity point as a key; with R the identity and S zero it verifies
-#: any message under a lenient verifier.
+#: The identity point as a key, with R = [r]B and S = r: [S]B = R + [k]A holds
+#: for any message, since [k]A is the identity. R and S are canonical and R is
+#: not of small order, so only the small-order key condition refuses it.
 SMALL_ORDER_KEY = forgeries.IDENTITY.hex()
-SMALL_ORDER_SIG = (forgeries.IDENTITY + bytes(32)).hex()
+_R_SCALAR = int.from_bytes(hashlib.sha256(b"composed/v1 carried signature profile vectors: r").digest(), "little") % (
+    (1 << 252) + 27742317777372353535851937790883648493)
+SMALL_ORDER_SIG = (encode(mul(_R_SCALAR, BASE)) + _R_SCALAR.to_bytes(32, "little")).hex()
 
 REQUEST_DIGEST = composed.sha256_hex(b"composed/v1 carried signature profile vectors: request")
 ANCHOR = composed.sha256_hex(b"composed/v1 carried signature profile vectors: anchor")
@@ -151,8 +157,8 @@ def forgery_cases() -> list[dict]:
     ):
         lenient = lenient_verifies(obj["key_id"], obj[sig_name], message)
         assert lenient, case_id
-        what = ("a key of small order (the identity point) with R the identity and S zero, which verifies any "
-                "message" if "small-order" in case_id else
+        what = ("a key of small order (the identity point) with R = [r]B and S = r, which verifies any message "
+                "and fails only the small-order key condition" if "small-order" in case_id else
                 "the responder's own key with R the identity point, a signature only that key holder can make")
         out.append(case(case_id, kind, obj, profile, INVALID,
                         f"Signed in {profile} by {what}. A lenient Ed25519 verifier accepts it; strict Ed25519 "
