@@ -54,8 +54,8 @@ func signatureProfileVectors(t *testing.T) (objects []signatureObjectCase, compo
 		Composed []signatureComposedCase `json:"composed_cases"`
 	}
 	readRepoJSON(t, &file, "vectors", "bundle", "composed-signature-profiles", "vectors.json")
-	require.Equal(t, json.Number("48"), file.Count)
-	require.Len(t, file.Cases, 43)
+	require.Equal(t, json.Number("50"), file.Count)
+	require.Len(t, file.Cases, 45)
 	require.Len(t, file.Composed, 5)
 	return file.Cases, file.Composed
 }

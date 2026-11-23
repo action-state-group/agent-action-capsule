@@ -13,20 +13,22 @@ that a `composed/v1` member carries:
 
 The members present decide which profile applies, and a member that is JSON
 `null` counts as present. A refusal that carries `sig` and no `signature` is in
-`three-member-refusal/v1`; any other refusal is in `whole-refusal/v1`. A
-response that carries `responder` is in none of these profiles and is
-`signature_unverified`.
+`three-member-refusal/v1`, unless it also carries `policy_digest` (an
+evidence-interop/2 refusal can sign it): such a refusal is in none of these
+profiles and is `signature_unverified`. Any other refusal is in
+`whole-refusal/v1`. A response that carries `responder` is in none of these
+profiles and is `signature_unverified`.
 
 The states are `verified`, `invalid` and `signature_unverified`. A signature is
-`signature_unverified` only when the object carries nothing to check. `key_id`
-is 64 and a signature 128 lowercase hexadecimal characters. Ed25519 is strict:
-a small-order key or R never verifies.
+`signature_unverified` only when the object carries nothing to check under these
+profiles. `key_id` is 64 and a signature 128 lowercase hexadecimal characters.
+Ed25519 is strict: a small-order key or R never verifies.
 
 ## Cases (`vectors.json`)
 
 - `cases`: object cases. Each one has `kind` (`refusal` or `response`), the
-  carried `object`, and `expect.profile` (`null` for a response that carries
-  `responder`) and `expect.state`. A verified case also records
+  carried `object`, and `expect.profile` (`null` for an object in none of the
+  profiles) and `expect.state`. A verified case also records
   `signing_input_hex`. The six forgery cases, a small-order key and an
   identity R in each profile, record `lenient_ed25519_verifies: true`: a
   lenient verifier accepts each of them, so they test strictness alone.

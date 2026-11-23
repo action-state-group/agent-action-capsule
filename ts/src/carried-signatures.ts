@@ -46,13 +46,15 @@ const bytes = (hex: string): Uint8Array =>
 
 /**
  * The profile a carried refusal is read in: one that carries `sig` and no
- * `signature` is in {@link THREE_MEMBER_REFUSAL}, every other in
+ * `signature` is in {@link THREE_MEMBER_REFUSAL}, unless it also carries
+ * `policy_digest` (an evidence-interop/2 refusal may sign it), in which case
+ * it is in none of these profiles (`undefined`); every other refusal is in
  * {@link WHOLE_REFUSAL}. Presence decides; a `null` member is present.
  */
-export function carriedRefusalProfile(refusal: Obj): string {
-  return has(refusal, "sig") && !has(refusal, "signature")
-    ? THREE_MEMBER_REFUSAL
-    : WHOLE_REFUSAL;
+export function carriedRefusalProfile(refusal: Obj): string | undefined {
+  if (has(refusal, "sig") && !has(refusal, "signature"))
+    return has(refusal, "policy_digest") ? undefined : THREE_MEMBER_REFUSAL;
+  return WHOLE_REFUSAL;
 }
 
 /**
@@ -152,7 +154,9 @@ export async function verifyWholeRefusal(
 export async function verifyCarriedRefusal(
   refusal: Obj,
 ): Promise<CarriedSignatureState> {
-  return carriedRefusalProfile(refusal) === THREE_MEMBER_REFUSAL
+  const profile = carriedRefusalProfile(refusal);
+  if (profile === undefined) return "signature_unverified";
+  return profile === THREE_MEMBER_REFUSAL
     ? verifyThreeMemberRefusal(refusal)
     : verifyWholeRefusal(refusal);
 }

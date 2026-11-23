@@ -1264,8 +1264,12 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    Presence decides, so a member whose value is JSON null is present:
 
    *  A refusal that carries sig and does not carry signature is in
-      three-member-refusal/v1.  Every other refusal is in whole-refusal/
-      v1.
+      three-member-refusal/v1, unless it also carries policy_digest.
+      Such a refusal can be an [EVIDENCE-INTEROP] evidence-interop/2
+      refusal, whose signing input includes policy_digest, so it is in
+      none of these profiles, and a verifier that implements only these
+      profiles reports it as signature-unverified.  Every other refusal
+      is in whole-refusal/v1.
 
    *  A response that does not carry responder is in digest-bound-
       artifact-response/v1.  A response that carries responder is in
@@ -1273,13 +1277,9 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       [EVIDENCE-INTEROP].  A verifier that implements only these
       profiles reports it as signature-unverified.
 
-   In each profile, key_id is a 32-byte Ed25519 [RFC8032] public key as
-   64 lowercase hexadecimal characters, and the signature is 64 bytes as
-   128 lowercase hexadecimal characters.  A signature verifies only when
-   the public key and the signature's R are each a canonical encoding
-   and not of small order, S is less than the group order, and the
-   cofactorless verification equation holds.  A small-order key
-   therefore never verifies, whatever trust a deployment places in it.
+
+
+
 
 
 
@@ -1289,6 +1289,14 @@ Mih & Zhang                Expires 6 May 2027                  [Page 23]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   In each profile, key_id is a 32-byte Ed25519 [RFC8032] public key as
+   64 lowercase hexadecimal characters, and the signature is 64 bytes as
+   128 lowercase hexadecimal characters.  A signature verifies only when
+   the public key and the signature's R are each a canonical encoding
+   and not of small order, S is less than the group order, and the
+   cofactorless verification equation holds.  A small-order key
+   therefore never verifies, whatever trust a deployment places in it.
 
    *three-member-refusal/v1.* The signature is sig, under key_id.  The
    signing input is that of an [EVIDENCE-INTEROP] signed refusal
@@ -1314,11 +1322,12 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    A verifier reports exactly one of three states for each signature:
 
    *  *Signature-unverified* (signature_unverified) when the object
-      carries no signature to check: a refusal in whole-refusal/v1 that
-      carries neither key_id nor signature, a response that carries
-      neither key_id nor sig, or a response that carries responder.  A
-      refusal in three-member-refusal/v1 carries sig, so it is never in
-      this state.
+      carries no signature to check under these profiles: a refusal in
+      whole-refusal/v1 that carries neither key_id nor signature, a
+      refusal that carries sig, no signature and policy_digest, a
+      response that carries neither key_id nor sig, or a response that
+      carries responder.  A refusal in three-member-refusal/v1 carries
+      sig, so it is never in this state.
 
    *  *Verified* (verified) when key_id and the signature are both
       present and well formed, the signing input can be formed, and the
@@ -1329,15 +1338,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       whatever members it has; a member other than key_id and signature
       may hold any JSON value.
 
-   *  *Invalid* (invalid) in every other case, for example a key carried
-      without a signature, a signature without a key, a key_id or
-      signature that is not a string of the stated form, a member of a
-      three-member or digest-bound signing input that is absent or not a
-      string, a signing input that has no JCS serialization (for
-      example, a number JCS cannot represent, as for
-      category_coverage_signature, or a string with an unpaired
-      surrogate), or a signature that does not verify.
-
 
 
 
@@ -1345,6 +1345,15 @@ Mih & Zhang                Expires 6 May 2027                  [Page 24]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   *  *Invalid* (invalid) in every other case, for example a key carried
+      without a signature, a signature without a key, a key_id or
+      signature that is not a string of the stated form, a member of a
+      three-member or digest-bound signing input that is absent or not a
+      string, a signing input that has no JCS serialization (for
+      example, a number JCS cannot represent, as for
+      category_coverage_signature in Section 7.3, or a string with an
+      unpaired surrogate), or a signature that does not verify.
 
    An empty string is a string.  The signature state covers the
    signature alone.  A verifier MUST NOT add checks of the signed
@@ -1385,15 +1394,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       [I-D.mih-scitt-checkpointed-local-log] in the one form whose
       SHA-256 is anchor.digest.
 
-   The member's digest is the digest of envelope (Section 8.2.2).  It
-   covers the signed responder, anchor and artifact_digest, so the
-   composed digest (Section 8.2.9) binds whose History it is and the
-   anchor it is as of.  The response member is not used for a History:
-   it is outside the composed digest, so a second envelope over the same
-   artifact octets could change a derived join without changing the
-   composed digest.  A History member therefore carries no response.
-
-
 
 
 
@@ -1401,6 +1401,14 @@ Mih & Zhang                Expires 6 May 2027                  [Page 25]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   The member's digest is the digest of envelope (Section 8.2.2).  It
+   covers the signed responder, anchor and artifact_digest, so the
+   composed digest (Section 8.2.9) binds whose History it is and the
+   anchor it is as of.  The response member is not used for a History:
+   it is outside the composed digest, so a second envelope over the same
+   artifact octets could change a derived join without changing the
+   composed digest.  A History member therefore carries no response.
 
    The history body is malformed, and the block with it, when envelope
    is not an object; when its subject is not {"full_history": null};
@@ -1440,6 +1448,16 @@ Internet-Draft             AAC Evidence Bundle             November 2026
        serialization of a JSON object whose anchor member equals
        anchor.digest.
 
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 26]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    5.  *Anchor checkpoint.* SHA-256 of the anchor_checkpoint octets
        equals anchor.digest, and those octets are a CLL COSE checkpoint
        in the one form [EVIDENCE-INTEROP] fixes for a checkpoint (a
@@ -1449,14 +1467,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
        verified.  The responder signed anchor.digest, so the
        checkpoint's timestamp is the responder's statement of when its
        History is as of.
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 26]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
    A failed check 1 to 5 is a failed check of the member.  It is not a
    fourth outcome, and a verifier MUST NOT present the History as
@@ -1496,16 +1506,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
       -  a listed member carries a body;
 
-      -  a carried body does not reproduce its digest;
-
-      -  missing names an undeclared member.
-
-   A verifier MUST report composition closure separately from the three
-   per-member claims and from the containing Bundle's claims.  It MUST
-   NOT report it as one of them.
-
-
-
 
 
 
@@ -1513,6 +1513,14 @@ Mih & Zhang                Expires 6 May 2027                  [Page 27]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+      -  a carried body does not reproduce its digest;
+
+      -  missing names an undeclared member.
+
+   A verifier MUST report composition closure separately from the three
+   per-member claims and from the containing Bundle's claims.  It MUST
+   NOT report it as one of them.
 
    Declaring a member missing withholds its body, not its existence.
    Its id, observer, request_digest, outcome and digest remain in the
@@ -1543,14 +1551,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    [RFC3339] date-time in UTC with a "Z" suffix and seconds precision.
    A root record's timestamp, against which a binding is checked, can
    also carry fractional seconds.  Times compare as instants.
-
-
-
-
-
-
-
-
 
 
 

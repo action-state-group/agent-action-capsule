@@ -1079,7 +1079,11 @@ applies is read from the members the object carries. Presence decides, so a
 member whose value is JSON `null` is present:
 
 - A refusal that carries `sig` and does not carry `signature` is in
-  `three-member-refusal/v1`. Every other refusal is in `whole-refusal/v1`.
+  `three-member-refusal/v1`, unless it also carries `policy_digest`. Such a
+  refusal can be an {{EVIDENCE-INTEROP}} `evidence-interop/2` refusal, whose
+  signing input includes `policy_digest`, so it is in none of these profiles,
+  and a verifier that implements only these profiles reports it as
+  signature-unverified. Every other refusal is in `whole-refusal/v1`.
 - A response that does not carry `responder` is in
   `digest-bound-artifact-response/v1`. A response that carries `responder` is
   in none of these profiles, for example an envelope of {{EVIDENCE-INTEROP}}.
@@ -1117,9 +1121,10 @@ reads it from the carried object. The artifact is named by
 A verifier reports exactly one of three states for each signature:
 
 - **Signature-unverified** (`signature_unverified`) when the object carries
-  no signature to check: a refusal in `whole-refusal/v1` that carries neither
-  `key_id` nor `signature`, a response that carries neither `key_id` nor
-  `sig`, or a response that carries `responder`. A refusal in
+  no signature to check under these profiles: a refusal in `whole-refusal/v1`
+  that carries neither `key_id` nor `signature`, a refusal that carries `sig`,
+  no `signature` and `policy_digest`, a response that carries neither `key_id`
+  nor `sig`, or a response that carries `responder`. A refusal in
   `three-member-refusal/v1` carries `sig`, so it is never in this state.
 - **Verified** (`verified`) when `key_id` and the signature are both present
   and well formed, the signing input can be formed, and the signature
@@ -1134,8 +1139,8 @@ A verifier reports exactly one of three states for each signature:
   that is not a string of the stated form, a member of a three-member or
   digest-bound signing input that is absent or not a string, a signing input
   that has no JCS serialization (for example, a number JCS cannot represent,
-  as for `category_coverage_signature`, or a string with an unpaired
-  surrogate), or a signature that does not verify.
+  as for `category_coverage_signature` in {{category-properties}}, or a
+  string with an unpaired surrogate), or a signature that does not verify.
 
 An empty string is a string. The signature state covers the signature
 alone. A verifier MUST NOT add checks of the signed values, such as a

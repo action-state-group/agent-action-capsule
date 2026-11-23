@@ -1011,7 +1011,11 @@ member whose value is JSON <tt>null</tt> is present:</t>
           <ul spacing="normal">
             <li>
               <t>A refusal that carries <tt>sig</tt> and does not carry <tt>signature</tt> is in
-<tt>three-member-refusal/v1</tt>. Every other refusal is in <tt>whole-refusal/v1</tt>.</t>
+<tt>three-member-refusal/v1</tt>, unless it also carries <tt>policy_digest</tt>. Such a
+refusal can be an <xref target="EVIDENCE-INTEROP"/> <tt>evidence-interop/2</tt> refusal, whose
+signing input includes <tt>policy_digest</tt>, so it is in none of these profiles,
+and a verifier that implements only these profiles reports it as
+signature-unverified. Every other refusal is in <tt>whole-refusal/v1</tt>.</t>
             </li>
             <li>
               <t>A response that does not carry <tt>responder</tt> is in
@@ -1049,9 +1053,10 @@ reads it from the carried object. The artifact is named by
           <ul spacing="normal">
             <li>
               <t><strong>Signature-unverified</strong> (<tt>signature_unverified</tt>) when the object carries
-no signature to check: a refusal in <tt>whole-refusal/v1</tt> that carries neither
-<tt>key_id</tt> nor <tt>signature</tt>, a response that carries neither <tt>key_id</tt> nor
-<tt>sig</tt>, or a response that carries <tt>responder</tt>. A refusal in
+no signature to check under these profiles: a refusal in <tt>whole-refusal/v1</tt>
+that carries neither <tt>key_id</tt> nor <tt>signature</tt>, a refusal that carries <tt>sig</tt>,
+no <tt>signature</tt> and <tt>policy_digest</tt>, a response that carries neither <tt>key_id</tt>
+nor <tt>sig</tt>, or a response that carries <tt>responder</tt>. A refusal in
 <tt>three-member-refusal/v1</tt> carries <tt>sig</tt>, so it is never in this state.</t>
             </li>
             <li>
@@ -1070,8 +1075,8 @@ without a signature, a signature without a key, a <tt>key_id</tt> or signature
 that is not a string of the stated form, a member of a three-member or
 digest-bound signing input that is absent or not a string, a signing input
 that has no JCS serialization (for example, a number JCS cannot represent,
-as for <tt>category_coverage_signature</tt>, or a string with an unpaired
-surrogate), or a signature that does not verify.</t>
+as for <tt>category_coverage_signature</tt> in <xref target="category-properties"/>, or a
+string with an unpaired surrogate), or a signature that does not verify.</t>
             </li>
           </ul>
           <t>An empty string is a string. The signature state covers the signature
@@ -2623,7 +2628,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 2140?>
+    <?line 2145?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>

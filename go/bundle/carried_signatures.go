@@ -46,12 +46,17 @@ var (
 )
 
 // CarriedRefusalProfile is the profile a carried refusal is read in: one
-// that carries sig and no signature is in ThreeMemberRefusalProfile, every
-// other in WholeRefusalProfile. Presence decides; a null member is present.
+// that carries sig and no signature is in ThreeMemberRefusalProfile, unless
+// it also carries policy_digest (an evidence-interop/2 refusal may sign it),
+// in which case it is in none of these profiles (""); every other refusal is
+// in WholeRefusalProfile. Presence decides; a null member is present.
 func CarriedRefusalProfile(refusal map[string]interface{}) string {
 	_, hasSig := refusal["sig"]
 	_, hasSignature := refusal["signature"]
 	if hasSig && !hasSignature {
+		if _, hasPolicy := refusal["policy_digest"]; hasPolicy {
+			return ""
+		}
 		return ThreeMemberRefusalProfile
 	}
 	return WholeRefusalProfile
@@ -70,10 +75,14 @@ func CarriedResponseProfile(response map[string]interface{}) string {
 // VerifyCarriedRefusal checks a carried refusal's signature in the profile
 // CarriedRefusalProfile reads it in. It is a RefusalSignatureVerifier.
 func VerifyCarriedRefusal(refusal map[string]interface{}) string {
-	if CarriedRefusalProfile(refusal) == ThreeMemberRefusalProfile {
+	switch CarriedRefusalProfile(refusal) {
+	case "":
+		return RefusalSignatureUnverified
+	case ThreeMemberRefusalProfile:
 		return VerifyThreeMemberRefusal(refusal)
+	default:
+		return VerifyWholeRefusal(refusal)
 	}
-	return VerifyWholeRefusal(refusal)
 }
 
 // VerifyCarriedResponse checks a carried response's signature. It is a

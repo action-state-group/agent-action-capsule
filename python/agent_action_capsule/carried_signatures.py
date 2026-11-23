@@ -46,12 +46,15 @@ _REFUSAL_SIGNED = ("issued_at", "reason", "request_digest")
 _RESPONSE_SIGNED = ("request_digest", "anchor", "artifact_kind", "artifact_digest", "issued_at")
 
 
-def refusal_profile(refusal: Mapping[str, Any]) -> str:
+def refusal_profile(refusal: Mapping[str, Any]) -> str | None:
     """The profile a carried refusal is read in: one that carries ``sig`` and
-    no ``signature`` is in :data:`THREE_MEMBER_REFUSAL`, every other in
-    :data:`WHOLE_REFUSAL`. Presence decides; a ``null`` member is present."""
+    no ``signature`` is in :data:`THREE_MEMBER_REFUSAL`, unless it also
+    carries ``policy_digest`` (an evidence-interop/2 refusal may sign it), in
+    which case it is in none of these profiles (``None``); every other refusal
+    is in :data:`WHOLE_REFUSAL`. Presence decides; a ``null`` member is
+    present."""
     if "sig" in refusal and "signature" not in refusal:
-        return THREE_MEMBER_REFUSAL
+        return None if "policy_digest" in refusal else THREE_MEMBER_REFUSAL
     return WHOLE_REFUSAL
 
 
@@ -112,7 +115,10 @@ def verify_whole_refusal(refusal: Mapping[str, Any]) -> str:
 def verify_carried_refusal(refusal: Mapping[str, Any]) -> str:
     """A carried refusal's signature in the profile :func:`refusal_profile`
     reads it in."""
-    if refusal_profile(refusal) == THREE_MEMBER_REFUSAL:
+    profile = refusal_profile(refusal)
+    if profile is None:
+        return _UNVERIFIED
+    if profile == THREE_MEMBER_REFUSAL:
         return verify_three_member_refusal(refusal)
     return verify_whole_refusal(refusal)
 

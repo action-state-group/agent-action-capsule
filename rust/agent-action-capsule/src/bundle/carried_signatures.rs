@@ -42,13 +42,15 @@ const RESPONSE_SIGNED: [&str; 5] = [
 ];
 
 /// The profile a carried refusal is read in: one that carries `sig` and no
-/// `signature` is in [`THREE_MEMBER_REFUSAL`], every other in
+/// `signature` is in [`THREE_MEMBER_REFUSAL`], unless it also carries
+/// `policy_digest` (an evidence-interop/2 refusal may sign it), in which
+/// case it is in none of these profiles (`None`); every other refusal is in
 /// [`WHOLE_REFUSAL`]. Presence decides; a `null` member is present.
-pub fn carried_refusal_profile(refusal: &Map<String, Value>) -> &'static str {
+pub fn carried_refusal_profile(refusal: &Map<String, Value>) -> Option<&'static str> {
     if refusal.contains_key("sig") && !refusal.contains_key("signature") {
-        THREE_MEMBER_REFUSAL
+        (!refusal.contains_key("policy_digest")).then_some(THREE_MEMBER_REFUSAL)
     } else {
-        WHOLE_REFUSAL
+        Some(WHOLE_REFUSAL)
     }
 }
 
@@ -61,10 +63,10 @@ pub fn carried_response_profile(response: &Map<String, Value>) -> Option<&'stati
 
 /// A carried refusal's signature in the profile it is read in.
 pub fn verify_carried_refusal(refusal: &Map<String, Value>) -> &'static str {
-    if carried_refusal_profile(refusal) == THREE_MEMBER_REFUSAL {
-        verify_three_member_refusal(refusal)
-    } else {
-        verify_whole_refusal(refusal)
+    match carried_refusal_profile(refusal) {
+        None => SIGNATURE_UNVERIFIED,
+        Some(THREE_MEMBER_REFUSAL) => verify_three_member_refusal(refusal),
+        Some(_) => verify_whole_refusal(refusal),
     }
 }
 

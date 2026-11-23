@@ -61,8 +61,8 @@ async function composed(c: ComposedCase, hooks: boolean) {
 
 describe("composed/v1 carried signature profiles", () => {
   it("reads every case", () => {
-    expect(FILE.count).toBe(48);
-    expect(FILE.cases).toHaveLength(43);
+    expect(FILE.count).toBe(50);
+    expect(FILE.cases).toHaveLength(45);
     expect(FILE.composed_cases).toHaveLength(5);
   });
 

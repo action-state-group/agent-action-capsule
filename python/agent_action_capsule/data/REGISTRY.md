@@ -509,8 +509,8 @@ to a signing input is a new identifier. Conformance vectors:
 
 | Identifier | Name | Signature and signing input (UTF-8 of RFC 8785 JCS) |
 |---|---|---|
-| `three-member-refusal/v1` | three-member refusal signature | A refusal that carries `sig` and no `signature`. `sig` under `key_id` over `{issued_at, reason, request_digest}`, the evidence-interop/0 and /1 refusal signing input (`spec/interop-profile-v2.md` §6.3). |
-| `whole-refusal/v1` | whole-refusal signature | Every other refusal. `signature` under `key_id` over the refusal without `signature`. |
+| `three-member-refusal/v1` | three-member refusal signature | A refusal that carries `sig`, no `signature` and no `policy_digest`. `sig` under `key_id` over `{issued_at, reason, request_digest}`, the evidence-interop/0 and /1 refusal signing input of the Minimum Evidence Interoperability Profile (`spec/interop-profile-v2.md`), Section 6.3, the document the draft cites as EVIDENCE-INTEROP. A refusal that carries `sig`, no `signature` and `policy_digest` (an evidence-interop/2 refusal can sign it) is in none of these profiles and is `signature_unverified`. |
+| `whole-refusal/v1` | whole-refusal signature | A refusal that carries `signature`, or does not carry `sig`. `signature` under `key_id` over the refusal without `signature`. |
 | `digest-bound-artifact-response/v1` | digest-bound artifact response signature | A response that carries no `responder`. `sig` under `key_id` over the five members `request_digest`, `anchor`, `artifact_kind`, `artifact_digest` and `issued_at`, plus `type` `evidence-artifact-response/v1`, which the verifier supplies. |
 
 ### Provisional: controller binding key types and signing event kind

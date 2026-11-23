@@ -21,7 +21,7 @@
       "public_key_hex": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
     }
   },
-  "count": 48,
+  "count": 50,
   "cases": [
     {
       "id": "three-member-verified",
@@ -48,7 +48,7 @@
       "section": [
         "composed/v1: Carried Signature Profiles"
       ],
-      "description": "As three-member-verified, also carrying detail and policy_digest. Neither is signed in this profile, so the signature still verifies.",
+      "description": "As three-member-verified, also carrying detail and another member. Neither is signed in this profile, so the signature still verifies.",
       "kind": "refusal",
       "object": {
         "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
@@ -57,13 +57,54 @@
         "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
         "sig": "bc10cd1b0846a44302125a1453d7bf5440cfdc4b334c40b2a04089eee1db77b6657d6a3190c1638eb37a421dd6c214b84da3c5f7f6d977e38266122a5a5d2a0f",
         "detail": "declined by policy",
-        "policy_digest": "823412d1eacb67956220e532959f0104603057c88704863ca38e7cd188fda812"
+        "note": "unsigned"
       },
       "expect": {
         "profile": "three-member-refusal/v1",
         "state": "verified"
       },
       "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "refusal-with-policy-digest",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "An evidence-interop/2 refusal: sig, no signature, and policy_digest, signed over the four members policy_digest included. A refusal carrying sig, no signature and policy_digest is in none of these profiles, so it is signature-unverified, never read as a three-member refusal and reported invalid.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "policy_digest": "823412d1eacb67956220e532959f0104603057c88704863ca38e7cd188fda812",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "f796db528b6a4dbc9b2bf85c9ef3618148f0e94cbf0a56dce26c162f19405144d9d1998f2e2b0d54093602176b3f57a79532057b6779484fe170038ffda0ad01"
+      },
+      "expect": {
+        "profile": null,
+        "state": "signature_unverified"
+      }
+    },
+    {
+      "id": "whole-refusal-with-policy-digest",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A refusal carrying signature and policy_digest is in whole-refusal/v1, which signs policy_digest like every other member.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "policy_digest": "823412d1eacb67956220e532959f0104603057c88704863ca38e7cd188fda812",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "85f7a4a90be7bd4174e52a588f25eeb3f3d40b56a5dc1a07bfeee8296a9bda814db56ebdb4d367995b089f2aeea8cd999ecb9f4c05609449894d676d0b8b9d0a"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22706f6c6963795f646967657374223a2238323334313264316561636236373935363232306535333239353966303130343630333035376338383730343836336361333865376364313838666461383132222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
     },
     {
       "id": "three-member-empty-reason",

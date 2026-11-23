@@ -20,8 +20,8 @@ fn read(path: &str) -> Value {
 
 fn vectors() -> Value {
     let file = read("vectors/bundle/composed-signature-profiles/vectors.json");
-    assert_eq!(file["count"], json!(48));
-    assert_eq!(file["cases"].as_array().unwrap().len(), 43);
+    assert_eq!(file["count"], json!(50));
+    assert_eq!(file["cases"].as_array().unwrap().len(), 45);
     assert_eq!(file["composed_cases"].as_array().unwrap().len(), 5);
     file
 }
@@ -33,7 +33,7 @@ fn object_cases() {
         let object = case["object"].as_object().unwrap();
         let (profile, state) = if case["kind"] == "refusal" {
             (
-                Some(carried_refusal_profile(object)),
+                carried_refusal_profile(object),
                 verify_carried_refusal(object),
             )
         } else {
@@ -137,7 +137,7 @@ fn interop_v1_forgeries() {
     ] {
         assert_eq!(
             carried_refusal_profile(&reply(id)),
-            THREE_MEMBER_REFUSAL,
+            Some(THREE_MEMBER_REFUSAL),
             "{id}"
         );
         assert_eq!(

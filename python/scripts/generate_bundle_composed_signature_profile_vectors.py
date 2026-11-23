@@ -165,7 +165,11 @@ def refusal_cases() -> list[dict]:
     tm = three_member()
     tampered = dict(tm, reason="not_authorized")
     other_key = dict(tm, key_id=OTHER.public_hex)
-    extra = three_member(detail="declined by policy", policy_digest=composed.sha256_hex(b"policy"))
+    extra = three_member(detail="declined by policy", note="unsigned")
+    v2 = dict(base_refusal(), policy_digest=composed.sha256_hex(b"policy"), key_id=RESPONDER.public_hex)
+    v2["sig"] = sign(RESPONDER, composed.jcs({k: v2[k] for k in ("issued_at", "reason", "request_digest",
+                                                                  "policy_digest")}))
+    wr_policy = whole(policy_digest=composed.sha256_hex(b"policy"))
     empty = dict(base_refusal(), reason="", key_id=RESPONDER.public_hex)
     empty["sig"] = sign(RESPONDER, three_member_input(empty))
     nonstring = dict(base_refusal(), reason=["policy_declined"], key_id=RESPONDER.public_hex)
@@ -206,8 +210,16 @@ def refusal_cases() -> list[dict]:
              "signature over the JCS of {issued_at, reason, request_digest}, the signing input of an "
              "evidence-interop/0 or /1 signed refusal.", signing_input=three_member_input(tm)),
         case("three-member-extra-members", "refusal", extra, TM, VERIFIED,
-             "As three-member-verified, also carrying detail and policy_digest. Neither is signed in this "
+             "As three-member-verified, also carrying detail and another member. Neither is signed in this "
              "profile, so the signature still verifies.", signing_input=three_member_input(extra)),
+        case("refusal-with-policy-digest", "refusal", v2, None, UNVERIFIED,
+             "An evidence-interop/2 refusal: sig, no signature, and policy_digest, signed over the four members "
+             "policy_digest included. A refusal carrying sig, no signature and policy_digest is in none of these "
+             "profiles, so it is signature-unverified, never read as a three-member refusal and reported "
+             "invalid."),
+        case("whole-refusal-with-policy-digest", "refusal", wr_policy, WR, VERIFIED,
+             "A refusal carrying signature and policy_digest is in whole-refusal/v1, which signs policy_digest "
+             "like every other member.", signing_input=whole_input(wr_policy)),
         case("three-member-empty-reason", "refusal", empty, TM, VERIFIED,
              "reason is the empty string, signed. An empty string is a string, and the signature state covers "
              "the signature alone, not whether reason is a registered token.",
