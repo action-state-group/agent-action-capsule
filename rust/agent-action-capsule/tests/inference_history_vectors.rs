@@ -1,9 +1,10 @@
-//! The Standard cases of `vectors/inference-service-history-v0` and
-//! `vectors/inference-service-history-v0-interop-v1` over
+//! The Standard cases of `vectors/inference-service-history-v0`,
+//! `vectors/inference-service-history-v0-interop-v1` and
+//! `vectors/inference-service-history-v1` over
 //! `agent_action_capsule::inference_history`.
 //!
 //! Each case's `period_policy` is taken from the definition the case hands
-//! over. 13 History cases and the 3 pairs run per set; the 7 Detailed-level
+//! over. 13 History cases (18 in the /1 set) and the 3 pairs run per set; the 7 Detailed-level
 //! History cases and the Detailed refusal are listed by id, not run, since
 //! this module is the Standard level. `period_fixed` over a pair is evaluated
 //! here from two checked [`Counts`], as the module leaves it to its caller.
@@ -12,9 +13,10 @@ use agent_action_capsule::inference_history::{Counts, Cut, Definition};
 use base64::Engine;
 use serde_json::{json, Map, Value};
 
-const SETS: [&str; 2] = [
+const SETS: [&str; 3] = [
     "inference-service-history-v0",
     "inference-service-history-v0-interop-v1",
+    "inference-service-history-v1",
 ];
 
 fn cases(set: &str) -> Vec<Value> {
@@ -118,7 +120,12 @@ fn the_standard_histories_check_as_the_vectors_expect() {
             }
             run += 1;
         }
-        assert_eq!(run, 13, "{set}");
+        let standard = if set == "inference-service-history-v1" {
+            18
+        } else {
+            13
+        };
+        assert_eq!(run, standard, "{set}");
     }
 }
 

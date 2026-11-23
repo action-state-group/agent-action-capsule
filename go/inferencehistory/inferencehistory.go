@@ -2,7 +2,8 @@
 
 // Package inferencehistory evaluates a History under the Inference-Service
 // History Profile v0 (spec/inference-service-history-profile-v0.md,
-// inference-service-history/0, cited as ISH), at its Standard and Detailed
+// inference-service-history/0, cited as ISH) or its revision /1
+// (spec/inference-service-history-profile-v1.md, ISH1), at its Standard and Detailed
 // levels: the acceptance of an answer under the Minimum Evidence
 // Interoperability Profile (ISH §8.1), the History properties (ISH §8.3),
 // the coverage report (ISH §4.2), what a verifier shows of witness
@@ -11,8 +12,9 @@
 //
 // Each request and reply is verified by evidencerequest.Verifier, under
 // whichever interop profile the verifier's contract and policy name. The
-// vectors of vectors/inference-service-history-v0 and
-// vectors/inference-service-history-v0-interop-v1 are the package's tests.
+// vectors of vectors/inference-service-history-v0,
+// vectors/inference-service-history-v0-interop-v1 and
+// vectors/inference-service-history-v1 are the package's tests.
 package inferencehistory
 
 import (
@@ -31,8 +33,13 @@ import (
 )
 
 // Profile is the History profile's identifier, the `profile` member of a
-// definition (ISH §4.1).
+// definition (ISH §4.1). It names the frozen /0.
 const Profile = "inference-service-history/0"
+
+// ProfileV1 is /1's identifier (ISH1). /1 is /0 with one rule added to
+// period_floor: a period_counts total that fixes two or more models
+// withheld under the floor is withheld with them (ISH1 §6.2 item 3.2, SH-8).
+const ProfileV1 = "inference-service-history/1"
 
 // The History levels (ISH §3).
 const (
@@ -338,7 +345,7 @@ func definitionForm(d any) bool {
 	default:
 		return false
 	}
-	if m["profile"] != Profile || m["kind"] != "projection" || !equal(m["embeds"], []any{"history_card/1"}) ||
+	if (m["profile"] != Profile && m["profile"] != ProfileV1) || m["kind"] != "projection" || !equal(m["embeds"], []any{"history_card/1"}) ||
 		!equal(m["subjects"], []any{"full_history"}) {
 		return false
 	}
@@ -890,9 +897,56 @@ func floorOK(d any, env map[string]any) bool {
 			if total != nil && total["value"] != nil && hidden == 1 {
 				return false
 			}
+			if str(get(d, "profile")) == ProfileV1 && total != nil && total["value"] != nil &&
+				totalFixesHidden(all, unit, total, floor) {
+				return false
+			}
 		}
 	}
 	return true
+}
+
+// totalFixesHidden is ISH1 §6.2 item 3.2: two or more of unit's cells are
+// withheld, every one below_floor, and the published total less the
+// published cells (the rest) is nothing, 1 each, or floor-1 each, so the
+// total fixes every withheld cell. A model is listed only when it has a
+// record counted, so a withheld cell holds 1 to floor-1.
+func totalFixesHidden(all []map[string]any, unit string, total map[string]any, floor uint64) bool {
+	sum, ok := evidencerequest.UintValue(total["value"])
+	if !ok {
+		return false
+	}
+	var hidden, published uint64
+	for _, c := range all {
+		if str(c["unit"]) != unit || c["dimension"] == nil {
+			continue
+		}
+		if c["value"] == nil {
+			if c["suppressed"] != "below_floor" {
+				return false
+			}
+			hidden++
+			continue
+		}
+		n, ok := evidencerequest.UintValue(c["value"])
+		if !ok || n > sum-published {
+			return false
+		}
+		published += n
+	}
+	rest := sum - published
+	most := uint64(0)
+	if floor > 0 {
+		most = floor - 1
+	}
+	if hidden < 2 {
+		return false
+	}
+	if rest == 0 || rest == hidden {
+		return true
+	}
+	// rest == hidden*most without overflow.
+	return most != 0 && rest%most == 0 && rest/most == hidden
 }
 
 // coverageReport is ISH §4.2: the coverage declaration's checks.

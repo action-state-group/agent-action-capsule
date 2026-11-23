@@ -14,8 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Every case of vectors/inference-service-history-v0 and of
-// vectors/inference-service-history-v0-interop-v1 runs from its inputs
+// Every case of vectors/inference-service-history-v0, of
+// vectors/inference-service-history-v0-interop-v1 and of
+// vectors/inference-service-history-v1 runs from its inputs
 // alone and is compared with the case's whole expected block, as
 // python/tests/test_inference_service_history_v0_vectors.py compares the
 // Python reference verifier and its evaluator.
@@ -69,6 +70,7 @@ var sets = []struct {
 }{
 	{"inference-service-history-v0", 27, 20, 3, 4},
 	{"inference-service-history-v0-interop-v1", 28, 20, 3, 5},
+	{"inference-service-history-v1", 33, 25, 3, 5},
 }
 
 func load(t *testing.T, dir string) corpus {

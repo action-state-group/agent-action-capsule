@@ -110,6 +110,10 @@ name = "inference_history_derive"
 required-features = ["inference-history"]
 
 [[test]]
+name = "inference_history_sh8"
+required-features = ["inference-history"]
+
+[[test]]
 name = "inference_history_verdicts"
 required-features = ["inference-history"]
 

@@ -29,8 +29,13 @@ The ``evidence-interop/0`` set is frozen; ``--profile 1`` writes the ``evidence-
 same cases with every request and envelope naming /1, plus the ``capacity_exceeded`` refusal.
 Definitions, Histories and their digests are the same in both.
 
-Output: ``vectors/inference-service-history-v0/``, or ``vectors/inference-service-history-v0-interop-v1/``
-under ``--profile 1`` (or ``--out DIR``). Deterministic: no clock, no
+``--history 1`` writes the ``inference-service-history/1`` set (``spec/inference-service-history-profile-v1.md``,
+cited as ISH1), over ``evidence-interop/1``: the same cases with every definition naming the History
+profile /1, plus the cases of ISH1 §9.4 for its one new rule, a ``period_counts`` total withheld where
+it fixes two or more models withheld under the floor (ISH1 §6.2 item 3.2). Both /0 sets are frozen.
+
+Output: ``vectors/inference-service-history-v0/``, ``vectors/inference-service-history-v0-interop-v1/``
+under ``--profile 1``, or ``vectors/inference-service-history-v1/`` under ``--history 1`` (or ``--out DIR``). Deterministic: no clock, no
 randomness. ``README.md`` is never rewritten; every file in the directory is listed in
 ``SHA256SUMS``. Dependencies: the standard library, ``cryptography`` (Ed25519 only) and the
 interop profile generator beside this script, for its encodings and statuses.
@@ -84,6 +89,27 @@ def use_profile(version: int) -> None:
               f"{PROFILE}. Every key is a test key derived from a public seed; never use one for "
               "anything else.")
 HISTORY_PROFILE = "inference-service-history/0"
+# The README a definition's ``spec`` member names; use_history(1) switches it.
+DEFINITION_SPEC = "vectors/inference-service-history-v0/README.md"
+
+
+def use_history(version: int) -> None:
+    """Write the set for ``inference-service-history/<version>``; 0 is the frozen set. /1 is served
+    over ``evidence-interop/1`` only."""
+    global HISTORY_PROFILE, DEFINITION_SPEC, DEFAULT_OUT, SET, SPEC, STATUS
+    if not version:
+        return
+    use_profile(1)
+    HISTORY_PROFILE = f"inference-service-history/{version}"
+    DEFINITION_SPEC = f"vectors/inference-service-history-v{version}/README.md"
+    DEFAULT_OUT = ROOT / "vectors" / f"inference-service-history-v{version}"
+    SET = f"aac-inference-service-history-v{version}"
+    SPEC = f"spec/inference-service-history-profile-v{version}.md"
+    STATUS = (f"Conformance vectors for the informational Inference-Service History Profile /{version}, over "
+              f"{PROFILE}. Every key is a test key derived from a public seed; never use one for "
+              "anything else.")
+
+
 STANDARD = "service_history_example/0"
 DETAILED = "service_history_detail_example/0"
 J = "application/json"
@@ -205,7 +231,7 @@ def standard_definition(units: list[str] | None = None) -> dict:
             "embeds": ["history_card/1"], "excludes": ["requester identity", "per-recipient release state"],
             "kind": "projection", "level": "standard", "members": members, "name": STANDARD,
             "period_policy": POLICY, "profile": HISTORY_PROFILE, "reads": reads,
-            "spec": "vectors/inference-service-history-v0/README.md", "subjects": ["full_history"]}
+            "spec": DEFINITION_SPEC, "subjects": ["full_history"]}
 
 
 def detailed_definition() -> dict:
@@ -221,7 +247,7 @@ def detailed_definition() -> dict:
     return {"coverage_declaration": {"kind": "holder_selected"}, "embeds": ["history_card/1"],
             "excludes": ["requesters other than the recipient"], "kind": "projection", "level": "detailed",
             "members": members, "name": DETAILED, "profile": HISTORY_PROFILE, "reads": reads,
-            "recipient": RECIPIENT, "spec": "vectors/inference-service-history-v0/README.md",
+            "recipient": RECIPIENT, "spec": DEFINITION_SPEC,
             "subjects": ["full_history"]}
 
 
@@ -248,9 +274,17 @@ def cell(value: int | None, dimension: dict | None, *, unit: str = "exchanges_se
     return c
 
 
+def total_fixes_hidden(hidden: int, rest: int, floor: int) -> bool:
+    """ISH1 §6.2 item 3.2: ``hidden`` cells withheld under ``floor``, each holding 1 to floor - 1 (a model
+    is listed only when it has a record counted), together ``rest``: the total fixes every one when
+    the rest is nothing, 1 each, or floor - 1 each."""
+    return hidden >= 2 and rest in (0, hidden, hidden * (floor - 1))
+
+
 def period_cells(counts: dict) -> list[dict]:
     """§6.2: the floor per cell, then the complementary rule: a published total and one suppressed
-    cell would give it away, so the next smallest cell is suppressed with it."""
+    cell would give it away, so the next smallest cell is suppressed with it. Under /1 (ISH1 §6.2
+    item 3.2) a total that fixes two or more cells withheld under the floor is withheld too."""
     floor = POLICY["floor"]
     out = []
     below = {m for m, v in counts.items() if v < floor}
@@ -264,7 +298,13 @@ def period_cells(counts: dict) -> list[dict]:
             out.append(cell(None, {"model": m}, suppressed="complementary"))
         else:
             out.append(cell(counts[m], {"model": m}))
-    out.append(cell(sum(counts.values()), None))
+    total = sum(counts.values())
+    rest = sum(counts[m] for m in below)
+    if (HISTORY_PROFILE != "inference-service-history/0" and total >= floor and not complementary
+            and total_fixes_hidden(len(below), rest, floor)):
+        out.append(cell(None, None, suppressed="complementary"))
+    else:
+        out.append(cell(total, None))
     return out
 
 
@@ -540,6 +580,38 @@ def cases() -> list[dict]:
         "beside its total", standard(counts=complement), props(STANDARD_PROPS, period_floor="FAIL"),
         standard_coverage(), ["period_floor"]))
 
+    if HISTORY_PROFILE != "inference-service-history/0":
+        # ISH1 §6.2 item 3.2 (SH-8): a total that fixes two or more models withheld under the floor.
+        two = {"model-a": 4, "model-b": 4}
+        ones = {f"model-{x}": 1 for x in "abcde"}
+        not_pinned = {"model-a": 4, "model-b": 3}
+        for cid, title, counts, source in (
+            ("standard-total-withheld-two-pinned", "Two models of 4 under a floor of 5: the total 8 fixes both, "
+             "so it is withheld", two, "2 October's models served 4 and 4"),
+            ("standard-total-withheld-ones-pinned", "Five models of 1: the total 5 fixes all five, so it is withheld",
+             ones, "2 October's five models served 1 each"),
+            ("standard-total-published-not-pinned", "Two models of 4 and 3: the total 7 fixes neither, so it stays "
+             "published", not_pinned, "2 October's models served 4 and 3"),
+        ):
+            served = copy.deepcopy(SERVED)
+            served[1] = counts
+            out.append(history_case(
+                cid, title, ["ISH1 §6.2", "ISH1 §6.3", "ISH1 §9.4"], f"constructed: the served-only History with {source}",
+                standard(counts=period_counts(served)), props(STANDARD_PROPS), standard_coverage(), []))
+        for cid, title, counts, source in (
+            ("mutant-total-two-pinned-published", "Two models of 4 withheld and their total 8 published",
+             two, "2 October's models of 4 and 4 withheld and the total 8 published"),
+            ("mutant-total-ones-pinned-published", "Five models of 1 withheld and their total 5 published",
+             ones, "2 October's five models of 1 withheld and the total 5 published"),
+        ):
+            pinned = period_counts()
+            pinned["periods"][1]["cells"] = [*(cell(None, {"model": m}, suppressed="below_floor") for m in sorted(counts)),
+                                             cell(sum(counts.values()), None)]
+            out.append(history_case(
+                cid, title, ["ISH1 §6.2", "ISH1 §6.3", "ISH1 §9.4"], f"constructed: the served-only History with {source}",
+                standard(counts=pinned), props(STANDARD_PROPS, period_floor="FAIL"), standard_coverage(),
+                ["period_floor"]))
+
     # --- Two anchors: each closed period's bytes are fixed once produced (§6.1) -------------------
     first = standard()
     later = standard(counts=period_counts([*SERVED, SERVED_4]), last=5, anchor=ANCHOR_N1,
@@ -811,9 +883,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--profile", type=int, choices=(0, 1), default=0,
                         help="the interop profile identifier: 0 (the frozen set) or 1")
+    parser.add_argument("--history", type=int, choices=(0, 1), default=0,
+                        help="the History profile: 0 (the frozen sets) or 1, served over evidence-interop/1 only")
     parser.add_argument("--out", type=Path)
     args = parser.parse_args()
+    if args.history and args.profile != 1:
+        parser.error("--history 1 is served over evidence-interop/1: pass --profile 1")
     use_profile(args.profile)
+    use_history(args.history)
     write(args.out or DEFAULT_OUT)
 
 

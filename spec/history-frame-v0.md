@@ -3,13 +3,13 @@
 **Status.** Informational, pre-Internet-Draft, kept in this repository. It changes no
 Internet-Draft, no part of the Minimum Evidence Interoperability Profile
 (`spec/interop-profile-v0.md` and `spec/interop-profile-v1.md`, cited as IP), and no member, value,
-identifier or digest of the four documents it frames. Its own rules are §3 to §6. The questions
+identifier or digest of the five documents it frames. Its own rules are §3 to §6. The questions
 it leaves open are listed under [Open points](#9-open-points) (HF-1, HF-2, …).
 
 This document defines one **History frame**: the rules every History shares, a closed set of
 **frame parameters**, and two documents each instance supplies, a **counting table** and a
 **wording pack**. A History is an instance of the frame: it sets its values of the parameters and
-pins one table and one pack. Seven instances exist, defined by four documents:
+pins one table and one pack. Eight instances exist, defined by five documents:
 
 | Tag | Document | Instance identifier |
 |---|---|---|
@@ -17,9 +17,10 @@ pins one table and one pack. Seven instances exist, defined by four documents:
 | PH | `spec/personal-agent-history-profile-v0.md`, Basic level | `personal_history_basic/1` |
 | PO | `spec/personal-agent-history-outcome-v0.md`, Outcome level | `personal_history_outcome/1` |
 | ISH | `spec/inference-service-history-profile-v0.md`, Standard and Detailed levels | `inference-service-history/0` |
+| ISH1 | `spec/inference-service-history-profile-v1.md`, Standard and Detailed levels | `inference-service-history/1` |
 
 Restating them as instances moves no wire byte. Every request, envelope, card, artifact,
-definition and refusal of the four is what its own document already says, and so is every
+definition and refusal of the five is what its own document already says, and so is every
 vector of theirs.
 
 **The premise, narrowed.** A unified History was first described as one shared period policy, one
@@ -43,7 +44,7 @@ lists in `spec/history-frame/` (§6.1), the document properties (§6.2) and the 
 |---|---|---|
 | IP | `spec/interop-profile-v0.md` (`evidence-interop/0`) and `spec/interop-profile-v1.md` (`evidence-interop/1`) | the envelope (§6.2), signed refusals (§6.3), recipient-specific disclosures (§6.5), the coverage declaration and issuer independence (§6.7), the per-property vocabulary (§7.1), the result mapping (§8.1), discovery (§11.4.3) |
 | ER | `draft-mih-agent-evidence-request` | the `full_history` and `correlation` subject forms [ER §3.1], derivation by registered token or by definition digest [ER "Derivation"; ER §3.3], caller invariance [ER §5] |
-| SH, PH, PO, ISH | the four instance documents above | each instance's members, values, identifiers, properties and vectors, unchanged |
+| SH, PH, PO, ISH, ISH1 | the five instance documents above | each instance's members, values, identifiers, properties and vectors, unchanged |
 
 **Interop profile revision.** The frame is pin-neutral. Each instance keeps the IP revision it
 pins (§3 `interop_pin`): SH, PH and PO stay on `evidence-interop/0`, and ISH is written against
@@ -330,7 +331,9 @@ already signs (the token, the definition's `name`, or the definition's `profile`
 | `policy_digest` | `policy_octets` | `none` | `none` | `period_policy_jcs` | `none` |
 | `container` | `none` | `one_file` | `one_file` | `none` | `none` |
 
-ISH's two levels share one identifier, one counting table and one wording pack. SH's four tokens
+ISH's two levels share one identifier, one counting table and one wording pack, and so do ISH1's;
+ISH1 takes the ISH columns, with its own documents (ISH1 changes one `period_floor` rule, not a
+parameter value). SH's four tokens
 share the SH column, and each pins its own counting table and wording pack. Each instance's
 documents and digests:
 
@@ -343,6 +346,7 @@ documents and digests:
 | `personal_history_basic/1` | `spec/history-frame/personal-history-basic-1-table.json`: `d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1` | `spec/history-frame/personal-history-basic-1-pack.json`: `b3e4868affdaeede5eeadb0d909d4e4f665260d6a68a3c10896ab9a0abf6be60` |
 | `personal_history_outcome/1` | `spec/history-frame/personal-history-outcome-1-table.json`: `a332d408c5ea2566b8f650769f92044c1b075c028cfcd64b112b626fc7b7e97c` | `spec/history-frame/personal-history-outcome-1-pack.json`: `00dce14b0bfdda0187b274727dd34d7b6a8bd5d5bf3884b934f6840604fc6d47` |
 | `inference-service-history/0` | `spec/history-frame/inference-service-history-0-table.json`: `3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057` | `spec/history-frame/inference-service-history-0-pack.json`: `693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82` |
+| `inference-service-history/1` | `spec/history-frame/inference-service-history-1-table.json`: `591090aab054e05bec51d823c2d36645c637cd09baf81366af9bdb02ea9f5e7f` | `spec/history-frame/inference-service-history-1-pack.json`: `d5f5c2f807335fdc8d003ae04fecc87bcdcbaad1ed54cb30f1c496901826718b` |
 
 This table names this repository's identifiers only. A host's own definition under an instance
 (for example an ISH definition a host publishes, which conforms by its digest, ISH §4.1) is not an
@@ -384,9 +388,10 @@ property-checked string (`pack_binding`, `pack_form`); and a pack naming another
 and `python/tests/test_history_frame_v0_vectors.py` checks them.
 
 The generators of `vectors/standard-history-v0/`, `vectors/personal-history-basic-v0/`,
-`vectors/personal-history-outcome-v0/`, `vectors/inference-service-history-v0/` and
-`vectors/inference-service-history-v0-interop-v1/` load the same documents through
-`python/scripts/history_frame.py` (§6.3). Those sets are unchanged by this revision.
+`vectors/personal-history-outcome-v0/`, `vectors/inference-service-history-v0/`,
+`vectors/inference-service-history-v0-interop-v1/` and `vectors/inference-service-history-v1/` load
+the same documents through `python/scripts/history_frame.py` (§6.3). Adding ISH1 changes none of
+the other sets.
 
 ## 8. Security and privacy considerations
 

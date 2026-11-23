@@ -209,6 +209,12 @@ same-commit files in CI.
 - `inference-service-history-v0-interop-v1/`: the same cases under `evidence-interop/1`, plus
   `refused-capacity-exceeded` (a History the node declines for its own load, `UNKNOWN`);
   `python/scripts/generate_inference_service_history_v0_vectors.py --profile 1` regenerates them.
+- `inference-service-history-v1/`: `inference-service-history/1`
+  (`spec/inference-service-history-profile-v1.md`): the same cases with every definition naming
+  `/1`, plus a total withheld where it fixes two or more models withheld under the floor, a total
+  that fixes neither left published, and two negatives that publish a total that fixes them (SH-8);
+  `python/scripts/generate_inference_service_history_v0_vectors.py --profile 1 --history 1`
+  regenerates them.
 - `history-frame-v0/`: the History frame `spec/history-frame-v0.md`: each instance's counting
   table and wording pack with the digests the frame lists, and negatives for a mismatched pack
   digest, a translated pack, a changed table, a pack carrying a checked string and a pack naming

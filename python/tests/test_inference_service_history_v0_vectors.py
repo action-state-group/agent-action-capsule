@@ -4,6 +4,10 @@
 ``test_inference_service_history_v0_interop_v1_vectors.py`` runs this module again with
 ``_PROFILE_VERSION`` 1, against ``vectors/inference-service-history-v0-interop-v1/``, the same
 cases under ``evidence-interop/1`` plus a ``capacity_exceeded`` refusal.
+``test_inference_service_history_v1_vectors.py`` runs it with ``_PROFILE_VERSION`` 1 and
+``_HISTORY_VERSION`` 1, against ``vectors/inference-service-history-v1/``: those cases under the
+History profile ``inference-service-history/1`` (ISH1) plus five for its one new rule (ISH1 §6.2
+item 3.2).
 
 Every case is run from its inputs alone:
 
@@ -52,7 +56,14 @@ from agent_action_capsule.interop_profile import (  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = globals().get("_PROFILE_VERSION", 0)
-SET_NAME = "inference-service-history-v0" + (f"-interop-v{VERSION}" if VERSION else "")
+HISTORY_VERSION = globals().get("_HISTORY_VERSION", 0)
+assert not HISTORY_VERSION or VERSION == 1, "inference-service-history/1 is served over evidence-interop/1 only"
+SET_NAME = ("inference-service-history-v1" if HISTORY_VERSION
+            else "inference-service-history-v0" + (f"-interop-v{VERSION}" if VERSION else ""))
+# ISH1 §9.4: the cases of /1's one new rule; the rest are the /0 cases under /1.
+V1_ONLY = {"standard-total-withheld-two-pinned", "standard-total-withheld-ones-pinned",
+           "standard-total-published-not-pinned", "mutant-total-two-pinned-published",
+           "mutant-total-ones-pinned-published"} if HISTORY_VERSION else set()
 VECTORS = ROOT / "vectors" / SET_NAME
 GENERATOR = ROOT / "python" / "scripts" / "generate_inference_service_history_v0_vectors.py"
 HAND_WRITTEN = ("README.md",)
@@ -147,8 +158,8 @@ def run_reply(case: dict, h: dict) -> tuple[dict, Any]:
 def definition_form(d: Any) -> bool:
     if not isinstance(d, dict) or d.get("level") not in LEVEL_MEMBERS or set(d) != LEVEL_MEMBERS[d["level"]]:
         return False
-    if (d["profile"], d["kind"], d["embeds"], d["subjects"]) != ("inference-service-history/0", "projection",
-                                                                  ["history_card/1"], ["full_history"]):
+    if d["profile"] not in ("inference-service-history/0", "inference-service-history/1") or (
+            d["kind"], d["embeds"], d["subjects"]) != ("projection", ["history_card/1"], ["full_history"]):
         return False
     if not re.fullmatch(r"[a-z0-9_]+/[0-9]+", d["name"]) or d["coverage_declaration"] != LEVEL_KIND[d["level"]]:
         return False
@@ -324,9 +335,19 @@ def anchor_ok(d: dict, env: dict) -> bool:
     return not (anchor_time - when(p["epoch"])) % timedelta(seconds=p["length_s"])
 
 
+def total_fixes_hidden(hidden: list[dict], parts: list[dict], total: int, floor: int) -> bool:
+    """ISH1 §6.2 item 3.2: two or more cells withheld, every one below_floor, whose rest (the total less
+    the published cells) is nothing, 1 each or floor - 1 each, so the total fixes every one."""
+    if len(hidden) < 2 or any(c.get("suppressed") != "below_floor" for c in hidden):
+        return False
+    rest = total - sum(c["value"] for c in parts if c["value"] is not None)
+    return rest in (0, len(hidden), len(hidden) * (floor - 1))
+
+
 def floor_ok(d: dict, env: dict) -> bool:
     """§6.2: a published cell is at least the floor; a suppressed cell has no value; a unit's total and
-    all but one of its cells never stand published beside one suppressed cell."""
+    all but one of its cells never stand published beside one suppressed cell. Under /1 (ISH1 §6.2
+    item 3.2) a published total never fixes two or more cells withheld under the floor."""
     floor = d["period_policy"]["floor"]
     for period in env["artifact"]["period_counts"]["periods"]:
         for c in period["cells"]:
@@ -340,6 +361,9 @@ def floor_ok(d: dict, env: dict) -> bool:
             totals = [c for c in period["cells"] if c["unit"] == unit and c["dimension"] is None]
             hidden = [c for c in parts if c["value"] is None]
             if totals and totals[0]["value"] is not None and len(hidden) == 1:
+                return False
+            if (d["profile"] == "inference-service-history/1" and totals and totals[0]["value"] is not None
+                    and total_fixes_hidden(hidden, parts, totals[0]["value"], floor)):
                 return False
     return True
 
@@ -450,9 +474,11 @@ def failing(result: dict) -> set:
 
 def test_corpus_shape_and_pins():
     # The /1 set adds one refusal, capacity_exceeded (unregistered under /0).
-    assert DATA["count"] == len(CASES) == 27 + VERSION
-    assert (len(HISTORY_CASES), len(PAIR_CASES), len(REFUSAL_CASES)) == (20, 3, 4 + VERSION)
+    assert DATA["count"] == len(CASES) == 27 + VERSION + len(V1_ONLY)
+    assert (len(HISTORY_CASES), len(PAIR_CASES), len(REFUSAL_CASES)) == (20 + len(V1_ONLY), 3, 4 + VERSION)
     assert DATA["profile"] == f"evidence-interop/{VERSION}"
+    assert DATA["history_profile"] == f"inference-service-history/{HISTORY_VERSION}"
+    assert V1_ONLY <= {c["id"] for c in CASES}
     assert sha(DATA["contract"]["document_jcs"].encode()) == DATA["contract"]["contract_digest"]
     assert digest(DATA["period_policy"]["document"]) == DATA["period_policy"]["digest"]
     assert set(DATA["units"]) == UNITS and DATA["labels"] == list(RANK)
@@ -541,10 +567,20 @@ def test_served_only_counts_no_requested_exchange():
     assert {c["unit"] for c in cells(env)} == {"exchanges_served"}
 
 
+def _listed(text: str) -> set:
+    section = text.split("### 9.4", 1)[1].split("\n## ", 1)[0]
+    return set(re.findall(r"^\| `([a-z0-9-]+)` \|", section, re.M))
+
+
 def test_spec_lists_every_case():
-    section = SPEC_TEXT.split("### 9.4", 1)[1].split("\n## ", 1)[0]
-    listed = set(re.findall(r"^\| `([a-z0-9-]+)` \|", section, re.M))
     v1_only = {"refused-capacity-exceeded"}  # §9.4 marks it evidence-interop/1 only
+    if HISTORY_VERSION:
+        # ISH1 §9.4 lists its own cases and takes the rest from ISH §9.4.
+        v0_text = (ROOT / "spec" / "inference-service-history-profile-v0.md").read_text(encoding="utf-8")
+        assert _listed(SPEC_TEXT) == V1_ONLY
+        assert _listed(v0_text) | V1_ONLY == {c["id"] for c in CASES}
+        return
+    listed = _listed(SPEC_TEXT)
     assert (listed if VERSION else listed - v1_only) == {c["id"] for c in CASES}
 
 
@@ -568,6 +604,14 @@ def _no_complement(case: dict, d: dict, env: dict) -> dict:
     if "period_floor" in props:
         floor = d["period_policy"]["floor"]
         props["period_floor"] = "PASS" if all(c["value"] is None or c["value"] >= floor for c in cells(env)) else "FAIL"
+    return props
+
+
+def _v0_floor_under_v1(case: dict, d: dict, env: dict) -> dict:
+    """Checks a /1 History's floor as /0 does, never ISH1 §6.2 item 3.2."""
+    props = history_properties(case, d, env)
+    if "period_floor" in props:
+        props["period_floor"] = "PASS" if floor_ok({**d, "profile": "inference-service-history/0"}, env) else "FAIL"
     return props
 
 
@@ -608,6 +652,7 @@ DEFECTIVE: dict[str, Evaluator] = {
     "floor without complementary suppression": _no_complement,
     "periods checked alone": _overlap_allowed,
     "gaps allowed": _gaps_allowed,
+    **({"a /1 total checked as /0": _v0_floor_under_v1} if HISTORY_VERSION else {}),
 }
 
 
@@ -703,7 +748,8 @@ def test_period_fixed_at_one_anchor():
 def _generate(out: Path) -> None:
     for name in HAND_WRITTEN:
         shutil.copyfile(VECTORS / name, out / name)
-    subprocess.run([sys.executable, str(GENERATOR), "--profile", str(VERSION), "--out", str(out)], check=True)
+    subprocess.run([sys.executable, str(GENERATOR), "--profile", str(VERSION), "--history", str(HISTORY_VERSION),
+                    "--out", str(out)], check=True)
 
 
 def _files(d: Path) -> list[str]:

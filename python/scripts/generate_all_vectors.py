@@ -99,6 +99,7 @@ GENERATORS = (
     "generate_card_registration_v0_vectors.py",
     "generate_inference_service_history_v0_vectors.py",
     ("generate_inference_service_history_v0_vectors.py", "--profile", "1"),
+    ("generate_inference_service_history_v0_vectors.py", "--profile", "1", "--history", "1"),
     # Built on the base inference-service history generator's stream and definitions.
     "generate_inference_service_history_verdicts_v0_vectors.py",
     "generate_history_frame_v0_vectors.py",

@@ -32,6 +32,14 @@
 //! a total. The member names its kind of check (`referee_verdict`) and that the
 //! checker signs it. Which verdicts qualify is the caller's, from its own log.
 //!
+//! **Profile version.** A definition names `inference-service-history/0`
+//! (frozen) or `/1` ([`PROFILE_V0`], [`PROFILE_V1`]). They differ in one
+//! rule: under `/1`, `period_counts` withholds its total as `complementary`
+//! where two or more models are withheld under the floor and the total fixes
+//! each of them (ISH1 §6.2 item 3.2, SH-8), the rule the verdict tables already
+//! follow; deriving applies it and `period_floor` rejects a total published
+//! there. Under `/0` both stay as they were.
+//!
 //! **Which period a record is in.** The one the first checkpoint covering it
 //! commits into (ISH §6.1). A checkpoint commits into the period holding its
 //! time, except the first checkpoint at a boundary, which commits into the
@@ -43,6 +51,13 @@ use sha2::{Digest, Sha256};
 
 /// The token of the embedded card's derivation.
 const DERIVATION_HISTORY_CARD: &str = "history_card/1";
+
+/// The profile a definition names: `/0`, frozen, or `/1`, which also
+/// withholds a `period_counts` total that gives two or more withheld models
+/// away (ISH1 §6.2 item 3.2, SH-8).
+pub const PROFILE_V0: &str = "inference-service-history/0";
+/// See [`PROFILE_V0`].
+pub const PROFILE_V1: &str = "inference-service-history/1";
 
 /// Why a History cannot be derived at this anchor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -204,6 +219,7 @@ const MAX_PERIODS: i64 = 10_000;
 #[derive(Debug)]
 pub struct Definition {
     verdicts: bool,
+    strict_counts: bool,
     policy: Policy,
     digest: String,
     policy_digest: String,
@@ -237,7 +253,8 @@ impl Definition {
         {
             return Err(bad("not exactly the members of a Standard definition"));
         }
-        if d["profile"] != json!("inference-service-history/0")
+        let strict_counts = d["profile"] == json!(PROFILE_V1);
+        if !(strict_counts || d["profile"] == json!(PROFILE_V0))
             || d["kind"] != json!("projection")
             || d["level"] != json!("standard")
             || d["embeds"] != json!(["history_card/1"])
@@ -323,6 +340,7 @@ impl Definition {
         };
         Ok(Definition {
             verdicts,
+            strict_counts,
             policy,
             digest: digest_of(document)?,
             policy_digest: digest_of(&document["period_policy"])?,
@@ -344,6 +362,14 @@ impl Definition {
     /// Whether the definition carries the `verdict_counts` member (ISH §4.3).
     pub fn has_verdict_counts(&self) -> bool {
         self.verdicts
+    }
+
+    /// Whether `period_counts` withholds a total that gives two or more
+    /// withheld models away, as the verdict tables always do: true under
+    /// `inference-service-history/1` (ISH1 §6.2 item 3.2), false under the
+    /// frozen `/0`.
+    pub fn strict_counts(&self) -> bool {
+        self.strict_counts
     }
 
     /// The digest of the definition's `period_policy`, which the counts name.
@@ -432,7 +458,7 @@ pub fn period_counts(
     let (first_period, counted) = count_periods(def, chain, model)?;
     let rows = counted
         .iter()
-        .map(|by_model| cells(by_model, def.policy.floor))
+        .map(|by_model| cells(by_model, def.policy.floor, def.strict_counts))
         .collect();
     period_list(def, first_period, rows)
 }
@@ -596,10 +622,10 @@ fn suppress(
             smallest.2 = Some("complementary");
         }
     }
-    // Strict (the verdict tables): two or more models withheld under the
-    // floor beside a published total, whose rest is nothing or every one at
-    // the largest count a withheld cell can hold, are each given away by the
-    // total, so the total goes too.
+    // Strict (the verdict tables, and `period_counts` under `/1`): two or
+    // more models withheld under the floor beside a published total, whose
+    // rest is nothing, 1 each or every one at the largest count a withheld
+    // cell can hold, are each given away by the total, so the total goes too.
     if strict && values[models].2.is_none() {
         let hidden: Vec<u64> = values[..models]
             .iter()
@@ -624,7 +650,7 @@ fn suppress(
 
 /// Whether `n` models withheld under `floor`, together holding `rest`, are
 /// each given away by it: every one holds at least 1 (a model is listed only
-/// when it has a verdict) and under `floor`, so `rest` of nothing, of 1 each
+/// when it has a record counted) and under `floor`, so `rest` of nothing, of 1 each
 /// or of the most each can hold fixes them all.
 fn derivable(n: usize, rest: u64, floor: u64) -> bool {
     let (n, rest, most) = (
@@ -649,9 +675,13 @@ fn cell_json(dimension: Value, unit: &str, n: u64, why: Option<&str>) -> Value {
 }
 
 /// One period's cells: one per model, by name, then the total, each
-/// suppressed under ISH §6.2.
-fn cells(by_model: &std::collections::BTreeMap<String, u64>, floor: u64) -> Vec<Value> {
-    suppress(by_model, floor, false)
+/// suppressed under ISH §6.2; `strict` under `/1` (ISH1 §6.2 item 3.2).
+fn cells(
+    by_model: &std::collections::BTreeMap<String, u64>,
+    floor: u64,
+    strict: bool,
+) -> Vec<Value> {
+    suppress(by_model, floor, strict)
         .into_iter()
         .map(|(model, n, why)| {
             cell_json(
@@ -955,7 +985,7 @@ fn check_counts(def: &Definition, counts: &Value, chain: &[Cut<'_>]) -> Result<C
         out.push(Period {
             from,
             to,
-            cells: check_cells(cells, def.policy.floor, UNIT, false)?,
+            cells: check_cells(cells, def.policy.floor, UNIT, def.strict_counts)?,
         });
     }
     Ok(Counts {
