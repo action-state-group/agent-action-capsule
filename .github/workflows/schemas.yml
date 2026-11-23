@@ -19,6 +19,8 @@ on:
       - "vectors/judgment/**"
       - "vectors/*/vectors.json"
       - "python/agent_action_capsule/canonical.py"
+      - "python/agent_action_capsule/bundle.py"
+      - "vectors/bundle/report-single-record.json"
       - ".github/workflows/schemas.yml"
   pull_request:
     paths:
@@ -29,6 +31,8 @@ on:
       - "vectors/judgment/**"
       - "vectors/*/vectors.json"
       - "python/agent_action_capsule/canonical.py"
+      - "python/agent_action_capsule/bundle.py"
+      - "vectors/bundle/report-single-record.json"
       - ".github/workflows/schemas.yml"
 
 permissions:

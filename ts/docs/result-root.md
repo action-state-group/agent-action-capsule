@@ -164,6 +164,17 @@ neutrally, never as a finding). Nothing in this module reads either: no
 bucket, count or claim axis changes with them. A renderer labels the reason
 as the producer's statement.
 
+**Subject bundle (spec §4.5).** `ResultClaim.subjectBundle` carries a
+claim's `subject_bundle.digest`: the bundle digest of the Evidence Bundle the
+producer names as showing the claim's subject. Nothing in this module reads
+it. `subjectBundleBinding(claim.subjectBundle, carried)` compares a Bundle
+carried beside the Result (or `undefined` for none) by `bundleDigest` and
+returns `matched`, `different`, `not_carried` or `unbound`. A `matched`
+Bundle is still verified on its own, and a failed check stays visible; a
+`different` one is never shown as the claim's. That a view held a Bundle
+back by disclosure policy is the view's own statement, which the caller
+words. `validateEvidenceResult` checks the member's digest-ref shape.
+
 **Counts are recomputed from the claims.** Coverage counts evaluations, one
 per claim (`spec/evidence-result-v0.md` §3), so `evaluated_population` and
 `unknown_count` are recomputed as the claim count and the claims whose

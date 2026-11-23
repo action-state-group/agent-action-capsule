@@ -281,6 +281,18 @@ mechanical half):
      its schema errors and every cross-element finding unchanged; a mutant
      shows the comparison sees a refused reason.
 
+  20. SUBJECT BUNDLE (spec section 4.5): pos-example-org-subject-bundle-result
+     MUST validate, and without `subject_bundle` MUST be
+     pos-example-org-claims-result byte for byte. Five schema negatives MUST
+     fail, each with a mutant that opens the member: neg-subject-bundle-string,
+     -uppercase, -other-alg, -extra-member and -list (the digest-ref shape, one
+     per claim). Display-only: adding a valid subject_bundle to every claim of
+     every fixture MUST leave its schema errors and every cross-element
+     finding unchanged; a mutant shows the comparison sees a malformed one.
+     binding/subject-bundle.json: each case's bundle_digest MUST be the
+     bundle digest of its bundle_text, and its `expect` MUST follow the
+     section's comparison (unbound, not_carried, matched or different).
+
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
     python3 check_evidence_result_examples.py                # from schemas/
@@ -615,6 +627,7 @@ POSITIVES = [
     "pos-example-org-calibration-result",
     "pos-example-org-reason-result",
     "pos-example-org-reason-unregistered-result",
+    "pos-example-org-subject-bundle-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -664,6 +677,11 @@ NEGATIVES = [
     "neg-reason-on-countersigned-claim",
     "neg-reason-on-out-of-scope-claim",
     "neg-reason-on-close-claim",
+    "neg-subject-bundle-string",
+    "neg-subject-bundle-uppercase",
+    "neg-subject-bundle-other-alg",
+    "neg-subject-bundle-extra-member",
+    "neg-subject-bundle-list",
 ]
 
 # Spec section 4.4: each reason positive and the positive it is a copy of;
@@ -701,6 +719,49 @@ def _without_reasons(doc: object) -> object:
         if isinstance(claim, dict):
             claim.pop("reason", None)
     return doc
+
+# Spec section 4.5: the subject_bundle positive and the positive it is a copy
+# of; removing `subject_bundle` from every claim MUST give that source.
+SUBJECT_BUNDLE_SOURCES = {
+    "pos-example-org-subject-bundle-result": "pos-example-org-claims-result",
+}
+SUBJECT_BUNDLE_NEGATIVES = (
+    "neg-subject-bundle-string",
+    "neg-subject-bundle-uppercase",
+    "neg-subject-bundle-other-alg",
+    "neg-subject-bundle-extra-member",
+    "neg-subject-bundle-list",
+)
+# Any well-formed digest-ref: section 4.5 admits one on every claim.
+SUBJECT_BUNDLE_SAMPLE = {"digest_alg": "SHA-256", "digest": "0" * 63 + "1"}
+
+
+def _with_subject_bundles(doc: object) -> object:
+    doc = copy.deepcopy(doc)
+    claims = doc.get("claims") if isinstance(doc, dict) else None
+    for claim in claims if isinstance(claims, list) else []:
+        if isinstance(claim, dict):
+            claim["subject_bundle"] = copy.deepcopy(SUBJECT_BUNDLE_SAMPLE)
+    return doc
+
+
+def _without_subject_bundles(doc: object) -> object:
+    doc = copy.deepcopy(doc)
+    claims = doc.get("claims") if isinstance(doc, dict) else None
+    for claim in claims if isinstance(claims, list) else []:
+        if isinstance(claim, dict):
+            claim.pop("subject_bundle", None)
+    return doc
+
+
+def _binding_outcome(case: dict) -> str:
+    """Section 4.5's comparison, from the case's own fields."""
+    ref = case.get("subject_bundle")
+    if ref is None:
+        return "unbound"
+    if case.get("bundle_text") is None:
+        return "not_carried"
+    return "matched" if case.get("bundle_digest") == ref.get("digest") else "different"
 
 # Section 15: the schema negatives Python's `re` would accept.
 PATTERN_NEGATIVES = (
@@ -1544,6 +1605,70 @@ def main() -> int:
                         "did not see a refused reason")
     else:
         print("OK  MUTANT        neg-reason-on-countersigned-claim -- the display-only comparison sees a refused reason")
+
+    # --- Spec section 4.5: subject_bundle -----------------------------------
+    def _subject_findings(name: str, doc: object) -> tuple:
+        # A schema error on a claim quotes the whole claim, so the added
+        # member alone would change its message; compare where each error is
+        # and which rule raised it instead, plus every cross-element finding.
+        schema_errors = sorted(
+            (tuple(map(str, e.absolute_path)), str(e.validator), tuple(map(str, e.absolute_schema_path)))
+            for e in validator.iter_errors(doc)
+        )
+        return (schema_errors,) + _all_findings(name, doc)[1:]
+
+    open_subject = copy.deepcopy(schema)
+    open_subject["$defs"]["Claim"]["properties"]["subject_bundle"] = {}
+    for name in SUBJECT_BUNDLE_NEGATIVES:
+        if negative_errors_by_name[name]:
+            _mutant_check(name, open_subject, "Claim's subject_bundle digest-ref shape")
+    for name, source in SUBJECT_BUNDLE_SOURCES.items():
+        if _without_subject_bundles(_load(name)) != _load(source):
+            findings.append(f"SUBJECT-BUNDLE-NOT-ADDITIVE {name}: without `subject_bundle` it is not {source}")
+        else:
+            print(f"OK  SUBJECT       {name} -- without `subject_bundle` it is {source}")
+    changed = 0
+    for name in every_fixture:
+        doc = _load(name)
+        if not isinstance(doc, dict) or doc.get("result_version") != "evidence-result-v0":
+            continue
+        bare = _without_subject_bundles(doc)
+        bound = _with_subject_bundles(bare)
+        if bound == bare:
+            continue
+        changed += 1
+        if _subject_findings(name, bound) != _subject_findings(name, bare):
+            findings.append(f"SUBJECT-BUNDLE-NOT-DISPLAY-ONLY {name}: a valid `subject_bundle` changed what is checked")
+    print(f"OK  SUBJECT       a valid `subject_bundle` on every claim of {changed} fixture(s) "
+          "changes no schema error and no cross-element finding")
+    malformed = _load("neg-subject-bundle-string")
+    if _subject_findings("neg-subject-bundle-string", malformed) == _subject_findings(
+        "neg-subject-bundle-string", _without_subject_bundles(malformed)
+    ):
+        findings.append("MUTANT-DID-NOT-FLIP neg-subject-bundle-string: the display-only comparison "
+                        "did not see a malformed subject_bundle")
+    else:
+        print("OK  MUTANT        neg-subject-bundle-string -- the display-only comparison sees a malformed subject_bundle")
+
+    from agent_action_capsule.bundle import bundle_digest
+
+    binding = json.loads((VECTORS_DIR / "binding" / "subject-bundle.json").read_text(encoding="utf-8"))
+    if binding.get("count") != len(binding.get("cases", [])):
+        findings.append("SUBJECT-BUNDLE-BINDING count does not match its cases")
+    outcomes = set()
+    for case in binding.get("cases", []):
+        text = case.get("bundle_text")
+        if text is not None and bundle_digest(json.loads(text)) != case.get("bundle_digest"):
+            findings.append(f"SUBJECT-BUNDLE-BINDING {case['name']}: bundle_digest is not its bundle_text's")
+        if _binding_outcome(case) != case.get("expect"):
+            findings.append(f"SUBJECT-BUNDLE-BINDING {case['name']}: expect {case.get('expect')!r}, "
+                            f"the comparison gives {_binding_outcome(case)!r}")
+        outcomes.add(case.get("expect"))
+    if outcomes != {"matched", "different", "not_carried", "unbound"}:
+        findings.append(f"SUBJECT-BUNDLE-BINDING does not cover every outcome: {sorted(outcomes)}")
+    else:
+        print(f"OK  SUBJECT       binding/subject-bundle.json: {len(binding['cases'])} case(s), every outcome, "
+              "each digest recomputed")
 
     bucket_mutant = copy.deepcopy(schema)
     bucket_mutant["$defs"]["EvidenceResult"]["allOf"] = []

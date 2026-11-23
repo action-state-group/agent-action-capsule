@@ -270,6 +270,7 @@ claim:
   out_of_scope_allowed: true          # OPTIONAL — §4.2, copied from the contract
   applies_from: YYYY-MM-DD            # OPTIONAL — §4.3, copied from the contract
   reason: token                       # OPTIONAL — §4.4, the producer's statement, display-only
+  subject_bundle: digest-ref          # OPTIONAL — §4.5, the Bundle that shows the subject, display-only
   evidence: [digest-ref, ...]         # §5 — by digest only; at least one (§1)
   proofs: [proof-ref, ...]            # §5 — by digest only
   presentation: disclosure-carrier | analysis-carrier | story-carrier   # §2, §6
@@ -617,6 +618,71 @@ producer wrote under an `x-` name. Those members stay valid and are still ignore
 claim is closed (§8a), a validator that predates this section rejects a claim carrying `reason`; a
 producer keeps its `x-` member until its readers' validators include this section, and MAY write
 both meanwhile.
+
+### 4.5 Subject bundle — `subject_bundle`
+
+**Status: normative.** A claim MAY carry `subject_bundle`: the producer's statement that one exact
+Evidence Bundle (`draft-mih-zhang-agent-disclosure-bundle-03`) shows the claim's subject. It lets a
+reader that is handed a Bundle beside the Result confirm that the Bundle is the one the producer
+named for this claim. A claim carries at most one.
+
+```
+claim:
+  subject_bundle: digest-ref          # OPTIONAL — §5 shape; digest is the Bundle's bundle digest
+```
+
+**Value.** `subject_bundle.digest` is the Bundle's bundle digest as Bundle -03 defines it
+("Bundle Digest": SHA-256 of the UTF-8 JCS serialization of the Bundle with `countersignatures`
+omitted), as 64 lowercase hexadecimal characters, and `digest_alg` is `SHA-256`. The same digest
+names a member Bundle in Bundle -03's `composed/v1`. Whitespace, member order and an added
+countersignature do not change it; any other change to the Bundle does.
+
+**One exact Bundle.** The member names a Bundle, not a stable identity of the claim's subject. A
+Bundle cut again from the same log (for example after a later settlement, with a newer checkpoint
+or another report) is a different Bundle with a different digest.
+
+**Producers.** A producer writes `subject_bundle` only for a Bundle it holds when it signs or seals
+the Result, and computes the digest over that Bundle before signing or sealing. It never rewrites a
+Result already written because a later Bundle was cut. Claims of one Result that share a subject
+carry the same value. Whether a Bundle is carried to a given reader is decided by whoever builds
+that reader's view under the holder's disclosure policy, not by this member, so a Result MAY name a
+Bundle that some views do not carry. The digest does not disclose the Bundle's content.
+
+**Readers.** A reader that shows Bundles beside a Result's claims computes the bundle digest of a
+Bundle carried for a claim and compares it with `subject_bundle.digest`. It distinguishes these
+cases, and words none of them as a load error:
+
+| Case | What the reader does |
+|---|---|
+| Equal, and the Bundle verifies under Bundle -03 | MAY show the Bundle as the one the producer named for this claim. |
+| Equal, and the Bundle fails its own checks | MAY show the Bundle as the one named for this claim, and then MUST show its failure. A match is not a pass. |
+| Different | MUST NOT show the Bundle as this claim's. Says it is a different Bundle from the one this Result names for this claim, never that the Bundle failed to verify or was altered. |
+| Named, and no Bundle is carried with this view | Says the Bundle this Result names is not carried with this view. Not a fault. |
+| Named, and the view says the Bundle is held back by the holder's disclosure policy | Says it is held back. Only the view can say this; the Result is sealed once and does not. |
+| Absent | The member binds nothing; the reader MUST NOT show any Bundle as matched by it. |
+
+**Display-only.** `subject_bundle` is outside every rule that decides anything:
+
+- A verifier MUST NOT read it to derive or adjust any claim's `sufficiency`, `verdict`, `tier`,
+  `grade` or support, a close claim's state (§4.1), or the aggregate's coverage or buckets (§7). With
+  `subject_bundle` removed from every claim, a document's validity and every derived result are
+  unchanged, provided the document was valid with it. A verifier needs no Bundle to check a
+  Result, and MUST NOT reject one because the named Bundle is not supplied.
+- It is not evidence and not a proof. It adds nothing to `evidence`, `proofs` or the presentation
+  carrier, and the Bundle's records are not the claim's evidence. `proofs[].kind: receipt` (§5)
+  names a witness's confirmation over a committed structure and feeds support; a Bundle that shows
+  the subject is neither, so it is not carried there.
+
+**Relation to `x-` members.** A generic reader gives no meaning to a producer's `x-` member (§8a),
+so a binding a producer wrote under an `x-` name binds nothing; this member is the defined one.
+Because a claim is closed (§8a), a validator that predates this section rejects a claim carrying
+`subject_bundle`; a producer writes it only once its readers' validators include this section.
+
+Example: an evaluator judges a node's paid deals from the node's own records, so each deal's claims
+cite those records, while the deal's receipt is a separate Bundle carrying only the deal's own
+records. The evaluator fetches each deal's receipt before it seals the Result and writes the
+receipt's bundle digest as `subject_bundle` on that deal's claims; a report page that carries the
+receipt beside the Result compares digests before it shows the receipt on the deal's line.
 
 ## 5. Evidence and proofs
 
@@ -1086,3 +1152,11 @@ registry rows (`neg-reason-capsule-code-on-satisfied-claim`,
 (`neg-reason-on-countersigned-claim`, `neg-reason-on-out-of-scope-claim`,
 `neg-reason-on-close-claim`). The checker also adds a permitted `reason` to every eligible claim of
 every fixture and confirms that no schema error and no cross-element finding changes.
+
+§4.5's `subject_bundle` adds one positive, `pos-example-org-subject-bundle-result.json` (two
+claims naming one Bundle, byte-identical to the claims positive with `subject_bundle` removed),
+five schema negatives on the digest-ref shape (`neg-subject-bundle-string`, `-uppercase`,
+`-other-alg`, `-extra-member`, `-list`), each with its own mutant proof, and
+`binding/subject-bundle.json`, the reader's comparison over carried Bundles. The checker also adds
+a valid `subject_bundle` to every claim of every fixture and confirms that no schema error and no
+cross-element finding changes.

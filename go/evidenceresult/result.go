@@ -168,6 +168,11 @@ type Claim struct {
 	// Reason is the claim's reason token, or empty (section 4.4): the
 	// producer's statement, display-only. No rule in this package reads it.
 	Reason string
+	// SubjectBundle is subject_bundle.digest, or empty (section 4.5): the
+	// bundle digest of the Evidence Bundle the producer names as showing the
+	// claim's subject. Display-only: no rule in this package reads it, and a
+	// Result checks without the Bundle.
+	SubjectBundle string
 	// Evidence is evidence[].digest in order; CarrierEvidence is
 	// presentation.evidence[].digest when the carrier is a disclosure.
 	Evidence        []string
@@ -286,6 +291,9 @@ func readClaims(doc map[string]interface{}) ([]Claim, []string) {
 		claim.AppliesFrom, _ = object["applies_from"].(string)
 		claim.OutOfScopeAllowed, _ = object["out_of_scope_allowed"].(bool)
 		claim.Reason, _ = object["reason"].(string)
+		if ref, ok := object["subject_bundle"].(map[string]interface{}); ok {
+			claim.SubjectBundle, _ = ref["digest"].(string)
+		}
 		claim.Evidence = digests(object["evidence"])
 		if presentation, ok := object["presentation"].(map[string]interface{}); ok && presentation["kind"] == "disclosure" {
 			claim.CarrierEvidence = digests(presentation["evidence"])
