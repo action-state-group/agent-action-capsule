@@ -1525,7 +1525,7 @@ REASON_FIXTURES = {
 
 # --- spec section 4.5: subject_bundle ----------------------------------------
 #     One optional digest-ref per claim naming the Evidence Bundle that shows
-#     the claim's subject, by its bundle digest (Bundle -03). Display-only.
+#     the claim's subject, by its bundle digest (the Evidence Bundle draft). Display-only.
 #     The Bundles are two cases of vectors/bundle/report-single-record.json,
 #     so their digests are computed here by Python's bundle module and checked
 #     by Go and TypeScript against the same vectors.
@@ -1614,7 +1614,7 @@ SUBJECT_BUNDLE_BINDING = {
     "description": (
         "How a reader compares a claim's subject_bundle with a Bundle carried beside the Result. "
         "`bundle_text` is the Bundle exactly as carried (null: none is carried); `bundle_digest` is its "
-        "bundle digest (draft-mih-zhang-agent-disclosure-bundle-03, Bundle Digest), computed by Python's "
+        "bundle digest (draft-mih-zhang-agent-disclosure-bundle, Bundle Digest), computed by Python's "
         "agent_action_capsule.bundle. `expect` is the binding outcome only: matched, different, "
         "not_carried or unbound. A matched Bundle is still verified on its own; a match is not a pass. "
         "Whether a view held a Bundle back by disclosure policy is the view's statement, not the Result's, "
@@ -1638,7 +1638,8 @@ SUBJECT_BUNDLE_BINDING = {
                       subject_ref(SUBJECT_BUNDLE), json.dumps(_disclosure_changed, sort_keys=True), "different"),
         _binding_case("different-extension-added", "an extension added after the digest was taken",
                       subject_ref(SUBJECT_BUNDLE), json.dumps(_extension_added, sort_keys=True), "different"),
-        _binding_case("different-recut", "another Bundle cut from the same log: a different Bundle",
+        _binding_case("different-bundle",
+                      "another Bundle (a different case of report-single-record.json): not the one named",
                       subject_ref(SUBJECT_BUNDLE), json.dumps(FAILING_BUNDLE, sort_keys=True), "different"),
         _binding_case("not-carried", "the claim names a Bundle and none is carried with this view",
                       subject_ref(SUBJECT_BUNDLE), None, "not_carried"),

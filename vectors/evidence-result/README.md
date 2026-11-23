@@ -348,7 +348,7 @@ that no schema error and no cross-element finding changes.
 or null when none is carried), that Bundle's bundle digest as Python computes it, and the
 outcome: `matched`, `different`, `not_carried` or `unbound`. The cases cover a re-serialized
 Bundle and an added countersignature (both still `matched`, since the digest is over the JCS
-form without `countersignatures`), a changed disclosure, an added extension and a re-cut Bundle
+form without `countersignatures`), a changed disclosure, an added extension and another Bundle
 (each `different`), and a named Bundle that fails its own checks (`matched`: a match is not a
 pass). The Go and TypeScript tests recompute each digest and outcome.
 

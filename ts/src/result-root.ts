@@ -909,7 +909,8 @@ function claimFindings(path: string, value: unknown): string[] {
  * no claim cites at most `excluded_not_applicable`; and section 7.3's
  * `plan_ref` and `dataset_ref`, digest refs present together. Below the
  * top level it is open-world on additional keys. `view` and the PROPOSED
- * `coverage_report` (spec section 7.1) are not checked, and
+ * `coverage_report` (spec section 7.1) are not checked, and a claim's
+ * `subject_bundle` (section 4.5), when present, is checked as one digest ref;
  * `generated_at` is checked as a string, not as a date-time. Empty findings
  * mean the document passed this mirror -- nothing more.
  */

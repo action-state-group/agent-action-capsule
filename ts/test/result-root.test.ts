@@ -633,7 +633,7 @@ describe("buildResultRoot", () => {
     expect(named.statedCoverage).toEqual(plain.statedCoverage);
   });
 
-  it("mirrors subject_bundle as one digest-ref (spec section 4.5)", () => {
+  it("mirrors subject_bundle's digest_alg and digest (spec section 4.5)", () => {
     const dir = new URL("../../vectors/evidence-result/", import.meta.url);
     const read = (name: string): unknown =>
       JSON.parse(readFileSync(new URL(name, dir), "utf8"));
@@ -642,6 +642,8 @@ describe("buildResultRoot", () => {
         read("pos-example-org-subject-bundle-result.json"),
       ),
     ).toEqual([]);
+    // neg-subject-bundle-extra-member is left out: like every digest ref
+    // here, the mirror does not reject an extra member; the schema does.
     for (const [name, finding] of [
       ["neg-subject-bundle-string", "claims[0].subject_bundle"],
       ["neg-subject-bundle-uppercase", "claims[0].subject_bundle.digest"],
@@ -678,6 +680,12 @@ describe("buildResultRoot", () => {
         c.bundle_text === null ? undefined : (JSON.parse(c.bundle_text) as Obj);
       if (carried !== undefined)
         expect(await bundleDigest(carried), c.name).toBe(c.bundle_digest);
+      // A match is not a pass: this named Bundle matches and fails its own
+      // interval check.
+      if (c.name === "matched-bundle-fails-checks")
+        expect((await verifyBundle(carried)).intervalCoverage.status).toBe(
+          "fail",
+        );
       expect(
         await subjectBundleBinding(c.subject_bundle?.digest, carried),
         c.name,

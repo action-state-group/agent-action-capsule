@@ -622,7 +622,7 @@ both meanwhile.
 ### 4.5 Subject bundle — `subject_bundle`
 
 **Status: normative.** A claim MAY carry `subject_bundle`: the producer's statement that one exact
-Evidence Bundle (`draft-mih-zhang-agent-disclosure-bundle-03`) shows the claim's subject. It lets a
+Evidence Bundle (`draft-mih-zhang-agent-disclosure-bundle`) shows the claim's subject. It lets a
 reader that is handed a Bundle beside the Result confirm that the Bundle is the one the producer
 named for this claim. A claim carries at most one.
 
@@ -631,10 +631,10 @@ claim:
   subject_bundle: digest-ref          # OPTIONAL — §5 shape; digest is the Bundle's bundle digest
 ```
 
-**Value.** `subject_bundle.digest` is the Bundle's bundle digest as Bundle -03 defines it
-("Bundle Digest": SHA-256 of the UTF-8 JCS serialization of the Bundle with `countersignatures`
+**Value.** `subject_bundle.digest` is the Bundle's bundle digest as the Evidence Bundle draft
+defines it ("Bundle Digest", the same since -02: SHA-256 of the UTF-8 JCS serialization of the Bundle with `countersignatures`
 omitted), as 64 lowercase hexadecimal characters, and `digest_alg` is `SHA-256`. The same digest
-names a member Bundle in Bundle -03's `composed/v1`. Whitespace, member order and an added
+names a member Bundle in that draft's `composed/v1`. Whitespace, member order and an added
 countersignature do not change it; any other change to the Bundle does.
 
 **One exact Bundle.** The member names a Bundle, not a stable identity of the claim's subject. A
@@ -646,7 +646,10 @@ the Result, and computes the digest over that Bundle before signing or sealing. 
 Result already written because a later Bundle was cut. Claims of one Result that share a subject
 carry the same value. Whether a Bundle is carried to a given reader is decided by whoever builds
 that reader's view under the holder's disclosure policy, not by this member, so a Result MAY name a
-Bundle that some views do not carry. The digest does not disclose the Bundle's content.
+Bundle that some views do not carry. The digest carries none of the Bundle's content, but it does
+say that such a Bundle exists, and anyone who holds that Bundle (including as a `composed/v1`
+member) can link it to this claim. A holder deciding what to share treats naming a Bundle as
+linking it.
 
 **Readers.** A reader that shows Bundles beside a Result's claims computes the bundle digest of a
 Bundle carried for a claim and compares it with `subject_bundle.digest`. It distinguishes these
@@ -654,8 +657,7 @@ cases, and words none of them as a load error:
 
 | Case | What the reader does |
 |---|---|
-| Equal, and the Bundle verifies under Bundle -03 | MAY show the Bundle as the one the producer named for this claim. |
-| Equal, and the Bundle fails its own checks | MAY show the Bundle as the one named for this claim, and then MUST show its failure. A match is not a pass. |
+| Equal | MAY show the Bundle as the one the producer named for this claim, and then MUST show the Bundle's own verification result as the Evidence Bundle draft states it, whether it passed, is incomplete (a producer-selected Bundle that does not show its log whole) or failed. A match is not a pass. |
 | Different | MUST NOT show the Bundle as this claim's. Says it is a different Bundle from the one this Result names for this claim, never that the Bundle failed to verify or was altered. |
 | Named, and no Bundle is carried with this view | Says the Bundle this Result names is not carried with this view. Not a fault. |
 | Named, and the view says the Bundle is held back by the holder's disclosure policy | Says it is held back. Only the view can say this; the Result is sealed once and does not. |
@@ -678,11 +680,12 @@ so a binding a producer wrote under an `x-` name binds nothing; this member is t
 Because a claim is closed (§8a), a validator that predates this section rejects a claim carrying
 `subject_bundle`; a producer writes it only once its readers' validators include this section.
 
-Example: an evaluator judges a node's paid deals from the node's own records, so each deal's claims
-cite those records, while the deal's receipt is a separate Bundle carrying only the deal's own
-records. The evaluator fetches each deal's receipt before it seals the Result and writes the
-receipt's bundle digest as `subject_bundle` on that deal's claims; a report page that carries the
-receipt beside the Result compares digests before it shows the receipt on the deal's line.
+Example: an evaluator judges a node's paid exchanges from the node's own records, so each
+exchange's claims cite those records, while the exchange's receipt is a separate Bundle carrying
+only that exchange's own records. The evaluator fetches each exchange's receipt before it seals the
+Result and writes the receipt's bundle digest as `subject_bundle` on that exchange's claims; a
+report page that carries the receipt beside the Result compares digests before it shows the receipt
+on that exchange's line.
 
 ## 5. Evidence and proofs
 

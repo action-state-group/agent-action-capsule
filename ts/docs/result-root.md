@@ -173,7 +173,8 @@ returns `matched`, `different`, `not_carried` or `unbound`. A `matched`
 Bundle is still verified on its own, and a failed check stays visible; a
 `different` one is never shown as the claim's. That a view held a Bundle
 back by disclosure policy is the view's own statement, which the caller
-words. `validateEvidenceResult` checks the member's digest-ref shape.
+words. `validateEvidenceResult` checks the member's `digest_alg` and `digest`; like every
+digest ref in this mirror, it does not reject an extra member, which the schema does.
 
 **Counts are recomputed from the claims.** Coverage counts evaluations, one
 per claim (`spec/evidence-result-v0.md` §3), so `evaluated_population` and

@@ -70,9 +70,9 @@
     {
       "bundle_digest": "2e6b3cc8ad01dc98bcc5341ff2f13a6e01fa090adc74d82ce70213fb74831e18",
       "bundle_text": "{\"bundle_kind\": \"evidence-bundle/v2\", \"bundle_version\": \"2\", \"checkpoint\": {\"mmr_size\": 1, \"root\": \"0000000000000000000000000000000000000000000000000000000000000000\"}, \"completeness\": {\"closure_depth\": 0, \"missing\": [], \"payloads_mode\": \"selected\", \"records_mode\": \"complete\", \"suppressed_fields\": []}, \"completeness_certificate\": {\"body_digests\": [\"01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe\"], \"first_seq\": 1, \"last_seq\": 1, \"log_id\": \"vector-log\", \"memberships\": {\"01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe\": {\"inclusion_proof\": {\"kind\": \"inclusion\", \"leaf_index\": 0, \"peaks_left\": [], \"peaks_right\": [], \"size\": 1, \"v\": 1, \"witness\": []}, \"log_coordinates\": {\"leaf_index\": 0, \"log_id\": \"vector-log\", \"seq\": 1}}}, \"range_proof\": {\"from_index\": 0, \"from_seq\": 1, \"size\": 1, \"to_index\": 0, \"to_seq\": 1, \"witness\": []}, \"range_root\": \"3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e\"}, \"disclosures\": {\"01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe\": {\"agent_input\": {\"report\": \"report/v1\", \"rows\": [{\"id\": \"r1\", \"result\": \"pass\"}, {\"id\": \"r2\", \"result\": \"withheld\"}]}}}, \"records\": [{\"action_id\": \"report-single-record-1\", \"action_type\": \"fyi\", \"assurance\": {\"attestation_mode\": \"self_attested\", \"effect_mode\": \"not_applicable\", \"ledger_mode\": \"standalone\"}, \"canonicalization_id\": \"jcs\", \"capsule_id\": \"01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe\", \"countersignatures\": [], \"developer\": \"agent@v1\", \"disposition\": {\"approver\": \"policy\", \"decision\": \"report\", \"human_disposed\": false, \"verdict_class\": \"not_applicable\"}, \"format_version\": \"4\", \"model_attestation\": {\"compute_attestation\": {\"agent_input_digest\": \"1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798\"}}, \"operator\": \"ACME-CO\", \"spec_version\": \"draft-mih-scitt-agent-action-capsule-04\", \"timestamp\": \"2026-09-16T19:00:00Z\"}], \"root\": \"01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe\"}",
-      "description": "another Bundle cut from the same log: a different Bundle",
+      "description": "another Bundle (a different case of report-single-record.json): not the one named",
       "expect": "different",
-      "name": "different-recut",
+      "name": "different-bundle",
       "subject_bundle": {
         "digest": "1aa69730d34c8f15588db4ce8d1990e3d3b9c46aeb333b0adaee20d18dab759b",
         "digest_alg": "SHA-256"
@@ -103,7 +103,7 @@
     }
   ],
   "count": 10,
-  "description": "How a reader compares a claim's subject_bundle with a Bundle carried beside the Result. `bundle_text` is the Bundle exactly as carried (null: none is carried); `bundle_digest` is its bundle digest (draft-mih-zhang-agent-disclosure-bundle-03, Bundle Digest), computed by Python's agent_action_capsule.bundle. `expect` is the binding outcome only: matched, different, not_carried or unbound. A matched Bundle is still verified on its own; a match is not a pass. Whether a view held a Bundle back by disclosure policy is the view's statement, not the Result's, so it is not a case here.",
+  "description": "How a reader compares a claim's subject_bundle with a Bundle carried beside the Result. `bundle_text` is the Bundle exactly as carried (null: none is carried); `bundle_digest` is its bundle digest (draft-mih-zhang-agent-disclosure-bundle, Bundle Digest), computed by Python's agent_action_capsule.bundle. `expect` is the binding outcome only: matched, different, not_carried or unbound. A matched Bundle is still verified on its own; a match is not a pass. Whether a view held a Bundle back by disclosure policy is the view's statement, not the Result's, so it is not a case here.",
   "format_version": 1,
   "spec": "spec/evidence-result-v0.md section 4.5"
 }
