@@ -79,7 +79,7 @@ RANK = {"self_reported": 0, "peer_confirmed": 1, "corroborated": 2}
 PEER_SHOWN = "peer-confirmed; not corroborating (independence not established)"
 ROLE_UNIT = {"served": "exchanges_served", "requested": "exchanges_requested"}
 # §8.2.
-# §4.1: the frozen revision and the one that adds §6.2 item 4's rule for two or more withheld cells.
+# §4.1: the frozen revision and the one that adds §6.2 item 5's rule for two or more withheld cells.
 PROFILES = ("inference-service-history/0", "inference-service-history/1")
 FIXED = {"anchor", "declared", "derivation", "evidence_stream", "history_card", "history_card_digest", "subject"}
 MUST_PASS = ("profile_version", "envelope_signature", "responder_trust", "issued_at_form", "request_binding",
@@ -327,7 +327,7 @@ def anchor_ok(d: dict, env: dict) -> bool:
 
 
 def table_ok(parts: list[dict], total: dict | None, floor: int, revision1: bool) -> bool:
-    """§6.2 items 3 and 4 over one table, its dimension cells and its total: a published total never stands
+    """§6.2 items 3 and 5 over one table, its dimension cells and its total: a published total never stands
     beside exactly one suppressed cell. Under ``inference-service-history/1`` also: a cell is listed
     only when counted, so the suppressed cells hold at least 1 each (and, below the floor, at most
     ``floor`` - 1) and the published ones never
@@ -359,7 +359,7 @@ def table_ok(parts: list[dict], total: dict | None, floor: int, revision1: bool)
 
 def floor_ok(d: dict, env: dict) -> bool:
     """§6.2: a published cell is at least the floor; a suppressed cell has no value; and each unit's
-    table meets items 3 and 4 under the definition's revision (``table_ok``)."""
+    table meets items 3 and 5 under the definition's revision (``table_ok``)."""
     floor = d["period_policy"]["floor"]
     revision1 = d["profile"] == PROFILES[1]
     for period in env["artifact"]["period_counts"]["periods"]:

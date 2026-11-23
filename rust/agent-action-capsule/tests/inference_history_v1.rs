@@ -1,4 +1,4 @@
-//! `inference-service-history/1` (ISH §6.2 item 4, SH-8): a total that pins
+//! `inference-service-history/1` (ISH §6.2 item 5, SH-8): a total that pins
 //! two or more models withheld under the floor is withheld `complementary`,
 //! even when it is under the floor itself, and a checker refuses a published
 //! total that pins them. `/0` keeps its rule.

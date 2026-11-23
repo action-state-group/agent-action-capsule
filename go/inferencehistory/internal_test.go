@@ -116,7 +116,7 @@ func total(value any, why string) map[string]any {
 	return c
 }
 
-// ISH §6.2 items 3 and 4 under each revision, one table at a time.
+// ISH §6.2 items 3 and 5 under each revision, one table at a time.
 func TestTableOKByRevision(t *testing.T) {
 	b, cmp := "below_floor", "complementary"
 	for _, tc := range []struct {

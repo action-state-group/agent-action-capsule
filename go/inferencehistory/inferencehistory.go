@@ -35,7 +35,7 @@ import (
 const Profile = "inference-service-history/0"
 
 // Profile1 is the revision that also withholds a total that pins two or more
-// cells withheld under the floor (ISH §6.2 item 4, SH-8). A definition names
+// cells withheld under the floor (ISH §6.2 item 5, SH-8). A definition names
 // Profile or Profile1, and period_floor checks the rule of the one it names.
 const Profile1 = "inference-service-history/1"
 
@@ -900,7 +900,7 @@ func floorOK(d any, env map[string]any) bool {
 	return true
 }
 
-// tableOK is ISH §6.2 items 3 and 4 over one table, its dimension cells and its
+// tableOK is ISH §6.2 items 3 and 5 over one table, its dimension cells and its
 // total: a published total never stands beside exactly one withheld cell.
 // Under Profile1 a cell is listed only when counted, so each withheld cell
 // holds at least 1 (and, below the floor, at most floor-1) and the published

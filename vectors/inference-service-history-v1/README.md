@@ -1,7 +1,7 @@
 # Inference-Service History: `inference-service-history/1` vectors
 
 These vectors exercise `inference-service-history/1` of
-`spec/inference-service-history-profile-v0.md`: `/0` with one more complementary rule (§6.2 item 4,
+`spec/inference-service-history-profile-v0.md`: `/0` with one more complementary rule (§6.2 item 5,
 SH-8). Where two or more of a table's cells are withheld, every one `below_floor`, and the total less
 its published cells is the number of those cells or that number times (`floor` − 1), the total fixes
 each of them, so it is withheld `complementary`, even when it is under the floor too. A cell is

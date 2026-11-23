@@ -48,7 +48,7 @@ const DERIVATION_HISTORY_CARD: &str = "history_card/1";
 /// one withheld model beside a published total.
 pub const PROFILE_0: &str = "inference-service-history/0";
 /// The revision that also withholds a total that pins two or more models
-/// withheld under the floor (ISH §6.2 item 4, SH-8).
+/// withheld under the floor (ISH §6.2 item 5, SH-8).
 pub const PROFILE_1: &str = "inference-service-history/1";
 
 /// Why a History cannot be derived at this anchor.
@@ -357,7 +357,7 @@ impl Definition {
     }
 
     /// The suppression rule of one of this definition's tables (ISH §6.2
-    /// items 3 and 4): `verdicts` for a verdict result's table.
+    /// items 3 and 5): `verdicts` for a verdict result's table.
     fn rule(&self, verdicts: bool) -> Rule {
         match (self.revision1, verdicts) {
             (true, _) => Rule::Pinned,
@@ -599,7 +599,7 @@ fn first_record_period(chain: &[Cut<'_>], commits: &[i64]) -> Option<i64> {
         .map(|(_, &k)| k)
 }
 
-/// Which complementary rule of ISH §6.2 items 3 and 4 a table is suppressed and
+/// Which complementary rule of ISH §6.2 items 3 and 5 a table is suppressed and
 /// checked under.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Rule {
@@ -685,7 +685,7 @@ fn derivable(n: usize, rest: u64, floor: u64) -> bool {
     n >= 2 && (rest == 0 || rest == n || rest == n * most)
 }
 
-/// `/1`'s test (ISH §6.2 item 4): `n` cells each from 1 to `floor` - 1 (a
+/// `/1`'s test (ISH §6.2 item 5): `n` cells each from 1 to `floor` - 1 (a
 /// value is listed only when counted, so none holds 0) are each fixed by
 /// their sum exactly when it is `n` (all 1) or `n` times `floor` - 1.
 fn pins(n: usize, rest: u64, floor: u64) -> bool {

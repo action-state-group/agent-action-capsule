@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 """Generate the conformance vectors of ``inference-service-history/1``
-(``spec/inference-service-history-profile-v0.md`` §6.2 item 4, SH-8).
+(``spec/inference-service-history-profile-v0.md`` §6.2 item 5, SH-8).
 
 ``/1`` is ``/0`` with one more complementary rule: where a table's total is published and two or
 more of its dimension cells are withheld, every one ``below_floor``, and the rest of the total (the

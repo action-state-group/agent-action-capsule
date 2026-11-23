@@ -4,7 +4,7 @@ from their inputs alone.
 
 Each case runs through the evaluator of ``test_inference_service_history_v0_vectors.py`` (loaded
 here as a separate instance under ``evidence-interop/1``): the reference verifier for the request
-and reply, and the History properties of §8.3, whose ``period_floor`` applies §6.2 items 3 and 4 under the
+and reply, and the History properties of §8.3, whose ``period_floor`` applies §6.2 items 3 and 5 under the
 definition's revision. A case that carries the verdict counts member also has each result's table
 checked under the same rule. The result must equal the case's whole ``expected`` block, and the
 generator must regenerate the directory byte for byte.

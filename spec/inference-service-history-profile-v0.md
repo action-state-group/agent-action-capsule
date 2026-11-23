@@ -23,7 +23,7 @@ This revision defines two History levels:
 **Revisions.** This document defines two revisions of the profile, named by a definition's
 `profile` (§4.1). `inference-service-history/0` is frozen: its rules, counting table, wording pack
 and vectors keep their bytes. `inference-service-history/1` is `/0` with §6.1 item 9 (no `/0`
-Standard History under the same key) and §6.2 item 4: a cell is
+Standard History under the same key, beside or before it) and §6.2 item 5: a cell is
 listed only for a value the period counted, and a total that pins two or more cells withheld under
 the floor is withheld `complementary`, in `period_counts` and in each verdict result's table alike,
 since verdict counts are period counts (§5.3) (SH-8); everything else is the same. A verifier checks a History under the
@@ -74,9 +74,9 @@ this profile only in the refusal reasons (IP §9.1) and their mapping (IP §8.1)
 `policy_declined`, which a /0 verifier reads as `WITHHELD`. The refusals this profile itself
 requires (§6.1, §8.4) are statements about policy and are `policy_declined` under either. The
 definitions, the History and its members do not depend on the identifier, and neither do theirs:
-`inference-service-history/0` and `/1`, `history_card/1` and every definition digest are the same under both.
+`inference-service-history/0`, `history_card/1` and every definition digest are the same under both.
 Only the `profile` of a request and of an envelope differs. The vectors hold one set per identifier
-(§9.4).
+(§9.4). `inference-service-history/1` is served under `evidence-interop/1` only.
 
 **Does not define:** any record format, any identity scheme, any trust policy, who may receive a
 History, or what a recipient should conclude. It defines no figure that combines units, labels or
@@ -436,11 +436,11 @@ A record is in a period by the time the node's stream committed it.
    under the same node key. That card counts over a window that ends at any anchor, with no floor, so two of its cards
    at consecutive checkpoints could be subtracted to isolate one exchange that these periods
    protect (§12).
-9. **No `/0` Standard History beside a `/1` one** (`inference-service-history/1` only). A node
-   that serves Standard Histories under `inference-service-history/1` MUST NOT serve Standard
-   Histories under `inference-service-history/0` under the same node key. Their periods are the
-   same (item 6), and a `/0` answer publishes the totals `/1` withholds under §6.2 item 4, so it
-   would give away the cells `/1` protects.
+9. **No `/0` beside `/1`** (`inference-service-history/1` only). A node that serves Standard
+   Histories under `inference-service-history/1` MUST NOT serve Standard Histories under
+   `inference-service-history/0` under the same node key, and MUST NOT serve `/1` ones under a
+   key that has served `/0` ones: a `/0` answer publishes the totals §6.2 item 5 withholds, over
+   the same periods (item 6), and a period's cells are fixed once produced (item 4).
 
 ### 6.2 Floor and complementary suppression
 
@@ -451,7 +451,9 @@ A record is in a period by the time the node's stream committed it.
    totals is suppressed with them, with the reason `complementary`. At the least: where a unit's
    total for a period is published and exactly one of its dimension cells is suppressed, the
    smallest other dimension cell is suppressed too [SH-8].
-4. **A total that pins withheld cells** (`inference-service-history/1` only). A table is one
+4. A dimension value that names a model or other claim is the node's statement, declared in the
+   member's `claims` (§4.1).
+5. **A total that pins withheld cells** (`inference-service-history/1` only). A table is one
    unit's cells for a period in a counts member, or one result's cells for a period in verdict
    counts (§5.3), each with its total. Under `/1`:
    - a dimension cell is listed only for a dimension value the period counted at least once, so a
@@ -472,8 +474,6 @@ A record is in a period by the time the node's stream committed it.
    Floor 5: two models of 4 each withhold their total of 8, and five models of 1 each their total
    of 5; models of 3 and 4 leave their total of 7 published. A `/0` History is checked under
    item 3 alone.
-5. A dimension value that names a model or other claim is the node's statement, declared in the
-   member's `claims` (§4.1).
 
 ### 6.3 Period properties
 
@@ -483,7 +483,7 @@ Each is reported in the IP §7.1 vocabulary:
 |---|---|
 | `period_alignment` | every period of every counts member is aligned to the policy's epoch, has exactly the policy's length, is closed at the anchor, and starts at the end of the period before it; where a checkpoint of the card commits a record, the first starts before the time of the first such checkpoint, and the last ends at the latest period boundary at or before the anchor; where none does, the member lists no period (§6.1 item 3); the member names the policy's digest |
 | `period_anchor` | the anchor's checkpoint time is a period boundary (§6.1 item 2) |
-| `period_floor` | no published cell is below the floor, every suppressed cell has no value and the reason `below_floor` or `complementary`, and §6.2 item 3 holds, and under `inference-service-history/1` item 4 too, over every table of the counts members and of verdict counts |
+| `period_floor` | no published cell is below the floor, every suppressed cell has no value and the reason `below_floor` or `complementary`, and §6.2 item 3 holds, and under `inference-service-history/1` item 5 too, over every table of the counts members and of verdict counts |
 | `period_fixed` | over two or more Histories under one definition held by one verifier, every period of a History is carried, with the same cells, by every History at the same or a later anchor |
 
 `period_fixed` is reported only by a verifier that holds two or more such Histories. A verifier
@@ -666,7 +666,7 @@ trust, verification policy, contract and evaluation time as IP §11.5 does. The 
 member (§4.3, §5.3) has its own set, `vectors/inference-service-history-verdicts-v0/`, generated by
 `python/scripts/generate_inference_service_history_verdicts_v0_vectors.py` and checked by
 `python/tests/test_inference_service_history_verdicts_v0_vectors.py`; it uses the formats below, including the verdict counts member.
-`inference-service-history/1` (§6.2 item 4) has its own set, `vectors/inference-service-history-v1/`
+`inference-service-history/1` (§6.2 item 5) has its own set, `vectors/inference-service-history-v1/`
 (`evidence-interop/1`), generated by `python/scripts/generate_inference_service_history_v1_vectors.py`
 and checked by `python/tests/test_inference_service_history_v1_vectors.py` (§9.5); the `/0` sets are
 unchanged.
@@ -821,11 +821,12 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
   a later answer's card carries every earlier checkpoint, including those inside a period, each
   with its exact log size. A requester who already knows all but one
   exchange of a cell can still learn the last; the floor limits, and does not remove, what such a
-  requester learns. Complementary suppression covers what §6.2 items 3 and 4 name, not every
+  requester learns. Complementary suppression covers what §6.2 items 3 and 5 name, not every
   derivation: under either revision, one cell withheld `below_floor` and its `complementary`
-  partner beside a published total can be fixed when the partner is bounded by the smallest
-  published cell (floor 5: models 3, 5 and 5, total 13: the partner is at least the floor and at
-  most the published 5); at a floor of 2 every listed `below_floor` cell is 1, whatever is
+  partner beside a published total can be fixed when the rest is the least the two can hold
+  (1 + `floor`) or the most (`floor` − 1 plus the smallest published cell). Floor 5: models 1, 5
+  and 9 publish the 9 and a total of 15, and a rest of 6 can only be 1 and 5; models 3, 5 and 5
+  publish a 5 and a total of 13, and a rest of 8 can only be 3 and 5. At a floor of 2 every listed `below_floor` cell is 1, whatever is
   published (SH-8).
 - **Verdicts held.** The ask by digest (§5.3) is answered per verdict, outside the period counts
   and with no floor. It tells a requester that knows the digest whether the node holds that verdict,
@@ -869,12 +870,12 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-5 | The closed list of units (§5.1). The requirements' roles `conflict` and `unknown` are both counted in `exchanges_unattributed`; a later revision may split them. |
 | SH-6 | The labels and the peer-confirmation join (§7). The join's citation member is ER §3.1.1's. The citation is one-way; a two-way join (the peer's half citing the node's) would let `peer_confirmed` show receipt of the answer. `corroborated` needs evidence of distinct controllers in a form IP does not register (IP P-60). |
 | SH-7 | The period rules (§6.1): time-aligned periods, answers only at period boundaries, the refusal token, fixed cells, one policy per node, no `standard_history/1` or `/2` card under the same key. No profile minimum for `length_s` or `floor` is set. The history card's exact log sizes are outside the period rules (§12). |
-| SH-8 | Complementary suppression. `inference-service-history/0` (§6.2 item 3) checks only one suppressed cell beside a published total; `/1` (§6.2 item 4) also withholds a total that pins two or more cells withheld under the floor, and stops there, as ruled (https://github.com/action-state-group/agent-action-capsule/issues/616#issuecomment-7090061796). Still open under both: a withheld cell and its `complementary` partner fixed through the bound the smallest published cell puts on the partner, and a floor of 2 (§12). |
+| SH-8 | Complementary suppression. `inference-service-history/0` (§6.2 item 3) checks only one suppressed cell beside a published total; `/1` (§6.2 item 5) also withholds a total that pins two or more cells withheld under the floor, and stops there, as ruled (https://github.com/action-state-group/agent-action-capsule/issues/616#issuecomment-7090061796). Still open under both: a withheld cell and its `complementary` partner fixed when the rest is the least (1 + `floor`) or the most (`floor` − 1 plus the smallest published cell) the two can hold, and a floor of 2 (§12). |
 | SH-9 | The Detailed level declares `holder_selected`. A Detailed History complete relative to the node's exchanges with the recipient needs the records in a form whose population can be checked. |
 | SH-10 | Referee verdict eligibility (§5.3): the form of the referee's selection statement is not fixed here. |
 | SH-11 | The History properties (§8.3, §6.3) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping. |
 | SH-12 | The vector-only formats of §9. |
 | SH-13 | A host's definition conforms by its digest (§4.1). A host definition fixed before it carries `profile`, `coverage_declaration` and `period_policy` conforms only as a new version. |
-| SH-14 | No vectors in this revision for: session coverage (§10); `definition_form`, `definition_binding`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), or `/0` Standard Histories beside `/1` ones (§6.1 item 9), which a verifier sees only when it holds answers of both; a stream whose card commits no record. The verdict counts member has its own set, `vectors/inference-service-history-verdicts-v0/`, whose shape is fixed for it alone (§9, SH-12, SH-16); it has cases for `artifact_form` failing, and none for a published total that differs from its published cells, two or more models withheld under the floor beside a published total under `/0` (SH-8; `/1`'s are in `vectors/inference-service-history-v1/`), or the delivery of a verdict and the ask by digest (SH-15). |
+| SH-14 | No vectors in this revision for: session coverage (§10); `definition_form`, `definition_binding`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), or `/0` Standard Histories beside or before `/1` ones under one key (§6.1 item 9), which a verifier sees only when it holds answers of both; a pinning total under the floor withheld `below_floor` rather than `complementary` (§6.2 item 5), which no verifier can see, since a withheld total has no value: the reason is the producer's; a stream whose card commits no record. The verdict counts member has its own set, `vectors/inference-service-history-verdicts-v0/`, whose shape is fixed for it alone (§9, SH-12, SH-16); it has cases for `artifact_form` failing, and none for a published total that differs from its published cells, two or more models withheld under the floor beside a published total under `/0` (SH-8; `/1`'s are in `vectors/inference-service-history-v1/`), or the delivery of a verdict and the ask by digest (SH-15). |
 | SH-15 | Verdicts the node received without asking (§5.3): the delivery that puts such a verdict in the node's log, and the ask by digest, are the host's; this profile fixes only what counts and that the count is over the node's own log. Because the ask is the host's, one implementation cannot yet check another's omissions; interoperable omission checking is open. |
 | SH-16 | §5.3's rules that the result being counted is signed by the checker and never by the node it concerns, that a verdict count is the count of one kind of check, a referee verdict, and that the four results stay separate counts, have no History property in §8.3. The verdict counts vectors pin them through their vector-only shape (§9, SH-12), so a host that uses another shape can break them and pass every property. |

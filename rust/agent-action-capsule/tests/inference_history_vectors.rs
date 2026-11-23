@@ -155,7 +155,7 @@ fn the_periods_of_a_pair_are_fixed_as_the_vectors_expect() {
 }
 
 /// `vectors/inference-service-history-v1` (`inference-service-history/1`,
-/// ISH §6.2 item 4, SH-8): every case, its verdict counts too where its
+/// ISH §6.2 item 5, SH-8): every case, its verdict counts too where its
 /// definition carries them, fails the one property it names or none.
 #[test]
 fn the_revision_1_histories_check_as_the_vectors_expect() {

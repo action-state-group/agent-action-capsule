@@ -215,7 +215,7 @@ same-commit files in CI.
 - `inference-service-history-v0-interop-v1/`: the same cases under `evidence-interop/1`, plus
   `refused-capacity-exceeded` (a History the node declines for its own load, `UNKNOWN`);
   `python/scripts/generate_inference_service_history_v0_vectors.py --profile 1` regenerates them.
-- `inference-service-history-v1/`: `inference-service-history/1` (ISH §6.2 item 4, §9.5): totals
+- `inference-service-history-v1/`: `inference-service-history/1` (ISH §6.2 item 5, §9.5): totals
   that pin two or more models withheld under the floor withheld `complementary`, and the
   negatives that publish them or withhold a total beside one model, for `period_counts` and a
   verdict result's table. Constructed;

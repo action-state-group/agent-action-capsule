@@ -283,7 +283,7 @@ func TestInferenceServiceHistoryVectors(t *testing.T) {
 }
 
 // vectors/inference-service-history-v1 (inference-service-history/1, ISH
-// §6.2 item 4): every period_counts case runs as the other sets' do. The two
+// §6.2 item 5): every period_counts case runs as the other sets' do. The two
 // verdict cases are listed, not run: this package does not read the verdict
 // counts member (vectors/inference-service-history-verdicts-v0/README.md).
 func TestRevision1Vectors(t *testing.T) {
