@@ -22,7 +22,8 @@ This revision defines two History levels:
 
 **Revisions.** This document defines two revisions of the profile, named by a definition's
 `profile` (§4.1). `inference-service-history/0` is frozen: its rules, counting table, wording pack
-and vectors keep their bytes. `inference-service-history/1` is `/0` with §6.2 item 4: a cell is
+and vectors keep their bytes. `inference-service-history/1` is `/0` with §6.1 item 9 (no `/0`
+Standard History under the same key) and §6.2 item 4: a cell is
 listed only for a value the period counted, and a total that pins two or more cells withheld under
 the floor is withheld `complementary`, in `period_counts` and in each verdict result's table alike,
 since verdict counts are period counts (§5.3) (SH-8); everything else is the same. A verifier checks a History under the
@@ -435,6 +436,11 @@ A record is in a period by the time the node's stream committed it.
    under the same node key. That card counts over a window that ends at any anchor, with no floor, so two of its cards
    at consecutive checkpoints could be subtracted to isolate one exchange that these periods
    protect (§12).
+9. **No `/0` Standard History beside a `/1` one** (`inference-service-history/1` only). A node
+   that serves Standard Histories under `inference-service-history/1` MUST NOT serve Standard
+   Histories under `inference-service-history/0` under the same node key. Their periods are the
+   same (item 6), and a `/0` answer publishes the totals `/1` withholds under §6.2 item 4, so it
+   would give away the cells `/1` protects.
 
 ### 6.2 Floor and complementary suppression
 
@@ -869,6 +875,6 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-11 | The History properties (§8.3, §6.3) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping. |
 | SH-12 | The vector-only formats of §9. |
 | SH-13 | A host's definition conforms by its digest (§4.1). A host definition fixed before it carries `profile`, `coverage_declaration` and `period_policy` conforms only as a new version. |
-| SH-14 | No vectors in this revision for: session coverage (§10); `definition_form`, `definition_binding`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both; a stream whose card commits no record. The verdict counts member has its own set, `vectors/inference-service-history-verdicts-v0/`, whose shape is fixed for it alone (§9, SH-12, SH-16); it has cases for `artifact_form` failing, and none for a published total that differs from its published cells, two or more models withheld under the floor beside a published total under `/0` (SH-8; `/1`'s are in `vectors/inference-service-history-v1/`), or the delivery of a verdict and the ask by digest (SH-15). |
+| SH-14 | No vectors in this revision for: session coverage (§10); `definition_form`, `definition_binding`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), or `/0` Standard Histories beside `/1` ones (§6.1 item 9), which a verifier sees only when it holds answers of both; a stream whose card commits no record. The verdict counts member has its own set, `vectors/inference-service-history-verdicts-v0/`, whose shape is fixed for it alone (§9, SH-12, SH-16); it has cases for `artifact_form` failing, and none for a published total that differs from its published cells, two or more models withheld under the floor beside a published total under `/0` (SH-8; `/1`'s are in `vectors/inference-service-history-v1/`), or the delivery of a verdict and the ask by digest (SH-15). |
 | SH-15 | Verdicts the node received without asking (§5.3): the delivery that puts such a verdict in the node's log, and the ask by digest, are the host's; this profile fixes only what counts and that the count is over the node's own log. Because the ask is the host's, one implementation cannot yet check another's omissions; interoperable omission checking is open. |
 | SH-16 | §5.3's rules that the result being counted is signed by the checker and never by the node it concerns, that a verdict count is the count of one kind of check, a referee verdict, and that the four results stay separate counts, have no History property in §8.3. The verdict counts vectors pin them through their vector-only shape (§9, SH-12), so a host that uses another shape can break them and pass every property. |
