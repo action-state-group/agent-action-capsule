@@ -61,8 +61,8 @@ async function composed(c: ComposedCase, hooks: boolean) {
 
 describe("composed/v1 carried signature profiles", () => {
   it("reads every case", () => {
-    expect(FILE.count).toBe(42);
-    expect(FILE.cases).toHaveLength(37);
+    expect(FILE.count).toBe(48);
+    expect(FILE.cases).toHaveLength(43);
     expect(FILE.composed_cases).toHaveLength(5);
   });
 
@@ -121,6 +121,24 @@ describe("composed/v1 carried signature profiles", () => {
         }
     });
 
+  it("reads an unserializable signing input as invalid, never an error", async () => {
+    const refusal = FILE.cases.find((c) => c.id === "three-member-verified")!;
+    const response = FILE.cases.find((c) => c.id === "response-verified")!;
+    expect(
+      await verifyCarriedRefusal({ ...refusal.object, issued_at: "\ud800" }),
+    ).toBe("invalid");
+    expect(
+      await verifyCarriedResponse({ ...response.object, issued_at: "\ud800" }),
+    ).toBe("invalid");
+    expect(
+      await verifyCarriedRefusal({
+        key_id: refusal.object.key_id,
+        signature: refusal.object.sig,
+        detail: "\ud800",
+      }),
+    ).toBe("invalid");
+  });
+
   it("refuses the interop-profile-v1 forgeries", async () => {
     const cases = (
       read("vectors", "interop-profile-v1", "vectors.json") as {
@@ -143,6 +161,9 @@ describe("composed/v1 carried signature profiles", () => {
       expect(await verifyCarriedResponse(envelope)).toBe(
         "signature_unverified",
       );
+      // Only the small-order key's forgery verifies any message under a
+      // lenient verifier; the identity-R signature is over the envelope.
+      if (id !== "envelope-small-order-key") continue;
       const rehomed = {
         request_digest: envelope.request_digest,
         anchor: (envelope.anchor as Obj).digest,

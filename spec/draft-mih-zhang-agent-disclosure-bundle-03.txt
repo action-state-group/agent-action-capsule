@@ -1321,14 +1321,30 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       this state.
 
    *  *Verified* (verified) when key_id and the signature are both
-      present and well formed, every signed member named above is
-      present and is a string, and the signature verifies under key_id
-      over the signing input.
+      present and well formed, the signing input can be formed, and the
+      signature verifies under key_id over it.  In three-member-refusal/
+      v1 and digest-bound-artifact-response/v1, the signing input can be
+      formed only when each member it names is present and is a string.
+      In whole-refusal/v1, the signing input is the object as carried,
+      whatever members it has; a member other than key_id and signature
+      may hold any JSON value.
 
    *  *Invalid* (invalid) in every other case, for example a key carried
-      without a signature, a signature without a key, a value that is
-      not a string of the stated form, a signed member that is absent or
-      not a string, or a signature that does not verify.
+      without a signature, a signature without a key, a key_id or
+      signature that is not a string of the stated form, a member of a
+      three-member or digest-bound signing input that is absent or not a
+      string, a signing input that has no JCS serialization (for
+      example, a number JCS cannot represent, as for
+      category_coverage_signature, or a string with an unpaired
+      surrogate), or a signature that does not verify.
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 24]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
 
    An empty string is a string.  The signature state covers the
    signature alone.  A verifier MUST NOT add checks of the signed
@@ -1338,13 +1354,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    [I-D.mih-agent-evidence-request], and it does not show that the key
    belongs to the member's responder: comparing the key with the
    responder's is a separate check, as for any carried signature.
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 24]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
 8.2.4.  History Members
 
@@ -1384,6 +1393,15 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    artifact octets could change a derived join without changing the
    composed digest.  A History member therefore carries no response.
 
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 25]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    The history body is malformed, and the block with it, when envelope
    is not an object; when its subject is not {"full_history": null};
    when it carries no derivation; when responder is not a key identifier
@@ -1394,14 +1412,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    canonical form of [RFC4648], Section 5: its pad bits are zero, so one
    octet string has one text.  This is the rule a refusal or absence
    body outside its form already follows (Section 8.2.1): the form is
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 25]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
    what the composing party can check before it composes.  A History
    that is well formed but fails a check below is a failed member, never
    a malformed block.
@@ -1440,6 +1450,14 @@ Internet-Draft             AAC Evidence Bundle             November 2026
        checkpoint's timestamp is the responder's statement of when its
        History is as of.
 
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 26]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    A failed check 1 to 5 is a failed check of the member.  It is not a
    fourth outcome, and a verifier MUST NOT present the History as
    checked.  A verifier does not recompute or check the History's
@@ -1450,14 +1468,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    _key_, its envelope's responder, and a _time_, its anchor
    checkpoint's timestamp.  A History member that is declared missing,
    is signature-unverified, or fails any of checks 1 to 5 has no join
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 26]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
    view, and every join naming it is not_derivable (Section 8.2.7).  So
    does a History member whose anchor checkpoint is unverified, or whose
    envelope does not reproduce the member's digest: it is not the
@@ -1494,16 +1504,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    per-member claims and from the containing Bundle's claims.  It MUST
    NOT report it as one of them.
 
-   Declaring a member missing withholds its body, not its existence.
-   Its id, observer, request_digest, outcome and digest remain in the
-   composed digest.
-
-   Composition closure covers declared members only.  A participant that
-   is in neither members nor not_requested is not visible to a verifier
-   from this block (Section 12.1).
-
-
-
 
 
 
@@ -1513,6 +1513,14 @@ Mih & Zhang                Expires 6 May 2027                  [Page 27]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   Declaring a member missing withholds its body, not its existence.
+   Its id, observer, request_digest, outcome and digest remain in the
+   composed digest.
+
+   Composition closure covers declared members only.  A participant that
+   is in neither members nor not_requested is not visible to a verifier
+   from this block (Section 12.1).
 
 8.2.6.  Controller Binding Records
 
@@ -1535,14 +1543,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    [RFC3339] date-time in UTC with a "Z" suffix and seconds precision.
    A root record's timestamp, against which a binding is checked, can
    also carry fractional seconds.  Times compare as instants.
-
-
-
-
-
-
-
-
 
 
 

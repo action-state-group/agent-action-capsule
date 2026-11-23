@@ -21,7 +21,7 @@
       "public_key_hex": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
     }
   },
-  "count": 42,
+  "count": 48,
   "cases": [
     {
       "id": "three-member-verified",
@@ -392,6 +392,131 @@
         "state": "verified"
       },
       "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337222c22736967223a226162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162227d"
+    },
+    {
+      "id": "whole-refusal-non-string-member",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "reason is an array, signed. whole-refusal/v1 signs the object as carried, whatever its members' values, so it verifies; the string rule belongs to the three-member and digest-bound profiles.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": [
+          "policy_declined"
+        ],
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "0ae961477ce53b3a107652be5aec6a329c83eed2909459f5884307f40c490920c37515429d159afb97beba3a9c408c7cb1fbcce7dac74efd30f4540c6299e40c"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22726561736f6e223a5b22706f6c6963795f6465636c696e6564225d2c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "whole-refusal-integer-and-object-members",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Carries an integer member and an object member, both signed: any JSON value JCS can serialize is signed as carried.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "attempt": 2,
+        "detail": {
+          "lang": "en",
+          "text": "declined"
+        },
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "1e73cd7ef3715730b080e49432010fcbe357dffdb85cd1df6c3561d144ae13f9bf0840a8142ca9be3fcbf5438907e4131d1f083bd6ae5b530d14f6b0dc834408"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b22617474656d7074223a322c2264657461696c223a7b226c616e67223a22656e222c2274657874223a226465636c696e6564227d2c226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "whole-refusal-float-member",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Carries the number 1.5, which JCS cannot represent in this document's integer-only profile, so the signing input has no JCS serialization and the signature is invalid (as for category_coverage_signature). sig is over a sorted compact serialization that writes 1.5.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "attempt": 1.5,
+        "signature": "8150156d54fef32324837a1e75b3019800fe146651590785354dd0c303e207f6037714a14b759edef2415ddbd78d403a9df8e10837cdf5abde5cee3c55f2f307"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "whole-refusal-only-key-and-signature",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A refusal carrying only key_id and signature, signed over {key_id}. whole-refusal/v1 names no required member, so it verifies; whether the refusal conforms to Evidence Request is a separate check.",
+      "kind": "refusal",
+      "object": {
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "d67e48ef93625acefc6e1d61f07d021be6080f7282fba55207b14589cc81e1fe3d3e6c146d49ec1bfd300893ca9728b78bfa46b751db90d534de9583e01f6e08"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166227d"
+    },
+    {
+      "id": "whole-refusal-proto-member",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As whole-refusal-verified, also carrying a member named __proto__, which is signed like any other (an implementation that copies members by plain assignment in JavaScript would drop it).",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "__proto__": "signed member",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "3690ccba6cc0d8dd14babceaa4f3522a0911a5e74bee945042c59dacfcec78371cd520bc084fd70f5ad4a70b872a344c18624adda5dc4b7414cccef495ec0b0e"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b225f5f70726f746f5f5f223a227369676e6564206d656d626572222c226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "whole-refusal-proto-member-changed",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As whole-refusal-proto-member, with __proto__ changed after signing.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "__proto__": "changed after signing",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "3690ccba6cc0d8dd14babceaa4f3522a0911a5e74bee945042c59dacfcec78371cd520bc084fd70f5ad4a70b872a344c18624adda5dc4b7414cccef495ec0b0e"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      }
     },
     {
       "id": "whole-refusal-three-member-signature",

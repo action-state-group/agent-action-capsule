@@ -188,6 +188,15 @@ def refusal_cases() -> list[dict]:
     wr_key_swapped = dict(wr, key_id=OTHER.public_hex)
     both = dict(base_refusal(), key_id=RESPONDER.public_hex, sig="ab" * 64)
     both["signature"] = sign(RESPONDER, whole_input(both))
+    wr_array = whole(reason=["policy_declined"])
+    wr_minimal = {"key_id": RESPONDER.public_hex}
+    wr_minimal["signature"] = sign(RESPONDER, whole_input(wr_minimal))
+    wr_values = whole(attempt=2, detail={"lang": "en", "text": "declined"})
+    wr_float = dict(base_refusal(), key_id=RESPONDER.public_hex, attempt=1.5)
+    wr_float["signature"] = sign(RESPONDER, json.dumps({k: v for k, v in wr_float.items()}, sort_keys=True,
+                                                       separators=(",", ":")).encode())
+    wr_proto = whole(__proto__="signed member")
+    wr_proto_changed = dict(wr_proto, __proto__="changed after signing")
     three_member_sig_as_whole = dict(base_refusal(), key_id=RESPONDER.public_hex,
                                      signature=sign(RESPONDER, three_member_input(base_refusal())))
 
@@ -243,6 +252,27 @@ def refusal_cases() -> list[dict]:
         case("whole-refusal-carries-sig-and-signature", "refusal", both, WR, VERIFIED,
              "A refusal carrying both sig and signature is in whole-refusal/v1. sig is then an ordinary member, "
              "covered by signature.", signing_input=whole_input(both)),
+        case("whole-refusal-non-string-member", "refusal", wr_array, WR, VERIFIED,
+             "reason is an array, signed. whole-refusal/v1 signs the object as carried, whatever its members' "
+             "values, so it verifies; the string rule belongs to the three-member and digest-bound profiles.",
+             signing_input=whole_input(wr_array)),
+        case("whole-refusal-integer-and-object-members", "refusal", wr_values, WR, VERIFIED,
+             "Carries an integer member and an object member, both signed: any JSON value JCS can serialize "
+             "is signed as carried.", signing_input=whole_input(wr_values)),
+        case("whole-refusal-float-member", "refusal", wr_float, WR, INVALID,
+             "Carries the number 1.5, which JCS cannot represent in this document's integer-only profile, so "
+             "the signing input has no JCS serialization and the signature is invalid (as for "
+             "category_coverage_signature). sig is over a sorted compact serialization that writes 1.5."),
+        case("whole-refusal-only-key-and-signature", "refusal", wr_minimal, WR, VERIFIED,
+             "A refusal carrying only key_id and signature, signed over {key_id}. whole-refusal/v1 names no "
+             "required member, so it verifies; whether the refusal conforms to Evidence Request is a separate "
+             "check.", signing_input=whole_input(wr_minimal)),
+        case("whole-refusal-proto-member", "refusal", wr_proto, WR, VERIFIED,
+             "As whole-refusal-verified, also carrying a member named __proto__, which is signed like any other "
+             "(an implementation that copies members by plain assignment in JavaScript would drop it).",
+             signing_input=whole_input(wr_proto)),
+        case("whole-refusal-proto-member-changed", "refusal", wr_proto_changed, WR, INVALID,
+             "As whole-refusal-proto-member, with __proto__ changed after signing."),
         case("whole-refusal-three-member-signature", "refusal", three_member_sig_as_whole, WR, INVALID,
              "signature is a valid three-member signature (over issued_at, reason and request_digest), carried "
              "as signature: the refusal is in whole-refusal/v1, whose signing input also covers key_id, so it "

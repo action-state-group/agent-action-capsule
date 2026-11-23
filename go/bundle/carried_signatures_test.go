@@ -54,8 +54,8 @@ func signatureProfileVectors(t *testing.T) (objects []signatureObjectCase, compo
 		Composed []signatureComposedCase `json:"composed_cases"`
 	}
 	readRepoJSON(t, &file, "vectors", "bundle", "composed-signature-profiles", "vectors.json")
-	require.Equal(t, json.Number("42"), file.Count)
-	require.Len(t, file.Cases, 37)
+	require.Equal(t, json.Number("48"), file.Count)
+	require.Len(t, file.Cases, 43)
 	require.Len(t, file.Composed, 5)
 	return file.Cases, file.Composed
 }
@@ -168,8 +168,10 @@ func memberSignature(t *testing.T, result ComposedResult, id, name string) strin
 
 // The four strict-Ed25519 cases of vectors/interop-profile-v1/: the forged
 // refusals are three-member refusals that do not verify; a forged envelope
-// carries responder (in none of these profiles), and its key and signature
-// carried as key_id and sig of a digest-bound response do not verify.
+// carries responder (in none of these profiles). The small-order key's
+// forgery verifies any message under ed25519.Verify, so carried as key_id
+// and sig of a digest-bound response it tests strictness; the identity-R
+// signature is over the envelope's own body, so it is not rehomed.
 func TestCarriedSignatureInteropV1Forgeries(t *testing.T) {
 	var file struct {
 		Cases []struct {
@@ -201,11 +203,18 @@ func TestCarriedSignatureInteropV1Forgeries(t *testing.T) {
 	for _, id := range []string{"envelope-small-order-key", "envelope-identity-r"} {
 		envelope := reply(id)
 		require.Equal(t, RefusalSignatureUnverified, VerifyCarriedResponse(envelope), id)
+		if id != "envelope-small-order-key" {
+			continue
+		}
 		rehomed := map[string]interface{}{
 			"request_digest": envelope["request_digest"], "anchor": envelope["anchor"].(map[string]interface{})["digest"],
 			"artifact_kind": "evidence-bundle/v2", "artifact_digest": envelope["artifact_digest"],
 			"issued_at": envelope["issued_at"], "key_id": envelope["responder"], "sig": envelope["sig"],
 		}
 		require.Equal(t, RefusalSignatureInvalid, VerifyCarriedResponse(rehomed), id)
+		key, _ := hex.DecodeString(rehomed["key_id"].(string))
+		sig, _ := hex.DecodeString(rehomed["sig"].(string))
+		input := signingInputOf(t, DigestBoundArtifactResponseProfile, rehomed)
+		require.True(t, ed25519.Verify(key, input, sig), "lenient Ed25519 accepts the forgery")
 	}
 }

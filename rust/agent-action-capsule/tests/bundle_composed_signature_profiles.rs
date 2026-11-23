@@ -20,8 +20,8 @@ fn read(path: &str) -> Value {
 
 fn vectors() -> Value {
     let file = read("vectors/bundle/composed-signature-profiles/vectors.json");
-    assert_eq!(file["count"], json!(42));
-    assert_eq!(file["cases"].as_array().unwrap().len(), 37);
+    assert_eq!(file["count"], json!(48));
+    assert_eq!(file["cases"].as_array().unwrap().len(), 43);
     assert_eq!(file["composed_cases"].as_array().unwrap().len(), 5);
     file
 }
@@ -153,6 +153,11 @@ fn interop_v1_forgeries() {
             SIGNATURE_UNVERIFIED,
             "{id}"
         );
+        // Only the small-order key's forgery verifies any message under a
+        // lenient verifier; the identity-R signature is over the envelope.
+        if id != "envelope-small-order-key" {
+            continue;
+        }
         let rehomed = json!({
             "request_digest": envelope["request_digest"], "anchor": envelope["anchor"]["digest"],
             "artifact_kind": "evidence-bundle/v2", "artifact_digest": envelope["artifact_digest"],

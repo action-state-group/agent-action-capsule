@@ -79,7 +79,12 @@ def three_member_refusal_signing_input(refusal: Mapping[str, Any]) -> bytes | No
     """UTF-8 JCS of ``{issued_at, reason, request_digest}``, or ``None`` when
     one of them is absent or not a string."""
     signed = _strings(refusal, _REFUSAL_SIGNED)
-    return None if signed is None else jcs(signed)
+    if signed is None:
+        return None
+    try:
+        return jcs(signed)
+    except ValueError:  # a string JCS cannot serialize, such as an unpaired surrogate
+        return None
 
 
 def verify_three_member_refusal(refusal: Mapping[str, Any]) -> str:
@@ -135,7 +140,10 @@ def verify_digest_bound_artifact_response(response: Mapping[str, Any]) -> str:
     signed = _strings(response, _RESPONSE_SIGNED)
     if signed is None:
         return _INVALID
-    message = artifact_response_signing_input(**signed)
+    try:
+        message = artifact_response_signing_input(**signed)
+    except ValueError:  # a string JCS cannot serialize, such as an unpaired surrogate
+        return _INVALID
     return _VERIFIED if _verifies(response.get("key_id"), response.get("sig"), message) else _INVALID
 
 

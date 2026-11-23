@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 import { verifyEd25519Strict } from "./ed25519-strict.js";
-import { jcs } from "./json.js";
+import { jcs, setMember } from "./json.js";
 
 /**
  * The carried signature profiles of `composed/v1`
@@ -104,7 +104,13 @@ export function threeMemberRefusalSigningInput(
   refusal: Obj,
 ): Uint8Array | undefined {
   const signed = strings(refusal, ["issued_at", "reason", "request_digest"]);
-  return signed === undefined ? undefined : jcs(signed);
+  if (signed === undefined) return undefined;
+  try {
+    return jcs(signed);
+  } catch {
+    // A string JCS cannot serialize, such as an unpaired surrogate.
+    return undefined;
+  }
 }
 
 /**
@@ -128,9 +134,11 @@ export async function verifyWholeRefusal(
 ): Promise<CarriedSignatureState> {
   if (!has(refusal, "key_id") && !has(refusal, "signature"))
     return "signature_unverified";
+  // setMember: plain assignment would turn a member named `__proto__` into
+  // the object's prototype and drop it from the signing input.
   const unsigned: Record<string, unknown> = {};
   for (const [name, member] of Object.entries(refusal))
-    if (name !== "signature") unsigned[name] = member;
+    if (name !== "signature") setMember(unsigned, name, member);
   let input: Uint8Array;
   try {
     input = jcs(unsigned);
@@ -191,13 +199,19 @@ export async function verifyDigestBoundArtifactResponse(
     "issued_at",
   ]);
   if (signed === undefined) return "invalid";
-  const input = artifactResponseSigningInput(
-    signed.request_digest!,
-    signed.anchor!,
-    signed.artifact_kind!,
-    signed.artifact_digest!,
-    signed.issued_at!,
-  );
+  let input: Uint8Array;
+  try {
+    input = artifactResponseSigningInput(
+      signed.request_digest!,
+      signed.anchor!,
+      signed.artifact_kind!,
+      signed.artifact_digest!,
+      signed.issued_at!,
+    );
+  } catch {
+    // A string JCS cannot serialize, such as an unpaired surrogate.
+    return "invalid";
+  }
   return verifies(response.key_id, response.sig, input);
 }
 

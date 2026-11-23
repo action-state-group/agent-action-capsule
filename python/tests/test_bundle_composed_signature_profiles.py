@@ -99,10 +99,14 @@ def test_interop_v1_forged_refusal_is_invalid(case_id):
 @pytest.mark.parametrize("case_id", ["envelope-small-order-key", "envelope-identity-r"])
 def test_interop_v1_forged_envelope(case_id):
     """An interop envelope carries responder, so it is in none of these
-    profiles; its key and signature carried as key_id and sig of a
-    digest-bound response do not verify."""
+    profiles. The small-order key's forgery (R the identity, S zero) verifies
+    any message under a lenient verifier, so carried as key_id and sig of a
+    digest-bound response it tests strictness; the identity-R signature is
+    over the envelope's own body, so it is not rehomed."""
     envelope = _interop_reply(case_id)
     assert cs.verify_carried_response(envelope) == REFUSAL_SIGNATURE_UNVERIFIED
+    if case_id != "envelope-small-order-key":
+        return
     rehomed = {"request_digest": envelope["request_digest"], "anchor": envelope["anchor"]["digest"],
                "artifact_kind": "evidence-bundle/v2", "artifact_digest": envelope["artifact_digest"],
                "issued_at": envelope["issued_at"], "key_id": envelope["responder"], "sig": envelope["sig"]}
@@ -125,3 +129,17 @@ def test_sha256sums_pin_every_file():
     assert set(listed) == on_disk
     for name, digest in listed.items():
         assert hashlib.sha256((VECTORS / name).read_bytes()).hexdigest() == digest, name
+
+
+@pytest.mark.parametrize("kind", ["refusal", "response"])
+def test_unserializable_signing_input_is_invalid_not_an_error(kind):
+    """A string JCS cannot serialize (an unpaired surrogate) makes the
+    signature invalid; the verifier never raises."""
+    case = next(c for c in DATA["cases"] if c["id"] == ("three-member-verified" if kind == "refusal"
+                                                         else "response-verified"))
+    obj = dict(case["object"], issued_at="\ud800")
+    verify = cs.verify_carried_refusal if kind == "refusal" else cs.verify_carried_response
+    assert verify(obj) == "invalid"
+    if kind == "refusal":
+        whole = {"key_id": obj["key_id"], "signature": obj["sig"], "detail": "\ud800"}
+        assert cs.verify_carried_refusal(whole) == "invalid"

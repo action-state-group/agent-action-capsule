@@ -1122,12 +1122,20 @@ A verifier reports exactly one of three states for each signature:
   `sig`, or a response that carries `responder`. A refusal in
   `three-member-refusal/v1` carries `sig`, so it is never in this state.
 - **Verified** (`verified`) when `key_id` and the signature are both present
-  and well formed, every signed member named above is present and is a
-  string, and the signature verifies under `key_id` over the signing input.
+  and well formed, the signing input can be formed, and the signature
+  verifies under `key_id` over it. In `three-member-refusal/v1` and
+  `digest-bound-artifact-response/v1`, the signing input can be formed only
+  when each member it names is present and is a string. In
+  `whole-refusal/v1`, the signing input is the object as carried, whatever
+  members it has; a member other than `key_id` and `signature` may hold any
+  JSON value.
 - **Invalid** (`invalid`) in every other case, for example a key carried
-  without a signature, a signature without a key, a value that is not a
-  string of the stated form, a signed member that is absent or not a string,
-  or a signature that does not verify.
+  without a signature, a signature without a key, a `key_id` or signature
+  that is not a string of the stated form, a member of a three-member or
+  digest-bound signing input that is absent or not a string, a signing input
+  that has no JCS serialization (for example, a number JCS cannot represent,
+  as for `category_coverage_signature`, or a string with an unpaired
+  surrogate), or a signature that does not verify.
 
 An empty string is a string. The signature state covers the signature
 alone. A verifier MUST NOT add checks of the signed values, such as a

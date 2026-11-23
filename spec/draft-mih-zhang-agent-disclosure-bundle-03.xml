@@ -1056,14 +1056,22 @@ no signature to check: a refusal in <tt>whole-refusal/v1</tt> that carries neith
             </li>
             <li>
               <t><strong>Verified</strong> (<tt>verified</tt>) when <tt>key_id</tt> and the signature are both present
-and well formed, every signed member named above is present and is a
-string, and the signature verifies under <tt>key_id</tt> over the signing input.</t>
+and well formed, the signing input can be formed, and the signature
+verifies under <tt>key_id</tt> over it. In <tt>three-member-refusal/v1</tt> and
+<tt>digest-bound-artifact-response/v1</tt>, the signing input can be formed only
+when each member it names is present and is a string. In
+<tt>whole-refusal/v1</tt>, the signing input is the object as carried, whatever
+members it has; a member other than <tt>key_id</tt> and <tt>signature</tt> may hold any
+JSON value.</t>
             </li>
             <li>
               <t><strong>Invalid</strong> (<tt>invalid</tt>) in every other case, for example a key carried
-without a signature, a signature without a key, a value that is not a
-string of the stated form, a signed member that is absent or not a string,
-or a signature that does not verify.</t>
+without a signature, a signature without a key, a <tt>key_id</tt> or signature
+that is not a string of the stated form, a member of a three-member or
+digest-bound signing input that is absent or not a string, a signing input
+that has no JCS serialization (for example, a number JCS cannot represent,
+as for <tt>category_coverage_signature</tt>, or a string with an unpaired
+surrogate), or a signature that does not verify.</t>
             </li>
           </ul>
           <t>An empty string is a string. The signature state covers the signature
@@ -2615,7 +2623,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 2132?>
+    <?line 2140?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
