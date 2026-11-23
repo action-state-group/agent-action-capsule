@@ -71,6 +71,8 @@ GENERATORS = (
     "generate_anchor_witness_v1_vectors.py",
     "generate_min_necessary_vectors.py",
     "generate_bundle_producer_key_vectors.py",
+    # Copies Bundles from the producer-key corpus, so it runs after it.
+    "generate_outcome_claim_limits_vectors.py",
     "generate_bundle_composed_vectors.py",
     # Reuses the composed generator's records, keys and block helpers.
     "generate_bundle_composed_cb_vectors.py",

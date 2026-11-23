@@ -1,0 +1,627 @@
+{
+  "format_version": "1",
+  "provenance": "spec-derived",
+  "spec": [
+    "draft-mih-scitt-agent-action-capsule-05",
+    "spec/REGISTRY.md §5",
+    "draft-mih-zhang-agent-disclosure-bundle-01"
+  ],
+  "description": "Two negatives a reader must refuse, each with a positive twin it must accept: a controller's report of success is not proof that the effect occurred, and an outcome signed by the producer's own key is not independent proof. Each case names a condition-removed mutant that must flip its result. A reader decides from the Class-1 result, the effect_attestation grade in the payload, and the countersignature stamp; the Class-1 derived assurance alone is identical across the Capsule twins.",
+  "intents": {
+    "physical_proof": "Accept only if the Class-1 result is ok, the derived effect_mode is confirmed, and effect.effect_attestation is gate_executed. Any other grade, an unregistered one included, is no stronger than runtime_claimed (REGISTRY §5) and is refused with reason physical_completion_absent. An accepted case names its observer: the gate.",
+    "independent_outcome_proof": "Accept only if the countersign/v1 entry's stamp is resolved: valid, not signed by a declared producer key, and named by the caller's countersigner source. not independent is refused with reason outcome_signer_not_independent; unresolved signer is refused with reason outcome_signer_unresolved. An accepted case names its countersigner, taken from the caller's source."
+  },
+  "count": 4,
+  "cases": [
+    {
+      "id": "physical-completion-absent-presented-as-proof",
+      "proposed_name": "physical_completion_absent_presented_as_proof",
+      "kind": "negative",
+      "twin": "physical-completion-observed",
+      "consumer_intent": "physical_proof",
+      "description": "The runtime asserted completion and the Capsule records that claim, not an observation (effect_attestation runtime_claimed). Class 1 accepts the record and derives effect_mode confirmed; presented as proof that the effect occurred, it is refused.",
+      "capsule": {
+        "capsule_id": "1183a7aa4c0db5cdd82379fde89e1b2e1e259a2d3f5c4775d2b99425f26f47ea",
+        "action_id": "ocl-effect-001",
+        "action_type": "decide",
+        "assurance": {
+          "attestation_mode": "self_attested",
+          "effect_mode": "confirmed",
+          "ledger_mode": "standalone"
+        },
+        "canonicalization_id": "jcs",
+        "developer": "agent@v1",
+        "disposition": {
+          "approver": "policy",
+          "decision": "accept",
+          "human_disposed": false,
+          "verdict_class": "executed"
+        },
+        "effect": {
+          "effect_attestation": "runtime_claimed",
+          "response_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "status": "confirmed",
+          "type": "write_order"
+        },
+        "format_version": "4",
+        "operator": "operator.example",
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+        "timestamp": "2026-07-06T00:00:00Z"
+      },
+      "expect": {
+        "class1": {
+          "ok": true,
+          "derived": {
+            "attestation_mode": "self_attested",
+            "effect_mode": "confirmed",
+            "ledger_mode": "standalone"
+          },
+          "finding_codes": []
+        },
+        "grade": "runtime_claimed",
+        "accept": false,
+        "reason": "physical_completion_absent"
+      },
+      "mutants": [
+        {
+          "removes": "the grade below gate_executed",
+          "set": {
+            "effect.effect_attestation": "gate_executed"
+          },
+          "expect": {
+            "accept": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "physical-completion-observed",
+      "proposed_name": "physical_completion: observed (positive twin)",
+      "kind": "positive",
+      "twin": "physical-completion-absent-presented-as-proof",
+      "consumer_intent": "physical_proof",
+      "description": "The commit transited the gate and the engine observed the effect boundary directly (effect_attestation gate_executed). The Capsule differs from its twin only in that grade and its capsule_id. Accepted, observer named: the gate.",
+      "capsule": {
+        "capsule_id": "620fbe841df46cfc49ed9685771fab0c6e36f6fba73966b6c9547458eb24ec9d",
+        "action_id": "ocl-effect-001",
+        "action_type": "decide",
+        "assurance": {
+          "attestation_mode": "self_attested",
+          "effect_mode": "confirmed",
+          "ledger_mode": "standalone"
+        },
+        "canonicalization_id": "jcs",
+        "developer": "agent@v1",
+        "disposition": {
+          "approver": "policy",
+          "decision": "accept",
+          "human_disposed": false,
+          "verdict_class": "executed"
+        },
+        "effect": {
+          "effect_attestation": "gate_executed",
+          "response_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+          "status": "confirmed",
+          "type": "write_order"
+        },
+        "format_version": "4",
+        "operator": "operator.example",
+        "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+        "timestamp": "2026-07-06T00:00:00Z"
+      },
+      "expect": {
+        "class1": {
+          "ok": true,
+          "derived": {
+            "attestation_mode": "self_attested",
+            "effect_mode": "confirmed",
+            "ledger_mode": "standalone"
+          },
+          "finding_codes": []
+        },
+        "grade": "gate_executed",
+        "accept": true,
+        "observed_by": "gate"
+      },
+      "mutants": [
+        {
+          "removes": "the gate_executed grade",
+          "set": {
+            "effect.effect_attestation": "runtime_claimed"
+          },
+          "expect": {
+            "accept": false,
+            "reason": "physical_completion_absent"
+          }
+        },
+        {
+          "removes": "a registered grade: the proposed spelling 'observed', unregistered, grades no higher than runtime_claimed",
+          "set": {
+            "effect.effect_attestation": "observed"
+          },
+          "expect": {
+            "accept": false,
+            "reason": "physical_completion_absent"
+          }
+        }
+      ]
+    },
+    {
+      "id": "outcome-signer-not-independent",
+      "proposed_name": "outcome_signer_not_independent",
+      "kind": "negative",
+      "twin": "outcome-signer-independent",
+      "consumer_intent": "independent_outcome_proof",
+      "description": "The countersign/v1 entry is valid and signed by the key the Bundle declares in producer-key/v1. The caller's countersigner source also lists that key, so a listing alone would name it; the declaration still makes it not independent. Refused.",
+      "source": {
+        "file": "vectors/bundle/producer-key/vectors.json",
+        "case": "declared-self-countersignature"
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {
+            "public_key": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+            },
+            "over": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "fc770764987df255f24079dcfa531bcfd3c4551c3711ddbb78b174ba1c7c56dc0a5b5eabfb87114a328b00c9cd4dacd8e5cd86c9b9dc5cd3ca065fb5ffa8ba05"
+          }
+        ]
+      },
+      "bundle_digest": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+      "countersigners": [
+        {
+          "name": "producer.example",
+          "key_ids": [
+            "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          ]
+        }
+      ],
+      "expect": {
+        "stamp": "not independent",
+        "accept": false,
+        "reason": "outcome_signer_not_independent"
+      },
+      "mutants": [
+        {
+          "removes": "the producer-key/v1 declaration (the same key, undeclared, re-signed over the new digest)",
+          "source": {
+            "file": "vectors/bundle/producer-key/vectors.json",
+            "case": "undeclared-self-countersignature"
+          },
+          "bundle": {
+            "bundle_version": "2",
+            "bundle_kind": "evidence-bundle/v2",
+            "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+            "records": [
+              {
+                "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+                "format_version": "4",
+                "canonicalization_id": "jcs",
+                "action_id": "report-single-record-1",
+                "action_type": "fyi",
+                "operator": "ACME-CO",
+                "developer": "agent@v1",
+                "timestamp": "2026-09-16T19:00:00Z",
+                "assurance": {
+                  "effect_mode": "not_applicable",
+                  "attestation_mode": "self_attested",
+                  "ledger_mode": "standalone"
+                },
+                "disposition": {
+                  "verdict_class": "not_applicable",
+                  "decision": "report",
+                  "approver": "policy",
+                  "human_disposed": false
+                },
+                "model_attestation": {
+                  "compute_attestation": {
+                    "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+                  }
+                },
+                "countersignatures": [],
+                "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+              }
+            ],
+            "completeness": {
+              "closure_depth": 0,
+              "records_mode": "complete",
+              "payloads_mode": "selected",
+              "suppressed_fields": [],
+              "missing": []
+            },
+            "disclosures": {
+              "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+                "agent_input": {
+                  "report": "report/v1",
+                  "rows": [
+                    {
+                      "id": "r1",
+                      "result": "pass"
+                    },
+                    {
+                      "id": "r2",
+                      "result": "withheld"
+                    }
+                  ]
+                }
+              }
+            },
+            "completeness_certificate": {
+              "log_id": "vector-log",
+              "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+              "first_seq": 1,
+              "last_seq": 1,
+              "body_digests": [
+                "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+              ],
+              "range_proof": {
+                "from_seq": 1,
+                "to_seq": 1,
+                "size": 1,
+                "from_index": 0,
+                "to_index": 0,
+                "witness": []
+              },
+              "memberships": {
+                "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+                  "log_coordinates": {
+                    "log_id": "vector-log",
+                    "seq": 1,
+                    "leaf_index": 0
+                  },
+                  "inclusion_proof": {
+                    "v": 1,
+                    "kind": "inclusion",
+                    "size": 1,
+                    "leaf_index": 0,
+                    "witness": [],
+                    "peaks_left": [],
+                    "peaks_right": []
+                  }
+                }
+              }
+            },
+            "checkpoint": {
+              "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+              "mmr_size": 1
+            },
+            "countersignatures": [
+              {
+                "type": "countersign/v1",
+                "signer": {
+                  "id": "did:web:countersign.example",
+                  "key_id": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+                },
+                "over": "1aa69730d34c8f15588db4ce8d1990e3d3b9c46aeb333b0adaee20d18dab759b",
+                "statement": {
+                  "checks": [
+                    {
+                      "name": "chain consistency",
+                      "result": "established"
+                    },
+                    {
+                      "name": "range membership",
+                      "result": "failed"
+                    }
+                  ],
+                  "recomputed_at": "2026-10-01T00:00:00Z",
+                  "scope": {
+                    "ledger_id": "ledger:test",
+                    "closure_depth": 0
+                  }
+                },
+                "signature": "34bce2c43268d17688993df3e47dc808c3a7efd17816bd0c2472f3976214094649fbeb3faa9c01ea8af682e3c960f8e07f498fc9be057556209f65ca40195c09"
+              }
+            ]
+          },
+          "bundle_digest": "1aa69730d34c8f15588db4ce8d1990e3d3b9c46aeb333b0adaee20d18dab759b",
+          "expect": {
+            "stamp": "resolved",
+            "accept": true,
+            "countersigner": "producer.example"
+          }
+        }
+      ]
+    },
+    {
+      "id": "outcome-signer-independent",
+      "proposed_name": "outcome_signer.relationship: independent (positive twin)",
+      "kind": "positive",
+      "twin": "outcome-signer-not-independent",
+      "consumer_intent": "independent_outcome_proof",
+      "description": "The countersign/v1 entry is valid and signed by a key other than the declared producer key, and the caller's countersigner source names that key. Accepted, countersigner named from the caller's source.",
+      "source": {
+        "file": "vectors/bundle/producer-key/vectors.json",
+        "case": "declared-other-signer"
+      },
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {
+            "public_key": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "884b8857f4eaa1613c61504db34d4beaf346517a0e31de3cddd4d9b4201d9d0b"
+            },
+            "over": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "f24bb58914d17d68e5630193073657016344762d0703b75bbf3d0b51ca671efb59b2c27b0c368d3272d3e1962d0f4fce4b4500d2e03104dca16a6d26dcf0070b"
+          }
+        ]
+      },
+      "bundle_digest": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+      "countersigners": [
+        {
+          "name": "countersign.example",
+          "key_ids": [
+            "884b8857f4eaa1613c61504db34d4beaf346517a0e31de3cddd4d9b4201d9d0b"
+          ]
+        }
+      ],
+      "expect": {
+        "stamp": "resolved",
+        "accept": true,
+        "countersigner": "countersign.example"
+      },
+      "mutants": [
+        {
+          "removes": "the caller's listing of the signer key",
+          "countersigners": [],
+          "expect": {
+            "stamp": "unresolved signer",
+            "accept": false,
+            "reason": "outcome_signer_unresolved"
+          }
+        },
+        {
+          "removes": "the signer's independence (the caller also holds the signer key as a producer key)",
+          "extra_producer_keys": [
+            "884b8857f4eaa1613c61504db34d4beaf346517a0e31de3cddd4d9b4201d9d0b"
+          ],
+          "expect": {
+            "stamp": "not independent",
+            "accept": false,
+            "reason": "outcome_signer_not_independent"
+          }
+        }
+      ]
+    }
+  ]
+}

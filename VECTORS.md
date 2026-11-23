@@ -98,6 +98,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 110 |
 | `vectors/bundle/fragment/` | `draft-mih-zhang-agent-disclosure-bundle` (Fragment Codec) | pack, report | 7 |
 | `vectors/minimum-necessary/` | `spec/REGISTRY.md` §10, §14, §16 (provisional entries) | pack, verify | 15 |
+| `vectors/outcome-claim-limits/` | `draft-mih-scitt-agent-action-capsule-05` §5.3 (`effect_attestation`); `draft-mih-zhang-agent-disclosure-bundle-01` (Self-Countersignature) | verify, evaluate | 4 |
 | `vectors/judgment/` | `x-judgment-v1` extension (provisional) | record, verify | 5 |
 | `vectors/evidence-layer/padding/` | `draft-mih-agent-evidence-layer-00` (What a Checkpoint Reveals) | record, verify | 17 |
 | `vectors/registry-conformance/` | `spec/REGISTRY.md` | verify | 26 |

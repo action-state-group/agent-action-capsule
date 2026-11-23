@@ -82,6 +82,13 @@ same-commit files in CI.
   `sd-jwt-issuers/v1` Bundle extensions, and the `minimum_necessary_report/1`
   result shape, over one worked example;
   `python/scripts/generate_min_necessary_vectors.py` regenerates them.
+- `outcome-claim-limits/`: two negatives a reader must refuse and their positive
+  twins, with a condition-removed mutant per case: a controller's report that an
+  effect succeeded (`effect_attestation` `runtime_claimed`) presented as proof
+  that it occurred, and an outcome countersigned by the producer's own key
+  presented as independent proof. The README maps the proposed field names onto
+  this repository's spelling;
+  `python/scripts/generate_outcome_claim_limits_vectors.py` regenerates them.
 - `bundle/strict/`: strict Evidence Bundle verification
   (`verify_bundle(..., strict=True)`): producer signatures, refusing the withdrawn
   `jcs-n` records, the checkpoint read from its signed COSE form,

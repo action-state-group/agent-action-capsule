@@ -46,6 +46,7 @@
     "adapter_erc8183": "adapters/erc-8183/manifest.json",
     "json_nesting": "json-nesting/manifest.json",
     "cbor_nesting": "cbor-nesting/manifest.json",
-    "cbor_request_model": "cbor-request-model/manifest.json"
+    "cbor_request_model": "cbor-request-model/manifest.json",
+    "outcome_claim_limits": "outcome-claim-limits/vectors.json"
   }
 }
