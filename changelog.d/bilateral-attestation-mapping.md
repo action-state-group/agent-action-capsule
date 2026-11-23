@@ -7,7 +7,8 @@
   plugin-local or not emitted, and names its nearest BA object and what it lacks to be one. Findings: no record
   either producer seals today is a BA object; countersign and cadence do not fit BA without loss; the cadence chain matches the Evidence
   Bundle `-03` `parent-log-witness/v1` kind link for link, and the mapping lists every member
-  cadence lacks or adds against it; BA
+  cadence lacks or adds against it, and bundles already sealed under the cadence name are
+  read by a plugin-side verifier, not re-carried; BA
   has no slot for intent, and an optional digest reference carries it with no new member; the
   negotiation trail is plugin-local in both versions, though v1 signs each party's own moves; the
   agreed terms verify without the trail only as an SR terms leg cited by the other side, which v1

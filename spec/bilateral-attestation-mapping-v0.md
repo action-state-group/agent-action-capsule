@@ -29,13 +29,13 @@ change; any judgment over an exchange.
 
 ## 1. Sources
 
-Each row is read from source at the commit named.
+Each row is read from source at the commit named, in the public repository named.
 
-| Tag | What | Pinned at |
-|---|---|---|
-| SRC-A | A compute-exchange plugin: the settlement legs it seals for a paid exchange (one terms leg per invoice), the session agreement its legs cite, and the payment lifecycle records it seals | release tag `v0.1.23`, commit `54420bc602e8520e7eb061480575d5787d7d4a54` |
-| SRC-B | A marketplace plugin's deal record profile in its two versions: v0 (a closed set of twenty-four record types, per its schema's enum, its typed action records, its settlement notes, its reconcile of two closes and its countersign rung) and v1 (ten record types of its own and sixteen overlay types, per its schema's enum, its sent pairs and its sealed deal report) | commit `546cc0966548de1d32fe942b74151d5805c994bd` |
-| SRC-C | The core the marketplace plugin builds on: the `countersign/v1` entry, the cadence tree and the verifier of its chain, the settlement-leg builders | commit `47afa723095141e916dc79591795d348278d0af2` |
+| Tag | What | Repository | Pinned at |
+|---|---|---|---|
+| SRC-A | A compute-exchange plugin: the settlement legs it seals for a paid exchange (one terms leg per invoice), the session agreement its legs cite, and the payment lifecycle records it seals | `Mesh-LLM/capsules-plugin` (formerly `Mesh-LLM/capsules`, which redirects to it) | release tag `v0.1.23`, commit `54420bc602e8520e7eb061480575d5787d7d4a54` |
+| SRC-B | A marketplace plugin's deal record profile in its two versions: v0 (a closed set of twenty-four record types, per its schema's enum, its typed action records, its settlement notes, its reconcile of two closes and its countersign rung) and v1 (ten record types of its own and sixteen overlay types, per its schema's enum, its sent pairs and its sealed deal report) | `action-state-group/evidencebook` | commit `546cc0966548de1d32fe942b74151d5805c994bd` |
+| SRC-C | The core the marketplace plugin builds on: the `countersign/v1` entry, the cadence tree and the verifier of its chain, the settlement-leg builders | `action-state-group/capsule-cli` | commit `47afa723095141e916dc79591795d348278d0af2` |
 
 The earlier revision of this mapping read SRC-A at release `v0.1.4`, and SRC-B v0 at another
 location, where its enum had twenty types. §4.1 and §4.2 are re-read at the pins above. Four v0
@@ -252,19 +252,23 @@ The two differ in these fields and rules.
 | Findings | `cadence_` names, and `cadence_earlier_checkpoint_not_this_deal` | `parent_witness_` names, and `parent_witness_earlier_checkpoint_not_this_log` | the names differ but the steps are the same. SRC-C checks `index` and `salt` before the path, and EB the path first. EB also fails a non-object block (`parent_witness_malformed`), which SRC-C reads as no claim |
 | Publication discipline | one entry per tick on the clock, a filler leaf, random positions, one fixed depth | not required. EB's Privacy Considerations SHOULD a fresh 256-bit salt and one path length, and say what a witness of the parent log sees | cadence adds the clock and the filler. EB does not need them to verify |
 
-**What this means for the core.** Because every link matches, a cadence chain can be re-carried
-as `parent-log-witness/v1` without new cryptography and without re-witnessing. The re-carried
-block moves the five members from `cadence` to `parent`, carries `earlier` only when the
-covered checkpoint is earlier, and leaves `state`, `extent`, the step counts and
-`checkpoint_at` out or as members EB ignores. A core that verifies `parent-log-witness/v1` in
-place of its own cadence check reads such a block unchanged. It does not read a bundle sealed
-under `x-cadence-witness/v0` or an earlier name until that bundle is re-carried. Re-carrying
-changes the Bundle, and so its bundle digest: a countersignature over the old digest does not
-carry to the new one. It reports no
-not-yet-witnessed state, and it reports extent as entries, not steps. SRC-B's own reports read
-the stated `extent` and the step counts, so they stay plugin-side. **Classification of the
-chain: EB `parent-log-witness/v1`**, once re-carried. The tick schedule and the filler stay
-plugin-local.
+**What this means for the core.** Because every link matches, a chain can be carried as
+`parent-log-witness/v1` without new cryptography and without re-witnessing. Such a block has the
+five members under `parent`, not `cadence`, carries `earlier` only when the covered checkpoint
+is earlier, and leaves out `state`, `extent`, the step counts and `checkpoint_at`, or keeps them
+as members EB ignores. A core that verifies `parent-log-witness/v1` in place of its own cadence
+check reads such a block unchanged. It reports no not-yet-witnessed state, and it reports extent
+as entries, not steps. SRC-B's own reports read the stated `extent` and the step counts, so they
+stay plugin-side.
+
+**Decided: bundles already sealed are not re-carried.** A bundle sealed under
+`x-cadence-witness/v0` or an earlier name keeps its cadence chain and is read by a plugin-side
+verifier of that chain, as SRC-C's is read today. It is not rewritten as
+`parent-log-witness/v1`. Re-carrying would change the Bundle, and so its bundle digest, and a
+countersignature over the old digest would not carry to the new one. **Classification of the
+chain:** EB `parent-log-witness/v1` for a chain carried under that kind. For a bundle sealed
+under the cadence names, it is plugin-local, read by the plugin's verifier. The tick schedule and
+the filler stay plugin-local.
 
 ### 5.3 Intent: no slot in BA; an optional reference is enough
 
@@ -367,7 +371,7 @@ the three objects, an IP acceptance record is the nearest existing one.
 - **O3.** Whether an SR delivered leg should accompany a v1 `perform` that delivers, so that
   SRC-B v1 seals the whole core (§5.6). Not decided here.
 - **O4.** For a core that verifies EB `parent-log-witness/v1` in place of its cadence check
-  (§5.2): whether bundles already sealed under `x-cadence-witness/v0` and its earlier names are
-  re-carried, read by a plugin-side verifier, or left unverified by the core; and where a
-  not-yet-witnessed state is reported once the block holds only a witnessed chain. Not decided
-  here.
+  (§5.2). **Decided:** bundles already sealed under `x-cadence-witness/v0` and its earlier names
+  are read by a plugin-side verifier and are not re-carried, because re-carrying changes the
+  bundle digest and drops the countersignatures over it. **Still open:** where a
+  not-yet-witnessed state is reported once the block holds only a witnessed chain.
