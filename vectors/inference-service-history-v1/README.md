@@ -19,17 +19,18 @@ unchanged.
 Five positives: the base History (one model withheld and its partner, as under `/0`); models 4 and
 4 and five models of 1, each total withheld; models 1 and 1, whose total of 2 is under the floor
 and withheld `complementary`, not `below_floor`, so the reason does not tell it from a total of 8;
-models 3 and 4, whose total of 7 fixes neither and stays published. Four negatives, each failing
+models 3 and 4, whose total of 7 fixes neither and stays published. Six negatives, each failing
 `period_floor`: the totals of 8 and 5 published; a published model of 10 beside two of 4 withheld
-under a published total of 18; a total withheld `complementary` beside one model under the floor.
+under a published total of 18; a published model of 10 beside three withheld under a published
+total of 12, short of one per withheld model (the listing rule), and beside two withheld under a
+published total of 19, more than they can hold; a total withheld `complementary`
+beside one model under the floor.
 Two cases add the verdict counts member of `vectors/inference-service-history-verdicts-v0/`, whose
 2 October contradicted table holds 4 and 4: its total withheld (accepted), and published
 (`period_floor` `FAIL`).
 
 ## Not covered
 
-- A total short of one per withheld cell (the listing rule): the checkers refuse it as not adding
-  up; no case states it.
 - The residuals §12 names: a withheld cell and its `complementary` partner bounded by the smallest
   published cell, and a floor of 2.
 - The envelope, the card, the Detailed level and the other History properties:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 """Generate the conformance vectors of ``inference-service-history/1``
-(``spec/inference-service-history-profile-v0.md`` §6.2 item 3, SH-8).
+(``spec/inference-service-history-profile-v0.md`` §6.2 item 4, SH-8).
 
 ``/1`` is ``/0`` with one more complementary rule: where a table's total is published and two or
 more of its dimension cells are withheld, every one ``below_floor``, and the rest of the total (the
@@ -175,6 +175,25 @@ def cases() -> list[dict]:
          "A published model of 10 and two of 4 withheld beside a published total of 18: the rest of 8 fixes both",
          "constructed: 2 October served 10 by model-a, 4 by model-b and 4 by model-c, the total published",
          std(published({"model-a": 10, "model-b": 4, "model-c": 4})), "period_floor")
+
+    short = period_counts({"model-a": 10, "model-b": 1, "model-c": 1, "model-d": 1})
+    total = short["periods"][1]["cells"][-1]
+    assert total.get("suppressed") == "complementary"
+    del total["suppressed"]
+    total["value"] = 12
+    case("mutant-v1-total-short-of-withheld",
+         "A published model of 10 and three withheld beside a published total of 12: three listed cells hold at "
+         "least 1 each, so the total is at least 13",
+         "constructed: 2 October's three withheld models beside a total 2 more than the published cells",
+         std(short), "period_floor")
+
+    beyond = published({"model-a": 10, "model-b": 4, "model-c": 4})
+    beyond["periods"][1]["cells"][-1]["value"] = 19
+    case("mutant-v1-total-over-withheld",
+         "A published model of 10 and two withheld under the floor beside a published total of 19: two cells "
+         "under a floor of 5 hold at most 8",
+         "constructed: mutant-v1-total-pins-beside-published with the total raised to 19",
+         std(beyond), "period_floor")
 
     over = period_counts()
     total = over["periods"][1]["cells"][-1]

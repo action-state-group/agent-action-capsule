@@ -9,7 +9,7 @@ it leaves open are listed under [Open points](#9-open-points) (HF-1, HF-2, …).
 This document defines one **History frame**: the rules every History shares, a closed set of
 **frame parameters**, and two documents each instance supplies, a **counting table** and a
 **wording pack**. A History is an instance of the frame: it sets its values of the parameters and
-pins one table and one pack. Seven instances exist, defined by four documents:
+pins one table and one pack. Eight instances exist, defined by four documents:
 
 | Tag | Document | Instance identifier |
 |---|---|---|
@@ -390,7 +390,8 @@ The generators of `vectors/standard-history-v0/`, `vectors/personal-history-basi
 `vectors/personal-history-outcome-v0/`, `vectors/inference-service-history-v0/`,
 `vectors/inference-service-history-v0-interop-v1/` and `vectors/inference-service-history-v1/` load
 the same documents through
-`python/scripts/history_frame.py` (§6.3). Those sets are unchanged by this revision.
+`python/scripts/history_frame.py` (§6.3). The sets other than `vectors/inference-service-history-v1/`,
+which is new, are unchanged by this revision.
 
 ## 8. Security and privacy considerations
 

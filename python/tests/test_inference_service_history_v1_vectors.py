@@ -4,7 +4,7 @@ from their inputs alone.
 
 Each case runs through the evaluator of ``test_inference_service_history_v0_vectors.py`` (loaded
 here as a separate instance under ``evidence-interop/1``): the reference verifier for the request
-and reply, and the History properties of §8.3, whose ``period_floor`` applies §6.2 item 3 under the
+and reply, and the History properties of §8.3, whose ``period_floor`` applies §6.2 items 3 and 4 under the
 definition's revision. A case that carries the verdict counts member also has each result's table
 checked under the same rule. The result must equal the case's whole ``expected`` block, and the
 generator must regenerate the directory byte for byte.
@@ -48,6 +48,9 @@ def verdicts_ok(d: dict, env: dict) -> bool:
     revision1 = d["profile"] == base.PROFILES[1]
     for period in member["periods"]:
         for c in period["cells"]:
+            if ("suppressed" in c) != (c["value"] is None) or c.get("suppressed", "below_floor") not in (
+                    "below_floor", "complementary"):
+                return False
             if c["value"] is not None and c["value"] < floor:
                 return False
         for result in RESULTS:
@@ -67,7 +70,7 @@ def evaluate(case: dict, d: dict, env: dict) -> dict:
 
 
 def test_corpus_shape():
-    assert DATA["count"] == len(CASES) == 11
+    assert DATA["count"] == len(CASES) == 13
     assert DATA["profile"] == "evidence-interop/1" and DATA["history_profile"] == "inference-service-history/1"
     assert all(c["kind"] == "history" and c["inputs"]["definition"]["profile"] == DATA["history_profile"]
                for c in CASES)
@@ -133,10 +136,24 @@ def _part(value, why=None):
     ("published over the total", [_part(10), _part(9)], _part(12), 5, True, False),
     ("floor 1: nothing withheld", [_part(1), _part(1)], _part(2), 1, True, True),
     ("floor 2: two 1s beside 7 and 9", [_part(None, "below_floor")] * 2 + [_part(7)], _part(9), 2, True, False),
+    ("floor 2: two under the floor, total 3", [_part(None, "below_floor")] * 2, _part(3), 2, True, False),
+    ("floor 5: two under the floor beside 10, total 19", [_part(10)] + [_part(None, "below_floor")] * 2, _part(19),
+     5, True, False),
 ])
+
 def test_table_rule_by_revision(name, parts, total, floor, rev0, rev1):
     assert base.table_ok(parts, total, floor, False) is rev0, name
     assert base.table_ok(parts, total, floor, True) is rev1, name
+
+
+def test_a_verdict_cell_withheld_with_a_value_fails():
+    case = next(c for c in CASES if c["id"] == "v1-verdict-total-withheld")
+    _, env = base.run_reply(case, case["inputs"])
+    d = case["inputs"]["definition"]
+    assert verdicts_ok(d, env)
+    cell = next(c for c in env["artifact"]["verdict_counts"]["periods"][1]["cells"] if "suppressed" in c)
+    cell["value"] = 5
+    assert not verdicts_ok(d, env)
 
 
 def test_the_generator_withholds_by_hand_as_the_rule_says():

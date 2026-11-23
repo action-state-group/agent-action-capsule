@@ -35,7 +35,7 @@ import (
 const Profile = "inference-service-history/0"
 
 // Profile1 is the revision that also withholds a total that pins two or more
-// cells withheld under the floor (ISH §6.2 item 3, SH-8). A definition names
+// cells withheld under the floor (ISH §6.2 item 4, SH-8). A definition names
 // Profile or Profile1, and period_floor checks the rule of the one it names.
 const Profile1 = "inference-service-history/1"
 
@@ -900,11 +900,11 @@ func floorOK(d any, env map[string]any) bool {
 	return true
 }
 
-// tableOK is ISH §6.2 item 3 over one table, its dimension cells and its
+// tableOK is ISH §6.2 items 3 and 4 over one table, its dimension cells and its
 // total: a published total never stands beside exactly one withheld cell.
 // Under Profile1 a cell is listed only when counted, so each withheld cell
-// holds at least 1 and the published ones never exceed the total, equalling it
-// when none is withheld; a published total whose rest (the total less the
+// holds at least 1 (and, below the floor, at most floor-1) and the published
+// ones never exceed the total, equalling it when none is withheld; a published total whose rest (the total less the
 // published cells) is the number of two or more cells withheld, all
 // below_floor, or that number times floor-1 fixes each of them; and a total
 // is withheld complementary only beside two or more cells withheld
@@ -914,18 +914,11 @@ func tableOK(parts []map[string]any, total map[string]any, floor uint64, revisio
 		return true
 	}
 	hidden, allBelow := uint64(0), true
-	var published uint64
 	for _, c := range parts {
 		if c["value"] == nil {
 			hidden++
 			allBelow = allBelow && c["suppressed"] == "below_floor"
-			continue
 		}
-		n, _ := evidencerequest.UintValue(c["value"])
-		if published+n < published {
-			return false
-		}
-		published += n
 	}
 	if total["value"] != nil {
 		if hidden == 1 {
@@ -934,11 +927,27 @@ func tableOK(parts []map[string]any, total map[string]any, floor uint64, revisio
 		if !revision1 {
 			return true
 		}
+		var published uint64
+		for _, c := range parts {
+			if c["value"] != nil {
+				n, _ := evidencerequest.UintValue(c["value"])
+				if published+n < published {
+					return false
+				}
+				published += n
+			}
+		}
 		t, _ := evidencerequest.UintValue(total["value"])
 		if published > t || t-published < hidden || (hidden == 0 && t != published) {
 			return false
 		}
 		rest := t - published
+		// Cells withheld below the floor hold at most floor-1 each.
+		// Cells withheld below the floor hold at most floor-1 each: rest is
+		// at most hidden*(floor-1), compared without the product overflowing.
+		if allBelow && hidden > 0 && (rest/hidden > floor-1 || (rest/hidden == floor-1 && rest%hidden > 0)) {
+			return false
+		}
 		// rest == hidden*(floor-1), without the product overflowing.
 		pins := hidden >= 2 && (rest == hidden || (rest%hidden == 0 && rest/hidden == floor-1))
 		return !(allBelow && pins)

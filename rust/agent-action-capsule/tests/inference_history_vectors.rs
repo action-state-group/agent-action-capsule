@@ -155,7 +155,7 @@ fn the_periods_of_a_pair_are_fixed_as_the_vectors_expect() {
 }
 
 /// `vectors/inference-service-history-v1` (`inference-service-history/1`,
-/// ISH §6.2 item 3, SH-8): every case, its verdict counts too where its
+/// ISH §6.2 item 4, SH-8): every case, its verdict counts too where its
 /// definition carries them, fails the one property it names or none.
 #[test]
 fn the_revision_1_histories_check_as_the_vectors_expect() {
@@ -175,7 +175,7 @@ fn the_revision_1_histories_check_as_the_vectors_expect() {
             (want, got) => panic!("{}: expected {want:?}, got {got:?}", id(case)),
         }
     }
-    assert_eq!(all.len(), 11);
+    assert_eq!(all.len(), 13);
 }
 
 /// The time of the checkpoint a pin names, in any case's card: the pin is

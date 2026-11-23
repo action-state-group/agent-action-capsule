@@ -1,4 +1,4 @@
-//! `inference-service-history/1` (ISH §6.2 item 3, SH-8): a total that pins
+//! `inference-service-history/1` (ISH §6.2 item 4, SH-8): a total that pins
 //! two or more models withheld under the floor is withheld `complementary`,
 //! even when it is under the floor itself, and a checker refuses a published
 //! total that pins them. `/0` keeps its rule.
@@ -329,6 +329,31 @@ fn a_rest_smaller_than_the_withheld_models_does_not_add_up_under_1() {
         cell(None, Some(12), None),
     ]);
     let why = check(&d1, &with_cells(&base, short), &[10, 1, 1, 1]).unwrap_err();
+    assert!(why.contains("do not add up"), "{why}");
+}
+
+#[test]
+fn a_rest_beyond_what_cells_under_the_floor_hold_does_not_add_up_under_1() {
+    // Two withheld under a floor of 5 hold at most 8; a rest of 9 cannot be.
+    let d1 = def(PROFILE_1, 5);
+    let base = built(&d1, &[10, 4, 4]);
+    let beyond = json!([
+        cell(Some("m0"), Some(10), None),
+        cell(Some("m1"), None, Some("below_floor")),
+        cell(Some("m2"), None, Some("below_floor")),
+        cell(None, Some(19), None),
+    ]);
+    let why = check(&d1, &with_cells(&base, beyond), &[10, 4, 4]).unwrap_err();
+    assert!(why.contains("do not add up"), "{why}");
+    // Floor 2: two withheld hold 1 each; a published total of 3 cannot be.
+    let d2 = def(PROFILE_1, 2);
+    let base = built(&d2, &[1, 1]);
+    let three = json!([
+        cell(Some("m0"), None, Some("below_floor")),
+        cell(Some("m1"), None, Some("below_floor")),
+        cell(None, Some(3), None),
+    ]);
+    let why = check(&d2, &with_cells(&base, three), &[1, 1]).unwrap_err();
     assert!(why.contains("do not add up"), "{why}");
 }
 

@@ -116,7 +116,7 @@ func total(value any, why string) map[string]any {
 	return c
 }
 
-// ISH §6.2 item 3 under each revision, one table at a time.
+// ISH §6.2 items 3 and 4 under each revision, one table at a time.
 func TestTableOKByRevision(t *testing.T) {
 	b, cmp := "below_floor", "complementary"
 	for _, tc := range []struct {
@@ -143,6 +143,11 @@ func TestTableOKByRevision(t *testing.T) {
 		{"floor 1: nothing withheld", []map[string]any{part(uint64(1), ""), part(uint64(1), "")}, total(uint64(2), ""), 1, true, true},
 		{"floor 2: two 1s beside 7 and 9", []map[string]any{part(nil, b), part(nil, b), part(uint64(7), "")}, total(uint64(9), ""), 2, true, false},
 		{"no total", []map[string]any{part(nil, b), part(nil, b)}, nil, 5, true, true},
+		{"floor 2: two under the floor, total 3", []map[string]any{part(nil, b), part(nil, b)}, total(uint64(3), ""), 2, true, false},
+		{"10 and two under the floor beside 19", []map[string]any{part(uint64(10), ""), part(nil, b), part(nil, b)},
+			total(uint64(19), ""), 5, true, false},
+		{"/0 never sums: published cells past uint64", []map[string]any{part(uint64(1<<63), ""), part(uint64(1<<63), "")},
+			total(uint64(5), ""), 5, true, false},
 	} {
 		assert.Equal(t, tc.rev0, tableOK(tc.parts, tc.total, tc.floor, false), "/0 %s", tc.name)
 		assert.Equal(t, tc.rev1, tableOK(tc.parts, tc.total, tc.floor, true), "/1 %s", tc.name)

@@ -22,9 +22,10 @@ This revision defines two History levels:
 
 **Revisions.** This document defines two revisions of the profile, named by a definition's
 `profile` (§4.1). `inference-service-history/0` is frozen: its rules, counting table, wording pack
-and vectors keep their bytes. `inference-service-history/1` is `/0` with one more rule of
-complementary suppression, for a total that pins two or more cells withheld under the floor
-(§6.2 items 3 and 4, SH-8); everything else is the same. A verifier checks a History under the
+and vectors keep their bytes. `inference-service-history/1` is `/0` with §6.2 item 4: a cell is
+listed only for a value the period counted, and a total that pins two or more cells withheld under
+the floor is withheld `complementary`, in `period_counts` and in each verdict result's table alike,
+since verdict counts are period counts (§5.3) (SH-8); everything else is the same. A verifier checks a History under the
 revision its definition names.
 
 The personal-agent History profile (`spec/personal-agent-history-profile-v0.md`) is a sibling host
@@ -448,8 +449,10 @@ A record is in a period by the time the node's stream committed it.
    unit's cells for a period in a counts member, or one result's cells for a period in verdict
    counts (§5.3), each with its total. Under `/1`:
    - a dimension cell is listed only for a dimension value the period counted at least once, so a
-     withheld cell holds at least 1, and a published total is at least its published cells plus
-     one for each withheld cell, and equals its published cells when none is withheld;
+     withheld cell holds at least 1, and one withheld `below_floor` at most `floor` − 1; a
+     published total is at least its published cells plus one for each withheld cell, at most its
+     published cells plus `floor` − 1 for each where every withheld cell is `below_floor`, and
+     equals its published cells when none is withheld;
    - where two or more of a table's dimension cells are withheld, every one of them `below_floor`,
      and the total less its published cells is the number of those cells or that number times
      (`floor` − 1), that sum fixes each of them (all 1, or all `floor` − 1), so the total is
@@ -758,6 +761,8 @@ so the table need not match the card. The last two add the verdict counts member
 | `mutant-v1-total-pins-two-under-floor` | `period_floor` `FAIL`: models 4 and 4 withheld beside a published 8 |
 | `mutant-v1-total-pins-five-ones` | `period_floor` `FAIL`: five models of 1 withheld beside a published 5 |
 | `mutant-v1-total-pins-beside-published` | `period_floor` `FAIL`: 10 published, 4 and 4 withheld, total 18 published |
+| `mutant-v1-total-short-of-withheld` | `period_floor` `FAIL`: 10 published and three models withheld beside a published 12, short of one per withheld model |
+| `mutant-v1-total-over-withheld` | `period_floor` `FAIL`: 10 published and two models withheld under the floor beside a published 19, more than two cells under the floor hold |
 | `mutant-v1-total-withheld-beside-one-model` | `period_floor` `FAIL`: a total withheld `complementary` beside one model withheld under the floor |
 | `v1-verdict-total-withheld` | accepted: a verdict result's table of 4 and 4, its total withheld `complementary` |
 | `mutant-v1-verdict-total-pins` | `period_floor` `FAIL`: the same table with its total of 8 published |
@@ -863,6 +868,6 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-11 | The History properties (§8.3, §6.3) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping. |
 | SH-12 | The vector-only formats of §9. |
 | SH-13 | A host's definition conforms by its digest (§4.1). A host definition fixed before it carries `profile`, `coverage_declaration` and `period_policy` conforms only as a new version. |
-| SH-14 | No vectors in this revision for: session coverage (§10); `definition_form`, `definition_binding`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both; a stream whose card commits no record. The verdict counts member has its own set, `vectors/inference-service-history-verdicts-v0/`, whose shape is fixed for it alone (§9, SH-12, SH-16); it has cases for `artifact_form` failing, and none for a published total that differs from its published cells, two or more models withheld under the floor beside a published total under `/0` (SH-8; `/1`'s are in `vectors/inference-service-history-v1/`), or the delivery of a verdict and the ask by digest (SH-15). `/1`'s set has no case for its listing rule (a total short of one per withheld cell), which its checkers enforce. |
+| SH-14 | No vectors in this revision for: session coverage (§10); `definition_form`, `definition_binding`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), which a verifier sees only when it holds answers of both; a stream whose card commits no record. The verdict counts member has its own set, `vectors/inference-service-history-verdicts-v0/`, whose shape is fixed for it alone (§9, SH-12, SH-16); it has cases for `artifact_form` failing, and none for a published total that differs from its published cells, two or more models withheld under the floor beside a published total under `/0` (SH-8; `/1`'s are in `vectors/inference-service-history-v1/`), or the delivery of a verdict and the ask by digest (SH-15). |
 | SH-15 | Verdicts the node received without asking (§5.3): the delivery that puts such a verdict in the node's log, and the ask by digest, are the host's; this profile fixes only what counts and that the count is over the node's own log. Because the ask is the host's, one implementation cannot yet check another's omissions; interoperable omission checking is open. |
 | SH-16 | §5.3's rules that the result being counted is signed by the checker and never by the node it concerns, that a verdict count is the count of one kind of check, a referee verdict, and that the four results stay separate counts, have no History property in §8.3. The verdict counts vectors pin them through their vector-only shape (§9, SH-12), so a host that uses another shape can break them and pass every property. |

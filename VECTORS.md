@@ -138,7 +138,7 @@ its 11 `record_signatures`.
 | `vectors/inference-service-history-v0/` | `spec/inference-service-history-profile-v0.md` | respond, verify | 27 |
 | `vectors/inference-service-history-v0-interop-v1/` | `spec/inference-service-history-profile-v0.md` over `evidence-interop/1` | respond, verify | 28 |
 | `vectors/inference-service-history-verdicts-v0/` | `spec/inference-service-history-profile-v0.md` §5.3 (the `verdict_counts` member) | respond, verify | 15 |
-| `vectors/inference-service-history-v1/` | `spec/inference-service-history-profile-v0.md` §6.2 item 4 (`inference-service-history/1`) | respond, verify | 11 |
+| `vectors/inference-service-history-v1/` | `spec/inference-service-history-profile-v0.md` §6.2 item 4 (`inference-service-history/1`) | respond, verify | 13 |
 | `vectors/history-frame-v0/` | `spec/history-frame-v0.md` (the instances' counting tables and wording packs) | evaluate | 13 |
 
 ## Evaluate, judge and report

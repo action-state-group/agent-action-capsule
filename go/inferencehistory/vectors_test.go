@@ -283,12 +283,12 @@ func TestInferenceServiceHistoryVectors(t *testing.T) {
 }
 
 // vectors/inference-service-history-v1 (inference-service-history/1, ISH
-// §6.2 item 3): every period_counts case runs as the other sets' do. The two
+// §6.2 item 4): every period_counts case runs as the other sets' do. The two
 // verdict cases are listed, not run: this package does not read the verdict
 // counts member (vectors/inference-service-history-verdicts-v0/README.md).
 func TestRevision1Vectors(t *testing.T) {
 	c := load(t, "inference-service-history-v1")
-	require.Equal(t, 11, c.Count)
+	require.Equal(t, 13, c.Count)
 	notRead := map[string]bool{"v1-verdict-total-withheld": true, "mutant-v1-verdict-total-pins": true}
 	run := 0
 	for _, vc := range c.Cases {
@@ -308,7 +308,7 @@ func TestRevision1Vectors(t *testing.T) {
 		})
 		run++
 	}
-	assert.Equal(t, 9, run)
+	assert.Equal(t, 11, run)
 }
 
 // A definition of any shape is evaluated without a panic, and fails
