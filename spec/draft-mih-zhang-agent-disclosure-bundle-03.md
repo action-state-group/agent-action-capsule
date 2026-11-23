@@ -295,6 +295,11 @@ the latter as declared incomplete, not as complete and not as an unexplained
 failure. A supplied record whose computed `capsule_id` does not match the
 chain target or reference digest is not supplied evidence for that target.
 
+A supplied record that the closure does not reach is outside it. A verifier
+MUST NOT fail graph closure because of it, and MUST NOT count it as reached.
+It is still a record of the Bundle for every other claim, so under a range
+certificate it still needs a membership entry ({{completeness}}).
+
 The closure declaration says nothing about records beyond its stated depth.
 A verifier MUST report the depth it applied and MUST NOT infer unbounded
 ancestry or citation completeness from the presence of a short chain.
@@ -564,6 +569,91 @@ such as a store's checkpoint stamps, are not covered by this document. A range
 over a log that contains one is reported, at best, as not established through
 `non_record_leaf_type_unsupported`; a producer that needs a Bundle over such a
 log without that result uses a producer-selected certificate.
+
+## Wire Forms {#wire-forms}
+
+This section states the JSON forms of `checkpoint` and of the two proofs, and
+how a record becomes a log entry. Earlier revisions left these to vectors and
+to the CLL reference.
+
+**The log entry of a record.** A record's log entry is the 32 octets of its
+`capsule_id`. Its MMR leaf is SHA-256 of the octet 0x00 followed by those 32
+octets. Interior nodes are those of the CLL
+{{I-D.mih-scitt-checkpointed-local-log}}. A padding leaf
+({{non-record-leaves}}) is an entry in the same way, through its
+`capsule_id`.
+
+**The root.** A CLL checkpoint commits to the list of its MMR's peaks, left
+to right. `root`, `range_root` and `prev_root` are that list folded to one
+hash: while the list holds more than one hash, take off its last hash R and
+then the hash L before it, and append SHA-256(R || L). The one hash left is the
+root. An MMR with no leaves has the root of 32 zero octets. Every root is
+carried as 64 lowercase hexadecimal characters.
+
+**`checkpoint`.** Its members are JSON copies of what the signed checkpoint
+in `checkpoint.cose` states:
+
+| Member | Value | From the COSE checkpoint |
+|---|---|---|
+| `log_id` | string | the CWT issuer |
+| `mmr_size` | integer | `log_size` |
+| `root` | root | `commitment`, folded |
+| `prev_size` | integer | `prev_size` |
+| `prev_root` | root, or `""` when there is no previous commitment | `prev_commitment`, folded |
+| `key_id` | 64 lowercase hexadecimal characters | the `kid` of the protected header |
+| `timestamp` | RFC 3339 string | `issued_at` |
+| `cose` | unpadded base64url {{RFC4648}} | the checkpoint itself |
+{: title="checkpoint members"}
+
+When `checkpoint.cose` verifies, a stated member that differs from the
+signed value, including in JSON type, is not the checkpoint's. A verifier
+that reports the checkpoint MUST report it as failed in that case, and MUST
+NOT present the stated value as signed. Interval coverage and per-record
+membership rest only on `log_id`, `mmr_size` and `root` ({{completeness}});
+a verifier that does not report the checkpoint itself reads no other member
+of it. Without `cose`, every member is
+producer-asserted ({{completeness}}).
+
+**`inclusion_proof`.** A membership's proof is an object:
+
+~~~
+{ "v": 1, "kind": "inclusion", "size": <MMR size>,
+  "leaf_index": <zero-based leaf index>,
+  "witness": ["<64 lowercase hex>", ...],
+  "peaks_left": ["<64 lowercase hex>", ...],
+  "peaks_right": ["<64 lowercase hex>", ...] }
+~~~
+
+`witness` is the path from the leaf up to the peak that holds it, nearest
+first. `peaks_left` and `peaks_right` are the other peaks, left to right, on
+either side of that peak. The verifier rebuilds the peak from the leaf and
+`witness`, the side of each step following from `leaf_index` and `size`, and
+folds `peaks_left`, the rebuilt peak and `peaks_right` into the root. A proof
+whose `v` is not the integer 1, or whose `kind` is not `inclusion`, does not
+verify.
+
+**`range_proof`.** A range certificate's proof is an object with no `v` and
+no `kind`:
+
+~~~
+{ "from_seq": <first_seq>, "to_seq": <last_seq>, "size": <MMR size>,
+  "from_index": <first_seq - 1>, "to_index": <last_seq - 1>,
+  "witness": ["<64 lowercase hex>", ...] }
+~~~
+
+`size` is the MMR size of a log whose last leaf is `to_seq`. `witness` holds
+one hash for each largest subtree that lies wholly outside the interval: the
+verifier takes each peak in turn, left to right, and walks its subtree depth
+first, left child before right; a subtree wholly outside the interval
+contributes its hash and is not entered, and a subtree wholly inside it
+contributes nothing, since the verifier rebuilds it from `body_digests`. A
+witness left over after the walk, or one too few, fails the proof.
+
+**Local members of a record.** A record in `records` can carry two members
+that are not part of its Capsule: `signature`, the hexadecimal encoding of a
+Producer Envelope over its Capsule ID, recomputed from its content, and
+`key_id`, the key that envelope names ({{I-D.mih-scitt-agent-action-capsule}}). Neither is in the Capsule ID
+preimage, so carrying them does not modify the Capsule.
 
 # Category Coverage {#category-coverage}
 
@@ -2070,6 +2160,12 @@ Since -02:
   no join state, and presents two Histories under different keys together
   only through a path of derived agreements. Added Security Considerations
   for History members.
+- Stated what a verifier had to infer from a producer's Bundle
+  ({{wire-forms}}): the members of `checkpoint` and the fold of its `root`,
+  the log entry of a record, the JSON forms of `inclusion_proof` and
+  `range_proof` with the order of a range proof's `witness`, the local
+  `signature` and `key_id` members of an enclosed record, and that a supplied
+  record outside the closure neither passes nor fails graph closure.
 
 Since -01:
 

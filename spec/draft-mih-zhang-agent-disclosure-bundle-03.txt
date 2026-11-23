@@ -79,33 +79,33 @@ Table of Contents
      6.1.  Certificate Modes . . . . . . . . . . . . . . . . . . . .   9
      6.2.  Producer-Selected Certificates  . . . . . . . . . . . . .  10
      6.3.  Non-Record Leaves . . . . . . . . . . . . . . . . . . . .  11
-   7.  Category Coverage . . . . . . . . . . . . . . . . . . . . . .  13
-     7.1.  Statuses  . . . . . . . . . . . . . . . . . . . . . . . .  14
-     7.2.  Signature . . . . . . . . . . . . . . . . . . . . . . . .  15
-     7.3.  Verifier Properties . . . . . . . . . . . . . . . . . . .  15
-   8.  Typed Extensions  . . . . . . . . . . . . . . . . . . . . . .  17
-     8.1.  The producer-key/v1 Extension . . . . . . . . . . . . . .  17
-     8.2.  The composed/v1 Extension . . . . . . . . . . . . . . . .  18
-       8.2.1.  Block . . . . . . . . . . . . . . . . . . . . . . . .  19
-       8.2.2.  Members and Outcomes  . . . . . . . . . . . . . . . .  21
-       8.2.3.  History Members . . . . . . . . . . . . . . . . . . .  23
-       8.2.4.  Composition Closure . . . . . . . . . . . . . . . . .  25
-       8.2.5.  Controller Binding Records  . . . . . . . . . . . . .  26
-       8.2.6.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  29
-       8.2.7.  Observers and Redundancy  . . . . . . . . . . . . . .  33
-       8.2.8.  Composed Digest . . . . . . . . . . . . . . . . . . .  34
-       8.2.9.  Verifying composed/v1 . . . . . . . . . . . . . . . .  35
-     8.3.  The parent-log-witness/v1 Extension . . . . . . . . . . .  36
-     8.4.  Provisional Extension Kinds . . . . . . . . . . . . . . .  40
-   9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  40
-     9.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  41
-     9.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  43
-     9.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  43
-   10. Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  44
-   11. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  44
-   12. Security Considerations . . . . . . . . . . . . . . . . . . .  44
-     12.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  45
-     12.2.  Category Coverage  . . . . . . . . . . . . . . . . . . .  47
+     6.4.  Wire Forms  . . . . . . . . . . . . . . . . . . . . . . .  13
+   7.  Category Coverage . . . . . . . . . . . . . . . . . . . . . .  15
+     7.1.  Statuses  . . . . . . . . . . . . . . . . . . . . . . . .  16
+     7.2.  Signature . . . . . . . . . . . . . . . . . . . . . . . .  17
+     7.3.  Verifier Properties . . . . . . . . . . . . . . . . . . .  18
+   8.  Typed Extensions  . . . . . . . . . . . . . . . . . . . . . .  19
+     8.1.  The producer-key/v1 Extension . . . . . . . . . . . . . .  19
+     8.2.  The composed/v1 Extension . . . . . . . . . . . . . . . .  20
+       8.2.1.  Block . . . . . . . . . . . . . . . . . . . . . . . .  21
+       8.2.2.  Members and Outcomes  . . . . . . . . . . . . . . . .  23
+       8.2.3.  History Members . . . . . . . . . . . . . . . . . . .  25
+       8.2.4.  Composition Closure . . . . . . . . . . . . . . . . .  27
+       8.2.5.  Controller Binding Records  . . . . . . . . . . . . .  28
+       8.2.6.  Joins . . . . . . . . . . . . . . . . . . . . . . . .  31
+       8.2.7.  Observers and Redundancy  . . . . . . . . . . . . . .  35
+       8.2.8.  Composed Digest . . . . . . . . . . . . . . . . . . .  36
+       8.2.9.  Verifying composed/v1 . . . . . . . . . . . . . . . .  37
+     8.3.  The parent-log-witness/v1 Extension . . . . . . . . . . .  38
+     8.4.  Provisional Extension Kinds . . . . . . . . . . . . . . .  42
+   9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  42
+     9.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  43
+     9.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  45
+     9.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  45
+   10. Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  46
+   11. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  46
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  46
+     12.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  47
 
 
 
@@ -114,15 +114,16 @@ Mih & Zhang                Expires 6 May 2027                   [Page 2]
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
-     12.3.  parent-log-witness/v1  . . . . . . . . . . . . . . . . .  47
-   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  47
-   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  48
-   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  49
-     15.1.  Normative References . . . . . . . . . . . . . . . . . .  49
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  51
-   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  52
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  55
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  55
+     12.2.  Category Coverage  . . . . . . . . . . . . . . . . . . .  49
+     12.3.  parent-log-witness/v1  . . . . . . . . . . . . . . . . .  49
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  49
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  50
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  51
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  51
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  53
+   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  54
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  57
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  57
 
 1.  Introduction
 
@@ -160,7 +161,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       [I-D.mih-scitt-agent-action-capsule].
 
    Countersignature:  A countersignature is a signature by a party other
-
 
 
 
@@ -348,6 +348,12 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    supplied record whose computed capsule_id does not match the chain
    target or reference digest is not supplied evidence for that target.
 
+   A supplied record that the closure does not reach is outside it.  A
+   verifier MUST NOT fail graph closure because of it, and MUST NOT
+   count it as reached.  It is still a record of the Bundle for every
+   other claim, so under a range certificate it still needs a membership
+   entry (Section 6).
+
    The closure declaration says nothing about records beyond its stated
    depth.  A verifier MUST report the depth it applied and MUST NOT
    infer unbounded ancestry or citation completeness from the presence
@@ -380,12 +386,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    Capsule or its capsule_id.  An overlay key not naming a supplied
    record, or a member not eligible under the Disclosure Envelope
    registry, is a disclosure finding and MUST NOT be treated as a
-   successful revelation. disclosure_record, when present, identifies
-   the Capsule that records the act of sealing or issuing these
-   disclosures; it is evidence about that act and does not replace the
-   DE-3 check.
-
-
 
 
 
@@ -393,6 +393,11 @@ Mih & Zhang                Expires 6 May 2027                   [Page 7]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   successful revelation. disclosure_record, when present, identifies
+   the Capsule that records the act of sealing or issuing these
+   disclosures; it is evidence about that act and does not replace the
+   DE-3 check.
 
 6.  Completeness Claims and Log Membership
 
@@ -437,11 +442,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    verify it and require its log identifier, MMR size, and root to equal
    the certificate and checkpoint values before removing the qualifier.
 
-   For the third claim, every supplied record MUST either carry a
-   membership entry within the declared interval or be explicitly listed
-   in completeness.missing.  A membership entry or record whose seq is
-   outside the interval MUST be rejected.  Each membership entry MUST
-   carry log_coordinates stating its claimed position and an inclusion
 
 
 
@@ -450,6 +450,11 @@ Mih & Zhang                Expires 6 May 2027                   [Page 8]
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
+   For the third claim, every supplied record MUST either carry a
+   membership entry within the declared interval or be explicitly listed
+   in completeness.missing.  A membership entry or record whose seq is
+   outside the interval MUST be rejected.  Each membership entry MUST
+   carry log_coordinates stating its claimed position and an inclusion
    proof to the certificate's range root.  The base profile's terms
    apply exactly: seq is the 1-based log position and leaf_index = seq -
    1 is the zero-based MMR index. log_coordinates states which index is
@@ -492,11 +497,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    write, and so is any edit to a Bundle after it is made: setting an
    unknown mode can turn a failing claim into one that is not
    established, but never into one that is established (Section 12).
-
-
-
-
-
 
 
 
@@ -697,6 +697,126 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    non_record_leaf_type_unsupported; a producer that needs a Bundle over
    such a log without that result uses a producer-selected certificate.
 
+6.4.  Wire Forms
+
+   This section states the JSON forms of checkpoint and of the two
+   proofs, and how a record becomes a log entry.  Earlier revisions left
+   these to vectors and to the CLL reference.
+
+   *The log entry of a record.* A record's log entry is the 32 octets of
+   its capsule_id.  Its MMR leaf is SHA-256 of the octet 0x00 followed
+   by those 32 octets.  Interior nodes are those of the CLL
+   [I-D.mih-scitt-checkpointed-local-log].  A padding leaf (Section 6.3)
+   is an entry in the same way, through its capsule_id.
+
+   *The root.* A CLL checkpoint commits to the list of its MMR's peaks,
+   left to right. root, range_root and prev_root are that list folded to
+   one hash: while the list holds more than one hash, take off its last
+   hash R and then the hash L before it, and append SHA-256(R || L).
+   The one hash left is the root.  An MMR with no leaves has the root of
+   32 zero octets.  Every root is carried as 64 lowercase hexadecimal
+   characters.
+
+   *checkpoint.* Its members are JSON copies of what the signed
+   checkpoint in checkpoint.cose states:
+
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 13]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
+   +===========+===========================+==========================+
+   | Member    | Value                     | From the COSE checkpoint |
+   +===========+===========================+==========================+
+   | log_id    | string                    | the CWT issuer           |
+   +-----------+---------------------------+--------------------------+
+   | mmr_size  | integer                   | log_size                 |
+   +-----------+---------------------------+--------------------------+
+   | root      | root                      | commitment, folded       |
+   +-----------+---------------------------+--------------------------+
+   | prev_size | integer                   | prev_size                |
+   +-----------+---------------------------+--------------------------+
+   | prev_root | root, or "" when there is | prev_commitment, folded  |
+   |           | no previous commitment    |                          |
+   +-----------+---------------------------+--------------------------+
+   | key_id    | 64 lowercase hexadecimal  | the kid of the protected |
+   |           | characters                | header                   |
+   +-----------+---------------------------+--------------------------+
+   | timestamp | RFC 3339 string           | issued_at                |
+   +-----------+---------------------------+--------------------------+
+   | cose      | unpadded base64url        | the checkpoint itself    |
+   |           | [RFC4648]                 |                          |
+   +-----------+---------------------------+--------------------------+
+
+                       Table 1: checkpoint members
+
+   When checkpoint.cose verifies, a stated member that differs from the
+   signed value, including in JSON type, is not the checkpoint's.  A
+   verifier that reports the checkpoint MUST report it as failed in that
+   case, and MUST NOT present the stated value as signed.  Interval
+   coverage and per-record membership rest only on log_id, mmr_size and
+   root (Section 6); a verifier that does not report the checkpoint
+   itself reads no other member of it.  Without cose, every member is
+   producer-asserted (Section 6).
+
+   *inclusion_proof.* A membership's proof is an object:
+
+   { "v": 1, "kind": "inclusion", "size": <MMR size>,
+     "leaf_index": <zero-based leaf index>,
+     "witness": ["<64 lowercase hex>", ...],
+     "peaks_left": ["<64 lowercase hex>", ...],
+     "peaks_right": ["<64 lowercase hex>", ...] }
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 14]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
+   witness is the path from the leaf up to the peak that holds it,
+   nearest first. peaks_left and peaks_right are the other peaks, left
+   to right, on either side of that peak.  The verifier rebuilds the
+   peak from the leaf and witness, the side of each step following from
+   leaf_index and size, and folds peaks_left, the rebuilt peak and
+   peaks_right into the root.  A proof whose v is not the integer 1, or
+   whose kind is not inclusion, does not verify.
+
+   *range_proof.* A range certificate's proof is an object with no v and
+   no kind:
+
+   { "from_seq": <first_seq>, "to_seq": <last_seq>, "size": <MMR size>,
+     "from_index": <first_seq - 1>, "to_index": <last_seq - 1>,
+     "witness": ["<64 lowercase hex>", ...] }
+
+   size is the MMR size of a log whose last leaf is to_seq. witness
+   holds one hash for each largest subtree that lies wholly outside the
+   interval: the verifier takes each peak in turn, left to right, and
+   walks its subtree depth first, left child before right; a subtree
+   wholly outside the interval contributes its hash and is not entered,
+   and a subtree wholly inside it contributes nothing, since the
+   verifier rebuilds it from body_digests.  A witness left over after
+   the walk, or one too few, fails the proof.
+
+   *Local members of a record.* A record in records can carry two
+   members that are not part of its Capsule: signature, the hexadecimal
+   encoding of a Producer Envelope over its Capsule ID, recomputed from
+   its content, and key_id, the key that envelope names
+   ([I-D.mih-scitt-agent-action-capsule]).  Neither is in the Capsule ID
+   preimage, so carrying them does not modify the Capsule.
+
 7.  Category Coverage
 
    category_coverage, when present, is the producer's signed declaration
@@ -709,6 +829,19 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    that the producer offers everything it declares, or that nothing
    exists in a category declared absent.
 
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 15]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    "category_coverage": {
      "set": "<category set identifier>",
      "categories": {
@@ -720,15 +853,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
      "signer": { "key_id": "<64 hex>" },
      "signature": "<128 hex>"
    }
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 13]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
    set is REQUIRED, a non-empty string naming a category set
    (Section 14).  A set whose identifier begins x- is private: it is not
@@ -748,6 +872,31 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 7.1.  Statuses
 
    Each category has exactly one status, written in upper case:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 16]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
 
    +=============+=====================================================+
    | status      | Meaning                                             |
@@ -771,21 +920,13 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    |             | policy policy_uri names                             |
    +-------------+-----------------------------------------------------+
 
-                                  Table 1
+                                  Table 2
 
    AVAILABLE, PARTIAL, WITHHELD and DELETED are retention states of the
    Evidence Layer [I-D.mih-agent-evidence-layer], with the same
    meanings, applied to a category rather than to one record's payload.
    This document defines UNDISCLOSED and ABSENT.  ABSENT is the
    producer's asserted absence in the Evidence Layer's sense ("Three
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 14]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
    Kinds of No"): its own unproven claim about its own store, never a
    non-membership proof and never the requester's recorded absence of
    [I-D.mih-agent-evidence-request].  The retention state LEGAL_HOLD is
@@ -805,6 +946,13 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    lowercase hexadecimal characters. signature is the Ed25519 signature,
    as 128 lowercase hexadecimal characters, under that key over the
    signing input
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 17]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
 
    UTF8(JCS({"category_coverage": <the member without signature>,
              "root": <the Bundle's root>}))
@@ -832,16 +980,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       FAIL.  When it is FAIL, every other property is NOT_CHECKED.
 
    category_coverage_signature:  NOT_PRESENT when the member carries no
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 15]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
       signature; PASS when the signature verifies; FAIL otherwise,
       including when the signing input has no JCS serialization (for
       example, a number JCS cannot represent).
@@ -864,6 +1002,14 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       assign every record the Bundle carries to a category, or to none
       (the set's definition says how): a record it cannot assign could
       be in any category; FAIL when a record the Bundle carries belongs
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 18]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
       to a category declared ABSENT or WITHHELD; PASS otherwise.  A
       record in a DELETED or UNDISCLOSED category is not a
       contradiction, and an AVAILABLE category with no record in the
@@ -883,20 +1029,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    A verifier that does not implement this member follows the rule for
    any member it does not know: it reports nothing about it, and the
    member stays covered by the bundle digest.
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 16]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
 8.  Typed Extensions
 
@@ -924,6 +1056,16 @@ Internet-Draft             AAC Evidence Bundle             November 2026
      "producer-key/v1": { "public_key": "<64 lowercase hex>" }
    }
 
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 19]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    public_key is the producer's 32-byte Ed25519 [RFC8032] public key as
    64 lowercase hexadecimal characters.  The block carries one key.  A
    producer MUST NOT add other members to the block, and a verifier MUST
@@ -942,17 +1084,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    result.  It is not a claim of identity or of authority, and a
    verifier MUST NOT present it as one.  The absence of this extension
    says nothing about whether any entry is independent.
-
-
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 17]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
    The block is malformed when it is not an object, or when public_key
    is absent, is not a string, or is not exactly 64 lowercase
@@ -982,6 +1113,15 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
    *  the joins between members;
 
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 20]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    *  a _composed digest_ that a judgment or other record can cite as
       the exact evidence set it was made from.
 
@@ -989,26 +1129,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    the composing party's own record, and its core checks apply
    unchanged.  The extension adds a set of member bundles alongside that
    record; it does not change what records, root or completeness mean.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 18]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
    "extensions": {
      "composed/v1": {
@@ -1051,6 +1171,13 @@ Internet-Draft             AAC Evidence Bundle             November 2026
      composed_digest: digest-hex,
    }
 
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 21]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    composed-member = artifact-member / refusal-member / absence-member
 
    member-common = (
@@ -1058,14 +1185,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
      observer: label-id,             ; an observers[].id
      request_digest: digest-hex,     ; the Evidence Request this answers
      digest: digest-hex,             ; see "Members and Outcomes"
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 19]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
    )
 
    artifact-member = { member-common, outcome: "artifact",
@@ -1108,20 +1227,19 @@ Internet-Draft             AAC Evidence Bundle             November 2026
      custody_domain: tstr,           ; opaque, compared octet-for-octet
    }
 
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 22]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    composed-join = {
      members: [label-id, label-id],  ; two distinct ids, ascending
      basis: join-basis,
      ? pointer: tstr,                ; RFC 6901 JSON Pointer
      ? identifier_digest: digest-hex,
      ? compare: [+ tstr],            ; RFC 6901 JSON Pointers
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 20]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
      state: join-state,
    }
 
@@ -1164,19 +1282,20 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       not an outcome, so a pending request MUST NOT be composed as a
       member.
 
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 23]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    digest depends on the outcome:
 
    *  For artifact, it is the member Evidence Bundle's bundle digest
       (Section 9), or, for a History member (Section 8.2.3), the
       lowercase hexadecimal SHA-256 of the UTF-8 JCS [RFC8785]
       serialization of its history.envelope object, as carried.
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 21]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
    *  For refusal and absence, it is the lowercase hexadecimal SHA-256
       of the UTF-8 JCS [RFC8785] serialization of the refusal or absence
@@ -1220,19 +1339,17 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    record membership (Section 6), and its disclosures and
    countersignatures, _per member_.
 
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 24]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    The verifier MUST NOT merge one member's claims with another
    member's, or with the containing Bundle's.  The containing Bundle's
    claims are about its own records only.  A refusal or absence member
    is not a failed claim: a verifier reports it as what it is.
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 22]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
 8.2.3.  History Members
 
@@ -1277,19 +1394,19 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    when it carries no derivation; when responder is not a key identifier
    (Section 8.2.5); when sig is not a string; when artifact is not a
    string of unpadded base64url; when artifact_digest, request_digest or
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 25]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    anchor.digest is not a digest-hex; or when anchor_checkpoint is not a
    string of unpadded base64url.  Unpadded base64url here is the one
    canonical form of [RFC4648], Section 5: its pad bits are zero, so one
    octet string has one text.  This is the rule a refusal or absence
    body outside its form already follows (Section 8.2.1): the form is
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 23]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
    what the composing party can check before it composes.  A History
    that is well formed but fails a check below is a failed member, never
    a malformed block.
@@ -1334,18 +1451,17 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    counts; that is the History derivation's own check, and nothing in
    this document reads them.
 
-   *Join view.* A carried History member that passes checks 1 to 5 has a
-   _key_, its envelope's responder, and a _time_, its anchor
-   checkpoint's timestamp.  A History member that is declared missing,
-   is signature-unverified, or fails any of checks 1 to 5 has no join
 
 
-
-Mih & Zhang                Expires 6 May 2027                  [Page 24]
+Mih & Zhang                Expires 6 May 2027                  [Page 26]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
+   *Join view.* A carried History member that passes checks 1 to 5 has a
+   _key_, its envelope's responder, and a _time_, its anchor
+   checkpoint's timestamp.  A History member that is declared missing,
+   is signature-unverified, or fails any of checks 1 to 5 has no join
    view, and every join naming it is not_derivable (Section 8.2.6).  So
    does a History member whose anchor checkpoint is unverified, or whose
    envelope does not reproduce the member's digest: it is not the
@@ -1393,11 +1509,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 25]
+Mih & Zhang                Expires 6 May 2027                  [Page 27]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1453,7 +1565,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 26]
+Mih & Zhang                Expires 6 May 2027                  [Page 28]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1509,7 +1621,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 27]
+Mih & Zhang                Expires 6 May 2027                  [Page 29]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1565,7 +1677,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 28]
+Mih & Zhang                Expires 6 May 2027                  [Page 30]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1621,7 +1733,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 29]
+Mih & Zhang                Expires 6 May 2027                  [Page 31]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1677,7 +1789,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 30]
+Mih & Zhang                Expires 6 May 2027                  [Page 32]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1733,7 +1845,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 31]
+Mih & Zhang                Expires 6 May 2027                  [Page 33]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1789,7 +1901,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 32]
+Mih & Zhang                Expires 6 May 2027                  [Page 34]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1845,7 +1957,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 33]
+Mih & Zhang                Expires 6 May 2027                  [Page 35]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1901,7 +2013,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 34]
+Mih & Zhang                Expires 6 May 2027                  [Page 36]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -1957,7 +2069,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 35]
+Mih & Zhang                Expires 6 May 2027                  [Page 37]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2013,7 +2125,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 36]
+Mih & Zhang                Expires 6 May 2027                  [Page 38]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2069,7 +2181,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 37]
+Mih & Zhang                Expires 6 May 2027                  [Page 39]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2125,7 +2237,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 38]
+Mih & Zhang                Expires 6 May 2027                  [Page 40]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2181,7 +2293,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 39]
+Mih & Zhang                Expires 6 May 2027                  [Page 41]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2237,7 +2349,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 40]
+Mih & Zhang                Expires 6 May 2027                  [Page 42]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2293,7 +2405,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 41]
+Mih & Zhang                Expires 6 May 2027                  [Page 43]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2324,7 +2436,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    | inconclusive | The check ran but resolved only in part.           |
    +--------------+----------------------------------------------------+
 
-                                  Table 2
+                                  Table 3
 
    Each result stands alone.  A statement MUST NOT carry an aggregate
    result, a score, a rating, or a claim of compliance, and a verifier
@@ -2349,7 +2461,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 42]
+Mih & Zhang                Expires 6 May 2027                  [Page 44]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2405,7 +2517,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 43]
+Mih & Zhang                Expires 6 May 2027                  [Page 45]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2461,7 +2573,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 44]
+Mih & Zhang                Expires 6 May 2027                  [Page 46]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2517,7 +2629,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 45]
+Mih & Zhang                Expires 6 May 2027                  [Page 47]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2573,7 +2685,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 46]
+Mih & Zhang                Expires 6 May 2027                  [Page 48]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2629,7 +2741,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 47]
+Mih & Zhang                Expires 6 May 2027                  [Page 49]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2685,7 +2797,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 48]
+Mih & Zhang                Expires 6 May 2027                  [Page 50]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2741,7 +2853,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 49]
+Mih & Zhang                Expires 6 May 2027                  [Page 51]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2797,7 +2909,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 50]
+Mih & Zhang                Expires 6 May 2027                  [Page 52]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2853,7 +2965,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 51]
+Mih & Zhang                Expires 6 May 2027                  [Page 53]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2909,10 +3021,18 @@ Change Log
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 52]
+Mih & Zhang                Expires 6 May 2027                  [Page 54]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
+
+   *  Stated what a verifier had to infer from a producer's Bundle
+      (Section 6.4): the members of checkpoint and the fold of its root,
+      the log entry of a record, the JSON forms of inclusion_proof and
+      range_proof with the order of a range proof's witness, the local
+      signature and key_id members of an enclosed record, and that a
+      supplied record outside the closure neither passes nor fails graph
+      closure.
 
    Since -01:
 
@@ -2954,6 +3074,14 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       dual_signature_credential/0, revocation statements, and when a
       binding applies; and the controller_binding join basis with its
       derivation (Section 8.2.6).  A controller_binding agreement is
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 55]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
       always redundant, never corroborating (Section 8.2.7).  A verifier
       that implements only -01 reads a block that carries a
       controller_binding join as malformed, since -01's join-basis does
@@ -2961,14 +3089,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       bindings.  A binding record MAY carry key_types; this document
       defines the ed25519 key type, and a record under any other is
       treated as under a method a verifier does not implement.
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 53]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
    *  Empty-history Bundles (Section 3.1): a Bundle with no records and
       no root shows that a stream has no history to disclose, whether it
@@ -3003,6 +3123,21 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       declares the producer's key and can only cause a countersignature
       to be reported as not independent.
 
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 56]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    *  Defined and registered the composed/v1 extension kind: one member
       per responder carrying its Evidence Request outcome (artifact,
       refusal or absence); observers with a role and a custody domain;
@@ -3016,15 +3151,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    *  Noted two provisional extension kinds, sd-jwt-issuers/v1 and
       disclosure-policy-decisions/v1, held for ratification in the
       interim registry and not defined by this document.
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 54]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
 Acknowledgments
 
@@ -3063,18 +3189,4 @@ Authors' Addresses
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 55]
+Mih & Zhang                Expires 6 May 2027                  [Page 57]
