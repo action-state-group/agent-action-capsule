@@ -22,10 +22,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_der_public_key
 
+from agent_action_capsule._ed25519_strict import verify_strict
 from agent_action_capsule.interop_profile import (
     Exchange,
     InteropVerifier,
@@ -247,9 +247,10 @@ def verify_commitment(data: bytes, checks: frozenset) -> tuple[str, dict | None]
         return "commitment_form", None
     body = {k: v for k, v in c.items() if k != "sig"}
     if "commitment_signature" in checks:
-        try:
-            key.verify(b64u(sig["value"]), jcs(body))
-        except InvalidSignature:
+        # Strict Ed25519 (binding §3 "Signing"): a small-order key or R fails, which
+        # cryptography's own verify alone would accept.
+        raw = key.public_bytes(Encoding.Raw, PublicFormat.Raw)
+        if not verify_strict(raw, jcs(body), b64u(sig["value"])):
             return "commitment_signature", None
     cards = c["history_cards"] if c["profile"] == "evidence-commitment/1" else [c["history_card"]]
     if "staple_digest" in checks:
@@ -447,13 +448,14 @@ def test_kind_and_uri_match_the_binding():
 
 def test_commitments_carry_no_count():
     """The count rule the commitment profile applies: no number, and no string of digits only,
-    outside the staples' bytes, which are signed artifacts carried whole."""
+    outside the staples' bytes, which are signed artifacts carried whole. ``key_id`` is a typed
+    key (64 lowercase hex), not a count: the identity point's is ``01`` followed by zeros."""
     def scan(v, path=""):
         if isinstance(v, bool) or v is None:
             return
         assert not isinstance(v, (int, float)), path
         if isinstance(v, str):
-            assert not v.isdigit(), path
+            assert not v.isdigit() or (path.endswith(".key_id") and len(v) == 64), path
         elif isinstance(v, list):
             for i, x in enumerate(v):
                 scan(x, f"{path}[{i}]")

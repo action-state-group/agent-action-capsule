@@ -58,3 +58,13 @@ def mixed_order_r(key: Ed25519PrivateKey, message: bytes) -> bytes:
     big_r = encode(add(mul(r, BASE), decode(ORDER_8)))  # type: ignore[arg-type]
     k = int.from_bytes(hashlib.sha512(big_r + public + message).digest(), "little")
     return big_r + ((r + k * a) % _L).to_bytes(32, "little")
+
+
+def small_order_key(label: bytes) -> tuple[bytes, bytes]:
+    """A forgery that fails only the small-order key condition: the identity
+    point as the key, with R = [r]B and S = r (r derived from ``label``).
+    [S]B = R + [k]A holds for any message, since [k]A is the identity, and R
+    has prime order and S < L, so a lenient verifier accepts it. Returns the
+    key and the signature."""
+    r = int.from_bytes(hashlib.sha256(label).digest(), "little") % _L
+    return IDENTITY, encode(mul(r, BASE)) + r.to_bytes(32, "little")

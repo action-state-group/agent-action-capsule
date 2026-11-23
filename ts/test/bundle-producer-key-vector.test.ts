@@ -22,9 +22,9 @@ type Case = {
   bundle: Record<string, unknown>;
   bundle_digest: string;
   expect: {
-    signature: "valid";
+    signature: "valid" | "invalid";
     declared_producer_keys: string[];
-    stamp: "not independent" | "unresolved signer";
+    stamp: "not independent" | "unresolved signer" | "invalid";
   };
 };
 
@@ -42,6 +42,7 @@ const STAMP_KIND: Record<
 > = {
   "not independent": "not-independent",
   "unresolved signer": "unresolved-signer",
+  invalid: "invalid",
 };
 
 const decode = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);

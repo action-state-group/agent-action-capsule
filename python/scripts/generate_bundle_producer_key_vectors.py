@@ -29,11 +29,15 @@ import argparse
 import copy
 import hashlib
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ed25519_forgeries as forgeries  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = ROOT / "vectors" / "bundle" / "producer-key"
@@ -136,7 +140,46 @@ def cases() -> list[dict]:
     def declared(value: Any) -> dict:
         return {KIND: value}
 
+    def forged(case_id: str, description: str, kind: str) -> dict:
+        """A countersign/v1 entry whose signature a lenient verifier accepts and
+        strict Ed25519 (draft -03 Conventions, countersign/v1 step 2) refuses."""
+        bundle = {**base, "extensions": declared({"public_key": producer_hex})}
+        over = bundle_digest(bundle)
+        if kind == "small-order-key":
+            key, signature = forgeries.small_order_key(b"producer-key/v1 vectors: small-order r")
+            key_id = key.hex()
+        else:
+            key_id, signature = other_hex, b""
+        signer = {"id": SIGNER_ID, "key_id": key_id}
+        signing_input = jcs({"over": over, "signer": signer, "statement": STATEMENT, "type": "countersign/v1"})
+        if kind == "identity-r":
+            signature = forgeries.identity_r(other, signing_input)
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(key_id)).verify(signature, signing_input)  # lenient accepts
+        entry = {"type": "countersign/v1", "signer": signer, "over": over, "statement": STATEMENT,
+                 "signature": signature.hex()}
+        return {
+            "id": case_id,
+            "section": ["Verifying a countersign/v1 Entry", "Conventions and Definitions"],
+            "description": description,
+            "bundle": {**bundle, "countersignatures": [entry]},
+            "bundle_digest": over,
+            "expect": {"signature": "invalid", "declared_producer_keys": [producer_hex], "stamp": "invalid",
+                       "lenient_ed25519_verifies": True},
+        }
+
     return [
+        forged(
+            "strict-small-order-key",
+            "the entry is signed under a small-order key (the identity point) with R = [r]B and S = r, which a "
+            "lenient verifier accepts over any message; strict Ed25519 refuses it, so the entry is invalid",
+            "small-order-key",
+        ),
+        forged(
+            "strict-identity-r",
+            "the entry is signed by another key with R the identity point, which a lenient verifier accepts; "
+            "strict Ed25519 refuses it, so the entry is invalid",
+            "identity-r",
+        ),
         case(
             "declared-self-countersignature",
             "the Bundle declares the producer key, and the countersign/v1 entry is signed by that key",
