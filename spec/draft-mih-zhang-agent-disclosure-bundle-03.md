@@ -200,9 +200,12 @@ Strict Ed25519:
   signature if any condition fails; a rejected signature is a failed
   signature, whatever trust a deployment places in the key. A lenient
   verifier accepts, for a small-order A, a signature over any message that
-  anyone can produce. This is the rule of the Conventions section of the
+  anyone can produce, and, for a small-order R, a signature that other
+  verifiers refuse. This is the rule of the Conventions section of the
   working revision -06 of {{I-D.mih-scitt-agent-action-capsule}}, stated here
-  because this document cites revision -05, which does not define it.
+  because this document cites revision -05, which does not define it. When
+  this document cites a revision that defines the rule, this definition is
+  replaced by that citation.
 
 The terms "Capsule", "capsule_id", `chain.parent_capsule_id`, `references`,
 `seq`, `leaf_index`, and `log_coordinates` are as defined in
