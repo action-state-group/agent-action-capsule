@@ -118,6 +118,12 @@ same-commit files in CI.
   type not implemented), and joins with an empty-history member (linked:
   `one_sided`; revoked: `unjoined`; no checkpoint: not derivable);
   `python/scripts/generate_bundle_composed_cb_vectors.py` regenerates them.
+- `bundle/composed-key-source/`: Evidence Bundle -03 member keys under
+  `controller_binding` and `same_key`: a key read from a root record's verified
+  signature, or for an unsigned root record from its log's checkpoint when the
+  record's identity and own membership hold (at the checkpoint's time); the
+  forged and broken cases that give no key; and the optional `pointer`;
+  `python/scripts/generate_bundle_composed_key_source_vectors.py` regenerates them.
 - `bundle/composed-history/`: History members and the `same_key` join basis of
   Evidence Bundle -03's `composed/v1`: two parties' halves of one exchange
   joined on its identifier, each party's History tied to its own half by

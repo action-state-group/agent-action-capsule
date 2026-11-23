@@ -61,3 +61,37 @@ func TestComposedHistoryVectors(t *testing.T) {
 	// Declaring a History missing withholds its body, not its existence.
 	require.Equal(t, digests["history-two-parties"], digests["history-member-missing"])
 }
+
+// TestComposedKeySourceVectors runs vectors/bundle/composed-key-source (bundle
+// -03 member keys, #663) against each case's whole expect.
+func TestComposedKeySourceVectors(t *testing.T) {
+	_, filename, _, _ := runtime.Caller(0)
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(filename), "..", "..", "vectors", "bundle", "composed-key-source", "vectors.json"))
+	require.NoError(t, err)
+	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	decoder.UseNumber()
+	var file struct {
+		Count json.Number   `json:"count"`
+		Cases []bindingCase `json:"cases"`
+	}
+	require.NoError(t, decoder.Decode(&file))
+	require.Equal(t, json.Number("18"), file.Count)
+	require.Len(t, file.Cases, 18)
+	for _, c := range file.Cases {
+		c := c
+		t.Run(c.ID, func(t *testing.T) {
+			preimage, err := ComposedDigestPreimage(composedBlockOf(c.Container))
+			require.NoError(t, err)
+			require.Equal(t, c.Expect["canonical_preimage"], string(preimage))
+			composed := verifyBlock(t, c.Container, bindingOptions(c))
+			require.Equal(t, c.Expect["status"], composed.Status, composed.Findings)
+			want := map[string]interface{}{}
+			for key, value := range c.Expect {
+				if key != "canonical_preimage" {
+					want[key] = value
+				}
+			}
+			require.Equal(t, want, expectShape(composed))
+		})
+	}
+}

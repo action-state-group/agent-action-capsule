@@ -744,6 +744,55 @@ def _records(raw: Any) -> tuple[dict[str, Mapping[str, Any]], dict[str, Any], li
     return records, results, findings
 
 
+def record_logged_under_checkpoint(bundle: Mapping[str, Any], capsule_id: str) -> dict[str, Any] | None:
+    """The signed fields of the Bundle's checkpoint when the record
+    ``capsule_id`` is carried, its identity holds (its ``capsule_id``
+    recomputes from its content) and its own membership entry proves it under
+    that signed checkpoint: the entry names the checkpoint's ``log_id``, has
+    ``leaf_index = seq - 1`` and the checkpoint's ``mmr_size``, and its proof
+    verifies against the signed root, not a stated one. ``None`` otherwise,
+    including when the checkpoint does not verify or CLL is not installed.
+
+    It answers for this one record only: a failure elsewhere in the Bundle
+    (another record, the range proof, a padding leaf) does not change it.
+    -03 "Joins" reads a key from it for an unsigned root record."""
+    stated = bundle.get("checkpoint")
+    certificate = bundle.get("completeness_certificate")
+    if not isinstance(stated, Mapping) or not isinstance(certificate, Mapping):
+        return None
+    claim, signed, _ = _strict_checkpoint(stated, certificate)
+    if claim.status != "pass" or not signed:
+        return None
+    raw_records = bundle.get("records")
+    record = next((r for r in raw_records if isinstance(r, Mapping) and r.get("capsule_id") == capsule_id), None) \
+        if isinstance(raw_records, list) else None
+    if record is None:
+        return None
+    identity = verify(record)
+    if not identity.ok or identity.capsule_id != capsule_id:
+        return None
+    members = certificate.get("memberships")
+    member = members.get(capsule_id) if isinstance(members, Mapping) else None
+    coords = member.get("log_coordinates") if isinstance(member, Mapping) else None
+    if not isinstance(coords, Mapping):
+        return None
+    seq, index = coords.get("seq"), coords.get("leaf_index")
+    size, root = signed.get("mmr_size"), signed.get("root")
+    if (coords.get("log_id") != signed.get("log_id") or not _safe_int(seq) or not _safe_int(index) or seq < 1
+            or index != seq - 1 or not _safe_int(size) or not isinstance(root, str) or not _HEX64.fullmatch(root)):
+        return None
+    try:
+        from cll.checkpoint import verify_inclusion
+
+        proof = _inclusion_proof(member.get("inclusion_proof"))
+        if (proof.size != size or proof.leaf_index != index
+                or not verify_inclusion(bytes.fromhex(root), size, index, bytes.fromhex(capsule_id), proof)):
+            return None
+    except (ImportError, TypeError, ValueError, KeyError, AttributeError):
+        return None
+    return dict(signed)
+
+
 def _safe_int(value: Any) -> bool:
     """A JSON integer within ±(2**53 - 1), the bound Go, Rust and TS apply.
 

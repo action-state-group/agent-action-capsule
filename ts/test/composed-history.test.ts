@@ -105,6 +105,11 @@ function expectShape(
         derived: j.derived ?? null,
         result: j.result,
       };
+      if (j.keySources !== undefined)
+        value.key_sources = j.keySources.map((k) => ({
+          member: k.member,
+          source: k.source,
+        }));
       if (j.keys !== undefined && j.keys.length > 0)
         value.keys = j.keys.map((k) => ({ member: k.member, key: k.key }));
       if (j.historyTimes !== undefined)

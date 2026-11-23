@@ -351,6 +351,13 @@ func composedVerify(in io.Reader, out, errOut io.Writer) int {
 				}
 				value["keys"] = keys
 			}
+			if len(join.KeySources) != 0 {
+				sources := make([]interface{}, len(join.KeySources))
+				for k, source := range join.KeySources {
+					sources[k] = map[string]interface{}{"member": source.Member, "source": source.Source}
+				}
+				value["key_sources"] = sources
+			}
 			if t := join.HistoryTimes; t != nil {
 				value["history_times"] = map[string]interface{}{
 					"history": t.History, "history_time": t.HistoryTime, "record": t.Record,

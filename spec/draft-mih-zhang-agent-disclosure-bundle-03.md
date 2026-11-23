@@ -1277,58 +1277,92 @@ derivation for four bases:
   block.
 - **`shared_artifact_digest`**: `pointer` selects a digest string in each root
   record. The members are linked when the two values are identical.
-- **`controller_binding`**: `pointer` selects a key identifier string in each
-  root record, for example `/key_id`, and `identifier_digest` is a binding
-  digest ({{composed-binding}}). The members are linked when a delivered
-  binding record whose binding digest equals `identifier_digest` applies to
-  the two selected values, with T the `timestamp` of each root record
-  ({{I-D.mih-scitt-agent-action-capsule}}). A verifier that received no
-  record with that digest, or only well-formed records with that digest whose
-  `method` or key types it does not implement, reports the join as
-  `not_derivable`; so does a join without `identifier_digest`, or without
-  `pointer` when a member is a member Bundle with records. Any other record with
+- **`controller_binding`**: `identifier_digest` is a binding digest
+  ({{composed-binding}}). The members are linked when a delivered binding
+  record whose binding digest equals `identifier_digest` applies to the two
+  members' keys, each at its time T, as "Member keys" below determines them.
+  A verifier that received no record with that digest, or only well-formed
+  records with that digest whose `method` or key types it does not
+  implement, reports the join as `not_derivable`; so does a join without
+  `identifier_digest`, or with a member that has no key. Any other record with
   that digest that does not apply (malformed, not signed by both keys, other
-  keys, outside its window, or revoked) leaves the members unjoined. A join on this basis states that the
-  two root records are under keys whose holders bound them, as both of them
-  stated it; it says nothing about who those holders are.
+  keys, outside its window, or revoked) leaves the members unjoined. A join on
+  this basis states that the two members are under keys whose holders bound
+  them, as both of them stated it; it says nothing about who those holders
+  are. T only tests whether the binding was in effect. For a History member
+  it does not state whether that History covers any record of the other
+  member.
+
+  `pointer` is not needed: each key is determined below. A join MAY carry
+  it, as a block written under -02 does; then `pointer` MUST select, in the
+  root record of each member that has one, the key determined below for that
+  member, and a `pointer` that selects any other value there, or does not
+  resolve there, makes the join `not_derivable`. A History member or an
+  empty-history Bundle has no root record, and `pointer` is not checked
+  against it. A composing party following this revision SHOULD omit
+  `pointer`. A -02 verifier reads a join without `pointer` as
+  `not_derivable`, which never overstates it; a verifier following this
+  revision can turn a join that -02 linked into `not_derivable`, when the key
+  a root record names is not a key that signed or logged it.
 
   When one member is an empty-history Bundle ({{empty-history}}), the
-  derivation still runs. That member's key identifier is the key that signed
-  its `checkpoint.cose`, as that signature authenticates it, and its T is
-  that checkpoint's `timestamp`; `pointer` selects the key identifier in the
-  other member's root record only. Linked gives `one_sided`, never `agree`,
-  because nothing was compared; not linked gives `unjoined`. An empty-history
-  member without a `checkpoint.cose` that verifies has no key, and the join is
-  `not_derivable`.
-
-  When a member is a History member, its key identifier and T are its join
-  view's key and time ({{composed-history}}), and `pointer` selects the key
-  identifier in the other member's root record only; a join between two
-  History members needs no `pointer`. T here only tests whether the binding
-  was in effect. It does not state whether a History covers any record of
-  the other member.
-- **`same_key`**: the members are linked when both have the same key, each
-  member's key being:
-  - for a History member, its join view's key;
-  - for a member Bundle with records, the key under which its root record's
-    producer signature verifies ({{I-D.mih-scitt-agent-action-capsule}}). A
-    root record that is unsigned or whose signature does not verify gives
-    the member no key. The key is never read through a pointer, because a
-    root record can name a key that did not sign it;
-  - for an empty-history Bundle, the key that signed its `checkpoint.cose`,
-    as for `controller_binding` above; without a checkpoint that verifies it
-    has no key.
-
-  A join with a member that has no key, other than a refusal or absence,
-  which the state rules above already decide, is `not_derivable`. Against
-  an empty-history Bundle, linked gives `one_sided` and not linked gives
-  `unjoined`, as for `controller_binding`. Both members with records and
-  linked gives `agree`; with different keys, `unjoined`. On every `same_key`
-  join that derives `unjoined`, a verifier reports both keys. A `same_key` join states only that one key signed or
-  answered for both members. It is how a party's History attaches to that
-  party's own half of an exchange: the two halves join each other on an
-  identifier they share (for example `pre_agreed_identifier`), and each
+  derivation still runs. Linked gives `one_sided`, never `agree`, because
+  nothing was compared; not linked gives `unjoined`.
+- **`same_key`**: the members are linked when both have the same key, as
+  "Member keys" below determines them. A join with a member that has no key,
+  other than a refusal or absence, which the state rules above already
+  decide, is `not_derivable`. Against an empty-history Bundle, linked gives
+  `one_sided` and not linked gives `unjoined`, as for `controller_binding`.
+  Both members with records and linked gives `agree`; with different keys,
+  `unjoined`. On every `same_key` join that derives `unjoined`, a verifier
+  reports both keys. A `same_key` join states only that one key signed,
+  logged or answered for both members. It is how a party's History attaches
+  to that party's own half of an exchange, signed by that party or held in
+  its log: the two halves join each other on
+  an identifier they share (for example `pre_agreed_identifier`), and each
   History joins its own party's half on `same_key`.
+
+**Member keys.** Under `controller_binding` and `same_key`, a member's key
+identifier, its time T and the key's source are:
+
+- for a History member, its join view's key and time ({{composed-history}});
+  source `history`;
+- for an empty-history Bundle, the key that signed its `checkpoint.cose`, as
+  that signature authenticates it, and that checkpoint's `timestamp`; source
+  `log_checkpoint`. Without a `checkpoint.cose` that verifies it has no key;
+- for a member Bundle with records whose root record carries `signature` or
+  `key_id`, the key under which its producer signature verifies
+  ({{I-D.mih-scitt-agent-action-capsule}}) and the root record's
+  `timestamp`; source `record_signature`. A root record that carries only one
+  of the two, or whose signature does not verify, or that a verifier cannot
+  check because it has no signature verifier, has no key. It never falls back
+  to the source below: removing a bad signature must not upgrade a record;
+- for a member Bundle with records whose root record carries neither
+  `signature` nor `key_id`, the key that signed the Bundle's
+  `checkpoint.cose` and that checkpoint's `timestamp`, only when all of these
+  hold: the checkpoint verifies and every stated copy of its fields matches
+  it ({{completeness}}); the root record's `capsule_id` recomputes from its
+  content, since an inclusion proof binds only the `capsule_id`; and the root
+  record's own membership holds under that checkpoint: its entry in
+  `completeness_certificate.memberships` names the checkpoint's log
+  identifier, has a `leaf_index` of its `seq` minus one and a proof of the
+  checkpoint's MMR size whose own `leaf_index` is that same value, and that
+  proof verifies against the checkpoint's signed root. A failure elsewhere in the Bundle, such as another record's
+  membership, does not remove the key. Otherwise the member has no key.
+  Source `log_checkpoint`. T is the checkpoint's time, not the record's
+  `timestamp`, because no key signed that `timestamp`; the key signed only the
+  checkpoint. Such a key states that the key's log holds the root record, not
+  that the key's holder authored it: an unsigned record establishes its place
+  in a log, never its authorship. A verifier MUST NOT present a
+  `log_checkpoint` key as the author of a root record.
+
+A key is never read from a value a root record states, because a root
+record can name a key that did not sign or log it. For every
+`controller_binding` and `same_key` join, whatever it derives, a verifier
+reports each member's key source: `history`, `log_checkpoint`,
+`record_signature`, or `none` for a member with no key. The source is
+reported whether or not a `pointer` matched it, so a join can report a key
+source beside a `not_derivable` result that a mismatched `pointer` caused.
 
 A join under `pre_agreed_identifier` or `shared_artifact_digest` one of whose
 members is a History member is `not_derivable`: this revision defines no
@@ -1381,11 +1415,12 @@ labels are identical octet sequences.
 
 - both members name the same observer;
 - the two observers have the same `custody_domain`;
-- the two members' root records carry the same `key_id`;
+- the two members' root records carry the same `key_id` (a stated `key_id`
+  can only make a pair redundant here, never link it);
 - the join's basis is `controller_binding`: the holders of the two keys have
   stated that the keys are not independent issuers ({{composed-binding}});
-- the join's basis is `same_key`: one key signed or answered for both
-  members.
+- the join's basis is `same_key`: one key signed, logged or answered for
+  both members.
 
 It MUST present the result as "redundant, not corroborating", with the reason.
 A `controller_binding` or `same_key` join therefore never yields
@@ -1468,7 +1503,8 @@ separately:
    time;
 3. composition closure;
 4. per join: the declared state, the derived state (or `not_derivable`), and
-   whether they match; for a `same_key` join that derives `unjoined`, both
+   whether they match; for a `controller_binding` or `same_key` join, each
+   member's key source; for a `same_key` join that derives `unjoined`, both
    keys; for a join between a History member and a member with a root
    record, the History times ({{composed-joins}});
 5. per derived `agree`: `redundant` (with reason) or corroborating on
@@ -1866,6 +1902,14 @@ are listed per check and never combined, because an aggregate would hide a
   `controller_binding` agreement is then reported redundant all the same,
   never more. A revocation the producer did not account for derives
   `unjoined` and fails a declared `agree` (`join_state_mismatch`).
+- **Member keys.** A key read from what a root record states could name a
+  key that never signed it, linking a record to a binding it is not under.
+  So a key comes only from a producer signature that verifies or, for an
+  unsigned record, from the signed checkpoint of a log whose own inclusion
+  proof holds the record with its identity intact, at that checkpoint's time
+  ({{composed-joins}}). The second states which log holds the record, not who
+  wrote it, and a verifier reports which source it used. A record whose
+  signature fails is never read through its log instead.
 - **No history.** An empty-history Bundle ({{empty-history}}) is its
   producer's statement that its stream holds no record. Its signed checkpoint
   shows that the stream exists, under which key, and the size of its log at
@@ -2007,6 +2051,15 @@ Since -02:
   extent of what was witnessed itself. Added Security and Privacy
   Considerations for it.
 - Cites the Checkpointed Local Log -02.
+- `composed/v1` member keys: under `controller_binding` and
+  `same_key`, a member Bundle's key comes from its root record's verified
+  producer signature or, for a root record with neither `signature` nor
+  `key_id`, from the Bundle's checkpoint signer when the record's identity
+  and its own membership under that checkpoint hold, at that checkpoint's
+  time. A present signature that fails never falls back. A key is never read
+  from a value the record states: `controller_binding`'s `pointer` is
+  optional and, when present, must select that key. Every such join reports
+  each member's key source.
 - `composed/v1`: a History answer can be an `artifact` member, carried as
   `history` (its artifact response envelope and anchor checkpoint), with the
   envelope's digest as the member digest and a join view (its responder key

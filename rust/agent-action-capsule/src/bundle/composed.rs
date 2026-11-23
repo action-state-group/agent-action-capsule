@@ -14,8 +14,8 @@
 //! records' timestamps. It reports no binding property.
 
 use super::{
-    bundle_digest, is_b64url, is_empty_history, signed_checkpoint, verify_bundle_with_options,
-    BundleOptions, VerificationResult, B64,
+    bundle_digest, is_b64url, is_empty_history, record_logged_under_checkpoint, signed_checkpoint,
+    verify_bundle_with_options, BundleOptions, VerificationResult, B64,
 };
 use crate::ed25519_strict::strict_ed25519;
 use crate::{canonical, envelope, verify};
@@ -172,6 +172,19 @@ pub struct JoinKey {
     pub key: String,
 }
 
+/// Where one side's key came from on a `controller_binding` or `same_key`
+/// join: `record_signature`, `log_checkpoint`, `history` or `none`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeySource {
+    pub member: String,
+    pub source: String,
+}
+
+pub const KEY_SOURCE_RECORD_SIGNATURE: &str = "record_signature";
+pub const KEY_SOURCE_LOG_CHECKPOINT: &str = "log_checkpoint";
+pub const KEY_SOURCE_HISTORY: &str = "history";
+pub const KEY_SOURCE_NONE: &str = "none";
+
 /// A join: the declared state, the derived state (`None` when not
 /// derivable), and whether they match.
 #[derive(Debug, Clone, PartialEq)]
@@ -185,6 +198,9 @@ pub struct ComposedJoinResult {
     pub differences: Vec<JoinDifference>,
     /// A `same_key` join that derives `unjoined`: each member's key.
     pub keys: Vec<JoinKey>,
+    /// Every `controller_binding` and `same_key` join: each side's key
+    /// source, in the join's member order.
+    pub key_sources: Vec<KeySource>,
     pub history_times: Option<HistoryTimes>,
 }
 
@@ -855,6 +871,7 @@ pub fn verify_composed(raw: &Value, opts: &BundleOptions) -> ComposedResult {
             &observers,
         ));
         join_result.history_times = history_times(j, &by_id, &views);
+        join_result.key_sources = key_sources(j, &by_id, &views);
         result.joins.push(join_result);
     }
 
@@ -1190,6 +1207,7 @@ fn derive_join(
         result: result.to_string(),
         differences,
         keys,
+        key_sources: Vec::new(),
         history_times: None,
     }
 }
@@ -1347,36 +1365,97 @@ fn derived_state(
 }
 
 /// Each member's side of a `controller_binding` or `same_key` join, or
-/// `None` when one has none: not derivable. A History member's side is its
-/// join view; an empty-history Bundle's is its signed checkpoint's key and
-/// time; a member Bundle with records gives, under `controller_binding`, the
-/// key `pointer` selects in its root record and, under `same_key`, the key
-/// its root record's producer signature verifies under.
+/// `None` when one has none: not derivable. The key and its time come from
+/// [`member_key`]; under `controller_binding` a `pointer`, when present, must
+/// select that same key in a root record.
 fn key_sides(
     j: &Join,
     members: [&Member; 2],
     views: &HashMap<&str, HistoryView>,
 ) -> Option<[BindingSide; 2]> {
     let side = |m: &Member| -> Option<BindingSide> {
-        let body = m.body.as_ref()?;
-        if m.history {
-            let view = views.get(m.id.as_str())?;
-            return Some(BindingSide {
-                key: Some(view.key.clone()),
-                at: view.at,
-            });
+        let (side, _) = member_key(m, views)?;
+        if let (true, Some(pointer), false) =
+            (j.basis == "controller_binding", &j.pointer, m.history)
+        {
+            if let Some(record) = root_record(m) {
+                let document = Value::Object(record.clone());
+                match resolve_pointer(&document, pointer) {
+                    Some(Value::String(key)) if Some(key) == side.key.as_ref() => {}
+                    _ => return None,
+                }
+            }
         }
-        if is_empty_history(body) {
-            return checkpoint_side(body);
-        }
-        let record = root_record(m)?;
-        if j.basis == "same_key" {
-            signer_side(record)
-        } else {
-            Some(record_side(record, j.pointer.as_deref()?))
-        }
+        Some(side)
     };
     Some([side(members[0])?, side(members[1])?])
+}
+
+/// A member's key, its time and where the key came from (-03 "Joins"): a
+/// History member's join view (`history`); an empty-history Bundle's
+/// checkpoint signer at that checkpoint's time (`log_checkpoint`); for a
+/// member Bundle with records, the key its root record's producer signature
+/// verifies under at the record's time (`record_signature`) or, for a root
+/// record that carries neither `signature` nor `key_id`, the key that signed
+/// the Bundle's checkpoint at that checkpoint's time, when the record's
+/// identity and its own membership under that checkpoint hold
+/// (`log_checkpoint`). `None` when it has no key: a present signature that
+/// fails never falls back to the checkpoint key.
+fn member_key(
+    m: &Member,
+    views: &HashMap<&str, HistoryView>,
+) -> Option<(BindingSide, &'static str)> {
+    let body = m.body.as_ref()?;
+    if m.history {
+        let view = views.get(m.id.as_str())?;
+        let side = BindingSide {
+            key: Some(view.key.clone()),
+            at: view.at,
+        };
+        return Some((side, KEY_SOURCE_HISTORY));
+    }
+    if is_empty_history(body) {
+        return Some((checkpoint_side(body)?, KEY_SOURCE_LOG_CHECKPOINT));
+    }
+    let record = root_record(m)?;
+    if record.contains_key("signature") || record.contains_key("key_id") {
+        return Some((signer_side(record)?, KEY_SOURCE_RECORD_SIGNATURE));
+    }
+    let capsule_id = record.get("capsule_id")?.as_str()?;
+    let signed = record_logged_under_checkpoint(body, capsule_id)?;
+    let side = BindingSide {
+        at: record_time(&Value::String(signed.timestamp.clone())),
+        key: Some(signed.key_id),
+    };
+    Some((side, KEY_SOURCE_LOG_CHECKPOINT))
+}
+
+/// Where each side's key came from, in the join's member order, on every
+/// `controller_binding` and `same_key` join, whatever it derived. A member
+/// with no key reports `none`.
+fn key_sources(
+    j: &Join,
+    by_id: &HashMap<&str, &Member>,
+    views: &HashMap<&str, HistoryView>,
+) -> Vec<KeySource> {
+    if !HISTORY_BASES.contains(&j.basis.as_str()) {
+        return Vec::new();
+    }
+    j.members
+        .iter()
+        .map(|id| {
+            let m = by_id[id.as_str()];
+            let source = if m.outcome == "artifact" {
+                member_key(m, views).map(|(_, source)| source)
+            } else {
+                None
+            };
+            KeySource {
+                member: id.clone(),
+                source: source.unwrap_or(KEY_SOURCE_NONE).to_string(),
+            }
+        })
+        .collect()
 }
 
 /// Each member's key, in the join's member order, for a `same_key` join that
@@ -1568,19 +1647,6 @@ fn record_time(value: &Value) -> Option<UtcTime> {
     parse_utc(&normalized)
 }
 
-/// A root record's side: the key identifier `pointer` selects, asserted as a
-/// string, and the record's timestamp.
-fn record_side(record: &Map<String, Value>, pointer: &str) -> BindingSide {
-    let document = Value::Object(record.clone());
-    BindingSide {
-        key: match resolve_pointer(&document, pointer) {
-            Some(Value::String(key)) => Some(key.clone()),
-            _ => None,
-        },
-        at: record.get("timestamp").and_then(record_time),
-    }
-}
-
 /// An empty-history member's side, from its signed checkpoint: the key that
 /// signed `checkpoint.cose` and its timestamp. A member without a checkpoint
 /// that verifies has no key, so the join is not derivable.
@@ -1735,10 +1801,10 @@ fn binding_digest(record: &Map<String, Value>) -> Option<String> {
 /// record has the join's `identifier_digest`, or when every one that does
 /// names a method or key type this verifier does not implement. Otherwise
 /// linked when one such record applies: well formed, signed by both bound
-/// keys, its keys exactly the two values `pointer` selects, in effect at both
-/// root records' timestamps, and revoked by no delivered statement at or
-/// before either. A join without `pointer` or `identifier_digest` names no
-/// record: not derivable. The record checks are `controller_binding`'s; only
+/// keys, its keys exactly the two members' keys, in effect at both members'
+/// times, and revoked by no delivered statement at or
+/// before either. A join without `identifier_digest` names no record: not
+/// derivable. The record checks are `controller_binding`'s; only
 /// the join's reading of its report is here.
 fn controller_binding_link(
     j: &Join,

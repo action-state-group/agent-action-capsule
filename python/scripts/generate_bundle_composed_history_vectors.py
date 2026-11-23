@@ -37,8 +37,9 @@ Cases:
   responder-a's key in ``key_id`` but was signed by responder-b's key. Its
   producer signature does not verify under the key it names, so it gives no
   key: ``not_derivable``.
-* ``history-record-unsigned``: responder-a's root record carries no
-  signature: ``not_derivable``.
+* ``history-record-unsigned``: responder-a's root record carries ``key_id``
+  without ``signature``, in a Bundle with no signed checkpoint: a failing
+  producer signature, never a fallback to its log: ``not_derivable``.
 * ``history-member-missing``: history-a declared missing: closure
   ``withheld``, its join ``not_derivable``; the composed digest equals
   ``history-two-parties``.
@@ -232,9 +233,27 @@ def corroboration(members: list[str], value: dict) -> dict:
     return {"members": members, **value}
 
 
+#: Where each member's key comes from in the reference composition (-03
+#: "Joins"): the Histories' join views and the halves' signed root records.
+SOURCES = {"history-a": "history", "history-b": "history", "responder-a": "record_signature",
+           "responder-b": "record_signature"}
+
+
+def with_key_sources(joins: list[dict], joins_expect: list[dict], sources: dict) -> list[dict]:
+    """Add ``key_sources`` to every expected controller_binding and same_key
+    join, in its member order, from ``sources`` (member id to source)."""
+    keyed = {tuple(j["members"]) for j in joins if j["basis"] in ("same_key", "controller_binding")}
+    for e in joins_expect:
+        if tuple(e["members"]) in keyed:
+            e["key_sources"] = [{"member": m, "source": sources[m]} for m in e["members"]]
+    return joins_expect
+
+
 def make_case(case_id: str, description: str, members: list[dict], observers: list[dict], joins: list[dict], *,
               status: str, members_expect: dict, joins_expect: list[dict], corroboration_expect: list[dict],
-              section: list[str], missing: list[str] | None = None, bindings: list[dict] | None = None) -> dict:
+              section: list[str], missing: list[str] | None = None, bindings: list[dict] | None = None,
+              sources: dict | None = None) -> dict:
+    joins_expect = with_key_sources(joins, copy.deepcopy(joins_expect), {**SOURCES, **(sources or {})})
     for m in members:
         if m["id"] in (missing or []):
             # A declared-missing member carries no body (Composition Closure).
@@ -385,7 +404,8 @@ def _unsigned_half_case(case_id: str, description: str, record_edit) -> dict:
     expect = reference_members_expect()
     return make_case(case_id, description, members, observers, joins, status="withheld", members_expect=expect,
                      joins_expect=_ordered(joins_expect, joins),
-                     corroboration_expect=_ordered_corroboration(corro, joins), section=SECTIONS)
+                     corroboration_expect=_ordered_corroboration(corro, joins), section=SECTIONS,
+                     sources={half_id: "none"})
 
 
 def case_missing() -> dict:
@@ -404,7 +424,7 @@ def case_missing() -> dict:
         "Composition closure is withheld, and the join naming history-a is not_derivable.",
         members, observers, joins, status="withheld", members_expect=expect,
         joins_expect=_ordered(joins_expect, joins), corroboration_expect=_ordered_corroboration(corro, joins),
-        section=SECTIONS + [S_CLOSURE], missing=["history-a"])
+        section=SECTIONS + [S_CLOSURE], missing=["history-a"], sources={"history-a": "none"})
     case["expect"]["composed_digest_equals_case"] = "history-two-parties"
     return case
 
@@ -422,7 +442,8 @@ def _failed_history_case(case_id: str, description: str, a_kwargs: dict, checks:
     corro[0] = corroboration(["history-a", "responder-a"], NOT_APPLICABLE)
     return make_case(case_id, description, members, observers, joins, status=status, members_expect=expect,
                      joins_expect=_ordered(joins_expect, joins),
-                     corroboration_expect=_ordered_corroboration(corro, joins), section=SECTIONS)
+                     corroboration_expect=_ordered_corroboration(corro, joins), section=SECTIONS,
+                     sources={"history-a": "none"})
 
 
 def bad_signature(cose: bytes) -> bytes:
@@ -460,7 +481,7 @@ def case_envelope_digest_mismatch() -> dict:
         "It is not the History the composed digest names: composition closure fails and it has no join view.",
         members, observers, joins, status="fail", members_expect=expect,
         joins_expect=_ordered(joins_expect, joins), corroboration_expect=_ordered_corroboration(corro, joins),
-        section=SECTIONS + [S_CLOSURE])
+        section=SECTIONS + [S_CLOSURE], sources={"history-a": "none"})
     case["expect"]["composition_closure"] = {"status": "fail", "missing": []}
     return case
 
@@ -482,7 +503,8 @@ def case_empty_half_other_key() -> dict:
         joins_expect=[join_expect(["history-b", "responder-a"], "unjoined", "unjoined",
                                   keys=[{"member": "history-b", "key": B.public_hex},
                                         {"member": "responder-a", "key": A.public_hex}])],
-        corroboration_expect=[corroboration(["history-b", "responder-a"], NOT_APPLICABLE)], section=SECTIONS)
+        corroboration_expect=[corroboration(["history-b", "responder-a"], NOT_APPLICABLE)], section=SECTIONS,
+        sources={"responder-a": "log_checkpoint"})
 
 
 def case_missing_carries_body() -> dict:
@@ -506,7 +528,7 @@ def case_missing_carries_body() -> dict:
             "status": "fail",
             "members": expect,
             "composition_closure": {"status": "fail", "missing": ["history-a"]},
-            "joins": _ordered(reference_joins_expect(), joins),
+            "joins": with_key_sources(joins, _ordered(reference_joins_expect(), joins), SOURCES),
             "corroboration": _ordered_corroboration(REFERENCE_CORROBORATION, joins),
         },
     }
@@ -529,7 +551,8 @@ def case_refused_half() -> dict:
         "is withheld.",
         members, observers, joins, status="withheld", members_expect=expect,
         joins_expect=[join_expect(["history-a", "responder-a"], "one_sided", "one_sided")],
-        corroboration_expect=[corroboration(["history-a", "responder-a"], NOT_APPLICABLE)], section=SECTIONS)
+        corroboration_expect=[corroboration(["history-a", "responder-a"], NOT_APPLICABLE)], section=SECTIONS,
+        sources={"responder-a": "none"})
 
 
 def case_empty_half() -> dict:
@@ -548,7 +571,8 @@ def case_empty_half() -> dict:
         "linked, and only one member has records, so one_sided, as declared. No root record, so no History times.",
         members, observers, joins, status="pass", members_expect=expect,
         joins_expect=[join_expect(["history-a", "responder-a"], "one_sided", "one_sided")],
-        corroboration_expect=[corroboration(["history-a", "responder-a"], NOT_APPLICABLE)], section=SECTIONS)
+        corroboration_expect=[corroboration(["history-a", "responder-a"], NOT_APPLICABLE)], section=SECTIONS,
+        sources={"responder-a": "log_checkpoint"})
 
 
 def case_pre_agreed_not_derivable() -> dict:
@@ -678,8 +702,11 @@ def cases() -> list[dict]:
                             "verifies under it, never from what the record states, so responder-b has no key: the "
                             "join with history-a is not_derivable, never agree.", names_a),
         _unsigned_half_case("history-record-unsigned",
-                            "responder-a's root record carries no producer signature: it gives no key, and the "
-                            "same_key join with history-a is not_derivable.", unsigned),
+                            "responder-a's root record carries key_id without signature, in a Bundle with no "
+                            "signed checkpoint or membership. Only one of the two is a failing producer signature, "
+                            "which never falls back to the record's log: no key, and the same_key join with "
+                            "history-a is not_derivable. (An unsigned root, with neither, that its log proves "
+                            "would have a key: vectors/bundle/composed-key-source.)", unsigned),
         case_missing(),
         _failed_history_case("history-anchor-checkpoint-mismatch",
                              "history-a carries a checkpoint other than the one its envelope's anchor.digest names. "

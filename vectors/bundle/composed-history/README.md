@@ -25,9 +25,11 @@ identifier (`pre_agreed_identifier`), and history-a and history-b, each
 party's History answer, each joined to its own party's half on `same_key`.
 Each History is signed by its party's key, and its anchor is a checkpoint of
 that party's own log, signed by the same key. A `same_key` join reads a
-member Bundle's key only from its root record's producer signature, never
-through a pointer, and a History's key from its envelope's `responder`. A
-derived `agree` is always `redundant` with reason `same_key`.
+member Bundle's key as -03 "Member keys" says (here, every half's root record
+is signed, so from its producer signature), never through a pointer, and a
+History's key from its envelope's `responder`; each join's expected result
+reports each member's key source in `key_sources`. A derived `agree` is always
+`redundant` with reason `same_key`.
 
 For every join between a History and a member with a root record, the
 verifier reports `history_times`: the History's anchor time, the record's
@@ -44,7 +46,7 @@ that derives `unjoined` also reports both keys (`keys`).
 | `history-key-mismatch-declared-agree` | history-a joined to responder-b, declared `agree` | `unjoined`, both keys | `fail` (`join_state_mismatch`) |
 | `history-key-mismatch-unjoined` | the same, declared `unjoined` | `unjoined`, both keys | `pass` |
 | `history-record-names-key-not-signed` | responder-b's record states responder-a's `key_id` but was signed by responder-b | not derivable | `withheld` |
-| `history-record-unsigned` | responder-a's record carries no signature | not derivable | `withheld` |
+| `history-record-unsigned` | responder-a's record carries `key_id` without `signature`, and its Bundle no signed checkpoint | not derivable (a failing signature never falls back) | `withheld` |
 | `history-member-missing` | history-a declared missing | not derivable; same composed digest as the reference | `withheld` |
 | `history-anchor-checkpoint-mismatch` | history-a carries another checkpoint | not derivable | `fail` |
 | `history-envelope-signature-invalid` | history-a's envelope signed by another key | not derivable | `fail` |

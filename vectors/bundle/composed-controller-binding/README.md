@@ -18,12 +18,18 @@ the binding digest
 
     lowercase hex SHA-256( UTF-8( JCS( binding record without sigs ) ) )
 
-Each join selects each root record's `key_id` with `pointer` (`/key_id`). The
-members are linked when a delivered record with that digest applies: it is
-well formed, both bound keys signed it in the order of `keys`, its two `keys`
-are the two selected values, both root records' `timestamp` values fall in
-`[not_before, not_after)`, and no delivered revocation statement that applies
-to it has `revoked_at` at or before either time. The verifier then compares
+Each join carries `pointer` (`/key_id`), as -02 joins do. Under -03 ("Member
+keys") each member's key is the one its root record's producer signature
+verifies under (every root record here is signed), or an empty-history
+member's checkpoint signer, and `pointer` must select that same key; each
+join's expected result reports each member's key source in `key_sources`
+(`record_signature`, `log_checkpoint` or `none`). The members are linked when
+a delivered record with that digest applies: it is well formed, both bound
+keys signed it in the order of `keys`, its two `keys` are the two members'
+keys, each member's time (a root record's `timestamp`, an empty-history
+member's checkpoint `timestamp`) falls in `[not_before, not_after)`, and no
+delivered revocation statement that applies to it has `revoked_at` at or
+before either time. The verifier then compares
 as for any basis. A derived `agree` is always `redundant` with reason
 `controller_binding`, never corroborating: the key holders have stated that
 their keys are not independent issuers.

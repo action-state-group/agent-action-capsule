@@ -261,47 +261,110 @@ func checkpointTime(cose []byte) (string, bool) {
 	return signed.Timestamp, true
 }
 
+// Key sources reported on every controller_binding and same_key join
+// (bundle -03 "Joins", Member keys).
+const (
+	KeySourceRecordSignature = "record_signature"
+	KeySourceLogCheckpoint   = "log_checkpoint"
+	KeySourceHistory         = "history"
+	KeySourceNone            = "none"
+)
+
+// KeySource is where one member's key came from on a controller_binding or
+// same_key join.
+type KeySource struct {
+	Member string
+	Source string
+}
+
 // keySides returns each member's side of a controller_binding or same_key
-// join, or false when one has none: not derivable. A History member's side is
-// its join view; an empty-history Bundle's is its signed checkpoint's key and
-// time; a member Bundle with records gives, under controller_binding, the key
-// pointer selects in its root record and, under same_key, the key its root
-// record's producer signature verifies under.
+// join, or false when one has none: not derivable. Under controller_binding
+// a pointer, when present, must select that same key in a root record.
 func keySides(j composedJoin, members []composedMember, views map[string]historyView) ([]bindingSide, bool) {
 	sides := make([]bindingSide, 0, len(members))
 	for _, m := range members {
-		switch {
-		case m.body == nil:
+		side, _, ok := memberKey(m, views)
+		if !ok {
 			return nil, false
-		case m.history:
-			view := views[m.id]
-			sides = append(sides, bindingSide{key: view.key, okKey: true, at: view.at, okAt: true})
-		case EmptyHistory(m.body):
-			side, keyed := checkpointSide(m.body)
-			if !keyed {
-				return nil, false
-			}
-			sides = append(sides, side)
-		default:
-			record := rootRecord(m)
-			if record == nil {
-				return nil, false
-			}
-			if j.basis == "same_key" {
-				side, ok := signerSide(record)
-				if !ok {
+		}
+		if j.basis == "controller_binding" && j.pointer != nil && !m.history {
+			if record := rootRecord(m); record != nil {
+				value, resolved := resolvePointer(record, *j.pointer)
+				if key, isString := value.(string); !resolved || !isString || key != side.key {
 					return nil, false
 				}
-				sides = append(sides, side)
-				continue
 			}
-			if j.pointer == nil {
-				return nil, false
-			}
-			sides = append(sides, recordSide(record, *j.pointer))
 		}
+		sides = append(sides, side)
 	}
 	return sides, true
+}
+
+// memberKey returns a member's key, its time and where the key came from: a
+// History member's join view; an empty-history Bundle's checkpoint signer at
+// that checkpoint's time; for a member Bundle with records, the key its root
+// record's producer signature verifies under at the record's time or, for a
+// root record that carries neither signature nor key_id, the key that signed
+// the Bundle's checkpoint at that checkpoint's time, when the record's
+// identity and its own membership under that checkpoint hold. A present
+// signature that fails never falls back to the checkpoint key.
+func memberKey(m composedMember, views map[string]historyView) (bindingSide, string, bool) {
+	switch {
+	case m.body == nil:
+		return bindingSide{}, KeySourceNone, false
+	case m.history:
+		view, ok := views[m.id]
+		if !ok {
+			return bindingSide{}, KeySourceNone, false
+		}
+		return bindingSide{key: view.key, okKey: true, at: view.at, okAt: true}, KeySourceHistory, true
+	case EmptyHistory(m.body):
+		side, keyed := checkpointSide(m.body)
+		if !keyed {
+			return bindingSide{}, KeySourceNone, false
+		}
+		return side, KeySourceLogCheckpoint, true
+	}
+	record := rootRecord(m)
+	if record == nil {
+		return bindingSide{}, KeySourceNone, false
+	}
+	_, hasSignature := record["signature"]
+	_, hasKeyID := record["key_id"]
+	if hasSignature || hasKeyID {
+		side, ok := signerSide(record)
+		if !ok {
+			return bindingSide{}, KeySourceNone, false
+		}
+		return side, KeySourceRecordSignature, true
+	}
+	id, _ := record["capsule_id"].(string)
+	signed := RecordLoggedUnderCheckpoint(m.body, id)
+	if signed == nil {
+		return bindingSide{}, KeySourceNone, false
+	}
+	at, okAt := recordTime(signed.Timestamp)
+	return bindingSide{key: signed.KeyID, okKey: true, at: at, okAt: okAt}, KeySourceLogCheckpoint, true
+}
+
+// keySources reports where each member's key came from, in the join's member
+// order, on every controller_binding and same_key join, whatever it derived.
+func keySources(j composedJoin, byID map[string]composedMember, views map[string]historyView) []KeySource {
+	if !historyBases[j.basis] {
+		return nil
+	}
+	out := make([]KeySource, 0, 2)
+	for _, id := range j.members {
+		m := byID[id]
+		source := KeySourceNone
+		if m.outcome == "artifact" {
+			if _, found, ok := memberKey(m, views); ok {
+				source = found
+			}
+		}
+		out = append(out, KeySource{Member: id, Source: source})
+	}
+	return out
 }
 
 // joinKeys returns each member's key, in the join's member order, for a

@@ -96,16 +96,16 @@ Table of Contents
        8.2.8.  Composed Digest . . . . . . . . . . . . . . . . . . .  34
        8.2.9.  Verifying composed/v1 . . . . . . . . . . . . . . . .  35
      8.3.  The parent-log-witness/v1 Extension . . . . . . . . . . .  36
-     8.4.  Provisional Extension Kinds . . . . . . . . . . . . . . .  39
-   9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  39
-     9.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  40
-     9.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  42
-     9.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  42
-   10. Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  43
-   11. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  43
-   12. Security Considerations . . . . . . . . . . . . . . . . . . .  43
-     12.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  44
-     12.2.  Category Coverage  . . . . . . . . . . . . . . . . . . .  46
+     8.4.  Provisional Extension Kinds . . . . . . . . . . . . . . .  40
+   9.  Bundle Digest and Countersignatures . . . . . . . . . . . . .  40
+     9.1.  The countersign/v1 Entry  . . . . . . . . . . . . . . . .  41
+     9.2.  Verifying a countersign/v1 Entry  . . . . . . . . . . . .  43
+     9.3.  Self-Countersignature . . . . . . . . . . . . . . . . . .  43
+   10. Fragment Codec  . . . . . . . . . . . . . . . . . . . . . . .  44
+   11. Verification  . . . . . . . . . . . . . . . . . . . . . . . .  44
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  44
+     12.1.  composed/v1  . . . . . . . . . . . . . . . . . . . . . .  45
+     12.2.  Category Coverage  . . . . . . . . . . . . . . . . . . .  47
 
 
 
@@ -114,15 +114,15 @@ Mih & Zhang                Expires 6 May 2027                   [Page 2]
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
-     12.3.  parent-log-witness/v1  . . . . . . . . . . . . . . . . .  46
-   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  46
-   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  47
-   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  48
-     15.1.  Normative References . . . . . . . . . . . . . . . . . .  48
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  50
-   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  51
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  53
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  53
+     12.3.  parent-log-witness/v1  . . . . . . . . . . . . . . . . .  47
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  47
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  48
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  49
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  49
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  51
+   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  52
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  55
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  55
 
 1.  Introduction
 
@@ -1667,13 +1667,13 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       root record.  The members are linked when the two values are
       identical.
 
-   *  *controller_binding*: pointer selects a key identifier string in
-      each root record, for example /key_id, and identifier_digest is a
-      binding digest (Section 8.2.5).  The members are linked when a
-      delivered binding record whose binding digest equals
-      identifier_digest applies to the two selected values, with T the
-      timestamp of each root record
-      ([I-D.mih-scitt-agent-action-capsule]).  A verifier that received
+   *  *controller_binding*: identifier_digest is a binding digest
+      (Section 8.2.5).  The members are linked when a delivered binding
+      record whose binding digest equals identifier_digest applies to
+      the two members' keys, each at its time T, as "Member keys" below
+      determines them.  A verifier that received no record with that
+      digest, or only well-formed records with that digest whose method
+      or key types it does not implement, reports the join as
 
 
 
@@ -1682,54 +1682,54 @@ Mih & Zhang                Expires 6 May 2027                  [Page 30]
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
-      no record with that digest, or only well-formed records with that
-      digest whose method or key types it does not implement, reports
-      the join as not_derivable; so does a join without
-      identifier_digest, or without pointer when a member is a member
-      Bundle with records.  Any other record with that digest that does
-      not apply (malformed, not signed by both keys, other keys, outside
-      its window, or revoked) leaves the members unjoined.  A join on
-      this basis states that the two root records are under keys whose
-      holders bound them, as both of them stated it; it says nothing
-      about who those holders are.
+      not_derivable; so does a join without identifier_digest, or with a
+      member that has no key.  Any other record with that digest that
+      does not apply (malformed, not signed by both keys, other keys,
+      outside its window, or revoked) leaves the members unjoined.  A
+      join on this basis states that the two members are under keys
+      whose holders bound them, as both of them stated it; it says
+      nothing about who those holders are.  T only tests whether the
+      binding was in effect.  For a History member it does not state
+      whether that History covers any record of the other member.
+
+      pointer is not needed: each key is determined below.  A join MAY
+      carry it, as a block written under -02 does; then pointer MUST
+      select, in the root record of each member that has one, the key
+      determined below for that member, and a pointer that selects any
+      other value there, or does not resolve there, makes the join
+      not_derivable.  A History member or an empty-history Bundle has no
+      root record, and pointer is not checked against it.  A composing
+      party following this revision SHOULD omit pointer.  A -02 verifier
+      reads a join without pointer as not_derivable, which never
+      overstates it; a verifier following this revision can turn a join
+      that -02 linked into not_derivable, when the key a root record
+      names is not a key that signed or logged it.
 
       When one member is an empty-history Bundle (Section 3.1), the
-      derivation still runs.  That member's key identifier is the key
-      that signed its checkpoint.cose, as that signature authenticates
-      it, and its T is that checkpoint's timestamp; pointer selects the
-      key identifier in the other member's root record only.  Linked
-      gives one_sided, never agree, because nothing was compared; not
-      linked gives unjoined.  An empty-history member without a
-      checkpoint.cose that verifies has no key, and the join is
-      not_derivable.
+      derivation still runs.  Linked gives one_sided, never agree,
+      because nothing was compared; not linked gives unjoined.
 
-      When a member is a History member, its key identifier and T are
-      its join view's key and time (Section 8.2.3), and pointer selects
-      the key identifier in the other member's root record only; a join
-      between two History members needs no pointer.  T here only tests
-      whether the binding was in effect.  It does not state whether a
-      History covers any record of the other member.
+   *  *same_key*: the members are linked when both have the same key, as
+      "Member keys" below determines them.  A join with a member that
+      has no key, other than a refusal or absence, which the state rules
+      above already decide, is not_derivable.  Against an empty-history
+      Bundle, linked gives one_sided and not linked gives unjoined, as
+      for controller_binding.  Both members with records and linked
+      gives agree; with different keys, unjoined.  On every same_key
+      join that derives unjoined, a verifier reports both keys.  A
+      same_key join states only that one key signed, logged or answered
+      for both members.  It is how a party's History attaches to that
+      party's own half of an exchange, signed by that party or held in
+      its log: the two halves join each other on an identifier they
+      share (for example pre_agreed_identifier), and each History joins
+      its own party's half on same_key.
 
-   *  *same_key*: the members are linked when both have the same key,
-      each member's key being:
+   *Member keys.* Under controller_binding and same_key, a member's key
+   identifier, its time T and the key's source are:
 
-      -  for a History member, its join view's key;
+   *  for a History member, its join view's key and time
+      (Section 8.2.3); source history;
 
-      -  for a member Bundle with records, the key under which its root
-         record's producer signature verifies
-         ([I-D.mih-scitt-agent-action-capsule]).  A root record that is
-         unsigned or whose signature does not verify gives the member no
-         key.  The key is never read through a pointer, because a root
-         record can name a key that did not sign it;
-
-      -  for an empty-history Bundle, the key that signed its
-         checkpoint.cose, as for controller_binding above; without a
-         checkpoint that verifies it has no key.
-
-      A join with a member that has no key, other than a refusal or
-      absence, which the state rules above already decide, is
-      not_derivable.  Against an empty-history Bundle, linked gives
-      one_sided and not linked gives unjoined, as for
 
 
 
@@ -1738,18 +1738,61 @@ Mih & Zhang                Expires 6 May 2027                  [Page 31]
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
-      controller_binding.  Both members with records and linked gives
-      agree; with different keys, unjoined.  On every same_key join that
-      derives unjoined, a verifier reports both keys.  A same_key join
-      states only that one key signed or answered for both members.  It
-      is how a party's History attaches to that party's own half of an
-      exchange: the two halves join each other on an identifier they
-      share (for example pre_agreed_identifier), and each History joins
-      its own party's half on same_key.
+   *  for an empty-history Bundle, the key that signed its
+      checkpoint.cose, as that signature authenticates it, and that
+      checkpoint's timestamp; source log_checkpoint.  Without a
+      checkpoint.cose that verifies it has no key;
+
+   *  for a member Bundle with records whose root record carries
+      signature or key_id, the key under which its producer signature
+      verifies ([I-D.mih-scitt-agent-action-capsule]) and the root
+      record's timestamp; source record_signature.  A root record that
+      carries only one of the two, or whose signature does not verify,
+      or that a verifier cannot check because it has no signature
+      verifier, has no key.  It never falls back to the source below:
+      removing a bad signature must not upgrade a record;
+
+   *  for a member Bundle with records whose root record carries neither
+      signature nor key_id, the key that signed the Bundle's
+      checkpoint.cose and that checkpoint's timestamp, only when all of
+      these hold: the checkpoint verifies and every stated copy of its
+      fields matches it (Section 6); the root record's capsule_id
+      recomputes from its content, since an inclusion proof binds only
+      the capsule_id; and the root record's own membership holds under
+      that checkpoint: its entry in completeness_certificate.memberships
+      names the checkpoint's log identifier, has a leaf_index of its seq
+      minus one and a proof of the checkpoint's MMR size whose own
+      leaf_index is that same value, and that proof verifies against the
+      checkpoint's signed root.  A failure elsewhere in the Bundle, such
+      as another record's membership, does not remove the key.
+      Otherwise the member has no key.  Source log_checkpoint.  T is the
+      checkpoint's time, not the record's timestamp, because no key
+      signed that timestamp; the key signed only the checkpoint.  Such a
+      key states that the key's log holds the root record, not that the
+      key's holder authored it: an unsigned record establishes its place
+      in a log, never its authorship.  A verifier MUST NOT present a
+      log_checkpoint key as the author of a root record.
+
+   A key is never read from a value a root record states, because a root
+   record can name a key that did not sign or log it.  For every
+   controller_binding and same_key join, whatever it derives, a verifier
+   reports each member's key source: history, log_checkpoint,
+   record_signature, or none for a member with no key.  The source is
+   reported whether or not a pointer matched it, so a join can report a
+   key source beside a not_derivable result that a mismatched pointer
+   caused.
 
    A join under pre_agreed_identifier or shared_artifact_digest one of
    whose members is a History member is not_derivable: this revision
    defines no derivation for a History member on those bases.
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 32]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
 
    *History times.* For every join between a History member with a join
    view and a member with a root record, a verifier reports the
@@ -1785,15 +1828,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    On a derived mismatch, a verifier reports each member's value at each
    differing pointer, and names no winner.
 
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 32]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
 8.2.7.  Observers and Redundancy
 
    observers[] states, for each member, which observer produced it, in
@@ -1809,18 +1843,26 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    derives agree, a verifier MUST report the pair as redundant in any of
    these cases:
 
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 33]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    *  both members name the same observer;
 
    *  the two observers have the same custody_domain;
 
-   *  the two members' root records carry the same key_id;
+   *  the two members' root records carry the same key_id (a stated
+      key_id can only make a pair redundant here, never link it);
 
    *  the join's basis is controller_binding: the holders of the two
       keys have stated that the keys are not independent issuers
       (Section 8.2.5);
 
-   *  the join's basis is same_key: one key signed or answered for both
-      members.
+   *  the join's basis is same_key: one key signed, logged or answered
+      for both members.
 
    It MUST present the result as "redundant, not corroborating", with
    the reason.  A controller_binding or same_key join therefore never
@@ -1837,18 +1879,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    Corroboration is derived; it is never declared, and it is not part of
    the block.  A verifier lists results per pair.  It MUST NOT combine
    them into a count or score.
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 33]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
 8.2.8.  Composed Digest
 
@@ -1868,6 +1898,13 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
        *  observers: for each observer, an object with exactly its id,
           role and custody_domain.  Sort in ascending order of id.
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 34]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
 
        *  joins: for each join, an object with its members, basis and
           state, plus whichever of pointer, identifier_digest and
@@ -1899,13 +1936,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    failed composed/v1 check.  It MUST NOT report the recomputed value as
    the digest of any member, nor as the containing Bundle's digest.
 
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 34]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
    The containing Bundle's own digest (Section 9) still covers the whole
    block, bodies included.  A countersignature over the containing
    Bundle therefore binds the composition and everything carried with
@@ -1925,6 +1955,13 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
    1.  the recomputed composed digest, and whether it matches;
 
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 35]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    2.  per member: outcome, body carried or declared missing, digest
        reproduced, and, for a carried member bundle, its own three
        completeness claims, no history for an empty-history Bundle
@@ -1936,9 +1973,10 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    3.  composition closure;
 
    4.  per join: the declared state, the derived state (or
-       not_derivable), and whether they match; for a same_key join that
-       derives unjoined, both keys; for a join between a History member
-       and a member with a root record, the History times
+       not_derivable), and whether they match; for a controller_binding
+       or same_key join, each member's key source; for a same_key join
+       that derives unjoined, both keys; for a join between a History
+       member and a member with a root record, the History times
        (Section 8.2.6);
 
    5.  per derived agree: redundant (with reason) or corroborating on
@@ -1947,20 +1985,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    A verifier that does not implement composed/v1 follows Section 8: it
    reports the block as uninterpreted and integrity-covered.  It MUST
    NOT present any member, join or composed digest as checked.
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 35]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
 8.3.  The parent-log-witness/v1 Extension
 
@@ -1974,6 +1998,25 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    an earlier checkpoint of the same log.  Such a Receipt is not over
    the Bundle's checkpoint, so a producer MUST NOT carry it with the
    Bundle's checkpoint as if it were.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 36]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
 
    "extensions": {
      "parent-log-witness/v1": {
@@ -2010,14 +2053,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    proof from the covered checkpoint to the Bundle's checkpoint:
    old_size and new_size are the two MMR sizes, old_peaks and new_peaks
    the peaks of the two MMRs, and witness one path per old peak into the
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 36]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
    new MMR, with every hash in lowercase hexadecimal.
    parent.inclusion_proof has the shape of a membership's
    inclusion_proof (Section 6). parent.witnesses lists Receipts over the
@@ -2027,6 +2062,17 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
    The tree is a binary Merkle tree whose leaves and interior nodes are
    domain separated:
+
+
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 37]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
 
    *  The leaf is SHA-256 of the octet 0x00 followed by the JCS
       [RFC8785] serialization of the object whose members are
@@ -2066,14 +2112,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
             octets are not a CLL COSE checkpoint that verifies under its
             own key.
 
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 37]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
-
         3.  parent_witness_earlier_checkpoint_not_this_log: its key or
             log identifier differs from those of the Bundle's
             checkpoint, or its MMR size is not below the Bundle's.
@@ -2083,6 +2121,14 @@ Internet-Draft             AAC Evidence Bundle             November 2026
             and new_size are not the MMR sizes of the covered checkpoint
             and the Bundle's checkpoint, or it does not prove that the
             Bundle's checkpoint extends the covered one.
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 38]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
 
    3.   parent_witness_leaf_does_not_name_this_checkpoint: log_id is not
         the covered checkpoint's log identifier, or size is not its MMR
@@ -2125,7 +2171,17 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 38]
+
+
+
+
+
+
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 39]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2181,7 +2237,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 39]
+Mih & Zhang                Expires 6 May 2027                  [Page 40]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2237,7 +2293,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 40]
+Mih & Zhang                Expires 6 May 2027                  [Page 41]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2293,7 +2349,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 41]
+Mih & Zhang                Expires 6 May 2027                  [Page 42]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2349,7 +2405,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 42]
+Mih & Zhang                Expires 6 May 2027                  [Page 43]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2405,7 +2461,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 43]
+Mih & Zhang                Expires 6 May 2027                  [Page 44]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2461,7 +2517,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 44]
+Mih & Zhang                Expires 6 May 2027                  [Page 45]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2481,6 +2537,16 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       agreement is then reported redundant all the same, never more.  A
       revocation the producer did not account for derives unjoined and
       fails a declared agree (join_state_mismatch).
+
+   *  *Member keys.* A key read from what a root record states could
+      name a key that never signed it, linking a record to a binding it
+      is not under.  So a key comes only from a producer signature that
+      verifies or, for an unsigned record, from the signed checkpoint of
+      a log whose own inclusion proof holds the record with its identity
+      intact, at that checkpoint's time (Section 8.2.6).  The second
+      states which log holds the record, not who wrote it, and a
+      verifier reports which source it used.  A record whose signature
+      fails is never read through its log instead.
 
    *  *No history.* An empty-history Bundle (Section 3.1) is its
       producer's statement that its stream holds no record.  Its signed
@@ -2504,23 +2570,18 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       states, so a party cannot attach its History to a record that
       merely names its key.  The composed digest covers each History
       member's envelope digest, so swapping in another responder's
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 46]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
       envelope changes the composed digest.  Showing two parties'
       Histories side by side without an agree path between them would
       suggest a relationship no evidence states; Section 8.2.6 forbids
       it.
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 45]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
 12.2.  Category Coverage
 
@@ -2566,18 +2627,17 @@ Internet-Draft             AAC Evidence Bundle             November 2026
    A Bundle reveals a preimage only through its disclosure overlay
    (Section 5); a member absent from the overlay stays WITHHELD.
 
-   A range that carries padding leaves (Section 6.3) shows where padding
-   runs begin and end, and padding is appended before a checkpoint is
-   cut.  Such a range therefore reveals some of the log's earlier
-   checkpoint sizes, which padding exists to blur (Section 12.1 of
 
 
-
-Mih & Zhang                Expires 6 May 2027                  [Page 46]
+Mih & Zhang                Expires 6 May 2027                  [Page 47]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
 
+   A range that carries padding leaves (Section 6.3) shows where padding
+   runs begin and end, and padding is appended before a checkpoint is
+   cut.  Such a range therefore reveals some of the log's earlier
+   checkpoint sizes, which padding exists to blur (Section 12.1 of
    [I-D.mih-agent-evidence-layer]).  A producer that does not want to
    show them uses a producer-selected certificate (Section 6.2), which
    carries no positions other than those of the records it carries.
@@ -2625,11 +2685,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 47]
+Mih & Zhang                Expires 6 May 2027                  [Page 48]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2685,7 +2741,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 48]
+Mih & Zhang                Expires 6 May 2027                  [Page 49]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2741,7 +2797,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 49]
+Mih & Zhang                Expires 6 May 2027                  [Page 50]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2797,7 +2853,7 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-Mih & Zhang                Expires 6 May 2027                  [Page 50]
+Mih & Zhang                Expires 6 May 2027                  [Page 51]
 
 Internet-Draft             AAC Evidence Bundle             November 2026
 
@@ -2827,6 +2883,17 @@ Change Log
 
    *  Cites the Checkpointed Local Log -02.
 
+   *  composed/v1 member keys: under controller_binding and same_key, a
+      member Bundle's key comes from its root record's verified producer
+      signature or, for a root record with neither signature nor key_id,
+      from the Bundle's checkpoint signer when the record's identity and
+      its own membership under that checkpoint hold, at that
+      checkpoint's time.  A present signature that fails never falls
+      back.  A key is never read from a value the record states:
+      controller_binding's pointer is optional and, when present, must
+      select that key.  Every such join reports each member's key
+      source.
+
    *  composed/v1: a History answer can be an artifact member, carried
       as history (its artifact response envelope and anchor checkpoint),
       with the envelope's digest as the member digest and a join view
@@ -2839,6 +2906,14 @@ Change Log
       a path of derived agreements.  Added Security Considerations for
       History members.
 
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 52]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    Since -01:
 
    *  Certificate modes (Section 6.1): completeness.selection names the
@@ -2850,13 +2925,6 @@ Change Log
       shape producers already emit: selection producer-selected, no
       range, each record proven on its own; interval coverage is never
       established for it.  Added none to payloads_mode.
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 51]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
    *  Non-record leaves (Section 6.3): a range covers padding leaves in
       completeness_certificate.non_record_leaves, each carried in full;
@@ -2894,6 +2962,14 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       defines the ed25519 key type, and a record under any other is
       treated as under a method a verifier does not implement.
 
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 53]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
    *  Empty-history Bundles (Section 3.1): a Bundle with no records and
       no root shows that a stream has no history to disclose, whether it
       was never started or its history was cleared (a new stream, with a
@@ -2904,15 +2980,6 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       checkpoint, and is not_derivable without one.  Security
       Considerations: no history.  Privacy Considerations: a cleared
       history's checkpoint is signed by the cleared stream's key.
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 52]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
-
 
    *  composed/v1 composed digest: a join without pointer sorts before
       every join with one, including a pointer that is the empty string.
@@ -2950,6 +3017,15 @@ Internet-Draft             AAC Evidence Bundle             November 2026
       disclosure-policy-decisions/v1, held for ratification in the
       interim registry and not defined by this document.
 
+
+
+
+
+Mih & Zhang                Expires 6 May 2027                  [Page 54]
+
+Internet-Draft             AAC Evidence Bundle             November 2026
+
+
 Acknowledgments
 
    The authors thank the SCITT working group and the Action State Group
@@ -2960,14 +3036,6 @@ Authors' Addresses
    Steven Mih
    Action State Group, Inc.
    Email: spec@actionstate.ai
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 53]
-
-Internet-Draft             AAC Evidence Bundle             November 2026
 
 
    Yiqun Zhang
@@ -3009,16 +3077,4 @@ Internet-Draft             AAC Evidence Bundle             November 2026
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-Mih & Zhang                Expires 6 May 2027                  [Page 54]
+Mih & Zhang                Expires 6 May 2027                  [Page 55]

@@ -20,6 +20,7 @@ import {
 } from "./cose-receipt.js";
 import { verifyEd25519Strict } from "./ed25519-strict.js";
 import { isHex64, jcs, jsonDigest, sha256Hex } from "./json.js";
+import { recordLoggedUnderCheckpoint } from "./bundle.js";
 import { verifyRecordSignature } from "./producer-envelope-verification.js";
 
 /**
@@ -151,6 +152,11 @@ export interface ComposedJoinResult {
   readonly differences: readonly JoinDifference[];
   /** A same_key join that derives unjoined: each member's key. */
   readonly keys?: readonly { readonly member: string; readonly key: string }[];
+  /** Every controller_binding and same_key join: each side's key source. */
+  readonly keySources?: readonly {
+    readonly member: string;
+    readonly source: KeySource;
+  }[];
   readonly historyTimes?: HistoryTimes;
 }
 
@@ -713,15 +719,6 @@ interface BindingSide {
   readonly at: Instant | undefined;
 }
 
-/** A root record's side: the key identifier `pointer` selects, and its timestamp. */
-function recordSide(record: Obj, pointer: string): BindingSide {
-  const resolved = resolvePointer(record, pointer);
-  return {
-    key: resolved.ok && isString(resolved.value) ? resolved.value : undefined,
-    at: parseRecordTime(record.timestamp),
-  };
-}
-
 /**
  * Both bound keys are Ed25519 keys: `key_types` is absent, or names ed25519
  * twice. -02 defines no other key type, so a record under one is skipped like
@@ -933,11 +930,9 @@ async function signerSide(record: Obj): Promise<BindingSide | undefined> {
 
 /**
  * Each member's side of a controller_binding or same_key join, or undefined
- * when one has none (not derivable). A History member's side is its join
- * view; an empty-history Bundle's is its signed checkpoint's key and time; a
- * member Bundle with records gives, under controller_binding, the key
- * `pointer` selects in its root record and, under same_key, the key its root
- * record's producer signature verifies under.
+ * when one has none (not derivable). The key and its time come from
+ * `memberKey`; under controller_binding a `pointer`, when present, must
+ * select that same key in a root record.
  */
 async function keySides(
   j: Join,
@@ -947,31 +942,104 @@ async function keySides(
 ): Promise<BindingSide[] | undefined> {
   const sides: BindingSide[] = [];
   for (const m of members) {
-    if (m.body === undefined) return undefined;
-    if (m.history === true) {
-      const view = views.get(m.id)!;
-      sides.push({ key: view.key, at: view.at });
-    } else if (isEmptyHistory(m.body)) {
-      const checkpoint = checkpoints.get(m.id);
-      if (checkpoint === undefined) return undefined;
-      sides.push({
-        key: checkpoint.keyId,
-        at: parseRecordTime(checkpoint.timestamp),
-      });
-    } else {
+    const found = await memberKey(m, views, checkpoints);
+    if (found === undefined) return undefined;
+    if (
+      j.basis === "controller_binding" &&
+      j.pointer !== undefined &&
+      m.history !== true
+    ) {
       const record = rootRecord(m);
-      if (record === undefined) return undefined;
-      if (j.basis === "same_key") {
-        const side = await signerSide(record);
-        if (side === undefined) return undefined;
-        sides.push(side);
-      } else {
-        if (j.pointer === undefined) return undefined;
-        sides.push(recordSide(record, j.pointer));
+      if (record !== undefined) {
+        const value = resolvePointer(record, j.pointer);
+        if (!value.ok || value.value !== found.side.key) return undefined;
       }
     }
+    sides.push(found.side);
   }
   return sides;
+}
+
+export type KeySource =
+  | "record_signature"
+  | "log_checkpoint"
+  | "history"
+  | "none";
+
+/**
+ * A member's key, its time and where the key came from (-03 "Joins"): a
+ * History member's join view (`history`); an empty-history Bundle's
+ * checkpoint signer at that checkpoint's time (`log_checkpoint`); for a
+ * member Bundle with records, the key its root record's producer signature
+ * verifies under at the record's time (`record_signature`) or, for a root
+ * record that carries neither `signature` nor `key_id`, the key that signed
+ * the Bundle's checkpoint at that checkpoint's time, when the record's
+ * identity and its own membership under that checkpoint hold
+ * (`log_checkpoint`). Undefined when it has no key: a present signature that
+ * fails never falls back to the checkpoint key.
+ */
+async function memberKey(
+  m: Member,
+  views: ReadonlyMap<string, HistoryView>,
+  checkpoints: ReadonlyMap<string, EmptyCheckpoint>,
+): Promise<{ side: BindingSide; source: KeySource } | undefined> {
+  if (m.body === undefined) return undefined;
+  if (m.history === true) {
+    const view = views.get(m.id);
+    return view === undefined
+      ? undefined
+      : { side: { key: view.key, at: view.at }, source: "history" };
+  }
+  if (isEmptyHistory(m.body)) {
+    const checkpoint = checkpoints.get(m.id);
+    return checkpoint === undefined
+      ? undefined
+      : {
+          side: {
+            key: checkpoint.keyId,
+            at: parseRecordTime(checkpoint.timestamp),
+          },
+          source: "log_checkpoint",
+        };
+  }
+  const record = rootRecord(m);
+  if (record === undefined) return undefined;
+  if (Object.hasOwn(record, "signature") || Object.hasOwn(record, "key_id")) {
+    const side = await signerSide(record);
+    return side === undefined
+      ? undefined
+      : { side, source: "record_signature" };
+  }
+  const signed = await recordLoggedUnderCheckpoint(m.body, record.capsule_id);
+  if (signed === undefined || !isString(signed.key_id)) return undefined;
+  return {
+    side: { key: signed.key_id, at: parseRecordTime(signed.timestamp) },
+    source: "log_checkpoint",
+  };
+}
+
+/**
+ * Where each side's key came from, in the join's member order, on every
+ * controller_binding and same_key join, whatever it derived. A member with no
+ * key reports `none`.
+ */
+async function keySources(
+  j: Join,
+  byId: ReadonlyMap<string, Member>,
+  views: ReadonlyMap<string, HistoryView>,
+  checkpoints: ReadonlyMap<string, EmptyCheckpoint>,
+): Promise<{ member: string; source: KeySource }[] | undefined> {
+  if (!HISTORY_BASES.has(j.basis)) return undefined;
+  const out: { member: string; source: KeySource }[] = [];
+  for (const id of j.members) {
+    const m = byId.get(id)!;
+    const found =
+      m.outcome === "artifact"
+        ? await memberKey(m, views, checkpoints)
+        : undefined;
+    out.push({ member: id, source: found?.source ?? "none" });
+  }
+  return out;
 }
 
 /**
@@ -1618,6 +1686,7 @@ export async function verifyComposed(
       options,
     );
     const times = historyTimes(j, byId, views);
+    const sources = await keySources(j, byId, views, checkpoints);
     const result: ComposedJoinResult["result"] =
       derived === undefined
         ? "not_derivable"
@@ -1632,6 +1701,7 @@ export async function verifyComposed(
       result,
       differences,
       ...(keys === undefined ? {} : { keys }),
+      ...(sources === undefined ? {} : { keySources: sources }),
       ...(times === undefined ? {} : { historyTimes: times }),
     });
     const pair = `${j.members[0]},${j.members[1]}`;
