@@ -66,6 +66,10 @@ name = "bundle_vectors"
 required-features = ["bundle"]
 
 [[test]]
+name = "bundle_composed_signature_profiles"
+required-features = ["bundle"]
+
+[[test]]
 name = "bundle_strict_vectors"
 required-features = ["strict"]
 

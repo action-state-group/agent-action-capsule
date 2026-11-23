@@ -89,6 +89,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/bundle/composed-controller-binding/` | `draft-mih-zhang-agent-disclosure-bundle-02` (`composed/v1` `controller_binding`, empty-history members) | verify | 14 |
 | `vectors/bundle/composed-history/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`composed/v1` History members, `same_key`) | verify | 30 |
 | `vectors/bundle/composed-key-source/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`composed/v1` member keys, #663) | verify | 18 |
+| `vectors/bundle/composed-signature-profiles/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`composed/v1` carried signature profiles, #676) | verify | 42 |
 | `vectors/bundle/non-record-leaves/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Non-Record Leaves) | verify | 26 |
 | `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 9 |
 | `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 34 |

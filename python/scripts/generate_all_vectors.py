@@ -77,6 +77,7 @@ GENERATORS = (
     "generate_bundle_composed_cb_vectors.py",
     "generate_bundle_composed_history_vectors.py",
     "generate_bundle_composed_key_source_vectors.py",
+    "generate_bundle_composed_signature_profile_vectors.py",
     "generate_bundle_strict_vectors.py",
     # Reuses the strict generator's records, keys and checkpoint signer.
     "generate_bundle_02_vectors.py",

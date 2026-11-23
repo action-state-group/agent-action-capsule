@@ -27,9 +27,10 @@ const (
 // deployment's signature profile. It returns RefusalSignatureVerified,
 // RefusalSignatureInvalid, or RefusalSignatureUnverified when the refusal is
 // not in a form the profile can check (for example, it carries no key). The
-// draft leaves the signature format to the deployment, so the neutral core
-// ships no profile: without a verifier every refusal is signature-unverified,
-// which is neither failed nor absent.
+// draft leaves the signature format to the deployment, so no profile applies
+// by default: without a verifier every refusal is signature-unverified, which
+// is neither failed nor absent. VerifyCarriedRefusal checks the profiles of
+// bundle -03, "Carried Signature Profiles" (carried_signatures.go).
 type RefusalSignatureVerifier func(refusal map[string]interface{}) string
 
 // ResponseSignatureVerifier checks the signed response envelope an artifact

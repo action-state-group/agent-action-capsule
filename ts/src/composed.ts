@@ -34,9 +34,12 @@ import { verifyRecordSignature } from "./producer-envelope-verification.js";
  * declared custody. It is verification, run by the verify core
  * (`verifyBundle`), never by a presentation module.
  *
- * As in the Go core, no refusal signature profile ships here: the draft
- * leaves the signature format to the deployment, so a carried refusal is
- * `signature_unverified` (neither failed nor absent).
+ * As in the Go core, no signature profile applies by default: the draft
+ * leaves the signature format to the deployment, so without
+ * `ComposedOptions.refusalSignature` or `responseSignature` a carried refusal
+ * or response is `signature_unverified` (neither failed nor absent).
+ * `carried-signatures.ts` checks the profiles of -03, "Carried Signature
+ * Profiles".
  */
 
 export const COMPOSED_KIND = "composed/v1";
@@ -69,6 +72,32 @@ export interface ComposedMemberClaims {
 export interface ComposedOptions {
   readonly controllerBindings?: readonly Record<string, unknown>[];
   readonly bindingRevocations?: readonly Record<string, unknown>[];
+  /**
+   * Checks a carried signed refusal under the deployment's signature
+   * profile, such as `verifyCarriedRefusal` (draft -03, "Carried Signature
+   * Profiles"). Without one every refusal is signature-unverified, which is
+   * neither failed nor absent; a state other than `verified` or `invalid`
+   * is read as signature-unverified.
+   */
+  readonly refusalSignature?: SignatureVerifier;
+  /** As `refusalSignature`, for an artifact member's carried response. */
+  readonly responseSignature?: SignatureVerifier;
+}
+
+/** A deployment signature profile's check of a carried refusal or response. */
+export type SignatureVerifier = (
+  value: Readonly<Record<string, unknown>>,
+) => Promise<string> | string;
+
+async function signatureState(
+  verifier: SignatureVerifier | undefined,
+  value: Readonly<Record<string, unknown>>,
+): Promise<"verified" | "invalid" | "signature_unverified"> {
+  if (verifier === undefined) return "signature_unverified";
+  const state = await verifier(value);
+  return state === "verified" || state === "invalid"
+    ? state
+    : "signature_unverified";
 }
 
 export interface ComposedClaim {
@@ -1296,6 +1325,7 @@ async function verifyMember(
   declaredMissing: boolean,
   verifyMemberBundle: MemberBundleVerifier,
   checkpoints: Map<string, EmptyCheckpoint>,
+  options: ComposedOptions,
 ): Promise<{
   member: ComposedMemberResult;
   closure: string[];
@@ -1390,14 +1420,24 @@ async function verifyMember(
   }
   let refusalSignature: ComposedMemberResult["refusalSignature"];
   if (m.outcome === "refusal") {
-    refusalSignature = "signature_unverified";
-    withheld.push(`refusal_signature_unverified:${m.id}`);
+    refusalSignature = await signatureState(options.refusalSignature, m.body);
+    if (refusalSignature === "invalid") {
+      findings.push("refusal_signature_invalid");
+      failed.push(`refusal_signature_invalid:${m.id}`);
+    } else if (refusalSignature === "signature_unverified")
+      withheld.push(`refusal_signature_unverified:${m.id}`);
   }
-  // No deployment signature profile here, as for a refusal.
   let responseSignature: ComposedMemberResult["responseSignature"];
   if (m.response !== undefined) {
-    responseSignature = "signature_unverified";
-    withheld.push(`response_signature_unverified:${m.id}`);
+    responseSignature = await signatureState(
+      options.responseSignature,
+      m.response,
+    );
+    if (responseSignature === "invalid") {
+      findings.push("response_signature_invalid");
+      failed.push(`response_signature_invalid:${m.id}`);
+    } else if (responseSignature === "signature_unverified")
+      withheld.push(`response_signature_unverified:${m.id}`);
   }
   return {
     member: {
@@ -1641,6 +1681,7 @@ export async function verifyComposed(
       missing.has(m.id),
       verifyMemberBundle,
       checkpoints,
+      options,
     );
     members.push(result.member);
     const view = result.member.history;

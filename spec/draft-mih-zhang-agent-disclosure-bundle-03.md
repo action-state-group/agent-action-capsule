@@ -1022,9 +1022,10 @@ are never converted into one another:
 When the body (`bundle`, `history`, `refusal` or `absence`) is carried, a
 verifier MUST recompute `digest` from it. For a refusal or absence, it MUST also require the
 body's `request_digest` to equal the member's. A refusal's signature is
-verified under the deployment's signature profile. A verifier that does not
-implement that profile reports the refusal as signature-unverified. It does
-not report it as failed, and it does not report it as absent.
+verified under the deployment's signature profile, such as one of those in
+{{composed-signature-profiles}}. A verifier that does not implement that
+profile reports the refusal as signature-unverified. It does not report it as
+failed, and it does not report it as absent.
 
 An artifact member MAY carry `response`: the responder's signed response
 to the request, as received, with the artifact bytes removed. A response
@@ -1034,10 +1035,11 @@ the response's `request_digest` to equal the member's, and its
 `artifact_digest` to equal the member's `digest`. Either mismatch is a failed
 `composed/v1` check. This binds the artifact to the request it answered, as a
 refusal's or absence's own `request_digest` does. The response's signature is
-verified under the deployment's signature profile, exactly as a refusal's is.
-A verifier that does not implement that profile reports the response as
-signature-unverified, which is neither failed nor absent. `response` is not
-part of the composed digest ({{composed-digest}}).
+verified under the deployment's signature profile, exactly as a refusal's is
+({{composed-signature-profiles}}). A verifier that does not implement that
+profile reports the response as signature-unverified, which is neither failed
+nor absent. `response` is not part of the composed digest
+({{composed-digest}}).
 
 An artifact that fails verification is still an `artifact` member. The
 verifier reports the failure on that member. It is not a fourth outcome, and
@@ -1056,6 +1058,84 @@ The verifier MUST NOT merge one member's claims with another member's, or with
 the containing Bundle's. The containing Bundle's claims are about its own
 `records` only. A refusal or absence member is not a failed claim: a verifier
 reports it as what it is.
+
+### Carried Signature Profiles {#composed-signature-profiles}
+
+{{I-D.mih-agent-evidence-request}} leaves the signature format of a refusal
+and of an artifact response to the deployment. This section defines three
+signature profiles in which a verifier MAY check a carried `refusal` or
+`response`. A verifier is not required to implement any of them. One that
+implements a profile follows this section for it, and one that reports which
+profile it checked a signature under names that profile by its identifier:
+
+| Identifier | Name | Checks |
+|---|---|---|
+| `three-member-refusal/v1` | three-member refusal signature | a carried `refusal` |
+| `whole-refusal/v1` | whole-refusal signature | a carried `refusal` |
+| `digest-bound-artifact-response/v1` | digest-bound artifact response signature | a carried `response` |
+
+A carried refusal or response does not name its profile. Which profile
+applies is read from the members the object carries. Presence decides, so a
+member whose value is JSON `null` is present:
+
+- A refusal that carries `sig` and does not carry `signature` is in
+  `three-member-refusal/v1`. Every other refusal is in `whole-refusal/v1`.
+- A response that does not carry `responder` is in
+  `digest-bound-artifact-response/v1`. A response that carries `responder` is
+  in none of these profiles, for example an envelope of {{EVIDENCE-INTEROP}}.
+  A verifier that implements only these profiles reports it as
+  signature-unverified.
+
+In each profile, `key_id` is a 32-byte Ed25519 {{RFC8032}} public key as 64
+lowercase hexadecimal characters, and the signature is 64 bytes as 128
+lowercase hexadecimal characters. A signature verifies only when the public
+key and the signature's R are each a canonical encoding and not of small
+order, S is less than the group order, and the cofactorless verification
+equation holds. A small-order key therefore never verifies, whatever trust a
+deployment places in it.
+
+**`three-member-refusal/v1`.** The signature is `sig`, under `key_id`. The
+signing input is that of an {{EVIDENCE-INTEROP}} signed refusal answering a
+request for `evidence-interop/0` or `evidence-interop/1` (its Section 6.3): the
+UTF-8 of the JCS {{RFC8785}} serialization of the object made of the carried
+`issued_at`, `reason` and `request_digest`, whatever else the refusal
+carries. `key_id` is not signed.
+
+**`whole-refusal/v1`.** The signature is `signature`, under `key_id`. The
+signing input is the UTF-8 of the JCS serialization of the carried refusal
+object without its `signature` member, so `key_id` and every other member are
+signed.
+
+**`digest-bound-artifact-response/v1`.** The signature is `sig`, under
+`key_id`. The signing input is the UTF-8 of the JCS serialization of the
+object made of the carried `request_digest`, `anchor`, `artifact_kind`,
+`artifact_digest` and `issued_at`, plus the member `type` with the value
+`evidence-artifact-response/v1`. The verifier supplies `type` itself and never
+reads it from the carried object. The artifact is named by
+`artifact_digest` only, so the signature verifies without the artifact bytes.
+
+A verifier reports exactly one of three states for each signature:
+
+- **Signature-unverified** (`signature_unverified`) when the object carries
+  no signature to check: a refusal in `whole-refusal/v1` that carries neither
+  `key_id` nor `signature`, a response that carries neither `key_id` nor
+  `sig`, or a response that carries `responder`. A refusal in
+  `three-member-refusal/v1` carries `sig`, so it is never in this state.
+- **Verified** (`verified`) when `key_id` and the signature are both present
+  and well formed, every signed member named above is present and is a
+  string, and the signature verifies under `key_id` over the signing input.
+- **Invalid** (`invalid`) in every other case, for example a key carried
+  without a signature, a signature without a key, a value that is not a
+  string of the stated form, a signed member that is absent or not a string,
+  or a signature that does not verify.
+
+An empty string is a string. The signature state covers the signature
+alone. A verifier MUST NOT add checks of the signed values, such as a
+timestamp's format, a digest's form or whether `reason` is a registered
+token, to the signature state. `verified` therefore does not make a refusal
+conforming to {{I-D.mih-agent-evidence-request}}, and it does not show that
+the key belongs to the member's responder: comparing the key with the
+responder's is a separate check, as for any carried signature.
 
 ### History Members {#composed-history}
 
@@ -1588,7 +1668,10 @@ separately:
    and, for a carried member bundle, its own three completeness claims, no
    history for an empty-history Bundle ({{empty-history}}), and, when it
    carries `response`, whether the response's digests match and its
-   signature state; for a carried History member, the result of each check
+   signature state; for a carried refusal, its signature state; for a
+   signature checked under a profile of {{composed-signature-profiles}}, that
+   profile's identifier when the verifier reports which profile it used; for
+   a carried History member, the result of each check
    of {{composed-history}}, its derivation, and its join view's key and
    time;
 3. composition closure;
@@ -2008,6 +2091,17 @@ are listed per check and never combined, because an aggregate would hide a
   evidence that no action took place. Because it is an `artifact`, never an
   `absence`, a cleared or unstarted history cannot be read as a responder
   that did not answer.
+- **Carried signatures.** A carried refusal or response does not name its
+  signature profile, so a party can carry one object in a form other than
+  the one its signer used. Each profile's signing input covers different
+  members ({{composed-signature-profiles}}). A signature made for one
+  profile therefore does not verify as another's, except where the signed
+  bytes coincide. A verified signature attributes the object to the holder
+  of `key_id`, and nothing more: whether that key is the member's responder
+  is a separate check. In `three-member-refusal/v1`, `key_id` is not signed,
+  so binding the refusal to a responder rests on that check. Ed25519 is
+  verified strictly, because a small-order key verifies a forged signature
+  over any message under a lenient verifier.
 - **Outcomes.** Keeping refusal and absence distinct is evidentiary:
   synthesizing either one from the other forges the stronger record from the
   weaker.
@@ -2132,6 +2226,14 @@ the same values and policy.
 
 Since -02:
 
+- `composed/v1` carried signature profiles
+  ({{composed-signature-profiles}}): `three-member-refusal/v1`,
+  `whole-refusal/v1` and `digest-bound-artifact-response/v1`, the opt-in
+  profiles in which a verifier checks a carried refusal's or response's
+  signature. The members an object carries decide which profile applies.
+  Each signature is verified, invalid or signature-unverified under strict
+  Ed25519, and the verifier report names the profile used. Added Security
+  Considerations for them.
 - Defined and registered the `parent-log-witness/v1` extension kind
   ({{parent-log-witness}}): a chain from the Bundle's checkpoint, or an
   earlier checkpoint of the same log with a consistency proof, through a
