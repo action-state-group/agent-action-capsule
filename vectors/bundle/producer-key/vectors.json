@@ -15,302 +15,6 @@
   "count": 10,
   "cases": [
     {
-      "id": "strict-small-order-key",
-      "section": [
-        "Verifying a countersign/v1 Entry",
-        "Conventions and Definitions"
-      ],
-      "description": "the entry is signed under a small-order key (the identity point) with R = [r]B and S = r, which a lenient verifier accepts over any message; strict Ed25519 refuses it, so the entry is invalid",
-      "bundle": {
-        "bundle_version": "2",
-        "bundle_kind": "evidence-bundle/v2",
-        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
-        "records": [
-          {
-            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
-            "format_version": "4",
-            "canonicalization_id": "jcs",
-            "action_id": "report-single-record-1",
-            "action_type": "fyi",
-            "operator": "ACME-CO",
-            "developer": "agent@v1",
-            "timestamp": "2026-09-16T19:00:00Z",
-            "assurance": {
-              "effect_mode": "not_applicable",
-              "attestation_mode": "self_attested",
-              "ledger_mode": "standalone"
-            },
-            "disposition": {
-              "verdict_class": "not_applicable",
-              "decision": "report",
-              "approver": "policy",
-              "human_disposed": false
-            },
-            "model_attestation": {
-              "compute_attestation": {
-                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
-              }
-            },
-            "countersignatures": [],
-            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
-          }
-        ],
-        "completeness": {
-          "closure_depth": 0,
-          "records_mode": "complete",
-          "payloads_mode": "selected",
-          "suppressed_fields": [],
-          "missing": []
-        },
-        "disclosures": {
-          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
-            "agent_input": {
-              "report": "report/v1",
-              "rows": [
-                {
-                  "id": "r1",
-                  "result": "pass"
-                },
-                {
-                  "id": "r2",
-                  "result": "withheld"
-                }
-              ]
-            }
-          }
-        },
-        "completeness_certificate": {
-          "log_id": "vector-log",
-          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
-          "first_seq": 1,
-          "last_seq": 1,
-          "body_digests": [
-            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
-          ],
-          "range_proof": {
-            "from_seq": 1,
-            "to_seq": 1,
-            "size": 1,
-            "from_index": 0,
-            "to_index": 0,
-            "witness": []
-          },
-          "memberships": {
-            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
-              "log_coordinates": {
-                "log_id": "vector-log",
-                "seq": 1,
-                "leaf_index": 0
-              },
-              "inclusion_proof": {
-                "v": 1,
-                "kind": "inclusion",
-                "size": 1,
-                "leaf_index": 0,
-                "witness": [],
-                "peaks_left": [],
-                "peaks_right": []
-              }
-            }
-          }
-        },
-        "checkpoint": {
-          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
-          "mmr_size": 1
-        },
-        "extensions": {
-          "producer-key/v1": {
-            "public_key": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
-          }
-        },
-        "countersignatures": [
-          {
-            "type": "countersign/v1",
-            "signer": {
-              "id": "did:web:countersign.example",
-              "key_id": "0100000000000000000000000000000000000000000000000000000000000000"
-            },
-            "over": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
-            "statement": {
-              "checks": [
-                {
-                  "name": "chain consistency",
-                  "result": "established"
-                },
-                {
-                  "name": "range membership",
-                  "result": "failed"
-                }
-              ],
-              "recomputed_at": "2026-10-01T00:00:00Z",
-              "scope": {
-                "ledger_id": "ledger:test",
-                "closure_depth": 0
-              }
-            },
-            "signature": "ee53f1e8617480fe36abc899e85d80b2dc1b3fa93bc63a0030317cf3a1e6ecbf7de0f6dbe9b135dba828c57ccf42d898aa6da878dc607bdbb52917a9d1ab5809"
-          }
-        ]
-      },
-      "bundle_digest": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
-      "expect": {
-        "signature": "invalid",
-        "declared_producer_keys": [
-          "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
-        ],
-        "stamp": "invalid",
-        "lenient_ed25519_verifies": true
-      }
-    },
-    {
-      "id": "strict-identity-r",
-      "section": [
-        "Verifying a countersign/v1 Entry",
-        "Conventions and Definitions"
-      ],
-      "description": "the entry is signed by another key with R the identity point, which a lenient verifier accepts; strict Ed25519 refuses it, so the entry is invalid",
-      "bundle": {
-        "bundle_version": "2",
-        "bundle_kind": "evidence-bundle/v2",
-        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
-        "records": [
-          {
-            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
-            "format_version": "4",
-            "canonicalization_id": "jcs",
-            "action_id": "report-single-record-1",
-            "action_type": "fyi",
-            "operator": "ACME-CO",
-            "developer": "agent@v1",
-            "timestamp": "2026-09-16T19:00:00Z",
-            "assurance": {
-              "effect_mode": "not_applicable",
-              "attestation_mode": "self_attested",
-              "ledger_mode": "standalone"
-            },
-            "disposition": {
-              "verdict_class": "not_applicable",
-              "decision": "report",
-              "approver": "policy",
-              "human_disposed": false
-            },
-            "model_attestation": {
-              "compute_attestation": {
-                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
-              }
-            },
-            "countersignatures": [],
-            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
-          }
-        ],
-        "completeness": {
-          "closure_depth": 0,
-          "records_mode": "complete",
-          "payloads_mode": "selected",
-          "suppressed_fields": [],
-          "missing": []
-        },
-        "disclosures": {
-          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
-            "agent_input": {
-              "report": "report/v1",
-              "rows": [
-                {
-                  "id": "r1",
-                  "result": "pass"
-                },
-                {
-                  "id": "r2",
-                  "result": "withheld"
-                }
-              ]
-            }
-          }
-        },
-        "completeness_certificate": {
-          "log_id": "vector-log",
-          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
-          "first_seq": 1,
-          "last_seq": 1,
-          "body_digests": [
-            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
-          ],
-          "range_proof": {
-            "from_seq": 1,
-            "to_seq": 1,
-            "size": 1,
-            "from_index": 0,
-            "to_index": 0,
-            "witness": []
-          },
-          "memberships": {
-            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
-              "log_coordinates": {
-                "log_id": "vector-log",
-                "seq": 1,
-                "leaf_index": 0
-              },
-              "inclusion_proof": {
-                "v": 1,
-                "kind": "inclusion",
-                "size": 1,
-                "leaf_index": 0,
-                "witness": [],
-                "peaks_left": [],
-                "peaks_right": []
-              }
-            }
-          }
-        },
-        "checkpoint": {
-          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
-          "mmr_size": 1
-        },
-        "extensions": {
-          "producer-key/v1": {
-            "public_key": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
-          }
-        },
-        "countersignatures": [
-          {
-            "type": "countersign/v1",
-            "signer": {
-              "id": "did:web:countersign.example",
-              "key_id": "884b8857f4eaa1613c61504db34d4beaf346517a0e31de3cddd4d9b4201d9d0b"
-            },
-            "over": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
-            "statement": {
-              "checks": [
-                {
-                  "name": "chain consistency",
-                  "result": "established"
-                },
-                {
-                  "name": "range membership",
-                  "result": "failed"
-                }
-              ],
-              "recomputed_at": "2026-10-01T00:00:00Z",
-              "scope": {
-                "ledger_id": "ledger:test",
-                "closure_depth": 0
-              }
-            },
-            "signature": "01000000000000000000000000000000000000000000000000000000000000009331775db39143d5cc7001d7b867de983df39075cfa560ef71a0915408da3f09"
-          }
-        ]
-      },
-      "bundle_digest": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
-      "expect": {
-        "signature": "invalid",
-        "declared_producer_keys": [
-          "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
-        ],
-        "stamp": "invalid",
-        "lenient_ed25519_verifies": true
-      }
-    },
-    {
       "id": "declared-self-countersignature",
       "section": [
         "The producer-key/v1 Extension",
@@ -1465,6 +1169,302 @@
         "signature": "valid",
         "declared_producer_keys": [],
         "stamp": "unresolved signer"
+      }
+    },
+    {
+      "id": "strict-small-order-key",
+      "section": [
+        "Verifying a countersign/v1 Entry",
+        "Conventions and Definitions"
+      ],
+      "description": "the entry is signed under a small-order key (the identity point) with R = [r]B and S = r, which a lenient verifier accepts over any message; strict Ed25519 refuses it, so the entry is invalid",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {
+            "public_key": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "0100000000000000000000000000000000000000000000000000000000000000"
+            },
+            "over": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "ee53f1e8617480fe36abc899e85d80b2dc1b3fa93bc63a0030317cf3a1e6ecbf7de0f6dbe9b135dba828c57ccf42d898aa6da878dc607bdbb52917a9d1ab5809"
+          }
+        ]
+      },
+      "bundle_digest": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+      "expect": {
+        "signature": "invalid",
+        "declared_producer_keys": [
+          "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+        ],
+        "stamp": "invalid",
+        "lenient_ed25519_verifies": true
+      }
+    },
+    {
+      "id": "strict-identity-r",
+      "section": [
+        "Verifying a countersign/v1 Entry",
+        "Conventions and Definitions"
+      ],
+      "description": "the entry is signed by another key with R the identity point, which a lenient verifier accepts; strict Ed25519 refuses it, so the entry is invalid",
+      "bundle": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-04",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "report-single-record-1",
+            "action_type": "fyi",
+            "operator": "ACME-CO",
+            "developer": "agent@v1",
+            "timestamp": "2026-09-16T19:00:00Z",
+            "assurance": {
+              "effect_mode": "not_applicable",
+              "attestation_mode": "self_attested",
+              "ledger_mode": "standalone"
+            },
+            "disposition": {
+              "verdict_class": "not_applicable",
+              "decision": "report",
+              "approver": "policy",
+              "human_disposed": false
+            },
+            "model_attestation": {
+              "compute_attestation": {
+                "agent_input_digest": "1fadc146114450fe2e22def4f2a57832d68e8ecfd3dca792d93fd68e505e2798"
+              }
+            },
+            "countersignatures": [],
+            "capsule_id": "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "selected",
+          "suppressed_fields": [],
+          "missing": []
+        },
+        "disclosures": {
+          "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+            "agent_input": {
+              "report": "report/v1",
+              "rows": [
+                {
+                  "id": "r1",
+                  "result": "pass"
+                },
+                {
+                  "id": "r2",
+                  "result": "withheld"
+                }
+              ]
+            }
+          }
+        },
+        "completeness_certificate": {
+          "log_id": "vector-log",
+          "range_root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "first_seq": 1,
+          "last_seq": 1,
+          "body_digests": [
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe"
+          ],
+          "range_proof": {
+            "from_seq": 1,
+            "to_seq": 1,
+            "size": 1,
+            "from_index": 0,
+            "to_index": 0,
+            "witness": []
+          },
+          "memberships": {
+            "01011c5da0a88805492b97c4ddd8f50f63839757de8cbf4608bfb51098bfd6fe": {
+              "log_coordinates": {
+                "log_id": "vector-log",
+                "seq": 1,
+                "leaf_index": 0
+              },
+              "inclusion_proof": {
+                "v": 1,
+                "kind": "inclusion",
+                "size": 1,
+                "leaf_index": 0,
+                "witness": [],
+                "peaks_left": [],
+                "peaks_right": []
+              }
+            }
+          }
+        },
+        "checkpoint": {
+          "root": "3d8f59c9a33a55f63256b75bf2710e696d8f397fbc10766b95b0e803d0a4800e",
+          "mmr_size": 1
+        },
+        "extensions": {
+          "producer-key/v1": {
+            "public_key": "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+          }
+        },
+        "countersignatures": [
+          {
+            "type": "countersign/v1",
+            "signer": {
+              "id": "did:web:countersign.example",
+              "key_id": "884b8857f4eaa1613c61504db34d4beaf346517a0e31de3cddd4d9b4201d9d0b"
+            },
+            "over": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+            "statement": {
+              "checks": [
+                {
+                  "name": "chain consistency",
+                  "result": "established"
+                },
+                {
+                  "name": "range membership",
+                  "result": "failed"
+                }
+              ],
+              "recomputed_at": "2026-10-01T00:00:00Z",
+              "scope": {
+                "ledger_id": "ledger:test",
+                "closure_depth": 0
+              }
+            },
+            "signature": "01000000000000000000000000000000000000000000000000000000000000009331775db39143d5cc7001d7b867de983df39075cfa560ef71a0915408da3f09"
+          }
+        ]
+      },
+      "bundle_digest": "b2d1d3a6c81c94873bd1aef69085a9d3a8ffd504e9fb96e0ff63d66ec9234c3a",
+      "expect": {
+        "signature": "invalid",
+        "declared_producer_keys": [
+          "66be7e332c7a453332bd9d0a7f7db055f5c5ef1a06ada66d98b39fb6810c473a"
+        ],
+        "stamp": "invalid",
+        "lenient_ed25519_verifies": true
       }
     }
   ]

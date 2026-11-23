@@ -168,18 +168,6 @@ def cases() -> list[dict]:
         }
 
     return [
-        forged(
-            "strict-small-order-key",
-            "the entry is signed under a small-order key (the identity point) with R = [r]B and S = r, which a "
-            "lenient verifier accepts over any message; strict Ed25519 refuses it, so the entry is invalid",
-            "small-order-key",
-        ),
-        forged(
-            "strict-identity-r",
-            "the entry is signed by another key with R the identity point, which a lenient verifier accepts; "
-            "strict Ed25519 refuses it, so the entry is invalid",
-            "identity-r",
-        ),
         case(
             "declared-self-countersignature",
             "the Bundle declares the producer key, and the countersign/v1 entry is signed by that key",
@@ -239,6 +227,18 @@ def cases() -> list[dict]:
             declared({}),
             "producer",
             {"declared_producer_keys": [], "stamp": "unresolved signer"},
+        ),
+        forged(
+            "strict-small-order-key",
+            "the entry is signed under a small-order key (the identity point) with R = [r]B and S = r, which a "
+            "lenient verifier accepts over any message; strict Ed25519 refuses it, so the entry is invalid",
+            "small-order-key",
+        ),
+        forged(
+            "strict-identity-r",
+            "the entry is signed by another key with R the identity point, which a lenient verifier accepts; "
+            "strict Ed25519 refuses it, so the entry is invalid",
+            "identity-r",
         ),
     ]
 
