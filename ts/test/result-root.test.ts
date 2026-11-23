@@ -5,6 +5,7 @@ import { verifyBundle } from "../src/bundle.js";
 import { EvidenceGraphError } from "../src/evidence-graph.js";
 import {
   buildResultRoot,
+  REASON_KINDS,
   carriedCapsuleCommitment,
   type CitedRecord,
   CLAIM_REQUIRED,
@@ -516,6 +517,17 @@ describe("buildResultRoot", () => {
     expect(
       validateEvidenceResult(read("neg-judge-producer-unprefixed-result.json")),
     ).toEqual([]);
+    // section 4.4's reason: a claim member, so the mirror accepts both
+    // positives and, open-world below the top level, every reason negative
+    // too. The schema checker rejects the negatives.
+    for (const name of [
+      "pos-example-org-reason-result.json",
+      "pos-example-org-reason-unregistered-result.json",
+      "neg-reason-uppercase.json",
+      "neg-reason-on-countersigned-claim.json",
+    ]) {
+      expect(validateEvidenceResult(read(name))).toEqual([]);
+    }
     // the prefix is case-sensitive, as the schema's ^x- pattern is
     const source = read("pos-example-org-claims-result.json") as Obj;
     expect(validateEvidenceResult({ ...source, "X-note": 1 })).toEqual([
@@ -548,6 +560,47 @@ describe("buildResultRoot", () => {
     expect([...withExtensions.records.keys()]).toEqual([
       ...plain.records.keys(),
     ]);
+  });
+
+  it("carries reason with its kind and reads it for nothing else (spec section 4.4)", async () => {
+    const plainSource = fixture("result-root-bundle.json");
+    const reasonedSource = fixture("result-root-bundle.json");
+    const tokens = [
+      "counterparty_leg_signer_not_trusted",
+      "later_revision_reason",
+      "capsule_signature_did_not_verify",
+    ];
+    (resultOf(reasonedSource).claims as Obj[]).forEach((claim, i) => {
+      claim.reason = tokens[i];
+    });
+    const plain = await buildResultRoot(
+      (await sealEvidenceBundle(plainSource)).bundle,
+    );
+    const reasoned = await buildResultRoot(
+      (await sealEvidenceBundle(reasonedSource)).bundle,
+    );
+    expect(
+      reasoned.claims.map((claim) => [claim.reason, claim.reasonKind]),
+    ).toEqual([
+      ["counterparty_leg_signer_not_trusted", "setting"],
+      ["later_revision_reason", "unregistered"],
+      ["capsule_signature_did_not_verify", "finding"],
+    ]);
+    expect(plain.claims.every((claim) => claim.reason === undefined)).toBe(
+      true,
+    );
+    expect(
+      reasoned.claims.map(({ reason, reasonKind, ...rest }) => rest),
+    ).toEqual(plain.claims);
+    expect(reasoned.coverage).toEqual(plain.coverage);
+    expect(reasoned.buckets).toEqual(plain.buckets);
+    expect(reasoned.bucketCounts).toEqual(plain.bucketCounts);
+    expect(reasoned.countMismatches).toEqual(plain.countMismatches);
+    expect(reasoned.statedCoverage).toEqual(plain.statedCoverage);
+    expect(REASON_KINDS.counterparty_leg_signature_did_not_verify).toBe(
+      "finding",
+    );
+    expect(Object.hasOwn(REASON_KINDS, "toString")).toBe(false);
   });
 
   it("rejects a key the schema does not define at the top level, and tolerates one below it", () => {

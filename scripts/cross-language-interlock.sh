@@ -292,9 +292,11 @@ if test "${#mismatches[@]}" -gt 0; then
 fi
 
 # Evidence Bundle composed/v1 block: every implementation verifies each case of
-# vectors/bundle/composed and vectors/bundle/composed-controller-binding (each
+# vectors/bundle/composed, vectors/bundle/composed-controller-binding (each
 # controller_binding record verified through that language's one binding
-# verifier) and prints the same JCS line.
+# verifier), vectors/bundle/composed-history (-03 History members and
+# same_key joins) and vectors/bundle/composed-key-source (-03 member keys), and
+# prints the same JCS line.
 composed_input() {
   "$python_bin" -c '
 import json
@@ -309,7 +311,7 @@ composed_go() { (cd "$repo/go" && GOWORK=off go run ./cmd/cross_language compose
 composed_ts() { node "$repo/ts/dist/cross-language.js" composed-verify; }
 composed_rust() { rust_example composed-verify; }
 composed_mismatches=()
-for set in composed composed-controller-binding; do
+for set in composed composed-controller-binding composed-history composed-key-source; do
   composed_cases="$repo/vectors/bundle/$set/vectors.json"
   composed_ids=$("$python_bin" -c '
 import json

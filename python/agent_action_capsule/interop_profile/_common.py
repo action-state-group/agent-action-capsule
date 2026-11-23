@@ -382,6 +382,18 @@ def ed25519_verify_hex(key_hex: Any, sig_hex: Any, message: bytes) -> bool:
     return ed25519_verify(bytes.fromhex(key_hex), bytes.fromhex(sig_hex), message)
 
 
+# §6.2: the members covered by the envelope signature, when present. One list for every profile
+# identifier: v1 and v2 change no envelope signing input (v2 "How to read this revision", item 4).
+ENVELOPE_SIGNED = ("profile", "request_digest", "subject", "derivation", "anchor", "artifact_digest",
+                   "verification", "responder", "issued_at")
+
+
+def envelope_signing_input(envelope: Mapping[str, Any]) -> bytes | None:
+    """UTF-8 of JCS of the envelope's signed members that are present (§6.2); None when JCS
+    cannot represent them."""
+    return jcs_or_none({k: envelope[k] for k in ENVELOPE_SIGNED if k in envelope})
+
+
 def unsigned_jcs(record: Mapping[str, Any], exclude: Iterable[str] = ("sig",)) -> bytes | None:
     """UTF-8 of JCS over every member except ``exclude``: the signing input of §6.4, §11.1 and §11.2."""
     skip = set(exclude)

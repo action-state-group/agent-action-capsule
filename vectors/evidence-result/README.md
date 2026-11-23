@@ -300,6 +300,33 @@ Every checker negative validates against the schema and fails `revision_findings
 Both checker negatives validate against the schema and fail `revision_findings`, and the mutant
 `skip_covered` accepts them.
 
+## Reason, `reason` (spec section 4.4)
+
+One optional token on a requirement claim, display-only. Both positives are copies of
+`pos-example-org-claims-result.json`; with `reason` removed from every claim each is
+byte-identical to it.
+
+| File | Claims carrying `reason` |
+|---|---|
+| `pos-example-org-reason-result.json` | `claim-1` (met, witnessed) `counterparty_leg_signer_not_trusted`; `claim-2` (not_met, self-attested) `counterparty_leg_signature_did_not_verify`; `claim-3` (GAP) `capsule_signature_did_not_verify` |
+| `pos-example-org-reason-unregistered-result.json` | `claim-2` `later_revision_reason`, a token this table does not list, as a document written under a later revision may carry, which is valid; `claim-3` `capsule_signer_not_trusted` |
+
+Each negative fails the schema for one rule, with a mutant that strips it:
+
+| File | Mutation | Rule violated |
+|---|---|---|
+| `neg-reason-uppercase.json` | `claim-3`'s token starts with an uppercase letter | the token grammar `^[a-z][a-z0-9_]{0,63}$` |
+| `neg-reason-trailing-newline.json` | `claim-3`'s token followed by `\n` | the same grammar read as ECMA-262 (see "Patterns are ECMA-262's") |
+| `neg-reason-list.json` | `claim-3` carries two tokens as a list | one string per claim |
+| `neg-reason-capsule-code-on-satisfied-claim.json` | `capsule_signature_did_not_verify` on `claim-2` (SATISFIED) | the capsule_* row: only where sufficiency is not SATISFIED |
+| `neg-reason-counterparty-code-on-unavailable-claim.json` | `counterparty_leg_signature_did_not_verify` on `claim-3` (GAP) | the counterparty_leg_* row: only on a met or not_met claim below countersigned |
+| `neg-reason-on-countersigned-claim.json` | `claim-1` graded `countersigned`, with an unregistered token | the placement rule: nothing lowered, so no reason |
+| `neg-reason-on-out-of-scope-claim.json` | an unregistered token on the out_of_scope positive's `claim-2` | the placement rule |
+| `neg-reason-on-close-claim.json` | an unregistered token on the unilateral close positive's `close-1` (records sidecar as the positive's) | the placement rule: requirement claims only |
+
+The checker also adds a permitted `reason` to every eligible claim of every fixture here and
+confirms that no schema error and no cross-element finding changes.
+
 ## Patterns are ECMA-262's
 
 JSON Schema 2020-12 reads `pattern` as an ECMA-262 regular expression. Python's `re` reads two

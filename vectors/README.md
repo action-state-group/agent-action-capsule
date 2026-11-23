@@ -118,6 +118,21 @@ same-commit files in CI.
   type not implemented), and joins with an empty-history member (linked:
   `one_sided`; revoked: `unjoined`; no checkpoint: not derivable);
   `python/scripts/generate_bundle_composed_cb_vectors.py` regenerates them.
+- `bundle/composed-key-source/`: Evidence Bundle -03 member keys under
+  `controller_binding` and `same_key`: a key read from a root record's verified
+  signature, or for an unsigned root record from its log's checkpoint when the
+  record's identity and own membership hold (at the checkpoint's time); the
+  forged and broken cases that give no key; and the optional `pointer`;
+  `python/scripts/generate_bundle_composed_key_source_vectors.py` regenerates them.
+- `bundle/composed-history/`: History members and the `same_key` join basis of
+  Evidence Bundle -03's `composed/v1`: two parties' halves of one exchange
+  joined on its identifier, each party's History tied to its own half by
+  `same_key` (redundant, never corroborating), a History anchored before the
+  exchange (still `agree`, times reported as facts), a key mismatch, root
+  records whose key is not their verified signer, failed and unverified
+  History members, refused and empty-history halves, two Histories under
+  `controller_binding`, and malformed blocks;
+  `python/scripts/generate_bundle_composed_history_vectors.py` regenerates them.
 - `judgment/`: PROVISIONAL judgment extension cases (the `x-judgment-v1`
   Capsule member: `rubric_digest`, `rubric_version`, `judge_parameters_digest`,
   schema `schemas/judgment/judgment-extension-v1.json`). The digest rules are
@@ -153,6 +168,13 @@ same-commit files in CI.
   type, and expired, revoked, one-key-signed, same-key, other-keys, no-half-key-bound, forged-credential,
   unknown-method, unbound-delegator and revocation cases, each over a pair of agreeing halves;
   `python/scripts/generate_controller_binding_v0_vectors.py` regenerates them.
+- `person-signature-v0/`: the person signature of `spec/person-signature-v0.md`, a person's own
+  WebAuthn assertion over a signed record's digest, carried beside the record: valid ES256 and
+  Ed25519 assertions, correctly signed policy negatives (type, challenge, origin, cross-origin,
+  relying party, user presence and verification, a key that is not the person's, the record
+  signer's key), bad and raw r||s signatures, unknown key types and algorithms, malformed objects,
+  absent signatures, and several signatures for one record;
+  `python/scripts/generate_person_signature_v0_vectors.py` regenerates them.
 - `deal-reconcile-v0/`: the Evidence Contract `ec:deal-reconcile@1` of
   `spec/deal-reconcile-contract-v0.md`: a deal whose two halves' amount and currency commitments
   open and match, and one whose amount opening fails, with the six tallies and the Evidence Result

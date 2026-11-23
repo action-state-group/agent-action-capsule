@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/action-state-group/agent-action-capsule/go/canonical"
+	"github.com/action-state-group/agent-action-capsule/go/envelope"
+	"github.com/fxamacker/cbor/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -136,17 +138,22 @@ func TestComposedControllerBindingRevocationMustApply(t *testing.T) {
 
 // A controller_binding join without identifier_digest or pointer names no
 // binding record, so it is not derivable, whatever the verifier received.
+// Bundle -03: a join without identifier_digest names no binding; pointer is
+// optional, since each key is read from its root record's signature (#663).
 func TestComposedControllerBindingJoinWithoutDigest(t *testing.T) {
 	c := bindingCases(t)["controller-binding-linked"]
-	for _, member := range []string{"identifier_digest", "pointer"} {
+	for member, want := range map[string]string{"identifier_digest": "not_derivable", "pointer": "derived_matches"} {
 		container := cloneJSON(t, c.Container)
 		block := composedBlockOf(container)
 		join := block["joins"].([]interface{})[0].(map[string]interface{})
 		delete(join, member)
 		join["state"] = "unjoined"
+		if member == "pointer" {
+			join["state"] = "agree"
+		}
 		reseal(t, block)
 		composed := verifyBlock(t, container, bindingOptions(c))
-		require.Equal(t, "not_derivable", composed.Joins[0].Result, member)
+		require.Equal(t, want, composed.Joins[0].Result, member)
 	}
 }
 
@@ -163,20 +170,19 @@ func cloneJSON(t *testing.T, value map[string]interface{}) map[string]interface{
 
 // A root record's timestamp may carry fractional seconds; the window compares
 // instants. The edit breaks the member digest, not the join's derivation.
-func TestComposedControllerBindingFractionalRecordTime(t *testing.T) {
+// Bundle -03: a root record's time is signed content. Editing it after
+// signing breaks the producer signature, so the record has no key and the
+// join is not derivable, whatever the new time would have given (#663). The
+// instant comparison itself is covered by the History times vectors.
+func TestComposedControllerBindingEditedRecordTime(t *testing.T) {
 	c := bindingCases(t)["controller-binding-linked"]
-	for stamp, derived := range map[string]string{
-		"2026-10-02T12:10:00.5Z":    "agree",
-		"2027-09-30T23:59:59.999Z":  "agree",
-		"2027-10-01T00:00:00.0Z":    "unjoined",
-		"2026-09-30T23:59:59.9Z":    "unjoined",
-		"2026-10-02T12:10:00+00:00": "unjoined",
-	} {
+	for _, stamp := range []string{"2026-10-02T12:10:00.5Z", "2027-10-01T00:00:00.0Z", "2026-10-02T12:10:00+00:00"} {
 		container := cloneJSON(t, c.Container)
 		member := composedBlockOf(container)["members"].([]interface{})[0].(map[string]interface{})
 		member["bundle"].(map[string]interface{})["records"].([]interface{})[0].(map[string]interface{})["timestamp"] = stamp
 		composed := verifyBlock(t, container, bindingOptions(c))
-		require.Equal(t, derived, composed.Joins[0].Derived, stamp)
+		require.Equal(t, "not_derivable", composed.Joins[0].Result, stamp)
+		require.Equal(t, KeySourceNone, composed.Joins[0].KeySources[0].Source, stamp)
 	}
 }
 
@@ -188,8 +194,11 @@ func TestComposedControllerBindingNeedsBothKeys(t *testing.T) {
 	first := members[0].(map[string]interface{})["bundle"].(map[string]interface{})["records"].([]interface{})[0].(map[string]interface{})
 	second := members[1].(map[string]interface{})["bundle"].(map[string]interface{})["records"].([]interface{})[0].(map[string]interface{})
 	second["key_id"] = first["key_id"]
+	// Bundle -03: a record that names another key was not signed by it, so it
+	// has no key and the join is not derivable (#663).
 	composed := verifyBlock(t, container, bindingOptions(c))
-	require.Equal(t, "unjoined", composed.Joins[0].Derived)
+	require.Equal(t, "not_derivable", composed.Joins[0].Result)
+	require.Equal(t, []KeySource{{"responder-a", KeySourceRecordSignature}, {"responder-b", KeySourceNone}}, composed.Joins[0].KeySources)
 }
 
 // signRevocation signs a revocation statement with the vectors' seed for name.
@@ -393,4 +402,64 @@ func TestControllerBindingUnserializableSig(t *testing.T) {
 	// Still held to -02's form: an empty nonce is malformed whatever the key types.
 	record["nonce"] = ""
 	require.False(t, bindingForm(record))
+}
+
+// resealWithVectorKey re-signs a root record after its timestamp changed,
+// with the test-only seed vectors/bundle/composed-controller-binding lists
+// for name, so its time stays signed content.
+func resealWithVectorKey(t *testing.T, record map[string]interface{}, name string) {
+	t.Helper()
+	_, filename, _, _ := runtime.Caller(0)
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(filename), "..", "..", "vectors", "bundle", "composed-controller-binding", "vectors.json"))
+	require.NoError(t, err)
+	var file struct {
+		Keys map[string]struct {
+			Seed string `json:"seed_hex"`
+		} `json:"keys"`
+	}
+	require.NoError(t, json.Unmarshal(data, &file))
+	seed, err := hex.DecodeString(file.Keys[name].Seed)
+	require.NoError(t, err)
+	key := ed25519.NewKeyFromSeed(seed)
+	delete(record, "capsule_id")
+	delete(record, "key_id")
+	delete(record, "signature")
+	id, err := canonical.ComputeCapsuleID(record)
+	require.NoError(t, err)
+	payload, err := hex.DecodeString(id)
+	require.NoError(t, err)
+	mode, err := cbor.CanonicalEncOptions().EncMode()
+	require.NoError(t, err)
+	public := []byte(key.Public().(ed25519.PublicKey))
+	protected, err := mode.Marshal(map[int64]interface{}{1: int64(-8), 3: envelope.ContentType, 4: public})
+	require.NoError(t, err)
+	toBeSigned, err := mode.Marshal([]interface{}{"Signature1", protected, []byte{}, payload})
+	require.NoError(t, err)
+	encoded, err := mode.Marshal(cbor.Tag{Number: 18, Content: []interface{}{protected, map[interface{}]interface{}{}, payload, ed25519.Sign(key, toBeSigned)}})
+	require.NoError(t, err)
+	record["capsule_id"], record["key_id"], record["signature"] = id, hex.EncodeToString(public), hex.EncodeToString(encoded)
+}
+
+// The binding window is half-open and record times compare as instants,
+// fractional seconds included; each record is re-sealed so its time stays
+// signed (bundle -03, Member keys).
+func TestComposedControllerBindingFractionalRecordTime(t *testing.T) {
+	c := bindingCases(t)["controller-binding-linked"]
+	for stamp, derived := range map[string]string{
+		"2026-10-02T12:10:00.5Z":    "agree",
+		"2027-09-30T23:59:59.999Z":  "agree",
+		"2027-10-01T00:00:00.0Z":    "unjoined",
+		"2026-09-30T23:59:59.9Z":    "unjoined",
+		"2026-10-02T12:10:00+00:00": "unjoined",
+	} {
+		container := cloneJSON(t, c.Container)
+		member := composedBlockOf(container)["members"].([]interface{})[0].(map[string]interface{})
+		bundle := member["bundle"].(map[string]interface{})
+		record := bundle["records"].([]interface{})[0].(map[string]interface{})
+		record["timestamp"] = stamp
+		resealWithVectorKey(t, record, "responder-a")
+		bundle["root"] = record["capsule_id"]
+		composed := verifyBlock(t, container, bindingOptions(c))
+		require.Equal(t, derived, composed.Joins[0].Derived, stamp)
+	}
 }

@@ -203,29 +203,42 @@ describe("composed controller_binding join: -02's own rules", () => {
 
   // A controller_binding join without identifier_digest or pointer names no
   // binding record, so it is not derivable, whatever the verifier received.
-  it("a join without digest or pointer is not derivable", async () => {
-    for (const member of ["identifier_digest", "pointer"]) {
+  // -03: a join without identifier_digest names no binding; pointer is
+  // optional, since each key is read from its root record's signature (#663).
+  it("a join without digest is not derivable; pointer is optional", async () => {
+    for (const [member, state, want] of [
+      ["identifier_digest", "unjoined", "not_derivable"],
+      ["pointer", "agree", "derived_matches"],
+    ] as const) {
       const container = clone(linked().container);
       const join = (blockOf(container).joins as Obj[])[0] as Obj;
       delete join[member];
-      join.state = "unjoined";
+      join.state = state;
       const block = await derive(
         await seal(container),
         linked().controller_bindings,
       );
-      expect(block.joins[0]!.result, member).toBe("not_derivable");
+      expect(block.joins[0]!.result, member).toBe(want);
     }
   });
 
-  // Both root records under one bound key are not the record's two keys.
-  it("needs both keys", async () => {
+  // -03: a root record's key is the one its producer signature verifies
+  // under. A record that names another key in key_id was not signed by it,
+  // so it has no key and the join is not derivable (#663).
+  it("a record naming another key has no key", async () => {
     const container = clone(linked().container);
     const members = blockOf(container).members as Obj[];
     const root = (m: Obj): Obj =>
       ((m.bundle as Obj).records as Obj[])[0] as Obj;
     root(members[1]!).key_id = root(members[0]!).key_id;
-    const block = await derive(container, linked().controller_bindings);
-    expect(block.joins[0]!.derived).toBe("unjoined");
+    const join = (await derive(container, linked().controller_bindings))
+      .joins[0]!;
+    expect(join.derived).toBeUndefined();
+    expect(join.result).toBe("not_derivable");
+    expect(join.keySources).toEqual([
+      { member: "responder-a", source: "record_signature" },
+      { member: "responder-b", source: "none" },
+    ]);
   });
 
   // A sig that cannot be serialized (a float where a sig-hex belongs) is

@@ -97,13 +97,14 @@ non-normative. It changes neither the ruled text above nor the rule, and the 202
 stays the source of both. The ruling says `not evaluable` "is never used to represent missing or
 insufficient evidence". Read with the rule, that means the verdict never stands in for a
 sufficiency value. When evidence is missing or insufficient, the claim's `sufficiency` says so
-(`GAP`, `INSUFFICIENT` or `UNKNOWN`) and is the only member that carries the reason. The verdict on
+(`GAP`, `INSUFFICIENT` or `UNKNOWN`). That value is the reason the rules act on; §4.4's `reason`
+may add the producer's display-only statement of why, and never replaces it. The verdict on
 that claim is `not_evaluable` because the ruling makes a judgment "only when sufficiency is
 `SATISFIED`", so none was made. `not_evaluable` records that no judgment was made. The ruling calls
 it "a judgment outcome defined by the contract" because the Evidence Contract's closed verdict
 vocabulary defines it, and the contract's own rule (above) fixes when it applies. A reader that
-explains a `not_evaluable` claim takes the reason from that claim's `sufficiency` and never from
-the verdict. No contract in this revision defines a `not_evaluable` outcome reached with
+explains a `not_evaluable` claim takes the reason from that claim's `sufficiency` (and, when
+present, its `reason`, §4.4) and never from the verdict. No contract in this revision defines a `not_evaluable` outcome reached with
 `SATISFIED` sufficiency, so the rule above refuses that pair. Allowing it would change the ruled
 reading and the wire, and needs a new ruling.
 
@@ -262,7 +263,8 @@ in force is in no bucket (§4.3). A single number hides which requirements were 
 versus which were skipped for lack of evidence; the buckets keep that distinction visible at
 the point a sponsor first looks at the Result. `not_evaluable` is not a failure and not a success
 — it is its own bucket, exactly as large as `sufficiency != SATISFIED` makes it (§1), and each
-entry's reason is that claim's `sufficiency`, never the verdict (§1, the note on #358). A Result
+entry's reason is that claim's `sufficiency` (with any §4.4 `reason` as the producer's
+statement), never the verdict (§1, the note on #358). A Result
 that folds it into either of the other two has silently converted "we could not tell" into an
 answer. `out_of_scope` is likewise its own bucket: never in `met`, and never in a pass figure.
 
@@ -285,6 +287,7 @@ claim:
   verdict: met | not_met | not_evaluable | out_of_scope   # §1, owned by the Evidence Contract
   out_of_scope_allowed: true          # OPTIONAL — §4.2, copied from the contract
   applies_from: YYYY-MM-DD            # OPTIONAL — §4.3, copied from the contract
+  reason: token                       # OPTIONAL — §4.4, the producer's statement, display-only
   evidence: [digest-ref, ...]         # §5 — by digest only; at least one (§1)
   proofs: [proof-ref, ...]            # §5 — by digest only
   presentation: disclosure-carrier | analysis-carrier | story-carrier   # §2, §6
@@ -578,6 +581,74 @@ switch are copied facts (§4.2's last paragraph applies to both): a reader label
 the contract, never as verified. `applicability_as_of` is the producer's statement of which date it
 judged against. The Result alone cannot check it against the activity evaluated, so a reader labels
 it as stated by the producer, never as verified.
+
+### 4.4 Reason — `reason`
+
+**Status: normative.** A requirement claim (`type` absent or `requirement`) MAY carry `reason`: one
+token naming why the claim is unavailable or why its grade stopped short of `countersigned`. It is
+the producer's statement of a check the producer ran, not something a verifier or renderer
+re-checks. A claim carries at most one.
+
+```
+claim:
+  reason: token                       # OPTIONAL — ^[a-z][a-z0-9_]{0,63}$
+```
+
+**Where it may appear (schema).** Only on a requirement claim, and only when either:
+
+- its `sufficiency` is not `SATISFIED` (so its verdict is `not_evaluable`, §1), or
+- its `verdict` is `met` or `not_met` and its `grade` is not `countersigned`.
+
+A `reason` on any other claim fails validation: a `met` or `not_met` claim graded `countersigned`, an
+`out_of_scope` claim, or a `reconcile`, `close` or `calibration` claim. A `not_met` verdict is
+itself the finding, so on a `met` or `not_met` claim `reason` explains only the grade. The two
+conditions never overlap: a claim that is not evaluable carries the reason for its sufficiency,
+never one for its grade.
+
+**Registered tokens.** The table is the registry. Each token has one meaning for every producer,
+stated as what the check observed, never as a judgement of a party. A registered token MUST appear
+only on the claims its row names; on any other claim it fails validation (schema). New tokens are
+added by revising this table.
+
+| Token | Kind | Only on | Meaning |
+|---|---|---|---|
+| `capsule_signature_did_not_verify` | finding | `sufficiency` not `SATISFIED` | A record the claim needed has a signature that did not verify, so the record was not used. |
+| `capsule_signer_not_trusted` | setting | `sufficiency` not `SATISFIED` | A record the claim needed is signed by a key outside the keys the producer trusted for this evaluation, so the record was not used. |
+| `counterparty_leg_signature_did_not_verify` | finding | `verdict` `met` or `not_met`, `grade` not `countersigned` | The counterparty's leg was found, and its signature did not verify, so it does not raise the grade. |
+| `counterparty_leg_signer_not_trusted` | setting | `verdict` `met` or `not_met`, `grade` not `countersigned` | The counterparty's leg was found, signed by a key outside the keys the producer trusted for this evaluation, so it does not raise the grade. |
+
+A `finding` names a check that failed; a `setting` names the trust configuration the producer
+evaluated with, and is not by itself a sign of tampering. It says nothing about the keys a later
+reader of the Result trusts: a reader who trusts that key re-evaluates to learn what it changes.
+
+**Producers.** A producer MUST write only tokens registered in the revision it writes under, and
+MUST NOT write `reason` on a `met` or `not_met` claim unless the reason is why the claim's grade is
+not higher. A code a producer needs that the table does not list stays in its own `x-` member (§8a)
+until a revision registers it.
+
+**Unregistered tokens.** A token that matches the grammar and is not in this table (written under a
+later revision) is valid, for forward compatibility only. It has no meaning this document defines.
+A verifier MUST NOT reject a document because of it, and MAY report it as not recognised.
+
+**Display-only.** `reason` is outside every rule that decides anything:
+
+- A verifier MUST NOT read `reason` to derive or adjust any claim's `sufficiency`, `verdict`,
+  `tier`, `grade` or support, a close claim's state (§4.1), or the aggregate's coverage or buckets
+  (§7). With `reason` removed from every claim, a document's validity and every derived result are
+  unchanged, provided the document was valid with it.
+- `reason` names the outcome of a check on records the claim cites, never their content. It is not
+  evidence, not a presentation carrier, and changes neither the carrier nor its `status`: §2 still
+  governs what the claim shows.
+- A renderer that shows `reason` labels it as the producer's statement, never as something the
+  renderer checked. It SHOULD show a `finding` as a warning and a `setting` neutrally, and MUST show an
+  unregistered token as its raw value, neutrally, never as a finding, and never hide the claim
+  because of it. A later claim's reason (§4.3) shows under the claim's readiness label.
+
+**Relation to `x-` members.** This is the defined equivalent §8a anticipates for reason members a
+producer wrote under an `x-` name. Those members stay valid and are still ignored (§8a). Because a
+claim is closed (§8a), a validator that predates this section rejects a claim carrying `reason`; a
+producer keeps its `x-` member until its readers' validators include this section, and MAY write
+both meanwhile.
 
 ## 5. Evidence and proofs
 
@@ -893,7 +964,7 @@ result:
   different things. If a later version of this document defines an equivalent member, it does so
   under a name without the `x-` prefix, and the `x-` form stays valid for documents already
   written. This is the same convention as `x-evidence-links` (`spec/judge-record-family-v1.md`
-  §0a).
+  §0a). `reason` (§4.4) is such a member.
 - The slot is additive. A document that was valid before it existed contains no `x-` member, so it
   validates unchanged.
 
@@ -1037,3 +1108,14 @@ eight schema negatives and two checker negatives; §4.3's applicability adds fou
 (`pos-example-org-applicability-result.json`, `-boundary-`, `-in-force-` and
 `pos-example-org-reconcile-later-result.json`) and eleven checker negatives. Each negative has its own
 mutant proof; `vectors/evidence-result/README.md` lists them.
+
+§4.4's `reason` adds two positives, `pos-example-org-reason-result.json` (three registered tokens,
+each on a claim its row allows) and `pos-example-org-reason-unregistered-result.json` (the fourth
+registered token and one unregistered token), each byte-identical to the claims positive with
+`reason` removed, and eight schema negatives, each with its own mutant proof: the grammar
+(`neg-reason-uppercase`, `neg-reason-trailing-newline`), one string (`neg-reason-list`), the two
+registry rows (`neg-reason-capsule-code-on-satisfied-claim`,
+`neg-reason-counterparty-code-on-unavailable-claim`) and the placement rule
+(`neg-reason-on-countersigned-claim`, `neg-reason-on-out-of-scope-claim`,
+`neg-reason-on-close-claim`). The checker also adds a permitted `reason` to every eligible claim of
+every fixture and confirms that no schema error and no cross-element finding changes.

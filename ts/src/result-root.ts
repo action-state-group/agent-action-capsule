@@ -358,6 +358,27 @@ export interface ClaimPresentation {
   readonly evidence?: readonly string[];
 }
 
+/**
+ * spec/evidence-result-v0.md section 4.4's registry: each registered `reason`
+ * token and its kind. A `finding` names a check that failed (a renderer
+ * SHOULD show it as a warning); a `setting` names the trust configuration
+ * the producer evaluated with (shown neutrally).
+ */
+export const REASON_KINDS: Readonly<Record<string, "finding" | "setting">> =
+  Object.freeze({
+    capsule_signature_did_not_verify: "finding",
+    capsule_signer_not_trusted: "setting",
+    counterparty_leg_signature_did_not_verify: "finding",
+    counterparty_leg_signer_not_trusted: "setting",
+  });
+
+/**
+ * A `reason` token's kind: its registry row's, or `unregistered` for a token
+ * this revision does not list (a document written under a later revision),
+ * which a renderer shows raw and neutrally, never as a finding.
+ */
+export type ReasonKind = "finding" | "setting" | "unregistered";
+
 export interface ResultClaim {
   readonly id: string;
   /**
@@ -385,6 +406,14 @@ export interface ResultClaim {
    * verdict is readiness only, in no bucket and outside the population.
    */
   readonly later: boolean;
+  /**
+   * The producer's statement of why the claim is unavailable or its grade
+   * stopped short of `countersigned` (spec section 4.4), with its kind.
+   * Display-only: nothing in this module reads it. A renderer labels it as
+   * the producer's statement.
+   */
+  readonly reason?: string;
+  readonly reasonKind?: ReasonKind;
   readonly support: ClaimSupport;
   readonly evidence: readonly ClaimEvidenceRef[];
   /** The cited digests no supplied record carries, in citation order. */
@@ -2054,6 +2083,14 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
         ? { appliesFrom: raw.applies_from }
         : {}),
       later: later.has(raw.id as string),
+      ...(typeof raw.reason === "string"
+        ? {
+            reason: raw.reason,
+            reasonKind: Object.hasOwn(REASON_KINDS, raw.reason)
+              ? REASON_KINDS[raw.reason]
+              : ("unregistered" as const),
+          }
+        : {}),
       support:
         evidence.length > 0 && missing.length === 0
           ? "supported"

@@ -15,6 +15,7 @@ one key type, and a ``sig`` under ed25519 keys is a ``sig-hex``.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import re
 from collections.abc import Mapping, Sequence
@@ -22,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from . import controller_binding as cb
-from .canonical import FloatInDigestError, UnsafeIntegerError, jcs, json_digest
+from .canonical import FloatInDigestError, UnsafeIntegerError, jcs, json_digest, json_text_too_deep
 from .evidence_request import parse_utc
 
 COMPOSED_KIND = "composed/v1"
@@ -37,9 +38,24 @@ _HEX128 = re.compile(r"[0-9a-f]{128}")
 _RECORD_TIME = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?Z")
 
 _OUTCOMES = {"artifact": "bundle", "refusal": "refusal", "absence": "absence"}
+#: Every member body name; an artifact member carries ``bundle`` or ``history``.
+_BODY_KEYS = ("bundle", "history", "refusal", "absence")
 _JOIN_BASES = frozenset(
-    {"pre_agreed_identifier", "shared_artifact_digest", "issued_receipt", "same_interval", "controller_binding"}
+    {"pre_agreed_identifier", "shared_artifact_digest", "issued_receipt", "same_interval", "controller_binding",
+     "same_key"}
 )
+#: The bases that derive with a History member (-03 "Joins"); any other is not derivable with one.
+_HISTORY_BASES = frozenset({"controller_binding", "same_key"})
+#: The envelope profiles whose member names and signature -03 reads ("History Members").
+_HISTORY_PROFILES = frozenset({"evidence-interop/0", "evidence-interop/1", "evidence-interop/2"})
+
+HISTORY_VERIFIED = "verified"
+HISTORY_INVALID = "invalid"
+HISTORY_MATCHES = "matches"
+HISTORY_MISMATCH = "mismatch"
+#: An anchor checkpoint this verifier cannot check (no CLL verifier
+#: installed): neither failed nor verified, and no join view.
+HISTORY_UNVERIFIED = "unverified"
 _JOIN_STATES = frozenset({"agree", "mismatch", "unjoined", "one_sided"})
 
 _DIGEST_ERRORS = (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError)
@@ -73,6 +89,25 @@ class ComposedDigestResult:
 
 
 @dataclass
+class HistoryMemberResult:
+    """A carried History member's checks (-03 "History Members"): the envelope
+    signature (``verified``, ``invalid`` or ``signature_unverified``), the
+    artifact, request and artifact-anchor digests (``matches`` or
+    ``mismatch``), and the anchor checkpoint (``verified``, ``mismatch`` when
+    its digest is not ``anchor.digest``, or ``invalid``). ``key`` and ``time``
+    are its join view, set only when every check passed."""
+
+    derivation: Any = None
+    envelope_signature: str = ""
+    artifact_digest: str = ""
+    request_digest: str = ""
+    artifact_anchor: str = ""
+    anchor_checkpoint: str = ""
+    key: str = ""
+    time: str = ""
+
+
+@dataclass
 class ComposedMemberResult:
     """One member: its outcome, whether its body is carried or declared
     missing, whether the body reproduces its digest and, for a carried
@@ -90,6 +125,7 @@ class ComposedMemberResult:
     bundle: Any = None
     refusal_signature: str = ""
     response_signature: str = ""
+    history: HistoryMemberResult | None = None
 
 
 @dataclass
@@ -113,6 +149,34 @@ class JoinDifference:
 
 
 @dataclass
+class HistoryTimes:
+    """A History's time against a root record's, as facts (-03 "Joins",
+    History times): ``relation`` is ``before``, ``equal`` or ``after``, the
+    History's time relative to the record's, compared as instants."""
+
+    history: str
+    history_time: str
+    record: str
+    record_time: str
+    relation: str
+
+
+@dataclass
+class JoinKey:
+    member: str
+    key: str
+
+
+@dataclass
+class KeySource:
+    """Where one side's key came from on a controller_binding or same_key
+    join: ``record_signature``, ``log_checkpoint``, ``history`` or ``none``."""
+
+    member: str
+    source: str
+
+
+@dataclass
 class ComposedJoinResult:
     members: tuple[str, str]
     basis: str
@@ -122,6 +186,11 @@ class ComposedJoinResult:
     #: ``derived_matches``, ``join_state_mismatch`` or ``not_derivable``.
     result: str = ""
     differences: list = field(default_factory=list)
+    #: A same_key join that derives unjoined: each member's key.
+    keys: list = field(default_factory=list)
+    #: Every controller_binding and same_key join: each side's key source.
+    key_sources: list = field(default_factory=list)
+    history_times: HistoryTimes | None = None
 
 
 @dataclass
@@ -162,6 +231,17 @@ class _Member:
     digest: str = ""
     body: dict | None = None
     response: dict | None = None
+    #: The carried body is a History (``history``), not a Bundle.
+    history: bool = False
+
+
+@dataclass
+class _HistoryView:
+    """A History member's join view: its responder key and anchor time."""
+
+    key: str
+    at: tuple[int, int]
+    time: str
 
 
 @dataclass
@@ -228,10 +308,14 @@ def verify_composed(raw: Any, opts: ComposedOptions | None = None, coverage_inpu
             closure_findings.append(f"missing_names_undeclared_member:{member_id}")
 
     by_id: dict = {}
+    views: dict = {}
     for m in block.members:
         by_id[m.id] = m
         member, member_closure, member_failed, member_withheld = _verify_member(m, missing.get(m.id, False), opts, coverage_inputs)
         result.members.append(member)
+        if member.history is not None and member.history.key:
+            views[m.id] = _HistoryView(member.history.key, _record_time(member.history.time) or (0, 0),
+                                       member.history.time)
         closure_findings += member_closure
         failed += member_failed
         withheld += member_withheld
@@ -249,7 +333,7 @@ def verify_composed(raw: Any, opts: ComposedOptions | None = None, coverage_inpu
 
     observers = {o.id: o for o in block.observers}
     for j in block.joins:
-        join_result = _derive_join(j, by_id, missing, opts)
+        join_result = _derive_join(j, by_id, missing, opts, views)
         result.joins.append(join_result)
         pair = f"{j.members[0]},{j.members[1]}"
         if join_result.result == "join_state_mismatch":
@@ -257,6 +341,8 @@ def verify_composed(raw: Any, opts: ComposedOptions | None = None, coverage_inpu
         elif join_result.result == "not_derivable":
             withheld.append(f"join_not_derivable:{pair}")
         result.corroboration.append(_corroboration(j, join_result.derived, by_id, observers))
+        join_result.history_times = _history_times(j, by_id, views)
+        join_result.key_sources = _key_sources(j, by_id, views)
 
     if failed:
         result.status, result.findings = "fail", failed + withheld
@@ -288,7 +374,11 @@ def _verify_member(m: _Member, declared_missing: bool, opts: ComposedOptions, co
         out.body = "carried"
 
     computed = ""
-    if m.outcome == "artifact":
+    if m.history:
+        computed, history_failed, history_withheld = _verify_history(m, out)
+        failed += history_failed
+        withheld += history_withheld
+    elif m.outcome == "artifact":
         try:
             computed = bundle_digest(m.body)
         except _DIGEST_ERRORS:
@@ -324,6 +414,10 @@ def _verify_member(m: _Member, declared_missing: bool, opts: ComposedOptions, co
         out.digest = "mismatch"
         out.findings.append("member_digest_mismatch")
         closure.append(f"member_digest_mismatch:{m.id}")
+        if out.history is not None:
+            # An envelope that does not reproduce the declared digest is not
+            # the History the composed digest names: it has no join view.
+            out.history.key = out.history.time = ""
     if m.outcome == "refusal":
         out.refusal_signature = _signature_state(opts.refusal_signature, m.body)
         if out.refusal_signature == REFUSAL_SIGNATURE_INVALID:
@@ -342,9 +436,136 @@ def _signature_state(verifier: SignatureVerifier | None, value: Mapping[str, Any
     return REFUSAL_SIGNATURE_UNVERIFIED
 
 
+def _b64url(text: Any) -> bytes | None:
+    """Unpadded base64url (RFC 4648 §5) in its one canonical form, its pad
+    bits zero, or ``None``. Go, TypeScript and Rust decode strictly; a text
+    with nonzero pad bits would otherwise name the same octets twice."""
+    from .interop_profile._common import b64url_decode
+
+    decoded = b64url_decode(text)
+    if decoded is None or base64.urlsafe_b64encode(decoded).rstrip(b"=").decode("ascii") != text:
+        return None
+    return decoded
+
+
+def _verify_history(m: _Member, out: ComposedMemberResult) -> tuple[str, list, list]:
+    """Check a carried History member (-03 "History Members", checks 1 to 5)
+    and fill ``out.history``. Returns the recomputed member digest (the
+    envelope's) and the failed and withheld findings. The body's shape was
+    checked when the block was parsed."""
+    from .interop_profile._common import ed25519_verify_hex, envelope_signing_input
+
+    body = m.body or {}
+    env = body["envelope"]
+    h = HistoryMemberResult(derivation=env.get("derivation"))
+    out.history = h
+    failed: list = []
+    withheld: list = []
+    try:
+        computed = json_digest(env)
+    except _DIGEST_ERRORS:
+        computed = ""
+
+    profile = env.get("profile")
+    h.envelope_signature = REFUSAL_SIGNATURE_UNVERIFIED
+    if isinstance(profile, str) and profile in _HISTORY_PROFILES:
+        signing_input = envelope_signing_input(env)
+        try:
+            ok = signing_input is not None and ed25519_verify_hex(env["responder"], env["sig"], signing_input)
+            h.envelope_signature = HISTORY_VERIFIED if ok else HISTORY_INVALID
+        except ImportError:
+            # No Ed25519 verifier installed: the signature is not checked,
+            # which is neither failed nor absent.
+            pass
+    artifact = _b64url(env["artifact"]) or b""
+    h.artifact_digest = HISTORY_MATCHES if hashlib.sha256(artifact).hexdigest() == env["artifact_digest"] else HISTORY_MISMATCH
+    h.request_digest = HISTORY_MATCHES if env["request_digest"] == m.request_digest else HISTORY_MISMATCH
+    h.artifact_anchor = HISTORY_MATCHES if _artifact_anchor(artifact) == env["anchor"]["digest"] else HISTORY_MISMATCH
+    checkpoint = _b64url(body["anchor_checkpoint"]) or b""
+    timestamp = None
+    if hashlib.sha256(checkpoint).hexdigest() != env["anchor"]["digest"]:
+        h.anchor_checkpoint = HISTORY_MISMATCH
+    else:
+        timestamp, h.anchor_checkpoint = _checkpoint_time(checkpoint)
+
+    for state, finding in (
+        (h.envelope_signature, "history_envelope_signature_invalid"),
+        (h.artifact_digest, "history_artifact_digest_mismatch"),
+        (h.request_digest, "history_request_digest_mismatch"),
+        (h.artifact_anchor, "history_artifact_anchor_mismatch"),
+        (h.anchor_checkpoint, f"history_anchor_checkpoint_{h.anchor_checkpoint}"),
+    ):
+        if state in (HISTORY_INVALID, HISTORY_MISMATCH):
+            out.findings.append(finding)
+            failed.append(f"{finding}:{m.id}")
+    if h.envelope_signature == REFUSAL_SIGNATURE_UNVERIFIED:
+        withheld.append(f"history_signature_unverified:{m.id}")
+    if h.anchor_checkpoint == HISTORY_UNVERIFIED:
+        withheld.append(f"history_anchor_checkpoint_unverified:{m.id}")
+    if not failed and not withheld and timestamp is not None:
+        h.key, h.time = env["responder"], timestamp
+    return computed, failed, withheld
+
+
+def _artifact_anchor(artifact: bytes) -> Any:
+    """The ``anchor`` member of an artifact that is the UTF-8 JCS of a JSON
+    object, or ``None`` when it is not one (duplicate members, a value JCS
+    cannot write, or octets that are not exactly that serialization)."""
+    import json
+
+    def unique(pairs: list) -> dict:
+        out: dict = {}
+        for key, value in pairs:
+            if key in out:
+                raise ValueError("duplicate member")
+            out[key] = value
+        return out
+
+    try:
+        text = artifact.decode("utf-8")
+        if json_text_too_deep(text):
+            return None
+        value = json.loads(text, object_pairs_hook=unique)
+        if not isinstance(value, dict) or jcs(value) != artifact:
+            return None
+    except (UnicodeDecodeError, RecursionError, *_DIGEST_ERRORS):
+        return None
+    return value.get("anchor")
+
+
+def _checkpoint_time(cose: bytes) -> tuple[str | None, str]:
+    """``(timestamp, state)`` of an anchor checkpoint: ``verified`` with its
+    timestamp when it is a CLL COSE checkpoint in the one form the interop
+    profile fixes (tagged COSE_Sign1, an empty unprotected header) that
+    verifies under its own key; ``invalid`` otherwise; ``unverified`` when no
+    CLL verifier is installed."""
+    try:
+        import cbor2
+        from cll.checkpoint import verify_checkpoint_cose_offline
+    except ImportError:
+        return None, HISTORY_UNVERIFIED
+    try:
+        tagged = cbor2.loads(cose)
+        value = tagged.value if isinstance(tagged, cbor2.CBORTag) and tagged.tag == 18 else None
+        if not (isinstance(value, (list, tuple)) and len(value) == 4 and isinstance(value[1], Mapping)
+                and len(value[1]) == 0):
+            return None, HISTORY_INVALID
+        verified = verify_checkpoint_cose_offline(cose)
+    except ImportError:
+        return None, HISTORY_UNVERIFIED
+    except (ValueError, TypeError, cbor2.CBORDecodeError):
+        return None, HISTORY_INVALID
+    if not verified.ok or verified.decoded is None:
+        return None, HISTORY_INVALID
+    timestamp = verified.decoded.timestamp
+    if not isinstance(timestamp, str) or _record_time(timestamp) is None:
+        return None, HISTORY_INVALID
+    return timestamp, HISTORY_VERIFIED
+
+
 def _root_record(m: _Member) -> dict | None:
     """The carried member bundle's root record, or ``None``."""
-    if m.body is None:
+    if m.body is None or m.history:
         return None
     root = m.body.get("root")
     if not isinstance(root, str):
@@ -356,9 +577,9 @@ def _root_record(m: _Member) -> dict | None:
     return None
 
 
-def _derive_join(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions) -> ComposedJoinResult:
+def _derive_join(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions, views: dict) -> ComposedJoinResult:
     out = ComposedJoinResult(j.members, j.basis, j.state)
-    out.derived, out.differences = _derived_state(j, by_id, missing, opts)
+    out.derived, out.differences, out.keys = _derived_state(j, by_id, missing, opts, views)
     if out.derived == "":
         out.result = "not_derivable"
     elif out.derived == j.state:
@@ -368,73 +589,86 @@ def _derive_join(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions) ->
     return out
 
 
-def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions):
+def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions, views: dict):
+    """The derived state, the differences of a derived mismatch, and, for a
+    same_key join that derives unjoined, each member's key. ``""`` is not
+    derivable."""
     from .bundle import is_empty_history
 
     a, b = by_id[j.members[0]], by_id[j.members[1]]
     # A join with a declared-missing artifact member (listed in missing and
     # carrying no body) is not derivable, whatever its other member is.
     if any(m.outcome == "artifact" and missing.get(m.id) and m.body is None for m in (a, b)):
-        return "", []
+        return "", [], []
+    # A History member derives only through its join view, and only on the
+    # bases -03 defines a derivation for with one.
+    histories = [m for m in (a, b) if m.history]
+    if histories and (j.basis not in _HISTORY_BASES or any(m.id not in views for m in histories)):
+        return "", [], []
     # An artifact member counts as having records unless its carried Bundle is
-    # an empty-history Bundle, which shows no history.
+    # an empty-history Bundle, which shows no history. A History member with a
+    # join view counts as having records.
     with_records: list = []
     empty: list = []
     for m in (a, b):
         if m.outcome != "artifact":
             continue
-        if m.body is not None and is_empty_history(m.body):
+        if not m.history and m.body is not None and is_empty_history(m.body):
             empty.append(m)
         else:
             with_records.append(m)
+    keyed = j.basis in _HISTORY_BASES
     if not with_records:
-        return "unjoined", []
+        return "unjoined", [], []
     if len(with_records) == 1:
-        if not empty or j.basis != "controller_binding":
-            return "one_sided", []
-        # controller_binding still derives against an empty-history member,
-        # from the key that signed its checkpoint at that checkpoint's time.
-        full = with_records[0]
-        if j.pointer is None:
-            return "", []
-        record = _root_record(full)
-        side = _checkpoint_side(empty[0].body)
-        if record is None or side is None:
-            return "", []
-        linked, derivable = _controller_binding_link(j, _record_side(record, j.pointer), side, opts)
+        if not empty or not keyed:
+            return "one_sided", [], []
+        # controller_binding and same_key still derive against an empty-history
+        # member, from the key that signed its checkpoint at that time.
+        sides = _key_sides(j, (with_records[0], empty[0]), views)
+        if sides is None:
+            return "", [], []
+        linked, derivable = _keyed_link(j, sides[0], sides[1], opts)
         if not derivable:
-            return "", []
-        return ("one_sided" if linked else "unjoined"), []
-    ra, rb = _root_record(a), _root_record(b)
-    if ra is None or rb is None:
-        return "", []
-    if j.basis == "pre_agreed_identifier":
-        linked = (
-            j.pointer is not None
-            and j.identifier is not None
-            and _identifier_matches(ra, j.pointer, j.identifier)
-            and _identifier_matches(rb, j.pointer, j.identifier)
-        )
-    elif j.basis == "shared_artifact_digest":
-        linked = False
-        if j.pointer is not None:
-            okay_a, va = _resolve_pointer(ra, j.pointer)
-            okay_b, vb = _resolve_pointer(rb, j.pointer)
-            linked = okay_a and okay_b and isinstance(va, str) and isinstance(vb, str) and va == vb
-    elif j.basis == "controller_binding":
-        if j.pointer is None:
-            return "", []
-        linked, derivable = _controller_binding_link(j, _record_side(ra, j.pointer), _record_side(rb, j.pointer), opts)
+            return "", [], []
+        if linked:
+            return "one_sided", [], []
+        return "unjoined", [], _join_keys(j, (with_records[0], empty[0]), sides)
+    if keyed:
+        sides = _key_sides(j, (a, b), views)
+        if sides is None:
+            return "", [], []
+        linked, derivable = _keyed_link(j, sides[0], sides[1], opts)
         if not derivable:
-            return "", []
+            return "", [], []
+        if not linked:
+            return "unjoined", [], _join_keys(j, (a, b), sides)
     else:
-        return "", []
-    if not linked:
-        return "unjoined", []
+        ra, rb = _root_record(a), _root_record(b)
+        if ra is None or rb is None:
+            return "", [], []
+        if j.basis == "pre_agreed_identifier":
+            linked = (
+                j.pointer is not None
+                and j.identifier is not None
+                and _identifier_matches(ra, j.pointer, j.identifier)
+                and _identifier_matches(rb, j.pointer, j.identifier)
+            )
+        elif j.basis == "shared_artifact_digest":
+            linked = False
+            if j.pointer is not None:
+                okay_a, va = _resolve_pointer(ra, j.pointer)
+                okay_b, vb = _resolve_pointer(rb, j.pointer)
+                linked = okay_a and okay_b and isinstance(va, str) and isinstance(vb, str) and va == vb
+        else:
+            return "", [], []
+        if not linked:
+            return "unjoined", [], []
     differences = []
     for pointer in j.compare:
-        okay_a, va = _resolve_pointer(ra, pointer)
-        okay_b, vb = _resolve_pointer(rb, pointer)
+        # A History member has no root record: no compare pointer resolves in it.
+        okay_a, va = _resolve_pointer(_root_record(a), pointer) if not a.history else (False, None)
+        okay_b, vb = _resolve_pointer(_root_record(b), pointer) if not b.history else (False, None)
         if okay_a and okay_b:
             try:
                 if jcs(va) == jcs(vb):
@@ -445,8 +679,137 @@ def _derived_state(j: _Join, by_id: dict, missing: dict, opts: ComposedOptions):
             JoinDifference(pointer, [JoinValue(a.id, okay_a, va), JoinValue(b.id, okay_b, vb)])
         )
     if differences:
-        return "mismatch", differences
-    return "agree", []
+        return "mismatch", differences, []
+    return "agree", [], []
+
+
+def _key_sides(j: _Join, members: tuple, views: dict) -> tuple | None:
+    """Each member's side of a controller_binding or same_key join, or
+    ``None`` when one has none: not derivable. The key and its time come from
+    :func:`_member_key`; under controller_binding a ``pointer``, when present,
+    must select that same key in a root record."""
+    sides = []
+    for m in members:
+        found = _member_key(m, views)
+        if found is None:
+            return None
+        side, _source = found
+        if j.basis == "controller_binding" and j.pointer is not None and not m.history:
+            record = _root_record(m)
+            if record is not None:
+                okay, value = _resolve_pointer(record, j.pointer)
+                if not okay or value != side.key:
+                    return None
+        sides.append(side)
+    return tuple(sides)
+
+
+KEY_SOURCE_RECORD_SIGNATURE = "record_signature"
+KEY_SOURCE_LOG_CHECKPOINT = "log_checkpoint"
+KEY_SOURCE_HISTORY = "history"
+KEY_SOURCE_NONE = "none"
+
+
+def _member_key(m: _Member, views: dict) -> tuple | None:
+    """A member's key, its time and where the key came from (-03 "Joins"):
+    a History member's join view (``history``); an empty-history Bundle's
+    checkpoint signer at that checkpoint's time (``log_checkpoint``); for a
+    member Bundle with records, the key its root record's producer signature
+    verifies under at the record's time (``record_signature``) or, for a root
+    record that carries neither ``signature`` nor ``key_id``, the key that
+    signed the Bundle's checkpoint at that checkpoint's time, when the record's
+    identity and its own membership under that checkpoint hold
+    (``log_checkpoint``). ``None`` when it has no key: a present signature
+    that fails never falls back to the checkpoint key."""
+    from .bundle import is_empty_history, record_logged_under_checkpoint
+
+    if m.body is None:
+        return None
+    if m.history:
+        view = views.get(m.id)
+        return (_Side(view.key, True, view.at, True), KEY_SOURCE_HISTORY) if view is not None else None
+    if is_empty_history(m.body):
+        side = _checkpoint_side(m.body)
+        return (side, KEY_SOURCE_LOG_CHECKPOINT) if side is not None else None
+    record = _root_record(m)
+    if record is None:
+        return None
+    if "signature" in record or "key_id" in record:
+        side = _signer_side(record)
+        return (side, KEY_SOURCE_RECORD_SIGNATURE) if side is not None else None
+    signed = record_logged_under_checkpoint(m.body, record.get("capsule_id"))
+    if signed is None or not isinstance(signed.get("key_id"), str):
+        return None
+    at = _record_time(signed.get("timestamp"))
+    return _Side(signed["key_id"], True, at or (0, 0), at is not None), KEY_SOURCE_LOG_CHECKPOINT
+
+
+def _key_sources(j: _Join, by_id: dict, views: dict) -> list:
+    """Where each side's key came from, in the join's member order, on every
+    controller_binding and same_key join, whatever it derived. A member with
+    no key reports ``none``."""
+    if j.basis not in _HISTORY_BASES:
+        return []
+    out = []
+    for member_id in j.members:
+        m = by_id[member_id]
+        found = _member_key(m, views) if m.outcome == "artifact" else None
+        out.append(KeySource(member_id, found[1] if found is not None else KEY_SOURCE_NONE))
+    return out
+
+
+def _join_keys(j: _Join, members: tuple, sides: tuple) -> list:
+    """Each member's key, in the join's member order, for a same_key join
+    that derives unjoined."""
+    if j.basis != "same_key":
+        return []
+    by_id = {m.id: side.key for m, side in zip(members, sides)}
+    return [JoinKey(member, by_id[member]) for member in j.members]
+
+
+def _keyed_link(j: _Join, a: _Side, b: _Side, opts: ComposedOptions) -> tuple[bool, bool]:
+    """``(linked, derivable)`` for a controller_binding or same_key join."""
+    if j.basis == "same_key":
+        return a.ok_key and b.ok_key and a.key == b.key, True
+    return _controller_binding_link(j, a, b, opts)
+
+
+def _signer_side(record: Mapping[str, Any]) -> _Side | None:
+    """A root record's same_key side: its ``key_id`` when its producer
+    signature verifies under that key, never a key it merely names; ``None``
+    for a record that is unsigned or whose signature does not verify."""
+    try:
+        from .producer_envelope import AUTHORED, verify_record_signature
+    except ImportError:
+        # No signature verifier installed: the record gives no key, so the
+        # join is not derivable, never a crash.
+        return None
+    verdict, _ = verify_record_signature(dict(record))
+    key = record.get("key_id")
+    if verdict != AUTHORED or not isinstance(key, str):
+        return None
+    at = _record_time(record.get("timestamp"))
+    return _Side(key, True, at or (0, 0), at is not None)
+
+
+def _history_times(j: _Join, by_id: dict, views: dict) -> HistoryTimes | None:
+    """For a join between a History member with a join view and a member
+    with a root record: both times and how they compare, as facts."""
+    a, b = by_id[j.members[0]], by_id[j.members[1]]
+    for history, other in ((a, b), (b, a)):
+        if history.id not in views:
+            continue
+        record = _root_record(other)
+        if record is None:
+            return None
+        stated = record.get("timestamp")
+        at = _record_time(stated)
+        if at is None:
+            return None
+        view = views[history.id]
+        relation = "before" if view.at < at else "after" if view.at > at else "equal"
+        return HistoryTimes(history.id, view.time, other.id, stated, relation)
+    return None
 
 
 def _identifier_matches(record: Mapping[str, Any], pointer: str, digest: str) -> bool:
@@ -474,6 +837,9 @@ def _corroboration(j: _Join, derived: str, by_id: dict, observers: dict) -> Corr
     # their keys are not independent issuers (bundle -02).
     if j.basis == "controller_binding":
         out.reasons.append("controller_binding")
+    # A same_key agreement is one key signing or answering for both members.
+    if j.basis == "same_key":
+        out.reasons.append("same_key")
     if out.reasons:
         out.result = "redundant"
         out.reason = out.reasons[0]
@@ -507,15 +873,6 @@ def _record_time(value: Any) -> tuple[int, int] | None:
         head, fraction = value[:-1].split(".", 1)
         value = f"{head}.{fraction[:9]}Z"
     return parse_utc(value)
-
-
-def _record_side(record: Mapping[str, Any], pointer: str) -> _Side:
-    """The key identifier ``pointer`` selects in a root record, and the
-    record's timestamp. Asserted as a string: two resolved objects would not
-    compare."""
-    _, raw = _resolve_pointer(record, pointer)
-    at = _record_time(record.get("timestamp"))
-    return _Side(raw if isinstance(raw, str) else "", isinstance(raw, str), at or (0, 0), at is not None)
 
 
 def _checkpoint_side(body: Mapping[str, Any]) -> _Side | None:
@@ -819,11 +1176,19 @@ def _parse_member(raw: Any, observers: set) -> tuple[_Member, str]:
     if not isinstance(m.outcome, str) or m.outcome not in _OUTCOMES:
         return m, "outcome"
     body_key = _OUTCOMES[m.outcome]
+    if m.outcome == "artifact" and "history" in raw:
+        if "bundle" in raw:
+            return m, "artifact_body_conflict"
+        body_key = "history"
     # A body under another outcome's member name would convert one outcome
     # into another; the outcomes are never converted.
-    for other in _OUTCOMES.values():
+    for other in _BODY_KEYS:
         if other in raw and other != body_key:
             return m, "body_outcome_conflict"
+    if "response" in raw and body_key == "history":
+        # The envelope is the History's response, and it is digest-covered;
+        # a response member beside it is not.
+        return m, "history_response"
     if "response" in raw:
         response = raw["response"]
         if (m.outcome != "artifact" or not isinstance(response, dict) or not _is_digest(response.get("request_digest"))
@@ -839,6 +1204,10 @@ def _parse_member(raw: Any, observers: set) -> tuple[_Member, str]:
         if not _is_digest(body.get("request_digest")) or not isinstance(body.get("reason"), str) \
                 or not isinstance(body.get("issued_at"), str):
             return m, "refusal_body"
+    elif body_key == "history":
+        if not _history_shape(body):
+            return m, "history_body"
+        m.history = True
     elif m.outcome == "absence":
         window = body.get("window")
         if (not _is_digest(body.get("request_digest")) or not isinstance(window, dict)
@@ -850,6 +1219,27 @@ def _parse_member(raw: Any, observers: set) -> tuple[_Member, str]:
             return m, "absence_body"
     m.body = body
     return m, ""
+
+
+def _history_shape(body: Mapping[str, Any]) -> bool:
+    """The ``history`` body's form (-03 "History Members"); a body outside it
+    makes the block malformed."""
+    env = body.get("envelope")
+    if not isinstance(env, dict):
+        return False
+    subject = env.get("subject")
+    anchor = env.get("anchor")
+    return (
+        isinstance(subject, dict) and list(subject) == ["full_history"] and subject["full_history"] is None
+        and "derivation" in env
+        and _is_digest(env.get("responder"))
+        and isinstance(env.get("sig"), str)
+        and _b64url(env.get("artifact")) is not None
+        and _is_digest(env.get("artifact_digest"))
+        and _is_digest(env.get("request_digest"))
+        and isinstance(anchor, dict) and _is_digest(anchor.get("digest"))
+        and _b64url(body.get("anchor_checkpoint")) is not None
+    )
 
 
 def _parse_join(raw: Any, members: set) -> tuple[_Join, str]:
@@ -891,6 +1281,9 @@ def _parse_join(raw: Any, members: set) -> tuple[_Join, str]:
                 return j, "compare"
             j.compare.append(pointer)
         j.compare_carried = True
+    if j.basis == "same_key" and (j.pointer is not None or j.identifier is not None or j.compare_carried):
+        # same_key reads each member's own key: nothing to select or compare.
+        return j, "same_key_members"
     return j, ""
 
 

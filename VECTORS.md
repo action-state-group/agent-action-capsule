@@ -87,6 +87,8 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/bundle/vectors.json` | `draft-mih-zhang-agent-disclosure-bundle-00` | pack, verify | 14 |
 | `vectors/bundle/composed/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`composed/v1`); -02 for the join order | pack, verify | 9 |
 | `vectors/bundle/composed-controller-binding/` | `draft-mih-zhang-agent-disclosure-bundle-02` (`composed/v1` `controller_binding`, empty-history members) | verify | 14 |
+| `vectors/bundle/composed-history/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`composed/v1` History members, `same_key`) | verify | 30 |
+| `vectors/bundle/composed-key-source/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`composed/v1` member keys, #663) | verify | 18 |
 | `vectors/bundle/non-record-leaves/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Non-Record Leaves) | verify | 26 |
 | `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 9 |
 | `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 34 |
@@ -128,6 +130,7 @@ its 11 `record_signatures`.
 | `vectors/card-registration-v0/` | `spec/standard-history-v0.md` §13 | verify | 49 |
 | `vectors/coverage-declaration-v0/` | `spec/interop-profile-v0.md` §6.7 | evaluate, verify | 13 |
 | `vectors/controller-binding-v0/` | `spec/controller-binding-v0.md` | verify | 42 |
+| `vectors/person-signature-v0/` | `spec/person-signature-v0.md` | verify | 55 |
 | `vectors/personal-history-basic-v0/` | `spec/personal-agent-history-profile-v0.md` §6.4 (Basic) | respond, verify | 23 |
 | `vectors/personal-history-outcome-v0/` | `spec/personal-agent-history-outcome-v0.md` (Outcome) | respond, evaluate | 29 |
 | `vectors/standard-history-v0/` | `spec/standard-history-v0.md` (`standard_history/1` to `standard_history/4`) | evaluate, report | 77 |
@@ -140,7 +143,7 @@ its 11 `record_signatures`.
 
 | Set | Owning specification | Verbs | Cases |
 |---|---|---|---|
-| `vectors/evidence-result/` | `spec/evidence-result-v0.md` (including `plan_ref`, `dataset_ref` and `applicability_as_of`) | evaluate, report | 92 |
+| `vectors/evidence-result/` | `spec/evidence-result-v0.md` (including `plan_ref`, `dataset_ref`, `reason` and `applicability_as_of`) | evaluate, report | 102 |
 | `vectors/evidence-dataset/` | `spec/evidence-plan-ir-v0.md` §5.1, §6.2 (dataset plans and datasets) | evaluate | 32 |
 | `vectors/deal-reconcile-v0/` | `spec/deal-reconcile-contract-v0.md` (`ec:deal-reconcile@1`) | evaluate | 14 |
 | `vectors/judge/` | `spec/judge-record-family-v1.md` | record, evaluate | 20 |

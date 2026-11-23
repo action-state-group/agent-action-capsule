@@ -118,9 +118,9 @@ func TestVectorsParity(t *testing.T) {
 			t.Errorf("%s is neither pos- nor neg-", name)
 		}
 	}
-	assert.Equal(t, 25, positives)
-	assert.Equal(t, 67, negatives)
-	assert.Equal(t, 18, sidecars)
+	assert.Equal(t, 27, positives)
+	assert.Equal(t, 75, negatives)
+	assert.Equal(t, 19, sidecars)
 	for name := range crossElementNegatives {
 		_, err := os.Stat(filepath.Join(vectorsDir, name+".json"))
 		assert.NoError(t, err, "cross-element negative %s has no vector", name)
@@ -160,6 +160,41 @@ func TestCheckReturnsTheClaims(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, claims[1].Reconcile)
 	assert.Equal(t, "408", claims[1].Reconcile.Tallies["matched"].String())
+}
+
+// Section 4.4: reason is carried through and read by no rule. The reason
+// positive without its reasons checks to the same claims, less Reason.
+func TestReasonIsDisplayOnly(t *testing.T) {
+	doc, records := load(t, "pos-example-org-reason-result")
+	claims, err := Check(doc, records)
+	require.NoError(t, err)
+	reasons := map[string]string{}
+	for _, claim := range claims {
+		reasons[claim.ID] = claim.Reason
+	}
+	assert.Equal(t, map[string]string{
+		"claim-1": "counterparty_leg_signer_not_trusted",
+		"claim-2": "counterparty_leg_signature_did_not_verify",
+		"claim-3": "capsule_signature_did_not_verify",
+	}, reasons)
+
+	bare, _ := load(t, "pos-example-org-reason-result")
+	for _, item := range bare["claims"].([]interface{}) {
+		delete(item.(map[string]interface{}), "reason")
+	}
+	plain, _ := load(t, "pos-example-org-claims-result")
+	assert.Equal(t, plain, bare, "the reason positive is the claims positive plus reason")
+	without, err := Check(bare, records)
+	require.NoError(t, err)
+	for i := range claims {
+		claims[i].Reason = ""
+	}
+	assert.Equal(t, without, claims)
+
+	doc, records = load(t, "pos-example-org-reason-unregistered-result")
+	claims, err = Check(doc, records)
+	require.NoError(t, err, "an unregistered token is valid")
+	assert.Equal(t, "later_revision_reason", claims[1].Reason)
 }
 
 // A close claim is never accepted unchecked: without the records it cites,

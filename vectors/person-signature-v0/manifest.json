@@ -1,0 +1,13 @@
+{
+  "set": "aac-person-signature-v0",
+  "status": "Conformance vectors for the informational Person Signature v0 (spec/person-signature-v0.md). Every key is a test key derived from a public seed, and the relying party and origins are example names; never use one for anything else.",
+  "spec": "spec/person-signature-v0.md",
+  "generator": "python/scripts/generate_person_signature_v0_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "ac16cb7955b71efdf9d6f9044e86653a57fb2d2429b807737ba346fe28f8ac04",
+      "count": 55
+    }
+  ]
+}
