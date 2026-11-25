@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- `bundle::composed`: Evidence Bundle -03 member keys under `controller_binding` and `same_key` (agent-action-capsule#663), at parity with Python, Go and TypeScript on `vectors/bundle/composed-key-source/`.
+
+- Check 8 reports a well-formed `references` entry whose `type` is not `agent-action-capsule` as
+  the informational finding `reference_type_unresolved` (CPB Unresolved, cause `context`; never a
+  rejection), matching draft-06 and the other verifiers (#412).
+- Removed: the embedded `data/cpb_provisional.json`, `registries::provisional_values`,
+  `registries::ProvisionalValues`, the check-8 `registry_snapshot_unavailable` warning and the
+  check-8 `known_provisional_registry_value` finding (#418).
+  The embedded snapshot listed no capsule field values, so no input produced that finding.
+
+- `verify_store` and `verify` with a store enforce the deferral binding rule of the -06 in-tree
+  draft (AAC#321). A `supersedes` over an open or `expired` parent carries the parent's
+  `action_id`. An `executed` closure, and any Capsule in that chain that carries an Effect Record,
+  carries the `effect.type` and `request_digest` of the first Effect Record up the chain of open
+  and `expired` parents. Each Capsule on that chain is found by recomputed `capsule_id`. Codes `supersedes_action_mismatch`,
+  `supersedes_effect_type_mismatch`, `supersedes_request_digest_mismatch` (check 6, error) and
+  `deferral_binding_not_evaluated` (check 6, info); a violating closure is never the authoritative
+  supersedes. Passes the new `vectors/capsule/` store cases.
+
 ## 0.14.0 — 2026-11-22
 
 Tag `crates/agent-action-capsule-v0.14.0`.
