@@ -27,7 +27,7 @@
     <keyword>audit</keyword>
     <keyword>verdict</keyword>
     <abstract>
-      <?line 123?>
+      <?line 134?>
 
 <t>This document defines a SCITT statement profile for recording what an AI
 agent did: the Agent Action Capsule. A Capsule is a digest-committed record
@@ -44,14 +44,14 @@ auditor-grade evidence that a gate worked.</t>
     </abstract>
     <note>
       <name>Note to Readers</name>
-      <?line 138?>
+      <?line 149?>
 
 <t>This document is an individual submission. The intended venue for
 discussion is the SCITT Working Group (scitt@ietf.org).</t>
     </note>
   </front>
   <middle>
-    <?line 143?>
+    <?line 154?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -1932,6 +1932,21 @@ untouched, recording that an action was taken under a stated authorization
 without asserting the authority. This specification is complementary; the
 profile is deliberately agnostic to the delegation mechanism, and such
 bindings compose by shared action digest.</t>
+      <t><strong>Logs and checkpoints.</strong> Several drafts commit their records to a log
+of their own. <xref target="I-D.malhotra-scitt-oar"/> maps its statements onto a
+record format in which a sealing service seals them and issues signed
+checkpoints; <xref target="I-D.noa-scitt-ai-agent-receipt"/> defines a separately
+signed checkpoint (<tt>noa.checkpoint/0.1</tt>) asserting a receipt chain's
+head; and <xref target="I-D.kamimura-scitt-vcp"/> binds each anchored batch's Merkle
+root in an AnchorRecord. The Checkpointed Local Log
+<xref target="I-D.mih-scitt-checkpointed-local-log"/> is a producer-operated log of the
+same kind that defines no payload semantics, so one log can carry
+Capsules and records of any other type side by side. Its signed
+checkpoints are SCITT Signed Statements that can be registered with one
+or more Transparency Services, and inclusion and consistency proofs
+against a registered checkpoint give a relying party order,
+contemporaneity and completeness for every record in the log, whatever
+its type. This profile does not require it.</t>
     </section>
     <section anchor="future">
       <name>Future Work</name>
@@ -2310,6 +2325,155 @@ under Apache-2.0.</t>
 (<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/producer-envelope"/>), JSON nesting
 (<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/json-nesting"/>) and cross-language checks
 (<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/cross-language"/>).</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="scitt-cose">
+        <name>scitt-cose</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/scitt-cose"/>, a Python library (release 0.5.0) that verifies SCITT
+Signed Statements and COSE Receipts (<xref target="RFC9942"/>) under the
+<tt>RFC9162_SHA256</tt> and CCF tree algorithms, and verifies a Checkpointed
+Local Log's inclusion and consistency proofs against a checkpoint. It
+carries no application profile: a statement's payload is opaque to it.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Pre-1.0 releases.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>Verification of the Receipt over a registered Capsule ID
+(<xref target="projection"/>), which this profile leaves to the transparency
+substrate.</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>Apache-2.0.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/scitt-cose/issues"/></t>
+          </dd>
+          <dt>Test vectors:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/scitt-cose/tree/main/test-vectors"/></t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="capsule-anchor">
+        <name>capsule-anchor</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/capsule-anchor"/> (release 0.1.4), a SCITT Transparency Service
+(<xref target="RFC9943"/>) that registers a SHA-256 digest, a Signed Statement or a
+checkpoint and returns a COSE Receipt carrying an RFC 9162 inclusion
+proof. A public instance runs at <eref target="https://witness.agentactioncapsule.org"/>.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Pre-1.0 releases; the public instance is operated by the organization
+above.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>Registration of a Capsule ID (<xref target="projection"/>).</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>Apache-2.0.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/capsule-anchor/issues"/></t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="checkpointed-local-log">
+        <name>checkpointed-local-log</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/checkpointed-local-log"/>, implementations of
+<xref target="I-D.mih-scitt-checkpointed-local-log"/> in Python (release 0.9.0), Go
+(release 0.4.0), TypeScript (release 0.4.0) and Rust (release 0.6.0): an
+append-only local log, its Merkle Mountain Range, and signed checkpoints
+that can be registered with a Transparency Service.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Pre-1.0 releases.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>A log that can carry Capsules alongside records of other types
+under one checkpoint (<xref target="related"/>).</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>BSD-3-Clause.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/checkpointed-local-log/issues"/></t>
+          </dd>
+          <dt>Test vectors:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/checkpointed-local-log/tree/main/mmr-conformance-vectors"/>,
+<eref target="https://github.com/action-state-group/checkpointed-local-log/tree/main/checkpoint-conformance-vectors"/>
+and <eref target="https://github.com/action-state-group/checkpointed-local-log/tree/main/commitment-conformance-vectors"/>.</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="cose-deterministic-encodings">
+        <name>cose-deterministic-encodings</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/cose-deterministic-encodings"/>, the source of
+draft-mih-sokolov-cose-deterministic-encodings with a minimal emitter and
+verifier, in Python and in Go, for the COSE Hash Envelope parameter that
+names the deterministic encoding applied before hashing. This profile
+does not require it.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Reference code; no release.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>That draft's <tt>deterministic-encodings</tt> header parameter.</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>BSD-3-Clause for the code; the draft text is under BCP 78.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/cose-deterministic-encodings/issues"/></t>
+          </dd>
+          <dt>Test vectors:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/cose-deterministic-encodings/blob/main/vectors/vectors.json"/></t>
           </dd>
         </dl>
       </section>
@@ -3041,6 +3205,92 @@ disclosure of JSON Web Token (JWT) claims.</t>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-mih-sato-agent-accountability-composition-02"/>
         </reference>
+        <reference anchor="I-D.mih-scitt-checkpointed-local-log">
+          <front>
+            <title>The Checkpointed Local Log (CLL)</title>
+            <author initials="S." surname="Mih" fullname="Steven Mih">
+              <organization>Action State Group, Inc.</organization>
+            </author>
+            <date year="2026" month="October" day="14"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-mih-scitt-checkpointed-local-log-02"/>
+        </reference>
+        <reference anchor="I-D.malhotra-scitt-oar">
+          <front>
+            <title>Open Action Record (OAR): Authority, Approval and Outcome Evidence for AI Agent Actions</title>
+            <author fullname="Ravish Malhotra" initials="R." surname="Malhotra">
+         </author>
+            <date day="18" month="November" year="2026"/>
+            <abstract>
+              <t>   Several profiles record what an AI agent was asked to do, and the
+   decision taken, as signed statements registered with a transparency
+   service.  Protocols for agent identity and delegated authorization
+   say whether an agent may ask.  After an incident or in a dispute,
+   three further questions decide the case: were the authorizations the
+   action relied on still valid when it committed, did a named person
+   approve this exact action, and did the action change the system of
+   record as recorded?
+
+   This document defines evidence that any agent action profile can add
+   to answer them: an authority set that binds the digests of the
+   outside authorizations an action relied on to that one action, with a
+   re-check recorded at the moment it commits; an approval binding that
+   ties a person's confirmation, by a passkey or an outside approval
+   service, to the exact action and to what the person was shown; salted
+   commitments to the affected state before and after execution; an
+   outcome confirmation made by reading the system of record; and three
+   outcome classes a relying party can act on.  Values are hidden behind
+   salted commitments and can be disclosed field by field.  The
+   constructions are implemented in the Open Action Record (OAR) format,
+   with three verifiers that agree on published test vectors.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-malhotra-scitt-oar-00"/>
+        </reference>
+        <reference anchor="I-D.noa-scitt-ai-agent-receipt">
+          <front>
+            <title>A SCITT Profile for AI-Agent Action Receipts</title>
+            <author fullname="Tora Toraman" initials="T." surname="Toraman">
+              <organization>NordenSoft</organization>
+            </author>
+            <date day="14" month="August" year="2026"/>
+            <abstract>
+              <t>   This document profiles the IETF SCITT (Supply Chain Integrity,
+   Transparency, and Trust) architecture for AI-agent action receipts:
+   tamper-evident, signed, offline-verifiable records of what an
+   autonomous agent was recorded as doing at the governed boundary,
+   under which recorded principal class, with what recorded verdict, and
+   -- where the issuer records one -- under which policy identity.  Each
+   receipt is a signed record over a canonical JSON payload, hash-
+   chained so that each record commits to its predecessor, and presented
+   either bare -- the payload with its own native signature -- or
+   enveloped in a COSE_Sign1.  This revision specifies how such a
+   receipt is carried as a SCITT Signed Statement, with the protected
+   claims a Transparency Service requires, so that a receipt can be
+   registered.  Registration obtains a Transparency Service's signed
+   proof that the statement was registered in its log -- a property a
+   self-signed chain cannot provide alone.  It does not, by itself, give
+   an offline holder non-equivocation: that requires consistency proofs
+   and monitoring of the log, which this profile does not specify.  The
+   profile makes a deliberately narrow, checkable claim: this is an
+   issuer-authenticated, signature-verifiable, tamper-evident record of
+   the action, the recorded principal class, the recorded verdict, and
+   any policy identity the receipt carries.  It explicitly does not
+   claim that the agent was correct, safe, or wise, that the recorded
+   inputs were true or complete, that a named approver authorized this
+   exact action before it ran, that a downstream controller succeeded,
+   or that any physical effect occurred.  This revision separates those
+   last three as distinct claims with independent failure behaviour,
+   states the boundary of a shared action digest, and keeps a
+   deterministic offline policy-replay capability out of scope.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-noa-scitt-ai-agent-receipt-01"/>
+        </reference>
         <reference anchor="I-D.mih-agent-bilateral-attestation">
           <front>
             <title>Bilateral Attestation of Cross-Organization Agent Actions</title>
@@ -3090,7 +3340,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 2116?>
+    <?line 2253?>
 
 <section anchor="changes-from-05">
       <name>Changes from draft-mih-scitt-agent-action-capsule-05</name>
@@ -3099,6 +3349,10 @@ before publication.</t>
       <ul spacing="normal">
         <li>
           <t>Implementation Status: added (<xref target="impl-status"/>), following RFC 7942.</t>
+        </li>
+        <li>
+          <t>Related Work: a paragraph on logs and checkpoints, and what the
+Checkpointed Local Log adds for every record type (<xref target="related"/>).</t>
         </li>
         <li>
           <t>References: draft-mih-sokolov-scitt-payload-binding-06,

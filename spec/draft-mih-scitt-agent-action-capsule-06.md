@@ -91,6 +91,17 @@ informative:
       - ins: A. Sokolov
         name: Anton Sokolov
     date: 2026-11-02
+  I-D.mih-scitt-checkpointed-local-log:
+    title: "The Checkpointed Local Log (CLL)"
+    seriesinfo:
+      Internet-Draft: draft-mih-scitt-checkpointed-local-log-02
+    author:
+      - ins: S. Mih
+        name: Steven Mih
+        organization: Action State Group, Inc.
+    date: 2026-10-14
+  I-D.malhotra-scitt-oar:
+  I-D.noa-scitt-ai-agent-receipt:
   I-D.mih-agent-bilateral-attestation:
     title: "Bilateral Attestation of Cross-Organization Agent Actions"
     seriesinfo:
@@ -1690,6 +1701,22 @@ without asserting the authority. This specification is complementary; the
 profile is deliberately agnostic to the delegation mechanism, and such
 bindings compose by shared action digest.
 
+**Logs and checkpoints.** Several drafts commit their records to a log
+of their own. {{I-D.malhotra-scitt-oar}} maps its statements onto a
+record format in which a sealing service seals them and issues signed
+checkpoints; {{I-D.noa-scitt-ai-agent-receipt}} defines a separately
+signed checkpoint (`noa.checkpoint/0.1`) asserting a receipt chain's
+head; and {{I-D.kamimura-scitt-vcp}} binds each anchored batch's Merkle
+root in an AnchorRecord. The Checkpointed Local Log
+{{I-D.mih-scitt-checkpointed-local-log}} is a producer-operated log of the
+same kind that defines no payload semantics, so one log can carry
+Capsules and records of any other type side by side. Its signed
+checkpoints are SCITT Signed Statements that can be registered with one
+or more Transparency Services, and inclusion and consistency proofs
+against a registered checkpoint give a relying party order,
+contemporaneity and completeness for every record in the log, whatever
+its type. This profile does not require it.
+
 # Future Work {#future}
 
 The companion Internet-Draft {{I-D.mih-agent-bilateral-attestation}}
@@ -1977,6 +2004,116 @@ Conformance vectors:
   ([](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/json-nesting)) and cross-language checks
   ([](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/cross-language)).
 
+## scitt-cose
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/scitt-cose), a Python library (release 0.5.0) that verifies SCITT
+  Signed Statements and COSE Receipts ({{RFC9942}}) under the
+  `RFC9162_SHA256` and CCF tree algorithms, and verifies a Checkpointed
+  Local Log's inclusion and consistency proofs against a checkpoint. It
+  carries no application profile: a statement's payload is opaque to it.
+
+Level of maturity:
+: Pre-1.0 releases.
+
+Coverage:
+: Verification of the Receipt over a registered Capsule ID
+  ({{projection}}), which this profile leaves to the transparency
+  substrate.
+
+Licensing:
+: Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/scitt-cose/issues)
+
+Test vectors:
+: [](https://github.com/action-state-group/scitt-cose/tree/main/test-vectors)
+
+## capsule-anchor
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/capsule-anchor) (release 0.1.4), a SCITT Transparency Service
+  ({{RFC9943}}) that registers a SHA-256 digest, a Signed Statement or a
+  checkpoint and returns a COSE Receipt carrying an RFC 9162 inclusion
+  proof. A public instance runs at [](https://witness.agentactioncapsule.org).
+
+Level of maturity:
+: Pre-1.0 releases; the public instance is operated by the organization
+  above.
+
+Coverage:
+: Registration of a Capsule ID ({{projection}}).
+
+Licensing:
+: Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/capsule-anchor/issues)
+
+## checkpointed-local-log
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/checkpointed-local-log), implementations of
+  {{I-D.mih-scitt-checkpointed-local-log}} in Python (release 0.9.0), Go
+  (release 0.4.0), TypeScript (release 0.4.0) and Rust (release 0.6.0): an
+  append-only local log, its Merkle Mountain Range, and signed checkpoints
+  that can be registered with a Transparency Service.
+
+Level of maturity:
+: Pre-1.0 releases.
+
+Coverage:
+: A log that can carry Capsules alongside records of other types
+  under one checkpoint ({{related}}).
+
+Licensing:
+: BSD-3-Clause.
+
+Contact:
+: [](https://github.com/action-state-group/checkpointed-local-log/issues)
+
+Test vectors:
+: [](https://github.com/action-state-group/checkpointed-local-log/tree/main/mmr-conformance-vectors),
+  [](https://github.com/action-state-group/checkpointed-local-log/tree/main/checkpoint-conformance-vectors)
+  and [](https://github.com/action-state-group/checkpointed-local-log/tree/main/commitment-conformance-vectors).
+
+## cose-deterministic-encodings
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/cose-deterministic-encodings), the source of
+  draft-mih-sokolov-cose-deterministic-encodings with a minimal emitter and
+  verifier, in Python and in Go, for the COSE Hash Envelope parameter that
+  names the deterministic encoding applied before hashing. This profile
+  does not require it.
+
+Level of maturity:
+: Reference code; no release.
+
+Coverage:
+: That draft's `deterministic-encodings` header parameter.
+
+Licensing:
+: BSD-3-Clause for the code; the draft text is under BCP 78.
+
+Contact:
+: [](https://github.com/action-state-group/cose-deterministic-encodings/issues)
+
+Test vectors:
+: [](https://github.com/action-state-group/cose-deterministic-encodings/blob/main/vectors/vectors.json)
+
 # Security Considerations {#security}
 
 The tamper-evidence-versus-runtime-honesty boundary — that the envelope
@@ -2121,6 +2258,8 @@ This appendix is non-normative. RFC Editor: please remove this appendix
 before publication.
 
 * Implementation Status: added ({{impl-status}}), following RFC 7942.
+* Related Work: a paragraph on logs and checkpoints, and what the
+  Checkpointed Local Log adds for every record type ({{related}}).
 * References: draft-mih-sokolov-scitt-payload-binding-06,
   draft-mih-agent-bilateral-attestation-03 and
   draft-mih-sato-agent-accountability-composition-02; third-party drafts at
