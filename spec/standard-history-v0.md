@@ -674,12 +674,11 @@ records give a later `agreed_at` cannot fill the deal's entry, so it cannot answ
 with reason `no_such_subject`, as for a row result it cannot compute. A verifier that forms the
 deal entries from the whole-shelf handover (§11.7) and holds a deal's first witnessed time checks
 it: an entry whose `agreed_at` is later by more than 300 seconds is not well formed, so the counts
-cannot be derived from the entries and `counts_recompute` is `FAIL`. A deal with no witnessed time
-is not checked: under `/3` it carries `left_out` when its agreement names witnesses, and under `/4`
-it carries `no_witness_time` (§12). This is a rule on filling `agreed_at`, as SH-2 leaves the rest
-of the entry to the host's mapping; it changes no member, value list or counting rule, so `/3` and
-`/4` keep their tokens, documents and vectors. A verifier that applies it may report `FAIL` for a
-card an earlier verifier passed: such a card's `agreed_at` contradicts its own witnessed records.
+cannot be derived from the entries and `counts_recompute` is `FAIL`. A deal with no first witnessed
+time is not checked. This is a rule on filling `agreed_at`, as SH-2 leaves the rest of the entry to
+the host's mapping; it changes no member, value list or counting rule, so `/3` and `/4` keep their
+tokens, documents and vectors. A verifier that applies it may report `FAIL` for a card an earlier
+verifier passed: such a card's `agreed_at` contradicts its own witnessed records.
 
 ### 11.3 The outcome
 
