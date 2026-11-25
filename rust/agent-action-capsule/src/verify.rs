@@ -14,7 +14,7 @@ use crate::canonical::{
     compute_capsule_id, float_paths_limited, unsafe_int_paths_limited, CanonicalError,
 };
 use crate::references::reference_findings;
-use crate::registries::{provisional_values, Registries};
+use crate::registries::Registries;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -768,18 +768,6 @@ pub fn verify_with(
     }
 
     // ---- Check 8: Unknown registry values -----------------------------------
-    let provisional = match provisional_values() {
-        Ok(p) => Some(p),
-        Err(e) => {
-            findings.push(mkf(
-                "registry_snapshot_unavailable",
-                &e.to_string(),
-                Some(8),
-                "warning",
-            ));
-            None
-        }
-    };
     for (registry, block, member) in REGISTRY_FIELDS {
         // A non-string value is a type error, reported by check 1.
         let Some(Value::String(value)) = as_map(capsule_map.get(block)).and_then(|b| b.get(member))
@@ -787,21 +775,6 @@ pub fn verify_with(
             continue;
         };
         if regs.contains(registry, value) {
-            continue;
-        }
-        if let Some(class) = provisional
-            .and_then(|p| p.get(registry))
-            .and_then(|values| values.get(value))
-        {
-            findings.push(mkf(
-                "known_provisional_registry_value",
-                &format!(
-                    "{block}.{member}={value:?} resolves known status 'provisional' via vendored \
-                     CPB registry (payload class {class:?}); informational, not rejected (§12)"
-                ),
-                Some(8),
-                "info",
-            ));
             continue;
         }
         findings.push(mkf(

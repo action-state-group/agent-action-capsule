@@ -2,19 +2,15 @@
 //! `go/registries`.
 //!
 //! The authoritative table is an embedded byte copy of `spec/REGISTRY.md`
-//! (`data/REGISTRY.md`; a crate cannot package files outside its directory),
-//! and the vendored CPB provisional snapshot is a copy of
-//! `python/agent_action_capsule/data/cpb_provisional.json`. The `drift` test
-//! keeps both identical to their sources. Callers that need a pinned
+//! (`data/REGISTRY.md`; a crate cannot package files outside its directory).
+//! The `drift` test keeps it identical to its source. Callers that need a pinned
 //! historical table parse that snapshot with [`Registries::parse`].
 
-use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::sync::OnceLock;
 
 const AUTHORITATIVE_REGISTRY: &str = include_str!("../data/REGISTRY.md");
-const CPB_SNAPSHOT: &str = include_str!("../data/cpb_provisional.json");
 
 /// The registry-governed vocabularies (§4), in order. `disposition.approver`
 /// is absent: it is a closed enum (§5.4), not registry-governed.
@@ -113,48 +109,6 @@ impl Registries {
             .flatten()
             .map(String::as_str)
     }
-}
-
-/// `registry -> value -> provisional artifact class`, from the vendored CPB
-/// snapshot. Diagnostic metadata for check 8; it never grants trust.
-pub type ProvisionalValues = BTreeMap<String, BTreeMap<String, String>>;
-
-/// The vendored CPB provisional values, parsed once. Where two artifact
-/// classes govern the same value, the first class in byte order wins.
-pub fn provisional_values() -> Result<&'static ProvisionalValues, RegistryError> {
-    static TABLE: OnceLock<Result<ProvisionalValues, RegistryError>> = OnceLock::new();
-    TABLE
-        .get_or_init(|| parse_provisional(CPB_SNAPSHOT))
-        .as_ref()
-        .map_err(Clone::clone)
-}
-
-fn parse_provisional(text: &str) -> Result<ProvisionalValues, RegistryError> {
-    let snapshot: Value = serde_json::from_str(text)
-        .map_err(|e| RegistryError(format!("decode embedded CPB provisional registry: {e}")))?;
-    let mut out = ProvisionalValues::new();
-    let Some(types) = snapshot
-        .get("provisional_artifact_types")
-        .and_then(Value::as_object)
-    else {
-        return Ok(out);
-    };
-    let classes: BTreeMap<&String, &Value> = types.iter().collect();
-    for (class, entry) in classes {
-        for registry in REGISTRY_NAMES {
-            let values = entry
-                .get("capsule_field_values")
-                .and_then(|v| v.get(registry))
-                .and_then(Value::as_array);
-            for value in values.into_iter().flatten().filter_map(Value::as_str) {
-                out.entry(registry.to_string())
-                    .or_default()
-                    .entry(value.to_string())
-                    .or_insert_with(|| class.clone());
-            }
-        }
-    }
-    Ok(out)
 }
 
 /// `## N. \`name\`` -> `name`.
@@ -315,10 +269,5 @@ Initial contents: `denied`,
     #[test]
     fn missing_registry_is_an_error() {
         assert!(Registries::parse("## 1. `verdict_class`\n| `x` |\n").is_err());
-    }
-
-    #[test]
-    fn provisional_snapshot_parses() {
-        provisional_values().expect("embedded CPB snapshot parses");
     }
 }
