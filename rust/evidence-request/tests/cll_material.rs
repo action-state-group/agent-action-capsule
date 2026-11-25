@@ -12,8 +12,9 @@ use cll::mmr::{
 };
 use ed25519_dalek::{Signer as _, SigningKey, VerifyingKey};
 use evidence_request::cll_material::{
-    check_anchor_inclusion, encode_consistency_proof, encode_inclusion_proof, KeyDecision,
-    LogKeyPolicy, Status, KIND_CHECKPOINT, KIND_CONSISTENCY, KIND_INCLUSION,
+    check_anchor_inclusion, check_consistency_proof, encode_consistency_proof,
+    encode_inclusion_proof, KeyDecision, LogKeyPolicy, Status, KIND_CHECKPOINT, KIND_CONSISTENCY,
+    KIND_INCLUSION,
 };
 use evidence_request::envelope::{sign, Anchor, AnchorFreshness, Envelope, EnvelopeParts};
 use evidence_request::request::Subject;
@@ -522,6 +523,31 @@ fn step_7_refuses_malformed_checkpoints_without_panicking() {
         .status,
         Status::Pass
     );
+}
+
+/// `check_consistency_proof` accepts the proof between two checkpoints the
+/// reader holds, and refuses it for other sizes, other peaks, non-canonical
+/// CBOR and trailing octets.
+#[test]
+fn check_consistency_proof_checks_the_sizes_and_the_peaks() {
+    let log = Log::new(7);
+    let (a, b) = (node_count(3), node_count(7));
+    let proof = log.consistency(3, 7);
+    let (from, to) = (log.peaks(a), log.peaks(b));
+    assert_eq!(check_consistency_proof(a, &from, b, &to, &proof), Ok(()));
+    assert!(check_consistency_proof(a, &from, node_count(6), &to, &proof).is_err());
+    assert!(check_consistency_proof(node_count(2), &from, b, &to, &proof).is_err());
+    let mut wrong = to.clone();
+    wrong[0][0] ^= 1;
+    assert!(check_consistency_proof(a, &from, b, &wrong, &proof).is_err());
+    let mut trailing = proof.clone();
+    trailing.push(0);
+    assert!(check_consistency_proof(a, &from, b, &to, &trailing).is_err());
+    // The first item, an unsigned integer, in a non-shortest form: 0x18 nn.
+    let mut long_form = proof.clone();
+    assert!(long_form[1] < 24, "a small size is one byte");
+    long_form.splice(1..2, [0x18, proof[1]]);
+    assert!(check_consistency_proof(a, &from, b, &to, &long_form).is_err());
 }
 
 #[test]

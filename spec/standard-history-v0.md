@@ -608,7 +608,7 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-10 | A disclosed, checkable form of the set of logs an anchor commits, for an anchor that commits them through a salted or sparse tree, such as a batching tree whose root is a parent log's entry. Without it, coverage (b) of §6 "Handing the material" cannot be shown for such an anchor, and `counts_recompute` stays `NOT_CHECKED`. |
 | SH-11 | Restating, in this repository, the rule that computes a term row's status (§11.2). `/3` cites EBL's rule (`rowstatus/rowstatus.go` at the commit the dependency table pins) and does not restate it; until it is restated, a second implementation of a host computes row results to EBL's vectors (`testdata/row-status/`). |
 | SH-12 | Closed (§11.2 `left_out`; §12): `/3` follows evidencebook#461 acceptance 9 and leaves out a deal only when its agreement names a witness and the holder holds no time from one; it counts a deal whose agreement names none, its rows local (§11.6 `local_times`), as acceptance 3 gives a shelf with no witness a card whose statuses are local. The target design's "a deal with no witness that both accept ... a card tallies it as not counted" (§4.1) is not followed. `/3` stays as it is (§11.6). `/4` follows the later decision that design records (evidencebook#578): a started deal with no witnessed time is counted and disclosed in `local_times`, whether or not its agreement names a witness, so `/4` has no `left_out` and no `not_counted` tally, and its deal entry carries `no_witness_time` (§12). |
-| SH-13 | A window membership rule that a reader without status openings can check, such as the first witnessed time of a book's first fact in place of `agreed_at`, with a check of a window alone instead of a whole shelf (the target design's proposal of 2026-11-16 for evidencebook#461, not adopted). `/3` to `/5` keep `agreed_at` (§5.1, §11.2, §12, §14). Under `/4` a counted deal may hold no witnessed time at all; its `agreed_at` is then the holder's own time, and `local_times` counts it (§12 `no_witness_time`). |
+| SH-13 | A window membership rule that a reader without status openings can check, such as the first witnessed time of a book's first fact in place of `agreed_at`, with a check of a window alone instead of a whole shelf (the target design's proposal of 2026-11-16 for evidencebook#461, not adopted). `/3` to `/5` keep `agreed_at` (§5.1, §11.2, §12, §14). Under `/4` a counted deal may hold no witnessed time at all; its `agreed_at` is then the holder's own time, and `local_times` counts it (§12 `no_witness_time`). `agreed_at` stays the window key; where a deal has a witnessed time, §11.2 "Agreed no later than witnessed" bounds it from above by its first witnessed time. That check still needs the status openings, so it does not answer this item. |
 | SH-14 | The wire form of the whole-shelf handover `/3`'s `counts_recompute` reads (§11.7), as SF-7. Until it is defined, the handover is EBL's form, and a verifier that does not read it reports `counts_recompute` `NOT_CHECKED`. |
 | SH-15 | A coverage start earlier than the format switch. EBL lets a reader that checks the old ticks' material against the genesis facts take the shelf log's first entry as the coverage start (its design §4); a `/3` card always carries the switch's month (§11.5), so such a holder's card understates its coverage. |
 | SH-16 | A remedy made without a ruling. It counts as remedied (§11.4; evidencebook#482 Q5), and the counterparty's answer is to dispute the row. EBL's row rule carries a remedy only for a `ruled` row; the remedy of an unmet row that is not ruled (§11.2) is the host profile's, read from the holder's own remedy record of the row, such as a refund (SH-2). |
@@ -681,6 +681,22 @@ with reason `no_such_subject`, as §3 says of `/1`. It never leaves the deal or 
 **counted** under `/3` when it is in the window and neither its `counterparty_class` is
 `shop_preauth` nor it carries `left_out`; `in_window.not_counted` counts both kinds of deal, the
 `not_counted` tally says which (§11.6), and §5.3's other rules hold unchanged.
+
+**Agreed no later than witnessed.** A deal's **first witnessed time** is the earliest registration
+time, from a witness its agreement names, that the holder holds for any of its own records of the
+deal (EBL `RecordTime`); the other side's records are not read, since the other side may have
+agreed first. When a deal has one, its `agreed_at` MUST NOT be later than it by more than 300
+seconds: no witness can have timed a record of an agreement not yet made, and the 300 seconds allow
+for the holder's clock, which gives `agreed_at`, running ahead of the witness's. A host whose
+records give a later `agreed_at` cannot fill the deal's entry, so it cannot answer `/3` and refuses
+with reason `no_such_subject`, as for a row result it cannot compute. A verifier that forms the
+deal entries from the whole-shelf handover (§11.7) and holds a deal's first witnessed time checks
+it: an entry whose `agreed_at` is later by more than 300 seconds is not well formed, so the counts
+cannot be derived from the entries and `counts_recompute` is `FAIL`. A deal with no first witnessed
+time is not checked. This is a rule on filling `agreed_at`, as SH-2 leaves the rest of the entry to
+the host's mapping; it changes no member, value list or counting rule, so `/3` and `/4` keep their
+tokens, documents and vectors. A verifier that applies it may report `FAIL` for a card an earlier
+verifier passed: such a card's `agreed_at` contradicts its own witnessed records.
 
 ### 11.3 The outcome
 
@@ -813,7 +829,10 @@ A verifier reports §6's six properties of a `/3` card, with these changes:
   fact's status opening by the host's mapping (SH-2) and the row rule (§11.2), as of the anchor's
   time, and reports which mapping it applied; with none, or without the handover, or when the
   handover fails a check, `counts_recompute` is `NOT_CHECKED`. A book the card leaves out, or a
-  book counted that the handover does not hold, makes the counts differ: `FAIL`.
+  book counted that the handover does not hold, makes the counts differ: `FAIL`. A deal entry
+  whose `agreed_at` is later than the deal's first witnessed time by more than §11.2's allowance,
+  where the handover gives that time, makes the result `FAIL` even when every count is equal
+  (§11.2 "Agreed no later than witnessed").
 
 The properties that may be `NOT_CHECKED` are `window_from_policy`, `as_of` and `counts_recompute`,
 as under `/1` and `/2`.
@@ -1128,7 +1147,9 @@ of `/4` holds of `/5`, `/4`'s rules wherever they name a token, except:
 - **Counted.** A deal is **counted** under `/5` when it is in the window. `counterparty_class` no
   longer takes a deal out of any count: it stays a deal member, filled and read as §7 says, and a
   deal without it is in `class_missing.count` as before. The deal entry is `/4`'s (§12), so it has
-  no `left_out` member and may carry `no_witness_time`.
+  no `left_out` member and may carry `no_witness_time`, and its `agreed_at` is bounded by §11.2
+  "Agreed no later than witnessed", a shop purchase's included, with §11.7's `counts_recompute`
+  `FAIL` for an entry that breaks it.
 - **The outcome** of a counted deal, a shop purchase included, is §11.3's, from its rows, by the
   same rules as any other deal; the rules are unchanged (SH-20).
 - **The card** has the members of a `/4` card and one more, all REQUIRED:

@@ -736,6 +736,30 @@ fn check_inclusion(peaks: &[Hash], entry: &Hash, octets: &[u8]) -> Result<(), &'
     }
 }
 
+/// Whether `octets`, a `cll-consistency-proof` item (profile §6.2.1 step 13),
+/// proves that the MMR of `to_size` nodes with peaks `to_peaks` extends the
+/// one of `from_size` nodes with peaks `from_peaks`. The proof's own sizes
+/// must be those two; otherwise the check is the one `check_anchor_inclusion`
+/// runs at step 13 (deterministic CBOR, the size and path limits, and the
+/// peaks re-derived). For a reader that holds both checkpoints itself, such
+/// as one checking a chain of checkpoints.
+pub fn check_consistency_proof(
+    from_size: u64,
+    from_peaks: &[Hash],
+    to_size: u64,
+    to_peaks: &[Hash],
+    octets: &[u8],
+) -> Result<(), &'static str> {
+    let parts = proof_parts(octets, 4)?;
+    let (Some(from), Some(to)) = (uint(Some(&parts[0])), uint(Some(&parts[1]))) else {
+        return Err("malformed");
+    };
+    if from != from_size || to != to_size {
+        return Err("the proof is between other sizes");
+    }
+    check_consistency(from_peaks, to_peaks, octets)
+}
+
 /// Step 13: `new_peaks` extends `old_peaks` by the consistency proof.
 fn check_consistency(
     old_peaks: &[Hash],
@@ -944,11 +968,15 @@ pub fn check_history_card_2(
             (0, Some(_)) | (_, None) => return Some("proof_invalid"),
             (_, Some(octets)) => {
                 let (prev, cur) = (&checkpoints[i - 1], &checkpoints[i]);
-                let spans = proof_parts(octets, 4).is_ok_and(|parts| {
-                    uint(Some(&parts[0])) == Some(prev.log_size)
-                        && uint(Some(&parts[1])) == Some(cur.log_size)
-                });
-                if !spans || check_consistency(&prev.commitment, &cur.commitment, octets).is_err() {
+                if check_consistency_proof(
+                    prev.log_size,
+                    &prev.commitment,
+                    cur.log_size,
+                    &cur.commitment,
+                    octets,
+                )
+                .is_err()
+                {
                     return Some("proof_invalid");
                 }
             }

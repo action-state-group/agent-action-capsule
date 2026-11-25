@@ -968,8 +968,12 @@ fn ordering(
     )
 }
 
-/// §11.1.2 and §11.1.3, as `acceptance_form` checks them.
-fn form_problems(r: &Map<String, Value>) -> Vec<&'static str> {
+/// §11.1.2 and §11.1.3, as `acceptance_form` checks them: what is wrong
+/// with the form of the acceptance record `r`, empty when nothing is. For a
+/// reader that holds a record before it is complete and adds its own checks.
+/// The strings say what is wrong for a person to read; they are not a stable
+/// interface to match on.
+pub fn form_problems(r: &Map<String, Value>) -> Vec<&'static str> {
     let mut out = Vec::new();
     let state = text(r, "state");
     let digest_at = |k: &str| text(r, k).is_some_and(is_digest);
