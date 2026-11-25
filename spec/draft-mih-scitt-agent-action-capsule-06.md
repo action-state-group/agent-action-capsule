@@ -2,6 +2,7 @@
 title: "An Agent Action Capsule Profile for SCITT"
 abbrev: "Agent Action Capsules"
 docname: draft-mih-scitt-agent-action-capsule-06
+date: 2026-11-24
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -35,9 +36,9 @@ normative:
   RFC8259:
   RFC9943:
   I-D.mih-sokolov-scitt-payload-binding:
-    title: "Canonical Payload Binding: A Signed Statement Construction Profile"
+    title: "Canonicalization Declaration for SCITT Signed Statements"
     seriesinfo:
-      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-05
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-06
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -45,8 +46,10 @@ normative:
       - ins: A. Sokolov
         name: Anton Sokolov
         organization: Tyche Institute
+    date: 2026-10-25
 
 informative:
+  RFC7942:
   RFC9942:
   I-D.ietf-scitt-scrapi:
   I-D.ietf-scitt-receipts-ccf-profile:
@@ -74,21 +77,29 @@ informative:
   I-D.mih-sato-agent-accountability-composition:
     title: "Agent Accountability: Composition and Conformance"
     seriesinfo:
-      Internet-Draft: draft-mih-sato-agent-accountability-composition-01
+      Internet-Draft: draft-mih-sato-agent-accountability-composition-02
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
       - ins: T. Sato
         name: Tom Sato
+      - ins: I. Schrock
+        name: Iman Schrock
+      - ins: S. Bu
+        name: Songbo Bu
+      - ins: A. Sokolov
+        name: Anton Sokolov
+    date: 2026-11-02
   I-D.mih-agent-bilateral-attestation:
-    title: "Bilateral Agent Action Attestation"
+    title: "Bilateral Attestation of Cross-Organization Agent Actions"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-bilateral-attestation-02
+      Internet-Draft: draft-mih-agent-bilateral-attestation-03
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
+    date: 2026-10-28
   NotarizedAgents:
     title: "Notarized Agents: Decentralized, Verifiable AI Agent Receipts"
     target: https://arxiv.org/abs/2606.04193
@@ -120,7 +131,7 @@ confirmed-effect binding that distinguishes a dispatched attempt from an
 observed result, and an honest human-in-the-loop flag. Capsules are
 identified independently of signing and MAY be authenticated by one or more
 COSE_Sign1 Producer Envelopes. Its Capsule ID can separately be made
-transparent by registration in a SCITT Transparency Service {{I-D.ietf-scitt-scrapi}}. A Capsule is recorded on
+transparent by registration in a SCITT Transparency Service. A Capsule is recorded on
 every verdict, including refusals: a blocked or denied Capsule is the
 auditor-grade evidence that a gate worked.
 
@@ -1622,10 +1633,11 @@ claim set for AI content-refusal audit trails carried in SCITT Signed
 Statements; the same author's {{I-D.kamimura-scitt-vcp}} (VeritasChain
 Protocol) is a SCITT profile for verifiable audit trails in algorithmic
 trading — a vertical-specific application of the same transparency
-substrate. {{I-D.kamimura-vap-framework}}, by the same author, is a
-conformance-tiered Verifiable AI Provenance framework (hash-chaining,
-signatures, SCITT anchoring, and a completeness invariant) under which the
-trading profile sits; it shares this profile's SCITT-anchored,
+substrate. {{I-D.kamimura-vap-framework}}, by the same author, is an
+architectural framework for Verifiable AI Provenance (detectability of
+alteration and of omission after commitment, attribution, and external
+anchoring, built on SCITT and COSE) of which the trading profile is a
+domain profile; it shares this profile's SCITT-anchored,
 third-party-verifiable substrate, framed as a provenance architecture
 rather than a per-action verdict record. {{I-D.dawkins-scitt-ai-article50}}
 profiles SCITT receipts
@@ -1901,6 +1913,70 @@ Agent Action Capsule ID media type:
   publication.
 - Provisional registration: yes (pending publication of this document).
 
+# Implementation Status {#impl-status}
+
+Note to RFC Editor: Please remove this section and the reference to
+{{RFC7942}} before publication.
+
+This section records the status of known implementations of the protocol
+defined by this specification at the time of posting of this
+Internet-Draft, and is based on a proposal described in {{RFC7942}}. The
+description of implementations in this section is intended to assist the
+IETF in its decision processes in progressing drafts to RFCs. Please note
+that the listing of any individual implementation here does not imply
+endorsement by the IETF. Furthermore, no effort has been spent to verify the
+information presented here that was supplied by IETF contributors. This is
+not intended as, and must not be construed to be, a catalog of available
+implementations or their features. Readers are advised to note that other
+implementations may exist.
+
+According to {{RFC7942}}, "this will allow reviewers and working groups to
+assign due consideration to documents that have the benefit of running
+code, which may serve as evidence of valuable experimentation and feedback
+that have made the implemented protocols more mature. It is up to the
+individual working groups to use this information as they see fit".
+
+## Agent Action Capsule reference implementations
+
+Organization:
+: Action State Group, Inc.
+
+Implementations:
+: Four implementations in the agent-action-capsule source repository,
+  [](https://github.com/action-state-group/agent-action-capsule): Python, the reference
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/python), release 0.19.0); and ports in Go
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/go), release 0.24.0), TypeScript
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/ts), release 0.16.0) and Rust
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/rust/agent-action-capsule), release 0.14.0).
+
+Description:
+: All four are Class 1 verifiers ({{conformance}}) and verify Producer
+  Envelopes ({{projection}}). The Python implementation also records
+  (seals) Capsules. None implements Class 2 verification.
+
+Level of maturity:
+: Pre-1.0 releases. The test suite of each implementation runs the
+  conformance vectors below, and a cross-language check runs the same
+  inputs through every implementation.
+
+Coverage:
+: The Class 1 check set ({{verification}}) and the Producer Envelope wire
+  profile. The store-level chain checks run only when a store is supplied.
+
+Licensing:
+: BSD-3-Clause, except the paths that the repository's LICENSING.md lists
+  under Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/agent-action-capsule/issues)
+
+Conformance vectors:
+: Capsules ([](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/capsule)), provenance mode
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/provenance-mode-vectors)), Producer Envelopes
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/producer-envelope)), JSON nesting
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/json-nesting)) and cross-language checks
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/cross-language)).
+
 # Security Considerations {#security}
 
 The tamper-evidence-versus-runtime-honesty boundary — that the envelope
@@ -2044,6 +2120,13 @@ documentation so deployers can audit admission without reading implementation co
 This appendix is non-normative. RFC Editor: please remove this appendix
 before publication.
 
+* Implementation Status: added ({{impl-status}}), following RFC 7942.
+* References: draft-mih-sokolov-scitt-payload-binding-06,
+  draft-mih-agent-bilateral-attestation-03 and
+  draft-mih-sato-agent-accountability-composition-02; third-party drafts at
+  their current revisions. The description of
+  {{I-D.kamimura-vap-framework}} follows its current revision. The
+  Abstract cites no other document.
 * JSON nesting: a JSON text or value under this profile nests at most 128
   levels; a producer emits or digests nothing deeper, and a verifier
   rejects deeper input as malformed before any check and never rejects

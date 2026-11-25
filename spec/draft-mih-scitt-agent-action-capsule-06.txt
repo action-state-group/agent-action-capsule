@@ -23,9 +23,9 @@ Abstract
    the-loop flag.  Capsules are identified independently of signing and
    MAY be authenticated by one or more COSE_Sign1 Producer Envelopes.
    Its Capsule ID can separately be made transparent by registration in
-   a SCITT Transparency Service [I-D.ietf-scitt-scrapi].  A Capsule is
-   recorded on every verdict, including refusals: a blocked or denied
-   Capsule is the auditor-grade evidence that a gate worked.
+   a SCITT Transparency Service.  A Capsule is recorded on every
+   verdict, including refusals: a blocked or denied Capsule is the
+   auditor-grade evidence that a gate worked.
 
 Note to Readers
 
@@ -122,19 +122,21 @@ Internet-Draft            Agent Action Capsules            November 2026
      12.1.  New registries . . . . . . . . . . . . . . . . . . . . .  49
      12.2.  No new registry  . . . . . . . . . . . . . . . . . . . .  52
      12.3.  Media Type Registrations . . . . . . . . . . . . . . . .  52
-   13. Security Considerations . . . . . . . . . . . . . . . . . . .  54
-   14. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  56
-     14.1.  Data-Admission Tiers . . . . . . . . . . . . . . . . . .  57
-     14.2.  Adapter Allow-List Pattern . . . . . . . . . . . . . . .  57
-   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  57
-     15.1.  Normative References . . . . . . . . . . . . . . . . . .  57
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  59
+   13. Implementation Status . . . . . . . . . . . . . . . . . . . .  54
+     13.1.  Agent Action Capsule reference implementations . . . . .  55
+   14. Security Considerations . . . . . . . . . . . . . . . . . . .  56
+   15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  58
+     15.1.  Data-Admission Tiers . . . . . . . . . . . . . . . . . .  58
+     15.2.  Adapter Allow-List Pattern . . . . . . . . . . . . . . .  59
+   16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  59
+     16.1.  Normative References . . . . . . . . . . . . . . . . . .  59
+     16.2.  Informative References . . . . . . . . . . . . . . . . .  61
    Appendix A.  Changes from
-           draft-mih-scitt-agent-action-capsule-05 . . . . . . . . .  62
+           draft-mih-scitt-agent-action-capsule-05 . . . . . . . . .  64
    Appendix B.  Changes from
-           draft-mih-scitt-agent-action-capsule-04 . . . . . . . . .  63
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  65
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  65
+           draft-mih-scitt-agent-action-capsule-04 . . . . . . . . .  65
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  67
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  67
 
 1.  Introduction
 
@@ -158,8 +160,6 @@ Internet-Draft            Agent Action Capsules            November 2026
        distinguishes "the effect was dispatched" from "the effect's
        result was observed and bound."  A producer cannot present an
        attempt as a completion.
-
-
 
 
 
@@ -2611,18 +2611,18 @@ Internet-Draft            Agent Action Capsules            November 2026
    [I-D.kamimura-scitt-vcp] (VeritasChain Protocol) is a SCITT profile
    for verifiable audit trails in algorithmic trading — a vertical-
    specific application of the same transparency substrate.
-   [I-D.kamimura-vap-framework], by the same author, is a conformance-
-   tiered Verifiable AI Provenance framework (hash-chaining, signatures,
-   SCITT anchoring, and a completeness invariant) under which the
-   trading profile sits; it shares this profile's SCITT-anchored, third-
-   party-verifiable substrate, framed as a provenance architecture
-   rather than a per-action verdict record.
-   [I-D.dawkins-scitt-ai-article50] profiles SCITT receipts for the
-   transparency obligations of EU AI Act Article 50.
-   [I-D.sato-soos-gar] defines session-level Governance Audit Records
-   produced by a governing enforcement component; this profile differs
-   in recording per-action verdicts with effect-state binding rather
-   than session-close summaries.
+   [I-D.kamimura-vap-framework], by the same author, is an architectural
+   framework for Verifiable AI Provenance (detectability of alteration
+   and of omission after commitment, attribution, and external
+   anchoring, built on SCITT and COSE) of which the trading profile is a
+   domain profile; it shares this profile's SCITT-anchored, third-party-
+   verifiable substrate, framed as a provenance architecture rather than
+   a per-action verdict record.  [I-D.dawkins-scitt-ai-article50]
+   profiles SCITT receipts for the transparency obligations of EU AI Act
+   Article 50.  [I-D.sato-soos-gar] defines session-level Governance
+   Audit Records produced by a governing enforcement component; this
+   profile differs in recording per-action verdicts with effect-state
+   binding rather than session-close summaries.
 
 
 
@@ -2925,7 +2925,7 @@ Internet-Draft            Agent Action Capsules            November 2026
    *  Encoding considerations: binary; the representation is JSON
       ([RFC8259]) as defined in this document.
 
-   *  Security considerations: see Section 13 of this document.
+   *  Security considerations: see Section 14 of this document.
 
    *  Interoperability considerations: see this document.
 
@@ -2978,7 +2978,7 @@ Internet-Draft            Agent Action Capsules            November 2026
       raw SHA-256 Capsule ID represented in Capsule JSON as 64 lowercase
       hexadecimal characters.
 
-   *  Security considerations: see Section 13 of this document.
+   *  Security considerations: see Section 14 of this document.
 
    *  Interoperability considerations: see this document.
 
@@ -3008,7 +3008,92 @@ Internet-Draft            Agent Action Capsules            November 2026
    *  Provisional registration: yes (pending publication of this
       document).
 
-13.  Security Considerations
+13.  Implementation Status
+
+   Note to RFC Editor: Please remove this section and the reference to
+   [RFC7942] before publication.
+
+   This section records the status of known implementations of the
+   protocol defined by this specification at the time of posting of this
+   Internet-Draft, and is based on a proposal described in [RFC7942].
+   The description of implementations in this section is intended to
+   assist the IETF in its decision processes in progressing drafts to
+
+
+
+Mih                        Expires 28 May 2027                 [Page 54]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
+   RFCs.  Please note that the listing of any individual implementation
+   here does not imply endorsement by the IETF.  Furthermore, no effort
+   has been spent to verify the information presented here that was
+   supplied by IETF contributors.  This is not intended as, and must not
+   be construed to be, a catalog of available implementations or their
+   features.  Readers are advised to note that other implementations may
+   exist.
+
+   According to [RFC7942], "this will allow reviewers and working groups
+   to assign due consideration to documents that have the benefit of
+   running code, which may serve as evidence of valuable experimentation
+   and feedback that have made the implemented protocols more mature.
+   It is up to the individual working groups to use this information as
+   they see fit".
+
+13.1.  Agent Action Capsule reference implementations
+
+   Organization:  Action State Group, Inc.
+
+   Implementations:  Four implementations in the agent-action-capsule
+      source repository, https://github.com/action-state-group/agent-
+      action-capsule: Python, the reference (https://github.com/action-
+      state-group/agent-action-capsule/tree/main/python, release
+      0.19.0); and ports in Go (https://github.com/action-state-group/
+      agent-action-capsule/tree/main/go, release 0.24.0), TypeScript
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/ts, release 0.16.0) and Rust
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/rust/agent-action-capsule, release 0.14.0).
+
+   Description:  All four are Class 1 verifiers (Section 7) and verify
+      Producer Envelopes (Section 3).  The Python implementation also
+      records (seals) Capsules.  None implements Class 2 verification.
+
+   Level of maturity:  Pre-1.0 releases.  The test suite of each
+      implementation runs the conformance vectors below, and a cross-
+      language check runs the same inputs through every implementation.
+
+   Coverage:  The Class 1 check set (Section 6) and the Producer
+      Envelope wire profile.  The store-level chain checks run only when
+      a store is supplied.
+
+   Licensing:  BSD-3-Clause, except the paths that the repository's
+      LICENSING.md lists under Apache-2.0.
+
+   Contact:  https://github.com/action-state-group/agent-action-capsule/
+      issues
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 55]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
+   Conformance vectors:  Capsules (https://github.com/action-state-
+      group/agent-action-capsule/tree/main/vectors/capsule), provenance
+      mode (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/provenance-mode-vectors), Producer Envelopes
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/vectors/producer-envelope), JSON nesting
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/vectors/json-nesting) and cross-language checks
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/vectors/cross-language).
+
+14.  Security Considerations
 
    The tamper-evidence-versus-runtime-honesty boundary — that the
    envelope signature and registration Receipt attest record bytes and
@@ -3017,14 +3102,6 @@ Internet-Draft            Agent Action Capsules            November 2026
    Security Considerations (Tamper Evidence and Runtime Honesty).  This
    profile inherits that boundary; the following extends it to the
    confirmed-effect binding.
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 54]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
 
    Confirmed means observed-and-bound, not world-state.  A confirmed
    effect proves the producer bound the bytes of an observed response,
@@ -3053,6 +3130,14 @@ Internet-Draft            Agent Action Capsules            November 2026
    approver: "human" — is structurally guaranteed: a conforming producer
    cannot construct a Capsule that violates it, so the combination
    simply does not arise in well-formed records, and the claim is
+
+
+
+Mih                        Expires 28 May 2027                 [Page 56]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
    falsifiable from the record alone.  A verifier consuming non-
    constructor-produced bytes SHOULD assert the invariant defensively
    against hand-crafted input (Section 6).
@@ -3074,14 +3159,6 @@ Internet-Draft            Agent Action Capsules            November 2026
    confirmed Capsule for an effect that did not land.  Input integrity —
    binding the authenticity of request bytes and upstream grounding
    sources to the authorization before the seal — is a separate
-
-
-
-Mih                        Expires 28 May 2027                 [Page 55]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    guarantee that composes with this profile at the digest layer: a
    producer that holds input-integrity evidence (a signed tool response,
    an attested transport record, a C2PA-style content credential, or an
@@ -3097,6 +3174,26 @@ Internet-Draft            Agent Action Capsules            November 2026
    addressed by composing a dedicated input-integrity mechanism
    upstream.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 57]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
    Capsule identity is stable across signing-key rotation.  The operator
    and developer fields in the Capsule payload (Section 5.1) are plain
    strings committed to capsule_id and are independent of the signing
@@ -3106,7 +3203,7 @@ Internet-Draft            Agent Action Capsules            November 2026
    present, epoch_id (Section 5.2), then apply its own authorization
    policy to each authenticated envelope key.  A producer SHOULD treat a
    key rotation that coincides with a configuration change as an epoch
-   boundary (Section 5.2.2).  See also Section 14 of this document for
+   boundary (Section 5.2.2).  See also Section 15 of this document for
    the data-admission tiers that govern which runtime context fields MAY
    enter a Capsule, including the consequence of the low-entropy digest
    caveat above for end-user identity fields.
@@ -3117,7 +3214,7 @@ Internet-Draft            Agent Action Capsules            November 2026
    apply an external authorization rule to the authenticated key and
    MUST NOT infer authority from signature validity alone.
 
-14.  Privacy Considerations
+15.  Privacy Considerations
 
    A Capsule is content-addressed, tamper-evident, and MAY be anchored
    to a Transparency Service.  As a direct consequence, a committed
@@ -3128,17 +3225,7 @@ Internet-Draft            Agent Action Capsules            November 2026
    record are unfixable by design.  Producers MUST apply a default-deny
    posture to runtime context before it reaches a Capsule.
 
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 56]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
-14.1.  Data-Admission Tiers
+15.1.  Data-Admission Tiers
 
    Producer and adapter authors MUST classify every candidate field into
    exactly one of the following tiers before admission:
@@ -3148,6 +3235,20 @@ Internet-Draft            Agent Action Capsules            November 2026
        invocation_id.  A field is clear-safe when its value neither
        identifies a natural person nor carries content material.  These
        MAY be committed in clear.
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 58]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
 
    2.  *Digest-only* — when a value must be _provable later_ without
        being _disclosed now_, it MUST be committed as a digest, never in
@@ -3163,14 +3264,14 @@ Internet-Draft            Agent Action Capsules            November 2026
        Critical: hashing is not anonymization for low-entropy
        identifiers.  Session and user identifiers and similar low-
        entropy values are recoverable by dictionary attack against their
-       digest (see also Section 13).  Therefore a digest of such an
+       digest (see also Section 14).  Therefore a digest of such an
        identifier is not a safe substitute — the digest re-identifies.
        Identity MUST be excluded, not digested.  Where cross-record or
        cross-slot correlation of a subject is genuinely required, a
        pairwise or encrypted correlation identifier SHOULD be used
        instead of the raw or hashed user identifier.
 
-14.2.  Adapter Allow-List Pattern
+15.2.  Adapter Allow-List Pattern
 
    Adapters SHOULD adopt an allow-list stance: enumerate the fields that
    MAY enter a Capsule (tier 1, plus tier-2 digests) and default-deny
@@ -3182,29 +3283,28 @@ Internet-Draft            Agent Action Capsules            November 2026
    list in adapter documentation so deployers can audit admission
    without reading implementation code.
 
-15.  References
+16.  References
 
-15.1.  Normative References
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 57]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
+16.1.  Normative References
 
    [I-D.mih-sokolov-scitt-payload-binding]
-              Mih, S. and A. Sokolov, "Canonical Payload Binding: A
-              Signed Statement Construction Profile", Work in Progress,
-              Internet-Draft, draft-mih-sokolov-scitt-payload-binding-
-              05, n.d., <https://datatracker.ietf.org/doc/html/draft-
-              mih-sokolov-scitt-payload-binding-05>.
+              Mih, S. and A. Sokolov, "Canonicalization Declaration for
+              SCITT Signed Statements", Work in Progress, Internet-
+              Draft, draft-mih-sokolov-scitt-payload-binding-06, 25
+              October 2026, <https://datatracker.ietf.org/doc/html/
+              draft-mih-sokolov-scitt-payload-binding-06>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/rfc/rfc2119>.
+
+
+
+Mih                        Expires 28 May 2027                 [Page 59]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
 
    [RFC3339]  Klyne, G. and C. Newman, "Date and Time on the Internet:
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
@@ -3243,13 +3343,6 @@ Internet-Draft            Agent Action Capsules            November 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/rfc/rfc8785>.
 
-
-
-Mih                        Expires 28 May 2027                 [Page 58]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
               Structures and Process", STD 96, RFC 9052,
               DOI 10.17487/RFC9052, August 2022,
@@ -3261,7 +3354,15 @@ Internet-Draft            Agent Action Capsules            November 2026
               DOI 10.17487/RFC9943, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9943>.
 
-15.2.  Informative References
+
+
+
+Mih                        Expires 28 May 2027                 [Page 60]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
+16.2.  Informative References
 
    [ERC8004]  "ERC-8004: Agent Identity Registry", n.d.,
               <https://eips.ethereum.org/EIPS/eip-8004>.
@@ -3274,19 +3375,19 @@ Internet-Draft            Agent Action Capsules            November 2026
               scitt-ai-article50-00>.
 
    [I-D.emirdag-scitt-ai-agent-execution]
-              Emirdag, P., "AI Agent Execution Profile of SCITT", Work
-              in Progress, Internet-Draft, draft-emirdag-scitt-ai-agent-
-              execution-00, 11 April 2026,
-              <https://datatracker.ietf.org/doc/html/draft-emirdag-
-              scitt-ai-agent-execution-00>.
+              Emirdag, P. and D. Feichtinger, "AI Agent Execution
+              Profile of SCITT", Work in Progress, Internet-Draft,
+              draft-emirdag-scitt-ai-agent-execution-01, 12 October
+              2026, <https://datatracker.ietf.org/doc/html/draft-
+              emirdag-scitt-ai-agent-execution-01>.
 
    [I-D.ietf-scitt-receipts-ccf-profile]
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
               Chamayou, "CCF Profile for COSE Receipts", Work in
               Progress, Internet-Draft, draft-ietf-scitt-receipts-ccf-
-              profile-05, 23 September 2026,
+              profile-06, 22 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
-              receipts-ccf-profile-05>.
+              receipts-ccf-profile-06>.
 
    [I-D.ietf-scitt-scrapi]
               Birkholz, H., Geater, J., and A. Delignat-Lavaud, "Supply
@@ -3296,71 +3397,57 @@ Internet-Draft            Agent Action Capsules            November 2026
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
               scrapi-11>.
 
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 59]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    [I-D.ietf-spice-sd-cwt]
               Prorock, M., Steele, O., Birkholz, H., and R. Mahy,
               "Selective Disclosure CBOR Web Tokens (SD-CWT)", Work in
-              Progress, Internet-Draft, draft-ietf-spice-sd-cwt-08, 1
-              June 2026, <https://datatracker.ietf.org/doc/html/draft-
-              ietf-spice-sd-cwt-08>.
+              Progress, Internet-Draft, draft-ietf-spice-sd-cwt-09, 30
+              October 2026, <https://datatracker.ietf.org/doc/html/
+              draft-ietf-spice-sd-cwt-09>.
 
    [I-D.kamimura-scitt-refusal-events]
               Tokachi, K., "Verifiable AI Refusal Events using SCITT",
               Work in Progress, Internet-Draft, draft-kamimura-scitt-
-              refusal-events-03, 2 August 2026,
+              refusal-events-04, 24 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-kamimura-
-              scitt-refusal-events-03>.
+              scitt-refusal-events-04>.
+
+
+
+Mih                        Expires 28 May 2027                 [Page 61]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
 
    [I-D.kamimura-scitt-vcp]
               Tokachi, K., "A SCITT Profile for Verifiable Audit Trails
               in Algorithmic Trading: The VeritasChain Protocol (VCP)",
               Work in Progress, Internet-Draft, draft-kamimura-scitt-
-              vcp-03, 21 July 2026,
+              vcp-07, 23 November 2026,
               <https://datatracker.ietf.org/doc/html/draft-kamimura-
-              scitt-vcp-03>.
+              scitt-vcp-07>.
 
    [I-D.kamimura-vap-framework]
               Tokachi, K., "Verifiable AI Provenance Framework (VAP): An
-              Architectural Framework for Evidentiary-Grade AI Decision
-              Trails", Work in Progress, Internet-Draft, draft-kamimura-
-              vap-framework-01, 21 July 2026,
+              Architectural Framework for Auditable AI Decision Trails",
+              Work in Progress, Internet-Draft, draft-kamimura-vap-
+              framework-03, 15 November 2026,
               <https://datatracker.ietf.org/doc/html/draft-kamimura-vap-
-              framework-01>.
+              framework-03>.
 
    [I-D.mih-agent-bilateral-attestation]
-              Mih, S., "Bilateral Agent Action Attestation", Work in
-              Progress, Internet-Draft, draft-mih-agent-bilateral-
-              attestation-02, n.d.,
+              Mih, S., "Bilateral Attestation of Cross-Organization
+              Agent Actions", Work in Progress, Internet-Draft, draft-
+              mih-agent-bilateral-attestation-03, 28 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
-              bilateral-attestation-02>.
+              bilateral-attestation-03>.
 
    [I-D.mih-sato-agent-accountability-composition]
-              Mih, S. and T. Sato, "Agent Accountability: Composition
-              and Conformance", Work in Progress, Internet-Draft, draft-
-              mih-sato-agent-accountability-composition-01, n.d.,
+              Mih, S., Sato, T., Schrock, I., Bu, S., and A. Sokolov,
+              "Agent Accountability: Composition and Conformance", Work
+              in Progress, Internet-Draft, draft-mih-sato-agent-
+              accountability-composition-02, 2 November 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-sato-
-              agent-accountability-composition-01>.
-
-
-
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 60]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
+              agent-accountability-composition-02>.
 
    [I-D.mih-scitt-agent-action-capsule-sel-disc]
               Mih, S., "Selective Disclosure Profile for Agent Action
@@ -3372,13 +3459,21 @@ Internet-Draft            Agent Action Capsules            November 2026
    [I-D.munoz-scitt-permit-profile]
               Munoz, C., "A SCITT Profile for Pre-Execution AI Action
               Authorization Records", Work in Progress, Internet-Draft,
-              draft-munoz-scitt-permit-profile-01, 19 July 2026,
+              draft-munoz-scitt-permit-profile-02, 20 November 2026,
               <https://datatracker.ietf.org/doc/html/draft-munoz-scitt-
-              permit-profile-01>.
+              permit-profile-02>.
 
    [I-D.nivalto-agentroa-route-authorization]
               Michalak, J., "Agent Route Origin Authorization
               (AgentROA): A Cryptographic Policy Enforcement Framework
+
+
+
+Mih                        Expires 28 May 2027                 [Page 62]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
               for AI Agent Actions", Work in Progress, Internet-Draft,
               draft-nivalto-agentroa-route-authorization-01, 15 April
               2026, <https://datatracker.ietf.org/doc/html/draft-
@@ -3407,16 +3502,10 @@ Internet-Draft            Agent Action Capsules            November 2026
               DOI 10.17487/RFC6839, January 2013,
               <https://www.rfc-editor.org/rfc/rfc6839>.
 
-
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 61]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
+   [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
+              Code: The Implementation Status Section", BCP 205,
+              RFC 7942, DOI 10.17487/RFC7942, July 2016,
+              <https://www.rfc-editor.org/rfc/rfc7942>.
 
    [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
               Representation (CBOR)", STD 94, RFC 8949,
@@ -3432,6 +3521,15 @@ Internet-Draft            Agent Action Capsules            November 2026
               DOI 10.17487/RFC9901, November 2025,
               <https://www.rfc-editor.org/rfc/rfc9901>.
 
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 63]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
    [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
               Fournet, "CBOR Object Signing and Encryption (COSE)
               Receipts", RFC 9942, DOI 10.17487/RFC9942, June 2026,
@@ -3444,6 +3542,15 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-05
 
    This appendix is non-normative.  RFC Editor: please remove this
    appendix before publication.
+
+   *  Implementation Status: added (Section 13), following RFC 7942.
+
+   *  References: draft-mih-sokolov-scitt-payload-binding-06, draft-mih-
+      agent-bilateral-attestation-03 and draft-mih-sato-agent-
+      accountability-composition-02; third-party drafts at their current
+      revisions.  The description of [I-D.kamimura-vap-framework]
+      follows its current revision.  The Abstract cites no other
+      document.
 
    *  JSON nesting: a JSON text or value under this profile nests at
       most 128 levels; a producer emits or digests nothing deeper, and a
@@ -3466,18 +3573,18 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-05
       no octet follows the envelope or the protected map inside its byte
       string; a verifier rejects any violation (Section 3.1).
 
-
-
-
-Mih                        Expires 28 May 2027                 [Page 62]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    *  Reference identity: a references target is identified by the whole
       typed digest {type, digest_alg, digest}, and an entry duplicates
       the chain parent only under type agent-action-capsule with SHA-256
       (Section 5.5.5).
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 64]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
 
    *  Verifier reporting: a fail-closed format or canonicalization
       declaration still reports the other checks and the derived modes;
@@ -3522,19 +3629,19 @@ Appendix B.  Changes from draft-mih-scitt-agent-action-capsule-04
    *  Format 4 only (contributed by Yiqun Zhang): format 4 with
       canonicalization_id: "jcs" is the sole supported format for
       producers and verifiers; the vintage format-2 and withdrawn jcs-n
-
-
-
-Mih                        Expires 28 May 2027                 [Page 63]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
       verification path of -04 is removed, so a format-2 Capsule now
       fails closed.  A committed payload digest is SHA-256 over
       UTF8(JCS(value)) for the whole value, with JCS sorting applied
       recursively and no member allow-list, replacer, or key filtering
       at any depth (Section 2). capsule_id is computed after removing
+
+
+
+Mih                        Expires 28 May 2027                 [Page 65]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
       local-only signature and key_id envelope fields and capsule_id,
       with references participating (Section 5.1).
       log_coordinates.leaf_index is a JSON integer holding the zero-
@@ -3572,20 +3679,6 @@ Internet-Draft            Agent Action Capsules            November 2026
       closed set (Section 5.5), which the check had restated without
       counterparty (reported by Imran Siddique, #108).
 
-
-
-
-
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 64]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    *  References: the selective-disclosure companion is cited as
       [I-D.mih-scitt-agent-action-capsule-sel-disc], correcting a
       citation of a document that does not exist, and the sentence
@@ -3593,6 +3686,17 @@ Internet-Draft            Agent Action Capsules            November 2026
       removed; companion-draft revision pins are updated;
       [I-D.ietf-scitt-scrapi] and [RFC8392] are cited where already
       relied on.
+
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 66]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
 
 Acknowledgments
 
@@ -3637,4 +3741,12 @@ Author's Address
 
 
 
-Mih                        Expires 28 May 2027                 [Page 65]
+
+
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 67]
