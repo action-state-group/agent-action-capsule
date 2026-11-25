@@ -1682,6 +1682,77 @@ document's text, not from any implementation.</t>
           </dd>
         </dl>
       </section>
+      <section anchor="scitt-cose">
+        <name>scitt-cose</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/scitt-cose"/>, a Python library (release 0.5.0) that verifies SCITT
+Signed Statements and COSE Receipts (<xref target="RFC9942"/>) under the
+<tt>RFC9162_SHA256</tt> and CCF tree algorithms, and verifies a Checkpointed
+Local Log's inclusion and consistency proofs against a checkpoint. It
+carries no application profile: a statement's payload is opaque to it.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Pre-1.0 releases.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>Verification of the Receipt a Transparency Service returns for a
+registered leg record (<xref target="registration"/>).</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>Apache-2.0.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/scitt-cose/issues"/></t>
+          </dd>
+          <dt>Test vectors:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/scitt-cose/tree/main/test-vectors"/></t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="capsule-anchor">
+        <name>capsule-anchor</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/capsule-anchor"/> (release 0.1.4), a SCITT Transparency Service
+(<xref target="RFC9943"/>) that registers a SHA-256 digest, a Signed Statement or a
+checkpoint and returns a COSE Receipt carrying an RFC 9162 inclusion
+proof. A public instance runs at <eref target="https://witness.agentactioncapsule.org"/>.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Pre-1.0 releases; the public instance is operated by the organization
+above.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>Registration of a leg record's Capsule ID (<xref target="registration"/>).</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>Apache-2.0.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/capsule-anchor/issues"/></t>
+          </dd>
+        </dl>
+      </section>
     </section>
     <section anchor="security">
       <name>Security Considerations</name>
@@ -2355,7 +2426,7 @@ been incorporated into this document. This document obsoletes RFC
         </reference>
       </references>
     </references>
-    <?line 1397?>
+    <?line 1449?>
 
 <section numbered="false" anchor="vectors">
       <name>Conformance Vectors</name>

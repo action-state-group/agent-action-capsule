@@ -1161,6 +1161,58 @@ Conformance vectors:
   described in {{vectors}}. Their expected results are derived from this
   document's text, not from any implementation.
 
+## scitt-cose
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/scitt-cose), a Python library (release 0.5.0) that verifies SCITT
+  Signed Statements and COSE Receipts ({{RFC9942}}) under the
+  `RFC9162_SHA256` and CCF tree algorithms, and verifies a Checkpointed
+  Local Log's inclusion and consistency proofs against a checkpoint. It
+  carries no application profile: a statement's payload is opaque to it.
+
+Level of maturity:
+: Pre-1.0 releases.
+
+Coverage:
+: Verification of the Receipt a Transparency Service returns for a
+  registered leg record ({{registration}}).
+
+Licensing:
+: Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/scitt-cose/issues)
+
+Test vectors:
+: [](https://github.com/action-state-group/scitt-cose/tree/main/test-vectors)
+
+## capsule-anchor
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/capsule-anchor) (release 0.1.4), a SCITT Transparency Service
+  ({{RFC9943}}) that registers a SHA-256 digest, a Signed Statement or a
+  checkpoint and returns a COSE Receipt carrying an RFC 9162 inclusion
+  proof. A public instance runs at [](https://witness.agentactioncapsule.org).
+
+Level of maturity:
+: Pre-1.0 releases; the public instance is operated by the organization
+  above.
+
+Coverage:
+: Registration of a leg record's Capsule ID ({{registration}}).
+
+Licensing:
+: Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/capsule-anchor/issues)
+
 # Security Considerations {#security}
 
 **One party sealing both sides.** The main attack on a two-party record is

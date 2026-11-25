@@ -91,21 +91,21 @@ Table of Contents
    10. Reconcile and Close . . . . . . . . . . . . . . . . . . . . .  16
    11. Implementation Status . . . . . . . . . . . . . . . . . . . .  18
      11.1.  Conformance vectors  . . . . . . . . . . . . . . . . . .  18
-   12. Security Considerations . . . . . . . . . . . . . . . . . . .  19
-   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  20
-     13.1.  What a Checkpoint Reveals  . . . . . . . . . . . . . . .  20
-   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  22
-     14.1.  Evidence Layer Epistemic Types . . . . . . . . . . . . .  22
-     14.2.  Evidence Layer Link Types  . . . . . . . . . . . . . . .  23
-     14.3.  Evidence Layer Retention States  . . . . . . . . . . . .  24
-   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  25
-     15.1.  Normative References . . . . . . . . . . . . . . . . . .  25
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  26
-   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  27
-   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  27
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  28
-
-
+     11.2.  checkpointed-local-log . . . . . . . . . . . . . . . . .  19
+     11.3.  scitt-cose . . . . . . . . . . . . . . . . . . . . . . .  20
+     11.4.  capsule-anchor . . . . . . . . . . . . . . . . . . . . .  20
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  21
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  22
+     13.1.  What a Checkpoint Reveals  . . . . . . . . . . . . . . .  22
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  23
+     14.1.  Evidence Layer Epistemic Types . . . . . . . . . . . . .  24
+     14.2.  Evidence Layer Link Types  . . . . . . . . . . . . . . .  24
+     14.3.  Evidence Layer Retention States  . . . . . . . . . . . .  25
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  26
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  26
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  27
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  28
+   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  28
 
 
 
@@ -113,6 +113,8 @@ Mih                        Expires 28 May 2027                  [Page 2]
 
 Internet-Draft               Evidence Layer                November 2026
 
+
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  29
 
 1.  Introduction
 
@@ -158,8 +160,6 @@ Internet-Draft               Evidence Layer                November 2026
       a result.  Records of a settlement, such as those of
       [I-D.mih-agent-settlement-records], are ordinary records to a
       store.
-
-
 
 
 
@@ -1034,6 +1034,94 @@ Internet-Draft               Evidence Layer                November 2026
    Contact:  https://github.com/action-state-group/agent-action-capsule/
       issues
 
+11.2.  checkpointed-local-log
+
+   Organization:  Action State Group, Inc.
+
+   Implementation:  https://github.com/action-state-group/checkpointed-
+      local-log, implementations of
+      [I-D.mih-scitt-checkpointed-local-log] in Python (release 0.9.0),
+      Go (release 0.4.0), TypeScript (release 0.4.0) and Rust (release
+      0.6.0): an append-only local log, its Merkle Mountain Range, and
+      signed checkpoints that can be registered with a Transparency
+      Service.
+
+   Level of maturity:  Pre-1.0 releases.
+
+   Coverage:  A commitment substrate for a store (Section 8): its log,
+      its checkpoints, and the inclusion and consistency proofs against
+      them.
+
+   Licensing:  BSD-3-Clause.
+
+   Contact:  https://github.com/action-state-group/checkpointed-local-
+      log/issues
+
+   Test vectors:  https://github.com/action-state-group/checkpointed-
+
+
+
+Mih                        Expires 28 May 2027                 [Page 19]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
+      local-log/tree/main/mmr-conformance-vectors, https://github.com/
+      action-state-group/checkpointed-local-log/tree/main/checkpoint-
+      conformance-vectors and https://github.com/action-state-group/
+      checkpointed-local-log/tree/main/commitment-conformance-vectors.
+
+11.3.  scitt-cose
+
+   Organization:  Action State Group, Inc.
+
+   Implementation:  https://github.com/action-state-group/scitt-cose, a
+      Python library (release 0.5.0) that verifies SCITT Signed
+      Statements and COSE Receipts ([RFC9942]) under the RFC9162_SHA256
+      and CCF tree algorithms, and verifies a Checkpointed Local Log's
+      inclusion and consistency proofs against a checkpoint.  It carries
+      no application profile: a statement's payload is opaque to it.
+
+   Level of maturity:  Pre-1.0 releases.
+
+   Coverage:  Verification of a Checkpointed Local Log's proofs and of
+      the Receipt over a registered checkpoint (Section 8).
+
+   Licensing:  Apache-2.0.
+
+   Contact:  https://github.com/action-state-group/scitt-cose/issues
+
+   Test vectors:  https://github.com/action-state-group/scitt-
+      cose/tree/main/test-vectors
+
+11.4.  capsule-anchor
+
+   Organization:  Action State Group, Inc.
+
+   Implementation:  https://github.com/action-state-group/capsule-anchor
+      (release 0.1.4), a SCITT Transparency Service ([RFC9943]) that
+      registers a SHA-256 digest, a Signed Statement or a checkpoint and
+      returns a COSE Receipt carrying an RFC 9162 inclusion proof.  A
+      public instance runs at https://witness.agentactioncapsule.org.
+
+   Level of maturity:  Pre-1.0 releases; the public instance is operated
+      by the organization above.
+
+   Coverage:  Registration of a store's checkpoints (Section 8).
+
+   Licensing:  Apache-2.0.
+
+   Contact:  https://github.com/action-state-group/capsule-anchor/issues
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 20]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
 12.  Security Considerations
 
    *A self-consistent fabricated history is possible until an external
@@ -1054,17 +1142,6 @@ Internet-Draft               Evidence Layer                November 2026
    nothing about whether the signer held any role, standing, or
    authority a relying party cares about; any such binding is host
    policy this document does not define (Section 2).
-
-
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 19]
-
-Internet-Draft               Evidence Layer                November 2026
-
 
    *Non-membership is checkable; asserted absence is not.* A relying
    party that cannot tell the two apart (Section 9.1) can be handed a
@@ -1089,6 +1166,18 @@ Internet-Draft               Evidence Layer                November 2026
    — never in the fact that a particular mechanism was used to produce
    or move it.
 
+
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 21]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
 13.  Privacy Considerations
 
    The durable record header (Section 4) MUST be privacy-minimized: it
@@ -1105,22 +1194,6 @@ Internet-Draft               Evidence Layer                November 2026
    witnesses, and counterparties receiving a record with an inclusion
    proof.  A checkpoint carries no record content, but it is not free of
    information.
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 20]
-
-Internet-Draft               Evidence Layer                November 2026
-
 
    *What a checkpoint reveals.* Every checkpoint states the size of the
    store's committed history: the number of records appended since the
@@ -1153,6 +1226,14 @@ Internet-Draft               Evidence Layer                November 2026
    only to within the bucket size.  This document reserves the
    record_type value padding for this purpose.  A padding record has
    epistemic_type producer_claim; its only content is a freshly
+
+
+
+Mih                        Expires 28 May 2027                 [Page 22]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
    generated random value meeting the requirement above, carried in the
    member store_nonce as 32 bytes encoded as 64 lowercase hexadecimal
    characters; and it carries no payload_commitments, no links, no
@@ -1168,15 +1249,6 @@ Internet-Draft               Evidence Layer                November 2026
    afterwards invalidates the signature or the record's inclusion.  A
    store MAY keep finer-grained times in local state that is neither
    committed nor disclosed.
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 21]
-
-Internet-Draft               Evidence Layer                November 2026
-
 
    A store operator MAY keep separate stores, each with its own
    commitment substrate and checkpoints, for separate scopes (for
@@ -1210,6 +1282,14 @@ Internet-Draft               Evidence Layer                November 2026
    is not the chain.relation or citation_purpose registry of
    [I-D.mih-scitt-agent-action-capsule], which govern fields inside a
    Capsule (Section 5).  "Evidence Layer Epistemic Types" is not that
+
+
+
+Mih                        Expires 28 May 2027                 [Page 23]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
    document's domain registry, which states what kind of act a Capsule
    records, not how its content came to be known.  "Evidence Layer
    Retention States" states whether a payload resolves to bytes, not
@@ -1218,21 +1298,6 @@ Internet-Draft               Evidence Layer                November 2026
 14.1.  Evidence Layer Epistemic Types
 
    Initial contents, from Section 4.1:
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 22]
-
-Internet-Draft               Evidence Layer                November 2026
-
 
    +=======================+==============================+===========+
    | Token                 | Description                  | Reference |
@@ -1276,16 +1341,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-
-
-
-
-
-
-
-
-
-Mih                        Expires 28 May 2027                 [Page 23]
+Mih                        Expires 28 May 2027                 [Page 24]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1341,7 +1397,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 28 May 2027                 [Page 24]
+Mih                        Expires 28 May 2027                 [Page 25]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1397,7 +1453,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 28 May 2027                 [Page 25]
+Mih                        Expires 28 May 2027                 [Page 26]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1453,7 +1509,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 28 May 2027                 [Page 26]
+Mih                        Expires 28 May 2027                 [Page 27]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1509,7 +1565,7 @@ Change Log
 
 
 
-Mih                        Expires 28 May 2027                 [Page 27]
+Mih                        Expires 28 May 2027                 [Page 28]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1565,4 +1621,4 @@ Author's Address
 
 
 
-Mih                        Expires 28 May 2027                 [Page 28]
+Mih                        Expires 28 May 2027                 [Page 29]

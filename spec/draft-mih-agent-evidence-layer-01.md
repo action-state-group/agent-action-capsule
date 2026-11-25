@@ -728,6 +728,88 @@ Licensing:
 Contact:
 : [](https://github.com/action-state-group/agent-action-capsule/issues)
 
+## checkpointed-local-log
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/checkpointed-local-log), implementations of
+  {{I-D.mih-scitt-checkpointed-local-log}} in Python (release 0.9.0), Go
+  (release 0.4.0), TypeScript (release 0.4.0) and Rust (release 0.6.0): an
+  append-only local log, its Merkle Mountain Range, and signed checkpoints
+  that can be registered with a Transparency Service.
+
+Level of maturity:
+: Pre-1.0 releases.
+
+Coverage:
+: A commitment substrate for a store ({{substrate}}): its log, its
+  checkpoints, and the inclusion and consistency proofs against them.
+
+Licensing:
+: BSD-3-Clause.
+
+Contact:
+: [](https://github.com/action-state-group/checkpointed-local-log/issues)
+
+Test vectors:
+: [](https://github.com/action-state-group/checkpointed-local-log/tree/main/mmr-conformance-vectors),
+  [](https://github.com/action-state-group/checkpointed-local-log/tree/main/checkpoint-conformance-vectors)
+  and [](https://github.com/action-state-group/checkpointed-local-log/tree/main/commitment-conformance-vectors).
+
+## scitt-cose
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/scitt-cose), a Python library (release 0.5.0) that verifies SCITT
+  Signed Statements and COSE Receipts ({{RFC9942}}) under the
+  `RFC9162_SHA256` and CCF tree algorithms, and verifies a Checkpointed
+  Local Log's inclusion and consistency proofs against a checkpoint. It
+  carries no application profile: a statement's payload is opaque to it.
+
+Level of maturity:
+: Pre-1.0 releases.
+
+Coverage:
+: Verification of a Checkpointed Local Log's proofs and of the
+  Receipt over a registered checkpoint ({{substrate}}).
+
+Licensing:
+: Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/scitt-cose/issues)
+
+Test vectors:
+: [](https://github.com/action-state-group/scitt-cose/tree/main/test-vectors)
+
+## capsule-anchor
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/capsule-anchor) (release 0.1.4), a SCITT Transparency Service
+  ({{RFC9943}}) that registers a SHA-256 digest, a Signed Statement or a
+  checkpoint and returns a COSE Receipt carrying an RFC 9162 inclusion
+  proof. A public instance runs at [](https://witness.agentactioncapsule.org).
+
+Level of maturity:
+: Pre-1.0 releases; the public instance is operated by the organization
+  above.
+
+Coverage:
+: Registration of a store's checkpoints ({{substrate}}).
+
+Licensing:
+: Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/capsule-anchor/issues)
+
 # Security Considerations {#security}
 
 **A self-consistent fabricated history is possible until an external party
