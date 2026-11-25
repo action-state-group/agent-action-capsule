@@ -18,8 +18,11 @@ This document defines three things:
   did not hold those the holder remedied and those where it did not honour a ruling, and carries
   the coverage start of that shelf log; `/1` and `/2` are unchanged by it. Its revision
   `standard_history/4` (§12) is `/3` except that it leaves no deal out for want of a witness time;
-  `/1` to `/3` are unchanged by it;
-- the deal member `counterparty_class` (§7), which decides whether a deal is counted;
+  `/1` to `/3` are unchanged by it. Its revision `standard_history/5` (§14) is `/4` except that it
+  counts every deal in the window, shop purchases paid up front included, and says how many of
+  them it counted; `/1` to `/4` are unchanged by it;
+- the deal member `counterparty_class` (§7), which under `/1` to `/4` decides whether a deal is
+  counted, and under `/5` is disclosed in a count of its own;
 - the record kind `receipt_document` (§8): a document the holder holds, sealed by its digest;
 - the card statement and its check `card_registered` (§13): an opt-in registration of a card on a
   transparency service, whose Receipt shows that the card existed at a time.
@@ -30,10 +33,10 @@ month (§4).
 
 ## Dependency boundary
 
-**Owns:** the derivation tokens `standard_history/1` to `standard_history/4` and their registry
+**Owns:** the derivation tokens `standard_history/1` to `standard_history/5` and their registry
 rows (`spec/REGISTRY.md` §16),
-the deal entry and the counting rules (§5, §11, §12), the card and its members (§4, §11.6, §12),
-the card properties (§6, §11.7, §12), the member `counterparty_class` and its three values (§7), the record
+the deal entry and the counting rules (§5, §11, §12, §14), the card and its members (§4, §11.6,
+§12, §14), the card properties (§6, §11.7, §12, §14), the member `counterparty_class` and its three values (§7), the record
 kind `receipt_document` (§8), and the card statement and the check `card_registered` (§13).
 
 **Uses unchanged:**
@@ -50,8 +53,8 @@ kind `receipt_document` (§8), and the card statement and the check `card_regist
 | RES | `spec/evidence-result-v0.md` | the claim verdict `met`, `not_met`, `not_evaluable`, `out_of_scope` (§4) and the grade `self-attested` (§1) |
 | EB | `spec/draft-mih-zhang-agent-disclosure-bundle-02.md` (`evidence-bundle/v2`) | only the Bundle, its `records`, its `completeness` members (`missing`), the disclosure overlay ("Bundle-Level Disclosures"), the padding leaf ("Non-Record Leaves") and the interval coverage and per-record membership claims ("Completeness Claims and Log Membership"), as the carriage of the material `counts_recompute` needs (§6 "Handing the material") |
 | HF | `spec/history-frame-v0.md` | the History frame: its rules (§4), its parameters (§3), and this derivation's counting table and wording pack (§5, §6.1) |
-| SF | `spec/shelf-forms-v0.md` | `/3` and `/4` only: the shelf log, its book facts and journal facts, the status value a fact commits to, the format-switch marker and the coverage start (§1, §3, §4.2), as the basis `/3` and `/4` count from (§11, §12) |
-| EBL | the evidencebook library, <https://github.com/action-state-group/evidencebook>, commit `a443a83a7f9dcf781b1a54ada98e37a286423ebe` | `/3` and `/4` only: the rule that computes a term row's status (`rowstatus/rowstatus.go`, design §4.2 of evidencebook#461), whose results a `/3` deal entry carries (§11.2, SH-11), and the whole-shelf handover and its checks (`shelf_handover.go`; its design `docs/design/461-shelf-facts.md` §2.7), the material of `/3`'s `counts_recompute` (§11.7) |
+| SF | `spec/shelf-forms-v0.md` | `/3` to `/5` only: the shelf log, its book facts and journal facts, the status value a fact commits to, the format-switch marker and the coverage start (§1, §3, §4.2), as the basis `/3` to `/5` count from (§11, §12, §14) |
+| EBL | the evidencebook library, <https://github.com/action-state-group/evidencebook>, commit `a443a83a7f9dcf781b1a54ada98e37a286423ebe` | `/3` to `/5` only: the rule that computes a term row's status (`rowstatus/rowstatus.go`, design §4.2 of evidencebook#461), whose results a `/3` deal entry carries (§11.2, SH-11), and the whole-shelf handover and its checks (`shelf_handover.go`; its design `docs/design/461-shelf-facts.md` §2.7), the material of `/3`'s `counts_recompute` (§11.7) |
 
 **Interop profile revision.** This profile stays on `evidence-interop/0`: IP is
 `spec/interop-profile-v0.md` as of commit `1456285979bd759b7828fd3ccc4a24296074e552`, which is
@@ -92,8 +95,8 @@ vector of this document.
 - **Wording pack:** `spec/history-frame/standard-history-1-pack.json`, digest
   `dcea1ee99942d0b4dc78b380b63f7854964d132925de18fdeb30b336e9877b74`: the display strings of §6
   "What a verifier shows".
-- **`/3`'s and `/4`'s parameters** are `/1`'s, all of them: SH's column of HF §6.1 holds for the
-  four tokens. Its anchor is a shelf checkpoint, the checkpoint of one log (`streams` `one`), and the
+- **`/3`'s, `/4`'s and `/5`'s parameters** are `/1`'s, all of them: SH's column of HF §6.1 holds
+  for the five tokens. Its anchor is a shelf checkpoint, the checkpoint of one log (`streams` `one`), and the
   coverage start it carries (§11.5) is a card member, not a coverage kind: `coverage_kind` stays
   `policy_window`, carried as `instance_text`.
 - **`/3`'s documents:** the counting table `spec/history-frame/standard-history-3-table.json`,
@@ -103,6 +106,10 @@ vector of this document.
   digest `38406ce224eaff3088759f07c0ec06fe63577bad742a60fdc86f6b5b7dec6bea`, and the wording pack
   `spec/history-frame/standard-history-4-pack.json`, digest
   `b3c8273673decfaeb38945f5c90a3b99b0ac633a0a291c3acd2cc4e6703bc930` (§12).
+- **`/5`'s documents:** the counting table `spec/history-frame/standard-history-5-table.json`,
+  digest `caa99362eedaf6b326540074aef49f5fb5b1772bc57f6293cdd4d08e9695f767`, and the wording pack
+  `spec/history-frame/standard-history-5-pack.json`, digest
+  `012162aa88de462f70e2448c6f058c34e2f0b4fd960fc70d4f28a73b4798ff1a` (§14).
 - **`/2`'s documents:** the counting table `spec/history-frame/standard-history-2-table.json`,
   digest `c18c28b9830440fddb0d2963c6731da698b019d00606e3f3e4205dfb34c48a1a`, which adds to `/1`'s
   table the card member and tally `unpriced` (§4); and the wording pack
@@ -110,8 +117,8 @@ vector of this document.
   `212fa32bf4a5193f4161ecc86059cf4b79bac9af183350a1800a05834797a564`, which adds the string that
   words it (§6).
 - **Pinning.** Each token pins both of its documents' bytes (HF §5.4): any change to either of
-  `/2`'s is a new token, and `/1`'s stay as they are; `standard_history/3` and `standard_history/4` each
-  pin their own two documents (§11, §12), and any change to either of them is a new token too. Where a document and this text
+  `/2`'s is a new token, and `/1`'s stay as they are; `standard_history/3`, `standard_history/4` and
+  `standard_history/5` each pin their own two documents (§11, §12, §14), and any change to either of them is a new token too. Where a document and this text
   disagree, HF §6.3 applies.
 - **Frame rules.** One holder key per card (HF §4.1), envelope acceptance (HF §4.3), card
   properties outside the IP §8 mapping (HF §4.4), acceptance (HF §4.5: a standard card, §6), no
@@ -129,12 +136,14 @@ described in BCP 14 (RFC 2119, RFC 8174) when, and only when, they appear in all
 Terms from PH §1, IP §1 and ER §2 are used unchanged. This document adds:
 
 - **Card:** the artifact of an answer under `standard_history/1`, `standard_history/2` (§4),
-  `standard_history/3` (§11.6) or `standard_history/4` (§12).
+  `standard_history/3` (§11.6), `standard_history/4` (§12) or `standard_history/5` (§14).
 - **Policy:** the holder's disclosure policy in force at the anchor, in whatever format the
   holder's host keeps it.
 - **Window:** the span of deals a card counts, set by the policy (§5.1).
 - **Deal entry:** the abstract facts about one deal that the counting rules read (§5.2).
-- **Counted deal:** a deal in the window whose `counterparty_class` is not `shop_preauth` (§7).
+- **Counted deal:** under `/1` to `/4`, a deal in the window whose `counterparty_class` is not
+  `shop_preauth` (§7), and under `/3`, not left out either (§11.2); under `/5`, every deal in the
+  window (§14).
 - **Unpriced deal:** under `/2`, a deal whose entry carries no `amount`, because the holder's
   records do not give the deal's agreed amount (§5.2).
 - **Tally:** a card member that holds counts. Every tally carries its own denominator, `of`.
@@ -144,11 +153,15 @@ UTC with `Z` and seconds precision.
 
 ## 2. What a card says
 
-A card answers "how did this holder's deals go, recently?" without showing any deal. It counts
-only the deals where the holder had to come through for the other party after the agreement:
-pay afterwards, deliver, turn up, or describe it truthfully. A purchase whose payment was taken
-up front, before anything else happened, is not counted (§7). Every count is shown beside the
-total it is part of, so a reader sees "9 of 12", never "75%".
+A card answers "how did this holder's deals go, recently?" without showing any deal. A `/5` card
+counts every deal in its window, a purchase whose payment was taken up front included, and says how
+many of the deals it counted were such purchases (§14). A card under `/1` to `/4` counts only the
+deals where the holder had to come through for the other party after the agreement: pay
+afterwards, deliver, turn up, or describe it truthfully; a purchase whose payment was taken up
+front, before anything else happened, is not counted there (§7). Under every token, a counted
+deal's outcome says whether the holder came through for the other party, never whether the other
+party did (§11.3). Every count is shown beside the total it is part of, so a reader sees "9 of 12",
+never "75%".
 
 The holder key signs every card (the envelope, IP §6.2). That is the holder's statement of the
 counts. A recipient checks the card's form and its denominators without any further evidence
@@ -160,18 +173,18 @@ a warning: the holder signed the counts, and recomputing them needs the whole st
 
 ## 3. The derivation
 
-`standard_history/1`, `standard_history/2`, `standard_history/3` and `standard_history/4` are
-registered derivation tokens [ER "Derivation"; `spec/REGISTRY.md` §16]. A request for any of them is the IP request
+`standard_history/1`, `standard_history/2`, `standard_history/3`, `standard_history/4` and
+`standard_history/5` are registered derivation tokens [ER "Derivation"; `spec/REGISTRY.md` §16]. A request for any of them is the IP request
 [IP §6.1] with:
 
 - `subject` `{"full_history": null}` [ER §3.1]: the holder's stream;
 - `coverage` `{"expected_pin": <the anchor>}`;
-- `derivation` `"standard_history/1"`, `"standard_history/2"`, `"standard_history/3"` or
-  `"standard_history/4"`;
+- `derivation` `"standard_history/1"`, `"standard_history/2"`, `"standard_history/3"`,
+  `"standard_history/4"` or `"standard_history/5"`;
 - `profile` `"evidence-interop/0"`.
 
 Everything §1 to §9 say of a card holds under `/1` and `/2` unless it names one, under `/3`
-as §11 says, and under `/4` as §12 says. A responder answers a request with a card of the token the request names, never of
+as §11 says, under `/4` as §12 says, and under `/5` as §14 says. A responder answers a request with a card of the token the request names, never of
 another one. A
 responder whose records do not give a deal's agreed amount cannot fill that deal's `/1` entry
 (§5.2), so it cannot answer `/1`: it refuses the request with reason `no_such_subject` [IP §6.3,
@@ -487,14 +500,16 @@ but not in the outcomes (`denominator`), a `/2` card without `unpriced`, a `/1` 
 
 ## 7. `counterparty_class`
 
-`counterparty_class` is a deal-level member: what kind of party the holder dealt with, and so
-whether the deal is counted (§5.3). Its value is one of:
+`counterparty_class` is a deal-level member: what kind of party the holder dealt with. Under `/1`
+to `/4` it decides whether the deal is counted (§5.3); under `/5` every deal in the window is
+counted, and the card discloses how many counted deals were `shop_preauth` (§14). Its value is one
+of:
 
-| Value | Meaning | Counted |
-|---|---|---|
-| `person_agent` | the other party is a person, through their agent | yes |
-| `business_agent` | the other party is a business, through its agent, and the holder still had to come through after the agreement | yes |
-| `shop_preauth` | a purchase from a shop whose payment was authorized up front, before anything else happened | no |
+| Value | Meaning | Counted under `/1` to `/4` | Counted under `/5` |
+|---|---|---|---|
+| `person_agent` | the other party is a person, through their agent | yes | yes |
+| `business_agent` | the other party is a business, through its agent, and the holder still had to come through after the agreement | yes | yes |
+| `shop_preauth` | a purchase from a shop whose payment was authorized up front, before anything else happened | no | yes, and in `shop_preauth.count` |
 
 - A deal's records carry `counterparty_class` on at most one record, as a top-level member of
   that record's payload. A host reads a deal whose records carry it on two or more records as
@@ -542,9 +557,11 @@ its correlation identifier is the deal reference. Its payload has exactly these 
   token contract, and a token one business issued can name that business. Which deals a card
   counts, and so which asset codes it shows, is the holder's control through the policy.
 - **The holder's levers.** The holder's own records set `counterparty_class` and the outcome
-  claim. Marking a deal `shop_preauth` takes it out of every count but `in_window`, and never
-  recording an outcome claim leaves it `undecided`. The card shows both, as
-  `in_window.not_counted` and `outcomes.undecided`, and a verifier shows them (§6). Under `/2`,
+  claim. Under `/1` to `/4`, marking a deal `shop_preauth` takes it out of every count but
+  `in_window`; under `/5` it takes it out of none, and only moves it into `shop_preauth.count`
+  (§14). Never recording an outcome claim leaves it `undecided`. The card shows both, as
+  `in_window.not_counted` (under `/5`, `shop_preauth.count`) and `outcomes.undecided`, and a
+  verifier shows them (§6). Under `/2`,
   never recording a deal's amount takes it out of the bands but not out of any other count: the
   card shows it as `unpriced`, and a verifier shows that too. Leaving out the amount never hides
   the deal, and `/1` gives a host no way to leave the deal out instead (§3).
@@ -591,13 +608,14 @@ its correlation identifier is the deal reference. Its payload has exactly these 
 | SH-10 | A disclosed, checkable form of the set of logs an anchor commits, for an anchor that commits them through a salted or sparse tree, such as a batching tree whose root is a parent log's entry. Without it, coverage (b) of §6 "Handing the material" cannot be shown for such an anchor, and `counts_recompute` stays `NOT_CHECKED`. |
 | SH-11 | Restating, in this repository, the rule that computes a term row's status (§11.2). `/3` cites EBL's rule (`rowstatus/rowstatus.go` at the commit the dependency table pins) and does not restate it; until it is restated, a second implementation of a host computes row results to EBL's vectors (`testdata/row-status/`). |
 | SH-12 | Closed (§11.2 `left_out`; §12): `/3` follows evidencebook#461 acceptance 9 and leaves out a deal only when its agreement names a witness and the holder holds no time from one; it counts a deal whose agreement names none, its rows local (§11.6 `local_times`), as acceptance 3 gives a shelf with no witness a card whose statuses are local. The target design's "a deal with no witness that both accept ... a card tallies it as not counted" (§4.1) is not followed. `/3` stays as it is (§11.6). `/4` follows the later decision that design records (evidencebook#578): a started deal with no witnessed time is counted and disclosed in `local_times`, whether or not its agreement names a witness, so `/4` has no `left_out` and no `not_counted` tally, and its deal entry carries `no_witness_time` (§12). |
-| SH-13 | A window membership rule that a reader without status openings can check, such as the first witnessed time of a book's first fact in place of `agreed_at`, with a check of a window alone instead of a whole shelf (the target design's proposal of 2026-11-16 for evidencebook#461, not adopted). `/3` and `/4` keep `agreed_at` (§5.1, §11.2, §12). Under `/4` a counted deal may hold no witnessed time at all; its `agreed_at` is then the holder's own time, and `local_times` counts it (§12 `no_witness_time`). |
+| SH-13 | A window membership rule that a reader without status openings can check, such as the first witnessed time of a book's first fact in place of `agreed_at`, with a check of a window alone instead of a whole shelf (the target design's proposal of 2026-11-16 for evidencebook#461, not adopted). `/3` to `/5` keep `agreed_at` (§5.1, §11.2, §12, §14). Under `/4` a counted deal may hold no witnessed time at all; its `agreed_at` is then the holder's own time, and `local_times` counts it (§12 `no_witness_time`). |
 | SH-14 | The wire form of the whole-shelf handover `/3`'s `counts_recompute` reads (§11.7), as SF-7. Until it is defined, the handover is EBL's form, and a verifier that does not read it reports `counts_recompute` `NOT_CHECKED`. |
 | SH-15 | A coverage start earlier than the format switch. EBL lets a reader that checks the old ticks' material against the genesis facts take the shelf log's first entry as the coverage start (its design §4); a `/3` card always carries the switch's month (§11.5), so such a holder's card understates its coverage. |
 | SH-16 | A remedy made without a ruling. It counts as remedied (§11.4; evidencebook#482 Q5), and the counterparty's answer is to dispute the row. EBL's row rule carries a remedy only for a `ruled` row; the remedy of an unmet row that is not ruled (§11.2) is the host profile's, read from the holder's own remedy record of the row, such as a refund (SH-2). |
 | SH-17 | Closed: the `forum` of a dispute under `/3`. `/3` keeps §5.4's dispute entry and tally, `by_forum` included, and the dispute and ruling records of the deal profile `x-deal-v1` carry a forum (evidencebook#482 Q4). A host profile whose records give no forum cannot fill a `/3` deal entry with a dispute. |
 | SH-18 | A check that a transparency service carries one card statement per holder key and anchor (§13.5), so that a holder that registers two cards is caught without comparing envelopes. It needs a defined query of a service by `iss` and `sub` and a rule for several services, and is only as strong as the services a reader asks; a holder can register the other card on a service the reader does not ask. Until it is defined, `card_registered` claims existence at a time only. |
-| SH-19 | The outcomes of each role's deals: of the counted deals the holder provided, how many held, did not hold or are undecided, and likewise for those it bought. `/1` to `/4` carry `roles` and `outcomes` as separate tallies over the same counted deals, so unless every counted deal has the same role or the same outcome, a card does not give one role's outcomes and a page cannot show them without the records. Not adopted (2026-11-01, agent-action-capsule#505) until a reader of a card needs them. Adding them is a new token with its own counting table, pack and vectors, never a member added to an existing token (§4; "Instance of the History frame", Pinning). |
+| SH-19 | The outcomes of each role's deals: of the counted deals the holder provided, how many held, did not hold or are undecided, and likewise for those it bought. `/1` to `/5` carry `roles` and `outcomes` as separate tallies over the same counted deals, so unless every counted deal has the same role or the same outcome, a card does not give one role's outcomes and a page cannot show them without the records. Not adopted (2026-11-01, agent-action-capsule#505) until a reader of a card needs them. Adding them is a new token with its own counting table, pack and vectors, never a member added to an existing token (§4; "Instance of the History frame", Pinning). |
+| SH-20 | A shop purchase whose shop never states on its rows, under `/5` (§14). §11.3 covers it unchanged: a row the shop owed that has no statement after its due date is `no_statement`, which makes the deal `undecided` unless a row the holder owed makes it `did_not_hold` first; and a row the shop did not meet is read as met, since the card counts whether the holder came through (§11.3), so the shop's own failure never makes the purchase `did_not_hold`. So a holder whose shops do not state on their rows shows those purchases as `undecided` for good, beside the `shop_preauth` count; and a purchase whose final rows are all the shop's, or are the holder's rows met, is `held`, whatever the shop did. Whether a purchase paid up front should be decided by the holder's rows alone, or a shop's silence read some other way, is not decided here: either is a change to a counting rule, so a new token (§14). Left open for the editor (AAC#682 acceptance 3). |
 
 ## 11. `standard_history/3`
 
@@ -944,8 +962,8 @@ the reverse (`card_form`).
 A holder MAY register a card on a transparency service [SCITT] and carry the service's Receipt
 beside the card. Registration is opt-in: this document names no transparency service, and a card
 that is not registered is a card like any other. It applies to a card under every token
-(`standard_history/1` to `/4`) and changes no card, member, counting rule, card property, counting
-table, wording pack or vector of §1 to §12.
+(`standard_history/1` to `/5`) and changes no card, member, counting rule, card property, counting
+table, wording pack or vector of §1 to §12 or §14.
 
 **What it shows.** A card statement with a passing Receipt (below) shows that the holder key stated
 exactly these card bytes no later than the Receipt's registration time, and that a transparency
@@ -1097,3 +1115,110 @@ signature, a text `kid`, an integer content type, CWT_Claims that is not a map, 
 or `sub`, a Receipt that is not a byte string, `alg` ES256, a `crit`, a
 `payload_hash_alg`, no CWT_Claims, no `iss` or no `sub`, a payload that is not 32 octets, a
 detached payload, an unprotected label besides `receipts`, no Receipt and 17 Receipts.
+
+## 14. `standard_history/5`
+
+`standard_history/5` is `/4` with one counting rule changed: it counts every deal in the window,
+whatever its `counterparty_class`. A shop purchase paid up front (`shop_preauth`, §7) is counted
+like any other deal, in `outcomes`, `bands` or `unpriced`, `roles`, `happened`, `disputes` (raised
+and received), `remedied`, `not_honoured` and `local_times`, by the rules those members follow for
+any deal, and the card says how many of the counted deals were such purchases. Everything §12 says
+of `/4` holds of `/5`, `/4`'s rules wherever they name a token, except:
+
+- **Counted.** A deal is **counted** under `/5` when it is in the window. `counterparty_class` no
+  longer takes a deal out of any count: it stays a deal member, filled and read as §7 says, and a
+  deal without it is in `class_missing.count` as before. The deal entry is `/4`'s (§12), so it has
+  no `left_out` member and may carry `no_witness_time`.
+- **The outcome** of a counted deal, a shop purchase included, is §11.3's, from its rows, by the
+  same rules as any other deal; the rules are unchanged (SH-20).
+- **The card** has the members of a `/4` card and one more, all REQUIRED:
+
+  | Member | Value |
+  |---|---|
+  | `shop_preauth` | tally: `of` (counted deals), `count` (counted deals whose `counterparty_class` is `shop_preauth`) |
+
+  Its `derivation` is `"standard_history/5"`. `in_window` keeps its three members, so that every
+  token states its deals in the window in the same member, and `in_window.not_counted` is 0 on
+  every `/5` card. No other member is allowed in a `/5` card, at any level. Any change to a member,
+  a value list or a counting rule of `/5` is a new token, and `/5` stays as it is.
+- **Denominators** (§11.6, as §12 holds them), and also: `in_window.not_counted` is 0, so
+  `in_window.counted` equals `in_window.of`; `shop_preauth.of` equals `in_window.counted`; and
+  `shop_preauth.count` and `class_missing.count` together are at most `in_window.counted`, since a
+  deal whose class is `shop_preauth` carries a class. A card that leaves the shop purchases out as
+  `/4` does, with `in_window.not_counted` above 0, fails `denominator`, which reads the card
+  alone (§6).
+- **Card properties** (§11.7, as §12 holds them): `card_form` checks this section's members. A `/5`
+  card answering a `/1` to `/4` request, or a `/1` to `/4` card answering a `/5` request, fails
+  `card_form`. `counts_recompute` derives the counts by this section's rule. A verifier that does
+  not implement `/5`, given a `/5` card, reports its `derivation` as unknown, checks no property of
+  it and shows none of its counts: never `PASS`.
+- **What a verifier shows** (§11.8, as §12 holds it): that the counts cover every deal in the
+  stated window, in place of how many deals in it were not counted; and `shop_preauth.count` of
+  `shop_preauth.of`, how many counted deals were shop purchases paid up front, beside the outcomes.
+  It shows that count as the recording party's statement of how the deal was paid (§7), never as
+  checked by anyone else, and never as a grade of the holder or of those deals.
+- **The holder's levers** (§9, §11.9): marking a deal `shop_preauth` is not one. It takes the deal
+  out of no count, and moves it only into `shop_preauth.count`. A holder that leaves the class off
+  a deal moves it into `class_missing.count` instead, which a verifier shows too.
+- **Differencing** (§11.9): a holder key that serves Standard Histories under
+  `inference-service-history/0` MUST NOT serve a `standard_history/5` card either, for §11.9's
+  reason.
+- **Documents.** The counting table `spec/history-frame/standard-history-5-table.json`, digest
+  `caa99362eedaf6b326540074aef49f5fb5b1772bc57f6293cdd4d08e9695f767`, and the wording pack
+  `spec/history-frame/standard-history-5-pack.json`, digest
+  `012162aa88de462f70e2448c6f058c34e2f0b4fd960fc70d4f28a73b4798ff1a`. They are `/4`'s with the card
+  member and tally `shop_preauth` added after `local_times`; in the pack, the string
+  `deals.not_counted` removed, the string `counts.cover` saying that the counts cover every deal in
+  the window, and the string `deals.shop_preauth` added.
+
+`/1` to `/4` are unchanged by this section, in every member, value, rule, document and vector. A
+holder that answers `/4` still leaves a shop purchase paid up front out of every count but
+`in_window`; a requester that wants such purchases counted names `/5`.
+
+**Example** (members in JCS order): the card of §14.1's positive vector, `shop-purchases-counted`,
+with its two digests elided. Its two shop purchases are in `outcomes` (one `held`, one
+`undecided`), in the USD band of decade 1, in `roles.bought`, in `happened.receipt_only`, and in
+`disputes`: the one the holder raised in `raised` (forum `rail`, `open`), the one the shop raised
+in `received`; and `shop_preauth.count` is 2.
+
+```json
+{"anchor": "<64 hex>", "bands": [{"currency": "BTC", "decade": -7, "did_not_hold": 1, "held": 0, "of": 1, "undecided": 0},
+           {"currency": "EUR", "decade": 0, "did_not_hold": 1, "held": 0, "of": 1, "undecided": 0},
+           {"currency": "EUR", "decade": 1, "did_not_hold": 1, "held": 0, "of": 1, "undecided": 0},
+           {"currency": "USD", "decade": null, "did_not_hold": 0, "held": 0, "of": 1, "undecided": 1},
+           {"currency": "USD", "decade": 0, "did_not_hold": 0, "held": 1, "of": 1, "undecided": 0},
+           {"currency": "USD", "decade": 1, "did_not_hold": 1, "held": 2, "of": 6, "undecided": 3},
+           {"currency": "USD", "decade": 2, "did_not_hold": 1, "held": 0, "of": 2, "undecided": 1},
+           {"currency": "USD", "decade": 3, "did_not_hold": 0, "held": 0, "of": 1, "undecided": 1}],
+ "class_missing": {"count": 1, "of": 16}, "controller_class": "person_declared", "coverage_start": "2026-04",
+ "derivation": "standard_history/5",
+ "disputes": {"raised": {"by_forum": {"auto": 0, "external": 0, "network": 0, "of": 2, "rail": 2},
+                         "by_outcome": {"against": 0, "for": 1, "no_finding": 0, "of": 2, "open": 1, "split": 0, "withdrawn": 0}, "of": 2},
+              "received": {"by_forum": {"auto": 0, "external": 1, "network": 1, "of": 3, "rail": 1},
+                           "by_outcome": {"against": 1, "for": 0, "no_finding": 0, "of": 3, "open": 2, "split": 0, "withdrawn": 0}, "of": 3}},
+ "happened": {"no_record": 4, "of": 16, "receipt_only": 7, "stamped_by_both": 5}, "holder_kind": "person",
+ "in_window": {"counted": 16, "not_counted": 0, "of": 16}, "local_times": {"count": 5, "of": 16},
+ "not_honoured": {"count": 1, "of": 5}, "outcomes": {"did_not_hold": 5, "held": 4, "of": 16, "undecided": 7},
+ "policy": "<64 hex>", "remedied": {"count": 1, "of": 5}, "roles": {"bought": 7, "of": 16, "provided": 9},
+ "shop_preauth": {"count": 2, "of": 16}, "since": "2026-03",
+ "unpriced": {"did_not_hold": 0, "held": 1, "of": 2, "undecided": 1}, "window": {"months": 3}}
+```
+
+**Why a new token.** `/4` fixes its counting rules (§12: "Any change to a member, a value list or a
+counting rule of `/4` is a new token"), and HF §5.4 pins its documents' bytes. Counting the shop
+purchases changes a counting rule and adds a member, so it cannot be made to `/4` in place.
+
+### 14.1 Vectors
+
+`vectors/standard-history-v0/vectors-5.json` holds the `/5` cases, each naming its token in
+`inputs.derivation`: `/4`'s shelf and a second shop purchase, so two deals of the class
+`shop_preauth`, each counted: deal-312, `held`, with a dispute the shop raised (a `received`
+dispute), and deal-317, `undecided` because the shop's row is in dispute, with an open dispute the
+holder raised through the payment rail (a `raised` dispute, forum `rail`); checked with all the
+material, without the deal entries and with nothing beside it. Negatives, each failing the property
+named: the two shop purchases left out of the window altogether, the holder's dispute on deal-317
+left out of `disputes.raised`, and the two shop purchases counted but not in `shop_preauth.count`
+(each `counts_recompute`); the two shop purchases left out as `/4` leaves them out, a
+`shop_preauth` tally over another `of` than the counted deals, and `shop_preauth.count` and
+`class_missing.count` together above the counted deals (each `denominator`); a `/4` card answering
+a `/5` request and the reverse (`card_form`).

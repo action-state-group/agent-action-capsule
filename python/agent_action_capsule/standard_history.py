@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""The ``standard_history/1`` to ``standard_history/4`` derivations (``spec/standard-history-v0.md``,
-cited as SH; ``/3`` is SH §11 and ``/4`` is SH §12).
+"""The ``standard_history/1`` to ``standard_history/5`` derivations (``spec/standard-history-v0.md``,
+cited as SH; ``/3`` is SH §11, ``/4`` is SH §12 and ``/5`` is SH §14).
 
 Two functions, each for the token its ``derivation`` names (``/1`` when omitted):
 
@@ -28,6 +28,7 @@ __all__ = [
     "DERIVATION_2",
     "DERIVATION_3",
     "DERIVATION_4",
+    "DERIVATION_5",
     "DERIVATIONS",
     "PROPERTIES",
     "COUNTERPARTY_CLASSES",
@@ -46,9 +47,12 @@ DERIVATION_3 = "standard_history/3"
 #: SH §12: /4 is /3 except that it leaves no deal out for want of a witness time: no ``left_out``
 #: and no ``not_counted`` tally.
 DERIVATION_4 = "standard_history/4"
-DERIVATIONS = (DERIVATION, DERIVATION_2, DERIVATION_3, DERIVATION_4)
-#: The tokens that count a shelf log's deals from their term rows (SH §11, §12).
-SHELF = (DERIVATION_3, DERIVATION_4)
+#: SH §14: /5 is /4 except that it counts every deal in the window, shop purchases paid up front
+#: included, and tallies them in ``shop_preauth``.
+DERIVATION_5 = "standard_history/5"
+DERIVATIONS = (DERIVATION, DERIVATION_2, DERIVATION_3, DERIVATION_4, DERIVATION_5)
+#: The tokens that count a shelf log's deals from their term rows (SH §11, §12, §14).
+SHELF = (DERIVATION_3, DERIVATION_4, DERIVATION_5)
 
 #: SH §6, in the order a verifier reports them.
 PROPERTIES = ("card_form", "counts_integral", "denominator", "window_from_policy", "as_of",
@@ -97,7 +101,9 @@ MEMBERS = {DERIVATION: CARD_MEMBERS, DERIVATION_2: CARD_MEMBERS | {"unpriced"},
            DERIVATION_3: CARD_MEMBERS | {"unpriced", "coverage_start", "not_counted", "remedied",
                                          "not_honoured", "local_times"},
            DERIVATION_4: CARD_MEMBERS | {"unpriced", "coverage_start", "remedied", "not_honoured",
-                                         "local_times"}}
+                                         "local_times"},
+           DERIVATION_5: CARD_MEMBERS | {"unpriced", "coverage_start", "remedied", "not_honoured",
+                                         "local_times", "shop_preauth"}}
 BAND_KEYS = ("currency", "decade")
 MAX_COUNT = 2 ** 53 - 1
 
@@ -118,6 +124,8 @@ def _tallies(derivation: str) -> dict:
         t["remedied"] = ("count",)
         t["not_honoured"] = ("count",)
         t["local_times"] = ("count",)
+    if derivation == DERIVATION_5:
+        t["shop_preauth"] = ("count",)
     return t
 
 
@@ -164,11 +172,12 @@ def _decade(amount: Mapping[str, Any]) -> int | None:
     return None if value == "0" else len(value) - scale - 1
 
 
-#: SH §11.2: the members a /3 deal entry may carry; a /4 entry has ``no_witness_time`` in place of
-#: ``left_out`` (SH §12). /1 and /2 entries are read as SH §5.2 says.
+#: SH §11.2: the members a /3 deal entry may carry; a /4 or /5 entry has ``no_witness_time`` in
+#: place of ``left_out`` (SH §12, §14). /1 and /2 entries are read as SH §5.2 says.
 _ENTRY_MEMBERS = frozenset(("deal", "agreed_at", "counterparty_class", "role", "amount", "rows",
                             "happened", "disputes"))
-ENTRY_MEMBERS = {DERIVATION_3: _ENTRY_MEMBERS | {"left_out"}, DERIVATION_4: _ENTRY_MEMBERS | {"no_witness_time"}}
+ENTRY_MEMBERS = {DERIVATION_3: _ENTRY_MEMBERS | {"left_out"}, DERIVATION_4: _ENTRY_MEMBERS | {"no_witness_time"},
+                 DERIVATION_5: _ENTRY_MEMBERS | {"no_witness_time"}}
 ROW_MEMBERS = frozenset(("owed_by", "status", "value", "remedy", "local"))
 
 
@@ -191,7 +200,7 @@ def _check_row(ref: str, row: Any) -> None:
 
 
 def _check_entry(deal: Mapping[str, Any], derivation: str) -> None:
-    """The deal entry's form (SH §5.2; under /3, §11.2; under /4, §12). A malformed entry is the
+    """The deal entry's form (SH §5.2; under /3, §11.2; under /4 and /5, §12). A malformed entry is the
     caller's error, never a count. ``amount`` may be absent except under /1: a /1 entry cannot be
     filled without it (SH §3)."""
     if not isinstance(deal, Mapping):
@@ -276,11 +285,13 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
         if not _in_window(_time(deal["agreed_at"]), window, anchor_time):
             continue
         t["in_window"]["of"] += 1
-        # SH §11.2: under /3 a deal left out is not counted either; /4 leaves none out (SH §12).
-        if deal.get("counterparty_class") == NOT_COUNTED or (derivation == DERIVATION_3 and "left_out" in deal):
+        # SH §11.2: under /3 a deal left out is not counted either; /4 leaves none out (SH §12), and
+        # /5 counts shop purchases too (SH §14).
+        shop = deal.get("counterparty_class") == NOT_COUNTED
+        if (shop and derivation != DERIVATION_5) or (derivation == DERIVATION_3 and "left_out" in deal):
             t["in_window"]["not_counted"] += 1
             if derivation == DERIVATION_3:
-                reason = "shop_preauth" if deal.get("counterparty_class") == NOT_COUNTED else "no_witness_time"
+                reason = "shop_preauth" if shop else "no_witness_time"
                 t["not_counted"]["of"] += 1
                 t["not_counted"][reason] += 1
             continue
@@ -288,6 +299,9 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
         t["class_missing"]["of"] += 1
         if "counterparty_class" not in deal:
             t["class_missing"]["count"] += 1
+        if derivation == DERIVATION_5:
+            t["shop_preauth"]["of"] += 1
+            t["shop_preauth"]["count"] += int(shop)
         if derivation in SHELF:
             result, detail = outcome(deal["rows"])
             if result == "did_not_hold":
@@ -295,7 +309,7 @@ def _counts(deals: Sequence[Mapping[str, Any]], window: Mapping[str, Any], ancho
                     t[name]["of"] += 1
                     t[name]["count"] += int(detail == name)
             t["local_times"]["of"] += 1
-            # SH §12: under /4 a deal with no witnessed time is in local_times whatever its rows say.
+            # SH §12: under /4 and /5 a deal with no witnessed time is in local_times whatever its rows say.
             if any(r.get("local") for r in deal["rows"]) or deal.get("no_witness_time"):
                 t["local_times"]["count"] += 1
         else:
@@ -334,7 +348,7 @@ def derive_card(*, holder_kind: str, controller_class: str, anchor: str, anchor_
                 coverage_start_time: str | None = None) -> dict:
     """The card of the token ``derivation`` that SH §4 (under /3, §11.6) states for these inputs.
     ``policy`` is ``{"digest", "window"}`` (SH §5.1). ``coverage_start_time`` is the time of the
-    shelf log's coverage start (SH §11.5), required under /3 and /4 only.
+    shelf log's coverage start (SH §11.5), required under /3, /4 and /5 only.
 
     Raises ``ValueError`` on a malformed input, a /1 deal entry without an amount included.
     """
@@ -470,12 +484,12 @@ def _partitions(t: Mapping[str, Any], parts: Sequence[str]) -> bool:
 
 
 def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
-    """SH §4 "Denominators" (under /3 and /4, §11.6). Run only on a card whose form and counts are PASS."""
+    """SH §4 "Denominators" (under /3 and /4, §11.6; under /5, §14). Run only on a card whose form and counts are PASS."""
     for name, parts in _tallies(derivation).items():
         t = card[name]
         if "of" not in t:
             return False
-        if name in ("class_missing", "remedied", "not_honoured", "local_times"):
+        if name in ("class_missing", "remedied", "not_honoured", "local_times", "shop_preauth"):
             if t["count"] > t["of"]:
                 return False
         elif not _partitions(t, parts):
@@ -486,6 +500,12 @@ def _denominator(card: Mapping[str, Any], derivation: str) -> bool:
     if derivation in SHELF and card["local_times"]["of"] != counted:
         return False
     if derivation == DERIVATION_3 and card["not_counted"]["of"] != card["in_window"]["not_counted"]:
+        return False
+    # SH §14: /5 counts every deal in the window, so none is not counted, and a deal with the class
+    # shop_preauth carries a class, so it is never in class_missing.
+    if derivation == DERIVATION_5 and (
+            card["in_window"]["not_counted"] != 0 or card["shop_preauth"]["of"] != counted
+            or card["shop_preauth"]["count"] + card["class_missing"]["count"] > counted):
         return False
     for band in card["bands"]:
         if not _partitions(band, OUTCOMES) or band["of"] < 1:
@@ -527,7 +547,7 @@ def check_card(card: Any, *, policy: Mapping[str, Any] | None = None,
     ``derivation``, the one the request named.
 
     ``policy`` is ``{"digest", "window"}`` (SH §5.1); ``as_of`` is ``{"anchor", "anchor_time",
-    "first_checkpoint_time"}``, and under /3 and /4 also ``"coverage_start_time"`` (SH §11.7); ``deals`` is every deal entry the stream holds at the anchor, passed only when the verifier has
+    "first_checkpoint_time"}``, and under /3, /4 and /5 also ``"coverage_start_time"`` (SH §11.7); ``deals`` is every deal entry the stream holds at the anchor, passed only when the verifier has
     shown coverage and no payload member the mapping reads is withheld (SH §6 "Handing the
     material"); the counts are recomputed over the card's own
     window, so the policy is not needed for them. Each is optional; a property that needs a missing one is ``NOT_CHECKED``. Raises ``ValueError`` on a

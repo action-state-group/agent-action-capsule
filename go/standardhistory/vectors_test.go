@@ -21,8 +21,8 @@ import (
 // reference. Every fully checked standard card is also rebuilt by DeriveAs.
 // vectors.json holds the standard_history/1 cases, vectors-2.json the
 // standard_history/2 ones, vectors-3.json the standard_history/3 ones (SH §11)
-// and vectors-4.json the standard_history/4 ones (SH §12), each naming the
-// token it is checked under.
+// vectors-4.json the standard_history/4 ones (SH §12) and vectors-5.json the
+// standard_history/5 ones (SH §14), each naming the token it is checked under.
 
 type vectorCase struct {
 	ID     string `json:"id"`
@@ -73,19 +73,21 @@ func loadFile(t *testing.T, name string) corpus {
 
 func TestCorpusHeader(t *testing.T) {
 	for _, c := range []corpus{load(t), loadFile(t, "vectors-2.json"), loadFile(t, "vectors-3.json"),
-		loadFile(t, "vectors-4.json")} {
+		loadFile(t, "vectors-4.json"), loadFile(t, "vectors-5.json")} {
 		assert.Equal(t, "spec/standard-history-v0.md", c.Spec)
 		assert.Equal(t, standardhistory.Properties, c.Properties)
 	}
 	assert.Equal(t, standardhistory.Derivation2, loadFile(t, "vectors-2.json").Derivation)
 	assert.Equal(t, standardhistory.Derivation3, loadFile(t, "vectors-3.json").Derivation)
 	assert.Equal(t, standardhistory.Derivation4, loadFile(t, "vectors-4.json").Derivation)
+	assert.Equal(t, standardhistory.Derivation5, loadFile(t, "vectors-5.json").Derivation)
 }
 
 func TestVectors(t *testing.T) {
 	all := append(load(t).Cases, loadFile(t, "vectors-2.json").Cases...)
 	all = append(all, loadFile(t, "vectors-3.json").Cases...)
 	all = append(all, loadFile(t, "vectors-4.json").Cases...)
+	all = append(all, loadFile(t, "vectors-5.json").Cases...)
 	for _, tc := range all {
 		t.Run(tc.ID, func(t *testing.T) {
 			got, err := standardhistory.CheckAs(tc.derivation(), tc.Inputs.Card, tc.Inputs.Policy, tc.Inputs.AsOf,
@@ -250,9 +252,9 @@ func TestUnpricedDealDecoding(t *testing.T) {
 }
 
 func TestUnknownTokenIsAnError(t *testing.T) {
-	_, err := standardhistory.CheckAs("standard_history/5", baseCase(t).Inputs.Card, nil, nil, nil)
+	_, err := standardhistory.CheckAs("standard_history/6", baseCase(t).Inputs.Card, nil, nil, nil)
 	require.Error(t, err)
-	_, err = standardhistory.DeriveAs("standard_history/5", "person", "person_declared", standardhistory.AsOf{},
+	_, err = standardhistory.DeriveAs("standard_history/6", "person", "person_declared", standardhistory.AsOf{},
 		standardhistory.Policy{}, nil)
 	require.Error(t, err)
 }
@@ -480,5 +482,46 @@ func TestV4RefusesLeftOut(t *testing.T) {
 	flagged := slices.Clone(v3.Inputs.Deals)
 	flagged[0].NoWitnessTime = true
 	_, err = standardhistory.CheckAs(standardhistory.Derivation3, v3.Inputs.Card, nil, v3.Inputs.AsOf, flagged)
+	require.Error(t, err)
+}
+
+// TestV5CountsShopPurchases: the same shelf counted under standard_history/4
+// leaves the shop purchases out, and under /5 counts them, their raised and
+// received disputes with them, in shop_preauth (SH §14). A /5 entry, like a
+// /4 one, refuses left_out.
+func TestV5CountsShopPurchases(t *testing.T) {
+	var tc vectorCase
+	for _, c := range loadFile(t, "vectors-5.json").Cases {
+		if c.ID == "shop-purchases-counted" {
+			tc = c
+		}
+	}
+	require.Equal(t, "shop-purchases-counted", tc.ID)
+	card := func(derivation string) map[string]any {
+		t.Helper()
+		octets, err := standardhistory.DeriveAs(derivation, "person", "person_declared", *tc.Inputs.AsOf,
+			*tc.Inputs.Policy, tc.Inputs.Deals)
+		require.NoError(t, err)
+		var m map[string]any
+		require.NoError(t, json.Unmarshal(octets, &m))
+		return m
+	}
+	v4, v5 := card(standardhistory.Derivation4), card(standardhistory.Derivation5)
+	assert.Equal(t, map[string]any{"of": 16.0, "counted": 14.0, "not_counted": 2.0}, v4["in_window"])
+	assert.NotContains(t, v4, "shop_preauth")
+	assert.Equal(t, map[string]any{"of": 16.0, "counted": 16.0, "not_counted": 0.0}, v5["in_window"])
+	assert.Equal(t, map[string]any{"of": 16.0, "count": 2.0}, v5["shop_preauth"])
+	raised := func(m map[string]any) any { return m["disputes"].(map[string]any)["raised"].(map[string]any)["of"] }
+	assert.Equal(t, 1.0, raised(v4))
+	assert.Equal(t, 2.0, raised(v5))
+	received := func(m map[string]any) any { return m["disputes"].(map[string]any)["received"].(map[string]any)["of"] }
+	assert.Equal(t, 2.0, received(v4))
+	assert.Equal(t, 3.0, received(v5))
+
+	deals := slices.Clone(tc.Inputs.Deals)
+	reason := "no_witness_time"
+	deals[0].LeftOut = &reason
+	_, err := standardhistory.CheckAs(standardhistory.Derivation5, tc.Inputs.Card, tc.Inputs.Policy, tc.Inputs.AsOf,
+		deals)
 	require.Error(t, err)
 }

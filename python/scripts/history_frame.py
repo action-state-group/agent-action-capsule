@@ -27,6 +27,7 @@ FILES = {
     "standard_history/2": ("standard-history-2-table.json", "standard-history-2-pack.json"),
     "standard_history/3": ("standard-history-3-table.json", "standard-history-3-pack.json"),
     "standard_history/4": ("standard-history-4-table.json", "standard-history-4-pack.json"),
+    "standard_history/5": ("standard-history-5-table.json", "standard-history-5-pack.json"),
     "personal_history_basic/1": ("personal-history-basic-1-table.json", "personal-history-basic-1-pack.json"),
     "personal_history_outcome/1": ("personal-history-outcome-1-table.json", "personal-history-outcome-1-pack.json"),
     "inference-service-history/0": ("inference-service-history-0-table.json", "inference-service-history-0-pack.json"),
@@ -47,6 +48,10 @@ DIGESTS = {
     "standard_history/4": {
         "table": "38406ce224eaff3088759f07c0ec06fe63577bad742a60fdc86f6b5b7dec6bea",
         "pack": "b3c8273673decfaeb38945f5c90a3b99b0ac633a0a291c3acd2cc4e6703bc930",
+    },
+    "standard_history/5": {
+        "table": "caa99362eedaf6b326540074aef49f5fb5b1772bc57f6293cdd4d08e9695f767",
+        "pack": "012162aa88de462f70e2448c6f058c34e2f0b4fd960fc70d4f28a73b4798ff1a",
     },
     "personal_history_basic/1": {
         "table": "d7f17129d98f5b849c59fb4d906bc3e9c57ce13fe08d00433fbe09161125ebb1",
