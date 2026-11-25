@@ -1,0 +1,2 @@
+<!-- changelog: rust/evidence-request/CHANGELOG.md -->
+- `cll_material::check_consistency_proof` (feature `cll`) checks a `cll-consistency-proof` between two checkpoints the reader holds, requiring the proof's own sizes, and `acceptance::form_problems` (feature `acceptance`) is public: the form check `evaluate` already ran, for readers that hold a record before it is complete; `check_history_card_2` now checks each proof through `check_consistency_proof` (agent-action-capsule#692).

@@ -443,3 +443,30 @@ fn the_parse_reads_a_serde_json_number_token_as_a_member() {
     );
     assert!(acceptance::parse(br#"{"n":-0}"#).is_none());
 }
+
+/// `form_problems` is the form check `evaluate` runs, for a reader that
+/// holds a record before it is complete.
+#[test]
+fn the_form_checks_are_public() {
+    let (p, q) = (key(1), key(2));
+    let contract = json!({"id": "C", "version": "1", "requirements": [{"id": "r"}]});
+    let record = obj(json!({
+        "profile": "evidence-interop/0", "state": "proposed", "contract_ref": "C@1",
+        "contract_digest": acceptance::record_digest(&contract).unwrap(),
+        "transaction": {"scheme": "x-test/session", "id": "s1"},
+        "proposer": hex_key(&p), "acceptor": hex_key(&q), "issued_at": "2026-10-12T00:00:00Z",
+        "session": {"not_before": "2026-10-12T00:00:00Z", "not_after": "2026-10-12T01:00:00Z"},
+    }));
+    let signed = acceptance::sign(record, &p).unwrap();
+    assert!(
+        acceptance::form_problems(&signed).is_empty(),
+        "{:?}",
+        acceptance::form_problems(&signed)
+    );
+    let mut no_acceptor = signed.clone();
+    no_acceptor.remove("acceptor");
+    assert!(!acceptance::form_problems(&no_acceptor).is_empty());
+    let mut bad_time = signed.clone();
+    bad_time.insert("issued_at".into(), json!("2026-13-12T00:00:00Z"));
+    assert!(!acceptance::form_problems(&bad_time).is_empty());
+}
