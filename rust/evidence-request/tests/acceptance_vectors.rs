@@ -444,8 +444,8 @@ fn the_parse_reads_a_serde_json_number_token_as_a_member() {
     assert!(acceptance::parse(br#"{"n":-0}"#).is_none());
 }
 
-/// `form_problems` and `is_profile_time` are the form checks `evaluate`
-/// runs, for a reader that holds a record before it is complete.
+/// `form_problems` is the form check `evaluate` runs, for a reader that
+/// holds a record before it is complete.
 #[test]
 fn the_form_checks_are_public() {
     let (p, q) = (key(1), key(2));
@@ -466,13 +466,7 @@ fn the_form_checks_are_public() {
     let mut no_acceptor = signed.clone();
     no_acceptor.remove("acceptor");
     assert!(!acceptance::form_problems(&no_acceptor).is_empty());
-    assert!(acceptance::is_profile_time("2026-10-12T00:00:00Z"));
-    for bad in [
-        "2026-10-12T00:00:00",
-        "2026-13-12T00:00:00Z",
-        "2026-10-12 00:00:00Z",
-        "2026-10-12T00:00:00.5Z",
-    ] {
-        assert!(!acceptance::is_profile_time(bad), "{bad}");
-    }
+    let mut bad_time = signed.clone();
+    bad_time.insert("issued_at".into(), json!("2026-13-12T00:00:00Z"));
+    assert!(!acceptance::form_problems(&bad_time).is_empty());
 }

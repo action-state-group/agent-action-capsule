@@ -751,7 +751,10 @@ pub fn check_consistency_proof(
     octets: &[u8],
 ) -> Result<(), &'static str> {
     let parts = proof_parts(octets, 4)?;
-    if uint(Some(&parts[0])) != Some(from_size) || uint(Some(&parts[1])) != Some(to_size) {
+    let (Some(from), Some(to)) = (uint(Some(&parts[0])), uint(Some(&parts[1]))) else {
+        return Err("malformed");
+    };
+    if from != from_size || to != to_size {
         return Err("the proof is between other sizes");
     }
     check_consistency(from_peaks, to_peaks, octets)
@@ -965,11 +968,15 @@ pub fn check_history_card_2(
             (0, Some(_)) | (_, None) => return Some("proof_invalid"),
             (_, Some(octets)) => {
                 let (prev, cur) = (&checkpoints[i - 1], &checkpoints[i]);
-                let spans = proof_parts(octets, 4).is_ok_and(|parts| {
-                    uint(Some(&parts[0])) == Some(prev.log_size)
-                        && uint(Some(&parts[1])) == Some(cur.log_size)
-                });
-                if !spans || check_consistency(&prev.commitment, &cur.commitment, octets).is_err() {
+                if check_consistency_proof(
+                    prev.log_size,
+                    &prev.commitment,
+                    cur.log_size,
+                    &cur.commitment,
+                    octets,
+                )
+                .is_err()
+                {
                     return Some("proof_invalid");
                 }
             }
