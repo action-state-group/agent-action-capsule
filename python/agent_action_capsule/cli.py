@@ -427,6 +427,8 @@ def _cmd_transparent(args) -> int:
             print(f"    capsule_id         : {report.authenticated_capsule_id}")
         for e in report.substrate_errors:
             print(f"    [ERR] {e}")
+        for f in report.receipt_findings:
+            print(f"    [FINDING] {f}")
         print("  payload (Agent Action Capsule, Class-1):")
         if report.payload is None:
             if report.authenticated_capsule_id is not None:
