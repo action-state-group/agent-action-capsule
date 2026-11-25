@@ -20,6 +20,7 @@
   "vectors/checkpoint-consistency/": {"ts": ["retained-head-vectors.test.ts"]},
   "vectors/bundle/fragment/": {"ts": ["fragment-vectors.test.ts"], "go": ["./bundle"]},
   "vectors/minimum-necessary/": {"python": ["test_min_necessary_vectors.py"]},
+  "vectors/outcome-claim-limits/": {"python": ["test_outcome_claim_limits_vectors.py"], "ts": ["outcome-claim-limits.test.ts"]},
   "vectors/judgment/": {"python": ["test_judgment_extension_vectors.py"]},
   "vectors/evidence-layer/padding/": {"python": ["test_evidence_layer_padding_vectors.py"]},
   "vectors/registry-conformance/": {"python": ["test_registry_conformance.py"], "go": ["./registries"]},

@@ -113,6 +113,7 @@ COUNTERS = {
     "vectors/cbor-nesting/": lambda: cases("vectors/cbor-nesting/cases.json"),
     "vectors/cbor-request-model/": lambda: cases("vectors/cbor-request-model/cases.json"),
     "vectors/minimum-necessary/": lambda: cases("vectors/minimum-necessary/manifest.json"),
+    "vectors/outcome-claim-limits/": lambda: cases("vectors/outcome-claim-limits/vectors.json"),
     "vectors/judgment/": lambda: cases("vectors/judgment/vectors.json"),
     "vectors/judge/": lambda: glob_count("vectors/judge/*/[pn]*-*.json"),
     "vectors/evidence-result/": lambda: glob_count("vectors/evidence-result/[pn]*-*.json", exclude=r"\.records\.json$"),
