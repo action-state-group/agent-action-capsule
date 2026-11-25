@@ -18,14 +18,14 @@
         <email>spec@actionstate.ai</email>
       </address>
     </author>
-    <date year="2026" month="November" day="21"/>
+    <date year="2026" month="November" day="24"/>
     <area>Security</area>
     <keyword>evidence</keyword>
     <keyword>transparency</keyword>
     <keyword>audit</keyword>
     <keyword>local store</keyword>
     <abstract>
-      <?line 93?>
+      <?line 94?>
 
 <t>This document defines the evidence layer: the conformance requirements for
 a local evidence store that records evidence and the relationships between
@@ -48,7 +48,7 @@ specific host-identity, signing, payload-storage, or replication mechanism.</t>
     </abstract>
   </front>
   <middle>
-    <?line 114?>
+    <?line 115?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -721,6 +721,69 @@ Close's own population, is a new record carrying a <tt>supersedes</tt> link to t
 prior Close and stating the adjustment; the prior Close's committed content
 stands unchanged, exactly as <xref target="retention"/>'s rule for any other correction.</t>
     </section>
+    <section anchor="impl-status">
+      <name>Implementation Status</name>
+      <t>Note to RFC Editor: Please remove this section and the reference to
+<xref target="RFC7942"/> before publication.</t>
+      <t>This section records the status of known implementations of the protocol
+defined by this specification at the time of posting of this
+Internet-Draft, and is based on a proposal described in <xref target="RFC7942"/>. The
+description of implementations in this section is intended to assist the
+IETF in its decision processes in progressing drafts to RFCs. Please note
+that the listing of any individual implementation here does not imply
+endorsement by the IETF. Furthermore, no effort has been spent to verify the
+information presented here that was supplied by IETF contributors. This is
+not intended as, and must not be construed to be, a catalog of available
+implementations or their features. Readers are advised to note that other
+implementations may exist.</t>
+      <t>According to <xref target="RFC7942"/>, "this will allow reviewers and working groups to
+assign due consideration to documents that have the benefit of running
+code, which may serve as evidence of valuable experimentation and feedback
+that have made the implemented protocols more mature. It is up to the
+individual working groups to use this information as they see fit".</t>
+      <section anchor="conformance-vectors">
+        <name>Conformance vectors</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementations:</dt>
+          <dd>
+            <t>No implementation of the evidence store this document defines is listed
+in this revision. The agent-action-capsule source repository,
+<eref target="https://github.com/action-state-group/agent-action-capsule"/>, carries
+conformance vectors for two of its rules, each with a deterministic
+generator and an independent check, both in Python:
+the padding record (<xref target="privacy"/>)
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/evidence-layer/padding"/>)
+and the <tt>UNDISCLOSED</tt> retention state with its <tt>policy_uri</tt>
+(<xref target="retention"/>)
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/evidence-layer/retention"/>).
+The same repository records the values of this document's three
+registries in its interim registry (<xref target="iana"/>).</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Test material only.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>The padding record and the <tt>UNDISCLOSED</tt> retention state. The vectors
+fix a JSON serialization for the members they test, which this document
+does not.</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>BSD-3-Clause.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/agent-action-capsule/issues"/></t>
+          </dd>
+        </dl>
+      </section>
+    </section>
     <section anchor="security">
       <name>Security Considerations</name>
       <t><strong>A self-consistent fabricated history is possible until an external party
@@ -1126,6 +1189,21 @@ whether a payload resolves to bytes, not what a Capsule records.</t>
       </references>
       <references anchor="sec-informative-references">
         <name>Informative References</name>
+        <reference anchor="RFC7942">
+          <front>
+            <title>Improving Awareness of Running Code: The Implementation Status Section</title>
+            <author fullname="Y. Sheffer" initials="Y." surname="Sheffer"/>
+            <author fullname="A. Farrel" initials="A." surname="Farrel"/>
+            <date month="July" year="2016"/>
+            <abstract>
+              <t>This document describes a simple process that allows authors of Internet-Drafts to record the status of known implementations by including an Implementation Status section. This will allow reviewers and working groups to assign due consideration to documents that have the benefit of running code, which may serve as evidence of valuable experimentation and feedback that have made the implemented protocols more mature.</t>
+              <t>This process is not mandatory. Authors of Internet-Drafts are encouraged to consider using the process for their documents, and working groups are invited to think about applying the process to all of their protocol specifications. This document obsoletes RFC 6982, advancing it to a Best Current Practice.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="205"/>
+          <seriesInfo name="RFC" value="7942"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7942"/>
+        </reference>
         <reference anchor="RFC9942">
           <front>
             <title>CBOR Object Signing and Encryption (COSE) Receipts</title>
@@ -1222,7 +1300,7 @@ whether a payload resolves to bytes, not what a Capsule records.</t>
         </reference>
       </references>
     </references>
-    <?line 875?>
+    <?line 932?>
 
 <section anchor="acknowledgments">
       <name>Acknowledgments</name>
@@ -1266,6 +1344,9 @@ its <tt>leaf_count</tt>, which follows from its <tt>log_size</tt>.</t>
         <li>
           <t>Answering a Request: added the <tt>checkpoint_range</tt> subject form, the
 seventh form of the Evidence Request at -03.</t>
+        </li>
+        <li>
+          <t>Implementation Status: added (<xref target="impl-status"/>), following RFC 7942.</t>
         </li>
         <li>
           <t>References: RFC 3986 is added as a normative reference, for

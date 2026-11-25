@@ -4,8 +4,8 @@
 
 Network Working Group                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Informational                          21 November 2026
-Expires: 25 May 2027
+Intended status: Informational                          24 November 2026
+Expires: 28 May 2027
 
 
                              Evidence Layer
@@ -49,11 +49,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 25 May 2027.
+   This Internet-Draft will expire on 28 May 2027.
 
 
 
-Mih                        Expires 25 May 2027                  [Page 1]
+Mih                        Expires 28 May 2027                  [Page 1]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -89,27 +89,27 @@ Table of Contents
    9.  Answering a Request . . . . . . . . . . . . . . . . . . . . .  14
      9.1.  Three Kinds of "No" . . . . . . . . . . . . . . . . . . .  15
    10. Reconcile and Close . . . . . . . . . . . . . . . . . . . . .  16
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  18
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  19
-     12.1.  What a Checkpoint Reveals  . . . . . . . . . . . . . . .  19
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  21
-     13.1.  Evidence Layer Epistemic Types . . . . . . . . . . . . .  21
-     13.2.  Evidence Layer Link Types  . . . . . . . . . . . . . . .  22
-     13.3.  Evidence Layer Retention States  . . . . . . . . . . . .  23
-   14. References  . . . . . . . . . . . . . . . . . . . . . . . . .  24
-     14.1.  Normative References . . . . . . . . . . . . . . . . . .  24
-     14.2.  Informative References . . . . . . . . . . . . . . . . .  25
-   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  26
-   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  26
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  27
+   11. Implementation Status . . . . . . . . . . . . . . . . . . . .  18
+     11.1.  Conformance vectors  . . . . . . . . . . . . . . . . . .  18
+   12. Security Considerations . . . . . . . . . . . . . . . . . . .  19
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  20
+     13.1.  What a Checkpoint Reveals  . . . . . . . . . . . . . . .  20
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  22
+     14.1.  Evidence Layer Epistemic Types . . . . . . . . . . . . .  22
+     14.2.  Evidence Layer Link Types  . . . . . . . . . . . . . . .  23
+     14.3.  Evidence Layer Retention States  . . . . . . . . . . . .  24
+   15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  25
+     15.1.  Normative References . . . . . . . . . . . . . . . . . .  25
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  26
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  27
+   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  27
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  28
 
 
 
 
 
-
-
-Mih                        Expires 25 May 2027                  [Page 2]
+Mih                        Expires 28 May 2027                  [Page 2]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -165,7 +165,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 3]
+Mih                        Expires 28 May 2027                  [Page 3]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -173,7 +173,7 @@ Internet-Draft               Evidence Layer                November 2026
    *  *A host-identity scheme.* What a principal_ref (Section 4) names,
       and how a party's key relates to any role or standing, is host- or
       deployment-defined.  This document states only what a
-      principal_ref cannot be taken to mean (Section 11).
+      principal_ref cannot be taken to mean (Section 12).
 
    *  *A signing, payload-storage, or replication mechanism.* How a
       record or a checkpoint is signed, how payload bytes are stored and
@@ -221,7 +221,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 4]
+Mih                        Expires 28 May 2027                  [Page 4]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -277,7 +277,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 5]
+Mih                        Expires 28 May 2027                  [Page 5]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -315,7 +315,7 @@ Internet-Draft               Evidence Layer                November 2026
 
    principal_ref is an opaque reference; the scheme that gives it
    meaning is host-defined and out of scope here (Section 2,
-   Section 11). committed_at is this store's own local time of
+   Section 12). committed_at is this store's own local time of
    commitment and is never a substitute for event_time_claim, which is
    itself only a claim: nothing in this document verifies that an
    event_time_claim is accurate.
@@ -333,7 +333,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 6]
+Mih                        Expires 28 May 2027                  [Page 6]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -371,7 +371,7 @@ Internet-Draft               Evidence Layer                November 2026
    commit is corrected only by a later record (Section 6); the
    original's epistemic_type does not change.
 
-   The registry for this value set is established in Section 13.
+   The registry for this value set is established in Section 14.
 
 5.  Typed Links
 
@@ -389,7 +389,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 7]
+Mih                        Expires 28 May 2027                  [Page 7]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -445,7 +445,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 8]
+Mih                        Expires 28 May 2027                  [Page 8]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -474,7 +474,7 @@ Internet-Draft               Evidence Layer                November 2026
    *closes:* the carrying record — a Close record (Section 10) — binds a
    stated range or set of records as reconciled.
 
-   A link type is closed vocabulary, registered in Section 13.  A
+   A link type is closed vocabulary, registered in Section 14.  A
    deployment that needs a relationship this list does not name
    registers a new link type; it MUST NOT overload an existing token to
    mean something else for some of its records.
@@ -501,7 +501,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 9]
+Mih                        Expires 28 May 2027                  [Page 9]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -557,7 +557,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 10]
+Mih                        Expires 28 May 2027                 [Page 10]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -576,7 +576,7 @@ Internet-Draft               Evidence Layer                November 2026
    reasons state that the subject does not resolve or that retention has
    lapsed, which is the DELETED case.
 
-   The registry for this value set is established in Section 13.
+   The registry for this value set is established in Section 14.
 
 6.1.1.  UNDISCLOSED and policy_uri
 
@@ -613,7 +613,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 11]
+Mih                        Expires 28 May 2027                 [Page 11]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -669,7 +669,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 12]
+Mih                        Expires 28 May 2027                 [Page 12]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -725,7 +725,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 13]
+Mih                        Expires 28 May 2027                 [Page 13]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -781,7 +781,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 14]
+Mih                        Expires 28 May 2027                 [Page 14]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -837,7 +837,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 15]
+Mih                        Expires 28 May 2027                 [Page 15]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -893,7 +893,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 16]
+Mih                        Expires 28 May 2027                 [Page 16]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -949,7 +949,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 17]
+Mih                        Expires 28 May 2027                 [Page 17]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -972,7 +972,69 @@ Internet-Draft               Evidence Layer                November 2026
    committed content stands unchanged, exactly as Section 6's rule for
    any other correction.
 
-11.  Security Considerations
+11.  Implementation Status
+
+   Note to RFC Editor: Please remove this section and the reference to
+   [RFC7942] before publication.
+
+   This section records the status of known implementations of the
+   protocol defined by this specification at the time of posting of this
+   Internet-Draft, and is based on a proposal described in [RFC7942].
+   The description of implementations in this section is intended to
+   assist the IETF in its decision processes in progressing drafts to
+   RFCs.  Please note that the listing of any individual implementation
+   here does not imply endorsement by the IETF.  Furthermore, no effort
+   has been spent to verify the information presented here that was
+   supplied by IETF contributors.  This is not intended as, and must not
+   be construed to be, a catalog of available implementations or their
+   features.  Readers are advised to note that other implementations may
+   exist.
+
+   According to [RFC7942], "this will allow reviewers and working groups
+   to assign due consideration to documents that have the benefit of
+   running code, which may serve as evidence of valuable experimentation
+   and feedback that have made the implemented protocols more mature.
+   It is up to the individual working groups to use this information as
+   they see fit".
+
+11.1.  Conformance vectors
+
+   Organization:  Action State Group, Inc.
+
+   Implementations:  No implementation of the evidence store this
+
+
+
+Mih                        Expires 28 May 2027                 [Page 18]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
+      document defines is listed in this revision.  The agent-action-
+      capsule source repository, https://github.com/action-state-group/
+      agent-action-capsule, carries conformance vectors for two of its
+      rules, each with a deterministic generator and an independent
+      check, both in Python: the padding record (Section 13)
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/vectors/evidence-layer/padding) and the
+      UNDISCLOSED retention state with its policy_uri (Section 6)
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/vectors/evidence-layer/retention).  The same
+      repository records the values of this document's three registries
+      in its interim registry (Section 14).
+
+   Level of maturity:  Test material only.
+
+   Coverage:  The padding record and the UNDISCLOSED retention state.
+      The vectors fix a JSON serialization for the members they test,
+      which this document does not.
+
+   Licensing:  BSD-3-Clause.
+
+   Contact:  https://github.com/action-state-group/agent-action-capsule/
+      issues
+
+12.  Security Considerations
 
    *A self-consistent fabricated history is possible until an external
    party pins a checkpoint.* A store that both produces and consumes its
@@ -993,6 +1055,17 @@ Internet-Draft               Evidence Layer                November 2026
    authority a relying party cares about; any such binding is host
    policy this document does not define (Section 2).
 
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 19]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
    *Non-membership is checkable; asserted absence is not.* A relying
    party that cannot tell the two apart (Section 9.1) can be handed a
    fabricated "no evidence" with no way to check it.  Recording which of
@@ -1002,14 +1075,6 @@ Internet-Draft               Evidence Layer                November 2026
    *epistemic_type is assigned once and is load-bearing.* A record
    misclassified at commit — a producer_claim recorded as an
    observed_event, for instance — is not corrected by anything happening
-
-
-
-Mih                        Expires 25 May 2027                 [Page 18]
-
-Internet-Draft               Evidence Layer                November 2026
-
-
    later: no signature, checkpoint, or countersignature changes what
    kind of statement a record was when it was made.  Any correction is a
    new record; the miscategorized original stands and remains readable
@@ -1024,7 +1089,7 @@ Internet-Draft               Evidence Layer                November 2026
    — never in the fact that a particular mechanism was used to produce
    or move it.
 
-12.  Privacy Considerations
+13.  Privacy Considerations
 
    The durable record header (Section 4) MUST be privacy-minimized: it
    carries what the store's own operation requires — identifiers,
@@ -1034,12 +1099,28 @@ Internet-Draft               Evidence Layer                November 2026
    digest invertible by exhaustive search, so hashing alone is not
    minimization.
 
-12.1.  What a Checkpoint Reveals
+13.1.  What a Checkpoint Reveals
 
    A store hands checkpoints (Section 8) to parties outside its control:
    witnesses, and counterparties receiving a record with an inclusion
    proof.  A checkpoint carries no record content, but it is not free of
    information.
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 20]
+
+Internet-Draft               Evidence Layer                November 2026
+
 
    *What a checkpoint reveals.* Every checkpoint states the size of the
    store's committed history: the number of records appended since the
@@ -1058,14 +1139,6 @@ Internet-Draft               Evidence Layer                November 2026
    records only if those records cannot be guessed and confirmed by
    recomputing a digest.  To make that hold, every record MUST include,
    within the bytes from which its commitment-substrate entry is
-
-
-
-Mih                        Expires 25 May 2027                 [Page 19]
-
-Internet-Draft               Evidence Layer                November 2026
-
-
    derived, a value of at least 128 bits drawn from a cryptographically
    secure random source, generated by the store for that record alone
    and never reused.  A value supplied by or known to another party
@@ -1096,6 +1169,15 @@ Internet-Draft               Evidence Layer                November 2026
    store MAY keep finer-grained times in local state that is neither
    committed nor disclosed.
 
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 21]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
    A store operator MAY keep separate stores, each with its own
    commitment substrate and checkpoints, for separate scopes (for
    example, per counterparty), so that a checkpoint shown within one
@@ -1108,21 +1190,7 @@ Internet-Draft               Evidence Layer                November 2026
    padding record as a record, and a store MUST NOT return one as
    responsive to a record, correlation, or exchange subject (Section 9).
 
-
-
-
-
-
-
-
-
-
-Mih                        Expires 25 May 2027                 [Page 20]
-
-Internet-Draft               Evidence Layer                November 2026
-
-
-13.  IANA Considerations
+14.  IANA Considerations
 
    IANA is requested to create the "Evidence Layer Parameters" registry
    group with the three registries below.  For each, the registration
@@ -1147,7 +1215,7 @@ Internet-Draft               Evidence Layer                November 2026
    Retention States" states whether a payload resolves to bytes, not
    what a Capsule records.
 
-13.1.  Evidence Layer Epistemic Types
+14.1.  Evidence Layer Epistemic Types
 
    Initial contents, from Section 4.1:
 
@@ -1161,19 +1229,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 25 May 2027                 [Page 21]
+Mih                        Expires 28 May 2027                 [Page 22]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1213,7 +1269,7 @@ Internet-Draft               Evidence Layer                November 2026
 
                                  Table 4
 
-13.2.  Evidence Layer Link Types
+14.2.  Evidence Layer Link Types
 
    Initial contents, from Section 5:
 
@@ -1229,7 +1285,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 22]
+Mih                        Expires 28 May 2027                 [Page 23]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1272,7 +1328,7 @@ Internet-Draft               Evidence Layer                November 2026
 
                                  Table 5
 
-13.3.  Evidence Layer Retention States
+14.3.  Evidence Layer Retention States
 
    Initial contents, from Section 6:
 
@@ -1285,7 +1341,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 23]
+Mih                        Expires 28 May 2027                 [Page 24]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1316,12 +1372,12 @@ Internet-Draft               Evidence Layer                November 2026
                                  Table 6
 
    This document makes no other requests of IANA.  The record_type value
-   padding (Section 12.1) is reserved by this document; record_type is
+   padding (Section 13.1) is reserved by this document; record_type is
    an open token and has no registry.
 
-14.  References
+15.  References
 
-14.1.  Normative References
+15.1.  Normative References
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -1341,7 +1397,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 24]
+Mih                        Expires 28 May 2027                 [Page 25]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1360,7 +1416,7 @@ Internet-Draft               Evidence Layer                November 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/rfc/rfc8785>.
 
-14.2.  Informative References
+15.2.  Informative References
 
    [I-D.mih-agent-disclosure-envelope]
               Mih, S., "Disclosure Envelope Profile for Agent Action
@@ -1397,7 +1453,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 25]
+Mih                        Expires 28 May 2027                 [Page 26]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1415,6 +1471,11 @@ Internet-Draft               Evidence Layer                November 2026
               disclosure-bundle-02, 31 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-zhang-
               agent-disclosure-bundle-02>.
+
+   [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
+              Code: The Implementation Status Section", BCP 205,
+              RFC 7942, DOI 10.17487/RFC7942, July 2016,
+              <https://www.rfc-editor.org/rfc/rfc7942>.
 
    [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
               Fournet, "CBOR Object Signing and Encryption (COSE)
@@ -1443,6 +1504,16 @@ Change Log
       store_nonce, 32 bytes encoded as 64 lowercase hexadecimal
       characters.
 
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 27]
+
+Internet-Draft               Evidence Layer                November 2026
+
+
    *  Retention: added the UNDISCLOSED retention state and the
       policy_uri header field it requires, and established the "Evidence
       Layer Retention States" registry.
@@ -1450,13 +1521,6 @@ Change Log
    *  Three kinds of "no": stated that absent in a per-category
       declaration is the producer's asserted absence, and that
       UNDISCLOSED there is not absent.
-
-
-
-Mih                        Expires 25 May 2027                 [Page 26]
-
-Internet-Draft               Evidence Layer                November 2026
-
 
    *  Typed links: added and registered amends, disputes, and resolves;
       stated that contradiction is carried as rebuts, and that disputes
@@ -1471,6 +1535,8 @@ Internet-Draft               Evidence Layer                November 2026
 
    *  Answering a Request: added the checkpoint_range subject form, the
       seventh form of the Evidence Request at -03.
+
+   *  Implementation Status: added (Section 11), following RFC 7942.
 
    *  References: RFC 3986 is added as a normative reference, for
       policy_uri.  The Agent Action Capsule profile is cited at -05, the
@@ -1499,14 +1565,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 25 May 2027                 [Page 27]
+Mih                        Expires 28 May 2027                 [Page 28]

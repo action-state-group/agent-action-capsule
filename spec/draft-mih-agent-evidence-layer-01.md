@@ -2,7 +2,7 @@
 title: "Evidence Layer"
 abbrev: "Evidence Layer"
 docname: draft-mih-agent-evidence-layer-01
-date: 2026-11-21
+date: 2026-11-24
 category: info
 submissiontype: IETF
 ipr: trust200902
@@ -30,6 +30,7 @@ normative:
   RFC8785:
 
 informative:
+  RFC7942:
   RFC9942:
   RFC9943:
   I-D.mih-scitt-agent-action-capsule:
@@ -671,6 +672,62 @@ Close's own population, is a new record carrying a `supersedes` link to the
 prior Close and stating the adjustment; the prior Close's committed content
 stands unchanged, exactly as {{retention}}'s rule for any other correction.
 
+# Implementation Status {#impl-status}
+
+Note to RFC Editor: Please remove this section and the reference to
+{{RFC7942}} before publication.
+
+This section records the status of known implementations of the protocol
+defined by this specification at the time of posting of this
+Internet-Draft, and is based on a proposal described in {{RFC7942}}. The
+description of implementations in this section is intended to assist the
+IETF in its decision processes in progressing drafts to RFCs. Please note
+that the listing of any individual implementation here does not imply
+endorsement by the IETF. Furthermore, no effort has been spent to verify the
+information presented here that was supplied by IETF contributors. This is
+not intended as, and must not be construed to be, a catalog of available
+implementations or their features. Readers are advised to note that other
+implementations may exist.
+
+According to {{RFC7942}}, "this will allow reviewers and working groups to
+assign due consideration to documents that have the benefit of running
+code, which may serve as evidence of valuable experimentation and feedback
+that have made the implemented protocols more mature. It is up to the
+individual working groups to use this information as they see fit".
+
+## Conformance vectors
+
+Organization:
+: Action State Group, Inc.
+
+Implementations:
+: No implementation of the evidence store this document defines is listed
+  in this revision. The agent-action-capsule source repository,
+  [](https://github.com/action-state-group/agent-action-capsule), carries
+  conformance vectors for two of its rules, each with a deterministic
+  generator and an independent check, both in Python:
+  the padding record ({{privacy}})
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/evidence-layer/padding))
+  and the `UNDISCLOSED` retention state with its `policy_uri`
+  ({{retention}})
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/evidence-layer/retention)).
+  The same repository records the values of this document's three
+  registries in its interim registry ({{iana}}).
+
+Level of maturity:
+: Test material only.
+
+Coverage:
+: The padding record and the `UNDISCLOSED` retention state. The vectors
+  fix a JSON serialization for the members they test, which this document
+  does not.
+
+Licensing:
+: BSD-3-Clause.
+
+Contact:
+: [](https://github.com/action-state-group/agent-action-capsule/issues)
+
 # Security Considerations {#security}
 
 **A self-consistent fabricated history is possible until an external party
@@ -886,6 +943,7 @@ Since -00:
   its `leaf_count`, which follows from its `log_size`.
 - Answering a Request: added the `checkpoint_range` subject form, the
   seventh form of the Evidence Request at -03.
+- Implementation Status: added ({{impl-status}}), following RFC 7942.
 - References: RFC 3986 is added as a normative reference, for
   `policy_uri`. The Agent Action Capsule profile is cited at -05, the
   Evidence Request at -03, the Evidence Bundle at -02, the Settlement Records
