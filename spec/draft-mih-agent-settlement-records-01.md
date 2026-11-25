@@ -2,7 +2,7 @@
 title: "Two-Party Settlement Records for Agent Payments"
 abbrev: "Agent Settlement Records"
 docname: draft-mih-agent-settlement-records-01
-date: 2026-10-31
+date: 2026-11-24
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -43,6 +43,7 @@ normative:
     date: 2026-10
 
 informative:
+  RFC7942:
   RFC9338:
   RFC9562:
   RFC9942:
@@ -50,16 +51,16 @@ informative:
   I-D.mih-agent-bilateral-attestation:
     title: "Bilateral Attestation of Cross-Organization Agent Actions"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-bilateral-attestation-02
+      Internet-Draft: draft-mih-agent-bilateral-attestation-03
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-09-13
+    date: 2026-10-28
   I-D.mih-sokolov-scitt-payload-binding:
     title: "Canonicalization Declaration for SCITT Signed Statements"
     seriesinfo:
-      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-05
+      Internet-Draft: draft-mih-sokolov-scitt-payload-binding-06
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -67,11 +68,11 @@ informative:
       - ins: A. Sokolov
         name: Anton Sokolov
         organization: Tyche Institute
-    date: 2026-09-11
+    date: 2026-10-25
   I-D.mih-zhang-agent-disclosure-bundle:
     title: "AAC Evidence Bundle"
     seriesinfo:
-      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-00
+      Internet-Draft: draft-mih-zhang-agent-disclosure-bundle-02
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -79,17 +80,17 @@ informative:
       - ins: Y. Zhang
         name: Yiqun Zhang
         organization: Independent
-    date: 2026-09
+    date: 2026-10-31
   I-D.mih-scitt-agent-action-capsule-sel-disc:
   I-D.mih-agent-evidence-request:
     title: "An Interaction Model for Requesting Verifiable Evidence"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-evidence-request-00
+      Internet-Draft: draft-mih-agent-evidence-request-03
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-09-26
+    date: 2026-11-21
   I-D.ryan-httpauth-payment:
   I-D.dogru-cedulon-core:
   X402:
@@ -773,7 +774,7 @@ The rules:
    ASCII octets of a JWS compact serialization). A sealer MUST NOT parse
    and re-serialize the object before digesting it, and MUST NOT apply RFC
    8785 to it unless the type says so. This is the rule that
-   {{I-D.mih-sokolov-scitt-payload-binding}}, Section 4.4, names
+   {{I-D.mih-sokolov-scitt-payload-binding}}, Section 5.4, names
    `as-transmitted`: no canonicalization, SHA-256 over the exact octet
    sequence the carrying format already fixes, written as 64 lowercase hex
    characters. A wrapped type's octet definition ({{iana-wrapped}}) plays
@@ -813,7 +814,7 @@ object as a whole, so the octets are the RFC 8785 form of the JSON envelope
 object (`format`, `payload`, `signature`); the EIP-712 signature covers the
 typed-data hash, not JSON octets, so this canonical form does not affect the
 signature. In the terms of {{I-D.mih-sokolov-scitt-payload-binding}}, that
-type selects `jcs` (Section 4.1) rather than `as-transmitted`, because the
+type selects `jcs` (Section 5.1) rather than `as-transmitted`, because the
 container defines no byte sequence to select.
 
 {::comment}
@@ -1091,6 +1092,126 @@ both.
 **COSE countersignatures.** Nothing in this document is a COSE
 countersignature {{RFC9338}}. Each leg is a separate Capsule from a
 separate sealer.
+
+# Implementation Status {#impl-status}
+
+Note to RFC Editor: Please remove this section and the reference to
+{{RFC7942}} before publication.
+
+This section records the status of known implementations of the protocol
+defined by this specification at the time of posting of this
+Internet-Draft, and is based on a proposal described in {{RFC7942}}. The
+description of implementations in this section is intended to assist the
+IETF in its decision processes in progressing drafts to RFCs. Please note
+that the listing of any individual implementation here does not imply
+endorsement by the IETF. Furthermore, no effort has been spent to verify the
+information presented here that was supplied by IETF contributors. This is
+not intended as, and must not be construed to be, a catalog of available
+implementations or their features. Readers are advised to note that other
+implementations may exist.
+
+According to {{RFC7942}}, "this will allow reviewers and working groups to
+assign due consideration to documents that have the benefit of running
+code, which may serve as evidence of valuable experimentation and feedback
+that have made the implemented protocols more mature. It is up to the
+individual working groups to use this information as they see fit".
+
+## Agent Action Capsule reference implementations
+
+Organization:
+: Action State Group, Inc.
+
+Implementations:
+: Four verifiers of this document in the agent-action-capsule source
+  repository, [](https://github.com/action-state-group/agent-action-capsule):
+  Python, the reference
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/python),
+  release 0.19.0); and ports in Go
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/go),
+  release 0.24.0), TypeScript
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/ts),
+  release 0.16.0) and Rust
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/rust/agent-action-capsule),
+  release 0.14.0).
+
+Description:
+: Each checks every leg record on its own (the Capsule checks, its
+  Producer Envelope, the `settlement` member, its amounts and its wrapped
+  objects), groups the legs by `terms_ref`, and derives the payment and
+  delivery states of {{states}}, including the same-key rule of
+  {{sealers}}. They verify; they do not seal leg records.
+
+Level of maturity:
+: Pre-1.0 releases. The test suite of each implementation runs the
+  conformance vectors below.
+
+Coverage:
+: All of this document's verifier rules that the conformance vectors
+  exercise. Whether a key may seal a role is checked only when a key policy
+  is supplied, as in {{sealers}}.
+
+Licensing:
+: BSD-3-Clause.
+
+Contact:
+: [](https://github.com/action-state-group/agent-action-capsule/issues)
+
+Conformance vectors:
+: [](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/settlement),
+  described in {{vectors}}. Their expected results are derived from this
+  document's text, not from any implementation.
+
+## scitt-cose
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/scitt-cose), a Python library (release 0.5.0) that verifies SCITT
+  Signed Statements and COSE Receipts ({{RFC9942}}) under the
+  `RFC9162_SHA256` and CCF tree algorithms, and verifies a Checkpointed
+  Local Log's inclusion and consistency proofs against a checkpoint. It
+  carries no application profile: a statement's payload is opaque to it.
+
+Level of maturity:
+: Pre-1.0 releases.
+
+Coverage:
+: Verification of the Receipt a Transparency Service returns for a
+  registered leg record ({{registration}}).
+
+Licensing:
+: Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/scitt-cose/issues)
+
+Test vectors:
+: [](https://github.com/action-state-group/scitt-cose/tree/main/test-vectors)
+
+## capsule-anchor
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/capsule-anchor) (release 0.1.4), a SCITT Transparency Service
+  ({{RFC9943}}) that registers a SHA-256 digest, a Signed Statement or a
+  checkpoint and returns a COSE Receipt carrying an RFC 9162 inclusion
+  proof. A public instance runs at [](https://witness.agentactioncapsule.org).
+
+Level of maturity:
+: Pre-1.0 releases; the public instance is operated by the organization
+  above.
+
+Coverage:
+: Registration of a leg record's Capsule ID ({{registration}}).
+
+Licensing:
+: Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/capsule-anchor/issues)
 
 # Security Considerations {#security}
 
@@ -1388,6 +1509,14 @@ before publication.
   signature with an R of small or mixed order is still found. Security
   Considerations says that the absence of `wrapped_resigned` does not clear
   the sealer ({{security}}).
+* References: the informative references are updated to the current
+  revisions, draft-mih-agent-bilateral-attestation-03,
+  draft-mih-sokolov-scitt-payload-binding-06,
+  draft-mih-zhang-agent-disclosure-bundle-02 and
+  draft-mih-agent-evidence-request-03. Section pointers into
+  draft-mih-sokolov-scitt-payload-binding follow its renumbering
+  (`jcs` is Section 5.1 and `as-transmitted` is Section 5.4).
+* Implementation Status: added ({{impl-status}}), following RFC 7942.
 * Wire unchanged: the `settlement` member's `version` is still `"0"`
   ({{settlement-member}}).
 

@@ -22,6 +22,7 @@
   "vectors/minimum-necessary/": {"python": ["test_min_necessary_vectors.py"]},
   "vectors/judgment/": {"python": ["test_judgment_extension_vectors.py"]},
   "vectors/evidence-layer/padding/": {"python": ["test_evidence_layer_padding_vectors.py"]},
+  "vectors/evidence-layer/retention/": {"python": ["test_evidence_layer_retention_vectors.py"]},
   "vectors/registry-conformance/": {"python": ["test_registry_conformance.py"], "go": ["./registries"]},
   "vectors/evidence-request/": {"python": ["test_evidence_request_vectors.py"], "go": ["./evidencerequest"], "rust": ["evidence-request:vectors"]},
   "vectors/settlement/": {"python": ["test_settlement_vectors.py"], "ts": ["settlement-vectors.test.ts"], "go": ["./settlement"], "rust": ["agent-action-capsule:settlement_vectors"]},

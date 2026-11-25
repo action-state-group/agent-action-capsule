@@ -664,10 +664,9 @@ such checkpoints then reveal the count between them only to within the
 bucket size. This document reserves the `record_type` value `padding` for
 this purpose. A padding record has `epistemic_type` `producer_claim`; its
 only content is a freshly generated random value meeting the requirement
-above, carried in the member `store_nonce` as 32 bytes encoded as 64
-lowercase hexadecimal characters; and it carries no `payload_commitments`,
-no links, no `subject_ref`, and no `principal_ref`. A padding record
-MUST NOT be the target of any link. It is appended like any other record and changes none of the
+above; and it carries no `payload_commitments`, no links, no `subject_ref`,
+and no `principal_ref`. A padding record MUST NOT be the target of any
+link. It is appended like any other record and changes none of the
 properties of {{substrate}}.
 
 A store SHOULD coarsen every time value that leaves its control inside

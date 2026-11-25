@@ -4,8 +4,8 @@
 
 Network Working Group                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Standards Track                         31 October 2026
-Expires: 4 May 2027
+Intended status: Standards Track                        24 November 2026
+Expires: 28 May 2027
 
 
             Two-Party Settlement Records for Agent Payments
@@ -53,9 +53,9 @@ Status of This Memo
 
 
 
-Mih                        Expires 4 May 2027                   [Page 1]
+Mih                        Expires 28 May 2027                  [Page 1]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    Internet-Drafts are draft documents valid for a maximum of six months
@@ -63,7 +63,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 4 May 2027.
+   This Internet-Draft will expire on 28 May 2027.
 
 Copyright Notice
 
@@ -82,7 +82,7 @@ Copyright Notice
 Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
-     1.1.  What This Document Does Not Do  . . . . . . . . . . . . .   4
+     1.1.  What This Document Does Not Do  . . . . . . . . . . . . .   5
    2.  Conventions and Definitions . . . . . . . . . . . . . . . . .   5
    3.  Two Independent Sealers . . . . . . . . . . . . . . . . . . .   6
    4.  The Leg Record  . . . . . . . . . . . . . . . . . . . . . . .   7
@@ -92,7 +92,7 @@ Table of Contents
    5.  The Legs  . . . . . . . . . . . . . . . . . . . . . . . . . .  10
      5.1.  Terms . . . . . . . . . . . . . . . . . . . . . . . . . .  10
      5.2.  Payer-Observed  . . . . . . . . . . . . . . . . . . . . .  11
-     5.3.  Payee-Observed  . . . . . . . . . . . . . . . . . . . . .  11
+     5.3.  Payee-Observed  . . . . . . . . . . . . . . . . . . . . .  12
      5.4.  Delivered . . . . . . . . . . . . . . . . . . . . . . . .  12
    6.  Amounts . . . . . . . . . . . . . . . . . . . . . . . . . . .  14
      6.1.  Fees  . . . . . . . . . . . . . . . . . . . . . . . . . .  15
@@ -109,29 +109,33 @@ Table of Contents
 
 
 
-Mih                        Expires 4 May 2027                   [Page 2]
+Mih                        Expires 28 May 2027                  [Page 2]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    11. Crosswalk to AEP Fulfillment Fields . . . . . . . . . . . . .  28
    12. Registration with a Transparency Service  . . . . . . . . . .  30
    13. Relationship to Existing Work . . . . . . . . . . . . . . . .  31
-   14. Security Considerations . . . . . . . . . . . . . . . . . . .  32
-   15. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  33
-   16. Open Issues . . . . . . . . . . . . . . . . . . . . . . . . .  34
-   17. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  35
-     17.1.  Payment Reference Types  . . . . . . . . . . . . . . . .  35
-     17.2.  Wrapped Object Types . . . . . . . . . . . . . . . . . .  35
-     17.3.  No Other Actions . . . . . . . . . . . . . . . . . . . .  36
-   18. References  . . . . . . . . . . . . . . . . . . . . . . . . .  36
-     18.1.  Normative References . . . . . . . . . . . . . . . . . .  36
-     18.2.  Informative References . . . . . . . . . . . . . . . . .  37
-   Conformance Vectors . . . . . . . . . . . . . . . . . . . . . . .  40
-   Example . . . . . . . . . . . . . . . . . . . . . . . . . . . . .  41
-   Changes from draft-mih-agent-settlement-records-00  . . . . . . .  42
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  42
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  42
+   14. Implementation Status . . . . . . . . . . . . . . . . . . . .  31
+     14.1.  Agent Action Capsule reference implementations . . . . .  32
+     14.2.  scitt-cose . . . . . . . . . . . . . . . . . . . . . . .  33
+     14.3.  capsule-anchor . . . . . . . . . . . . . . . . . . . . .  33
+   15. Security Considerations . . . . . . . . . . . . . . . . . . .  34
+   16. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  35
+   17. Open Issues . . . . . . . . . . . . . . . . . . . . . . . . .  36
+   18. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  36
+     18.1.  Payment Reference Types  . . . . . . . . . . . . . . . .  37
+     18.2.  Wrapped Object Types . . . . . . . . . . . . . . . . . .  37
+     18.3.  No Other Actions . . . . . . . . . . . . . . . . . . . .  38
+   19. References  . . . . . . . . . . . . . . . . . . . . . . . . .  38
+     19.1.  Normative References . . . . . . . . . . . . . . . . . .  38
+     19.2.  Informative References . . . . . . . . . . . . . . . . .  39
+   Conformance Vectors . . . . . . . . . . . . . . . . . . . . . . .  42
+   Example . . . . . . . . . . . . . . . . . . . . . . . . . . . . .  43
+   Changes from draft-mih-agent-settlement-records-00  . . . . . . .  44
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  44
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  44
 
 1.  Introduction
 
@@ -157,18 +161,17 @@ Internet-Draft          Agent Settlement Records            October 2026
       a payer signature.  They are two-party for the payment, and
       specific to Lightning.
 
+
+
+
+
+Mih                        Expires 28 May 2027                  [Page 3]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    *  ISO 20022 status reports [ISO20022] are produced by each agent in
       the chain about its own side, under bank keys.
-
-
-
-
-
-
-Mih                        Expires 4 May 2027                   [Page 3]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
    None of these records what the delivered content was, and none lets a
    third party check, offline, that the two sides' observations of one
@@ -209,6 +212,20 @@ Internet-Draft          Agent Settlement Records            October 2026
    Producer Envelope signature, its cross-record references, and its
    registration path to a SCITT Transparency Service [RFC9943].
 
+
+
+
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                  [Page 4]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
 1.1.  What This Document Does Not Do
 
    This document does not move money, define a payment protocol, replace
@@ -218,14 +235,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    [I-D.mih-scitt-agent-action-capsule].  It does not rank, rate, or
    otherwise grade the parties to a settlement.  It records what each
    side observed, and it defines how a verifier derives whether the
-
-
-
-Mih                        Expires 4 May 2027                   [Page 4]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
-
    observations agree.
 
 2.  Conventions and Definitions
@@ -266,6 +275,13 @@ Internet-Draft          Agent Settlement Records            October 2026
       It records what one side says it observed.  It is not an
       agreement.
 
+
+
+Mih                        Expires 28 May 2027                  [Page 5]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    Verifier:  Any party that checks a set of leg records and derives the
       settlement state (Section 9).
 
@@ -273,14 +289,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    hexadecimal characters.  A "JSON digest" is the Capsule profile's
    JSON digest: SHA-256 over the RFC 8785 [RFC8785] canonical form
    ([I-D.mih-scitt-agent-action-capsule], Conventions and Definitions).
-
-
-
-
-Mih                        Expires 4 May 2027                   [Page 5]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
    A leg record is a Capsule, so it is subject to that profile's JSON
    nesting limit of 128 levels, including its producer and verifier
@@ -319,6 +327,17 @@ Internet-Draft          Agent Settlement Records            October 2026
        NOT derive agreed from it (Section 9).  This check needs no key
        policy: it compares the two envelopes' kid values.
 
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                  [Page 6]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    4.  *Role consistency.* A leg's sealer_role MUST match the leg: payer
        for a payer-observed leg and payee for a payee-observed leg.  The
        terms leg and the delivered leg may be sealed by either party
@@ -330,13 +349,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    DNS-published keys, or the signer-authorization methods of the
    protocol being bound).  A verifier MUST return each leg's
    authenticated key so that its caller can apply that policy.
-
-
-
-Mih                        Expires 4 May 2027                   [Page 6]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
 4.  The Leg Record
 
@@ -374,6 +386,14 @@ Internet-Draft          Agent Settlement Records            October 2026
    +-------------+--------+-----------------+-------------------------+
    | leg         | string | all legs        | terms, payer_observed,  |
    |             |        |                 | payee_observed, or      |
+
+
+
+Mih                        Expires 28 May 2027                  [Page 7]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    |             |        |                 | delivered.  A closed    |
    |             |        |                 | set; any other value is |
    |             |        |                 | a structural failure.   |
@@ -386,14 +406,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    |             |        |                 | answers.                |
    +-------------+--------+-----------------+-------------------------+
    | amount      | object | terms,          | The amount (Section 6). |
-
-
-
-Mih                        Expires 4 May 2027                   [Page 7]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
-
    |             |        | payer_observed  | In the terms leg, the   |
    |             |        |                 | price.  In the payer-   |
    |             |        |                 | observed leg, the       |
@@ -430,6 +442,14 @@ Internet-Draft          Agent Settlement Records            October 2026
    |             |        |                 | example a Lightning     |
    |             |        |                 | payment hash).          |
    +-------------+--------+-----------------+-------------------------+
+
+
+
+Mih                        Expires 28 May 2027                  [Page 8]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    | status      | string | payer_observed, | pending, settled,       |
    |             |        | payee_observed  | failed, or reversed, as |
    |             |        |                 | the sealer's own system |
@@ -442,14 +462,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    |             |        |                 | observation.            |
    +-------------+--------+-----------------+-------------------------+
    | deliverable | object | OPTIONAL, terms | What is to be delivered |
-
-
-
-Mih                        Expires 4 May 2027                   [Page 8]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
-
    |             |        |                 | (Section 5.1).          |
    +-------------+--------+-----------------+-------------------------+
    | valid_until | string | OPTIONAL, terms | [RFC3339] UTC time      |
@@ -485,6 +497,15 @@ Internet-Draft          Agent Settlement Records            October 2026
    leg's capsule_id, and a verifier compares it with the recomputed
    capsule_id of the terms leg it holds.
 
+
+
+
+
+Mih                        Expires 28 May 2027                  [Page 9]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    *Counterparty legs.* A sealer that holds a leg sealed by the other
    party MAY cite it from its own leg with a references entry
    ([I-D.mih-scitt-agent-action-capsule], Cross-record references) of
@@ -497,14 +518,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    with chain (for example, a payee's delivered leg following its payee-
    observed leg with relation follows).  The join of a settlement never
    depends on chain; it depends on terms_ref and payment_ref only.
-
-
-
-
-Mih                        Expires 4 May 2027                   [Page 9]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
    The usual order of a settlement is shown below.  Only the terms leg
    must exist before the others; any subset of the other legs can be
@@ -541,6 +554,14 @@ Internet-Draft          Agent Settlement Records            October 2026
    counterparty leg cites is one party's statement of the terms, not an
    agreement on them.
 
+
+
+
+Mih                        Expires 28 May 2027                 [Page 10]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    The terms leg carries:
 
    *  amount: the agreed amount (Section 6).
@@ -551,16 +572,6 @@ Internet-Draft          Agent Settlement Records            October 2026
 
    *  deliverable (OPTIONAL): an object with at least one of these
       members:
-
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 10]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
       -  content_digest: the digest of the content to be delivered, when
          it is known in advance (for example a data set with a published
@@ -578,7 +589,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    Refunds and partial payments are out of scope for this revision.  A
    refund can be recorded as a separate settlement, with its own terms
    leg and the roles reversed; this document defines no citation between
-   it and the original terms leg (Section 16).
+   it and the original terms leg (Section 17).
 
    When the terms come from a protocol object, the terms leg's amount
    MUST equal the amount that object states (Section 6).  The x402
@@ -599,6 +610,14 @@ Internet-Draft          Agent Settlement Records            October 2026
    response it received [X402], the BOLT 12 payer proof [BOLT12], or the
    ISO 20022 status report the payer's bank returned [ISO20022].  A
    payer that received a payee-issued receipt (for example an AP2
+
+
+
+Mih                        Expires 28 May 2027                 [Page 11]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    Payment Receipt or an x402 signed receipt) MAY wrap it here; it is
    then carried as the issuer's object, not as the payer's observation
    (Section 8).
@@ -610,13 +629,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    credited to it (received), the fee deducted on the receiving side
    (receive_fee), and the status the payee's system reported.  It is
    sealed by the payee.
-
-
-
-Mih                        Expires 4 May 2027                  [Page 11]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
 
    It SHOULD wrap the object the payee's system produced or received:
    the x402 settlement response from its facilitator, the x402 signed
@@ -657,21 +669,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 12]
+Mih                        Expires 28 May 2027                 [Page 12]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    +=================+========+==========+============================+
@@ -698,7 +698,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    |                 |        |          | digest of the carrier's    |
    |                 |        |          | tracking number.  The      |
    |                 |        |          | tracking number itself is  |
-   |                 |        |          | not carried (Section 15).  |
+   |                 |        |          | not carried (Section 16).  |
    +-----------------+--------+----------+----------------------------+
    | status          | string | OPTIONAL | For physical goods:        |
    |                 |        |          | pending, in_transit,       |
@@ -714,7 +714,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    | address_digest  | string | OPTIONAL | For physical goods: a      |
    |                 |        |          | salted digest of the       |
    |                 |        |          | canonical delivery address |
-   |                 |        |          | (Section 15).              |
+   |                 |        |          | (Section 16).              |
    +-----------------+--------+----------+----------------------------+
 
                                  Table 2
@@ -725,9 +725,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 13]
+Mih                        Expires 28 May 2027                 [Page 13]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    when the terms leg carries deliverable.content_digest, a verifier
@@ -781,9 +781,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 14]
+Mih                        Expires 28 May 2027                 [Page 14]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    Decimal amounts are exact: 1.50 USDC is value "1500000" with
@@ -837,9 +837,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 15]
+Mih                        Expires 28 May 2027                 [Page 15]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    *  Payer-observed: amount is what the payer's system reports it sent
@@ -893,9 +893,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 16]
+Mih                        Expires 28 May 2027                 [Page 16]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    {"type": "x402.transaction",
@@ -903,7 +903,7 @@ Internet-Draft          Agent Settlement Records            October 2026
     "network": "eip155:8453"}
 
    *  type (string, REQUIRED): a registered payment reference type
-      (Section 17.1).
+      (Section 18.1).
 
    *  value (string, REQUIRED): the identifier, copied from the field
       the type names, in the normal form the type defines.
@@ -949,9 +949,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 17]
+Mih                        Expires 28 May 2027                 [Page 17]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    ap2.network_confirmation_id:  value is the AP2 Payment Receipt
@@ -1005,9 +1005,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 18]
+Mih                        Expires 28 May 2027                 [Page 18]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    *  For batched settlement, where many payments settle in one on-chain
@@ -1037,7 +1037,7 @@ Internet-Draft          Agent Settlement Records            October 2026
      | Member     | Type   | Req      | Meaning                     |
      +============+========+==========+=============================+
      | type       | string | REQUIRED | A registered wrapped object |
-     |            |        |          | type (Section 17.2).        |
+     |            |        |          | type (Section 18.2).        |
      +------------+--------+----------+-----------------------------+
      | digest_alg | string | REQUIRED | SHA-256.                    |
      +------------+--------+----------+-----------------------------+
@@ -1061,18 +1061,18 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 19]
+Mih                        Expires 28 May 2027                 [Page 19]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
        digesting it, and MUST NOT apply RFC 8785 to it unless the type
        says so.  This is the rule that
-       [I-D.mih-sokolov-scitt-payload-binding], Section 4.4, names as-
+       [I-D.mih-sokolov-scitt-payload-binding], Section 5.4, names as-
        transmitted: no canonicalization, SHA-256 over the exact octet
        sequence the carrying format already fixes, written as 64
        lowercase hex characters.  A wrapped type's octet definition
-       (Section 17.2) plays the role of that section's byte-boundary
+       (Section 18.2) plays the role of that section's byte-boundary
        selector, and SHOULD name the production in the type's own
        specification that fixes those octets.
 
@@ -1108,7 +1108,7 @@ Internet-Draft          Agent Settlement Records            October 2026
        This document does not change those rules, and a wrapped object's
        validity does not change what the leg itself proves.
 
-   The octets for each initial type are defined in Section 17.2.  For
+   The octets for each initial type are defined in Section 18.2.  For
    the x402 objects in EIP-712 format, the protocol defines no byte
    string for the object as a whole, so the octets are the RFC 8785 form
    of the JSON envelope object (format, payload, signature); the EIP-712
@@ -1117,13 +1117,13 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 20]
+Mih                        Expires 28 May 2027                 [Page 20]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    [I-D.mih-sokolov-scitt-payload-binding], that type selects jcs
-   (Section 4.1) rather than as-transmitted, because the container
+   (Section 5.1) rather than as-transmitted, because the container
    defines no byte sequence to select.
 
 9.  Derived Settlement States
@@ -1173,9 +1173,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 21]
+Mih                        Expires 28 May 2027                 [Page 21]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
      +==============+================================================+
@@ -1229,9 +1229,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 22]
+Mih                        Expires 28 May 2027                 [Page 22]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    where all three carry the same assetCode and the sum and comparison
@@ -1285,9 +1285,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 23]
+Mih                        Expires 28 May 2027                 [Page 23]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    +==========+========================================================+
@@ -1341,9 +1341,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 24]
+Mih                        Expires 28 May 2027                 [Page 24]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
      +--------------------------------+-----------------------------+
@@ -1397,9 +1397,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 25]
+Mih                        Expires 28 May 2027                 [Page 25]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
 10.  Status Values and ISO 20022
@@ -1453,9 +1453,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 26]
+Mih                        Expires 28 May 2027                 [Page 26]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    The mapping is one-way: a sealer whose system reports an ISO 20022
@@ -1509,9 +1509,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 27]
+Mih                        Expires 28 May 2027                 [Page 27]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
      +=============================+=====================+==========+
@@ -1556,7 +1556,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    |tracking_number       |delivery.tracking_digest|Digest only; the  |
    |                      |                        |number is not     |
    |                      |                        |carried           |
-   |                      |                        |(Section 15).     |
+   |                      |                        |(Section 16).     |
    +----------------------+------------------------+------------------+
    |tracking_url          |not carried             |A locator, not    |
    |                      |                        |evidence.         |
@@ -1565,9 +1565,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 28]
+Mih                        Expires 28 May 2027                 [Page 28]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    +----------------------+------------------------+------------------+
@@ -1621,9 +1621,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 29]
+Mih                        Expires 28 May 2027                 [Page 29]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    +=============================+=====================================+
@@ -1677,9 +1677,9 @@ Internet-Draft          Agent Settlement Records            October 2026
 
 
 
-Mih                        Expires 4 May 2027                  [Page 30]
+Mih                        Expires 28 May 2027                 [Page 30]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
 13.  Relationship to Existing Work
@@ -1725,20 +1725,138 @@ Internet-Draft          Agent Settlement Records            October 2026
    countersignature [RFC9338].  Each leg is a separate Capsule from a
    separate sealer.
 
+14.  Implementation Status
+
+   Note to RFC Editor: Please remove this section and the reference to
+   [RFC7942] before publication.
 
 
 
 
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 31]
+Mih                        Expires 28 May 2027                 [Page 31]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
-14.  Security Considerations
+   This section records the status of known implementations of the
+   protocol defined by this specification at the time of posting of this
+   Internet-Draft, and is based on a proposal described in [RFC7942].
+   The description of implementations in this section is intended to
+   assist the IETF in its decision processes in progressing drafts to
+   RFCs.  Please note that the listing of any individual implementation
+   here does not imply endorsement by the IETF.  Furthermore, no effort
+   has been spent to verify the information presented here that was
+   supplied by IETF contributors.  This is not intended as, and must not
+   be construed to be, a catalog of available implementations or their
+   features.  Readers are advised to note that other implementations may
+   exist.
+
+   According to [RFC7942], "this will allow reviewers and working groups
+   to assign due consideration to documents that have the benefit of
+   running code, which may serve as evidence of valuable experimentation
+   and feedback that have made the implemented protocols more mature.
+   It is up to the individual working groups to use this information as
+   they see fit".
+
+14.1.  Agent Action Capsule reference implementations
+
+   Organization:  Action State Group, Inc.
+
+   Implementations:  Four verifiers of this document in the agent-
+      action-capsule source repository, https://github.com/action-state-
+      group/agent-action-capsule: Python, the reference
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/python, release 0.19.0); and ports in Go
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/go, release 0.24.0), TypeScript
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/ts, release 0.16.0) and Rust
+      (https://github.com/action-state-group/agent-action-
+      capsule/tree/main/rust/agent-action-capsule, release 0.14.0).
+
+   Description:  Each checks every leg record on its own (the Capsule
+      checks, its Producer Envelope, the settlement member, its amounts
+      and its wrapped objects), groups the legs by terms_ref, and
+      derives the payment and delivery states of Section 9, including
+      the same-key rule of Section 3.  They verify; they do not seal leg
+      records.
+
+   Level of maturity:  Pre-1.0 releases.  The test suite of each
+      implementation runs the conformance vectors below.
+
+   Coverage:  All of this document's verifier rules that the conformance
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 32]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
+      vectors exercise.  Whether a key may seal a role is checked only
+      when a key policy is supplied, as in Section 3.
+
+   Licensing:  BSD-3-Clause.
+
+   Contact:  https://github.com/action-state-group/agent-action-capsule/
+      issues
+
+   Conformance vectors:  https://github.com/action-state-group/agent-
+      action-capsule/tree/main/vectors/settlement, described in
+      Appendix "Conformance Vectors".  Their expected results are
+      derived from this document's text, not from any implementation.
+
+14.2.  scitt-cose
+
+   Organization:  Action State Group, Inc.
+
+   Implementation:  https://github.com/action-state-group/scitt-cose, a
+      Python library (release 0.5.0) that verifies SCITT Signed
+      Statements and COSE Receipts ([RFC9942]) under the RFC9162_SHA256
+      and CCF tree algorithms, and verifies a Checkpointed Local Log's
+      inclusion and consistency proofs against a checkpoint.  It carries
+      no application profile: a statement's payload is opaque to it.
+
+   Level of maturity:  Pre-1.0 releases.
+
+   Coverage:  Verification of the Receipt a Transparency Service returns
+      for a registered leg record (Section 12).
+
+   Licensing:  Apache-2.0.
+
+   Contact:  https://github.com/action-state-group/scitt-cose/issues
+
+   Test vectors:  https://github.com/action-state-group/scitt-
+      cose/tree/main/test-vectors
+
+14.3.  capsule-anchor
+
+   Organization:  Action State Group, Inc.
+
+   Implementation:  https://github.com/action-state-group/capsule-anchor
+      (release 0.1.4), a SCITT Transparency Service ([RFC9943]) that
+      registers a SHA-256 digest, a Signed Statement or a checkpoint and
+      returns a COSE Receipt carrying an RFC 9162 inclusion proof.  A
+      public instance runs at https://witness.agentactioncapsule.org.
+
+   Level of maturity:  Pre-1.0 releases; the public instance is operated
+      by the organization above.
+
+
+
+Mih                        Expires 28 May 2027                 [Page 33]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
+   Coverage:  Registration of a leg record's Capsule ID (Section 12).
+
+   Licensing:  Apache-2.0.
+
+   Contact:  https://github.com/action-state-group/capsule-anchor/issues
+
+15.  Security Considerations
 
    *One party sealing both sides.* The main attack on a two-party record
    is one party producing both halves.  A payer-observed and payee-
@@ -1781,19 +1899,18 @@ Internet-Draft          Agent Settlement Records            October 2026
    integers with a scale (Section 6); comparing assets by identical
    assetCode prevents a rate from being applied silently.
 
+
+
+Mih                        Expires 28 May 2027                 [Page 34]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    *Fees.* A naive comparison of the payer's and the payee's amounts
    would report every payment with a receive-side fee as a mismatch, and
    a verifier that learned to ignore such mismatches would then also
    ignore real ones.  The amount rule (Section 9.2) is exact, so a
    difference it does not explain is always reported.  Because the rule
-
-
-
-Mih                        Expires 4 May 2027                  [Page 32]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
-
    trusts the payee's report of receive_fee, a payee can explain a
    shortfall by overstating its fee; the two sides then agree on the
    arithmetic, and whether that fee was acceptable is a question for the
@@ -1812,7 +1929,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    (Section 8).  No digest is computed over an object re-encoded by
    inference from its shape.
 
-15.  Privacy Considerations
+16.  Privacy Considerations
 
    Payment records are personal data in most jurisdictions when a party
    is a natural person, and commercially sensitive otherwise.
@@ -1833,27 +1950,18 @@ Internet-Draft          Agent Settlement Records            October 2026
    Unsalted digests of low-entropy values such as addresses can be
    reversed by guessing.
 
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 33]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
-
    *Correlation.* A payment reference that appears in registered legs
    links those legs to the public record of the rail (for example an on-
    chain transaction).  Registering legs in a Transparency Service in
    clear text makes the payment discoverable to anyone who can read the
+
+
+
+Mih                        Expires 28 May 2027                 [Page 35]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
    log.  Deployments SHOULD register only the leg's Capsule ID, as the
    base profile does, and SHOULD use the selective-disclosure profile
    [I-D.mih-scitt-agent-action-capsule-sel-disc] to commit to the
@@ -1871,7 +1979,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    content SHOULD digest a structure that includes an unpredictable
    component, such as the full response object.
 
-16.  Open Issues
+17.  Open Issues
 
    The following are expected to be addressed in a later revision.  This
    document does not design them.
@@ -1894,26 +2002,23 @@ Internet-Draft          Agent Settlement Records            October 2026
       distinct from mismatch; in this revision the status difference is
       reported as mismatch.
 
-
-
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 34]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
-
-17.  IANA Considerations
+18.  IANA Considerations
 
    This document asks IANA to create two registries in a new "Agent
    Settlement Records" registry group.  Until IANA establishes them, the
    source repository of this document keeps them as the interim registry
    of record.
 
-17.1.  Payment Reference Types
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 36]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
+
+18.1.  Payment Reference Types
 
    Registry name: Settlement Payment Reference Types.
 
@@ -1934,7 +2039,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    Initial contents: the types in Section 7.2, each referencing this
    document and the source listed there.
 
-17.2.  Wrapped Object Types
+18.2.  Wrapped Object Types
 
    Registry name: Settlement Wrapped Object Types.
 
@@ -1954,14 +2059,6 @@ Internet-Draft          Agent Settlement Records            October 2026
    x402.receipt:  Issuer: payee.  Octets: As for x402.offer.  Reference:
       [X402-OFFER-RECEIPT].
 
-
-
-
-Mih                        Expires 4 May 2027                  [Page 35]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
-
    x402.payment-payload:  Issuer: payer.  Octets: The base64-decoded
       value of the PAYMENT-SIGNATURE header as sent.  Reference: [X402].
 
@@ -1969,6 +2066,13 @@ Internet-Draft          Agent Settlement Records            October 2026
       the base64-decoded value of the PAYMENT-RESPONSE header as
       received; for the payee, the settlement response body as its
       facilitator returned it.  Reference: [X402].
+
+
+
+Mih                        Expires 28 May 2027                 [Page 37]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
 
    ap2.checkout-mandate:  Issuer: user or agent.  Octets: The SD-JWT
       serialization as presented.  Reference: [AP2].
@@ -1998,7 +2102,7 @@ Internet-Draft          Agent Settlement Records            October 2026
    delivery.proof:  Issuer: carrier or payee.  Octets: The proof-of-
       delivery document octets.  Reference: this document.
 
-17.3.  No Other Actions
+18.3.  No Other Actions
 
    This document reserves the Capsule payload member name settlement for
    the use defined here.  The base profile has no IANA registry of
@@ -2007,16 +2111,9 @@ Internet-Draft          Agent Settlement Records            October 2026
    sets defined by this document and are not registries; a future
    revision that needs a new value updates this document.
 
-18.  References
+19.  References
 
-18.1.  Normative References
-
-
-
-Mih                        Expires 4 May 2027                  [Page 36]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
+19.1.  Normative References
 
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
@@ -2024,6 +2121,14 @@ Internet-Draft          Agent Settlement Records            October 2026
               capsule-06, October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
               agent-action-capsule-06>.
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 38]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -2062,17 +2167,7 @@ Internet-Draft          Agent Settlement Records            October 2026
               DOI 10.17487/RFC9052, August 2022,
               <https://www.rfc-editor.org/rfc/rfc9052>.
 
-18.2.  Informative References
-
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 37]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
+19.2.  Informative References
 
    [ACP]      Agentic Commerce Protocol contributors, "Agentic Commerce
               Protocol", 2026, <https://github.com/agentic-commerce-
@@ -2081,6 +2176,15 @@ Internet-Draft          Agent Settlement Records            October 2026
    [AEP]      A-Comm Technologies, Inc., "A-Comm Evidence Protocol (AEP)
               Specification v1.0.3-rc.2 (Draft)", July 2026,
               <https://github.com/A-Comm-Tech/a-comm-evidence-protocol>.
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 39]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
 
    [AP2]      FIDO Alliance, "Agent Payments Protocol (AP2)
               Specification, v0.2", April 2026,
@@ -2110,32 +2214,33 @@ Internet-Draft          Agent Settlement Records            October 2026
    [I-D.dogru-cedulon-core]
               Doğru, E. C., "Spend Receipts and Payment Rail
               Reconciliation for AI Agents", Work in Progress, Internet-
-              Draft, draft-dogru-cedulon-core-02, 30 September 2026,
+              Draft, draft-dogru-cedulon-core-04, 7 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-dogru-
-              cedulon-core-02>.
+              cedulon-core-04>.
 
    [I-D.mih-agent-bilateral-attestation]
               Mih, S., "Bilateral Attestation of Cross-Organization
               Agent Actions", Work in Progress, Internet-Draft, draft-
-              mih-agent-bilateral-attestation-02, 13 September 2026,
+              mih-agent-bilateral-attestation-03, 28 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
-              bilateral-attestation-02>.
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 38]
-
-Internet-Draft          Agent Settlement Records            October 2026
-
+              bilateral-attestation-03>.
 
    [I-D.mih-agent-evidence-request]
               Mih, S., "An Interaction Model for Requesting Verifiable
               Evidence", Work in Progress, Internet-Draft, draft-mih-
-              agent-evidence-request-00, 26 September 2026,
+              agent-evidence-request-03, 21 November 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
-              evidence-request-00>.
+              evidence-request-03>.
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 40]
+
+Internet-Draft          Agent Settlement Records           November 2026
+
 
    [I-D.mih-scitt-agent-action-capsule-sel-disc]
               Mih, S., "Selective Disclosure Profile for Agent Action
@@ -2147,16 +2252,16 @@ Internet-Draft          Agent Settlement Records            October 2026
    [I-D.mih-sokolov-scitt-payload-binding]
               Mih, S. and A. Sokolov, "Canonicalization Declaration for
               SCITT Signed Statements", Work in Progress, Internet-
-              Draft, draft-mih-sokolov-scitt-payload-binding-05, 11
-              September 2026, <https://datatracker.ietf.org/doc/html/
-              draft-mih-sokolov-scitt-payload-binding-05>.
+              Draft, draft-mih-sokolov-scitt-payload-binding-06, 25
+              October 2026, <https://datatracker.ietf.org/doc/html/
+              draft-mih-sokolov-scitt-payload-binding-06>.
 
    [I-D.mih-zhang-agent-disclosure-bundle]
               Mih, S. and Y. Zhang, "AAC Evidence Bundle", Work in
               Progress, Internet-Draft, draft-mih-zhang-agent-
-              disclosure-bundle-00, September 2026,
+              disclosure-bundle-02, 31 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-zhang-
-              agent-disclosure-bundle-00>.
+              agent-disclosure-bundle-02>.
 
    [I-D.ryan-httpauth-payment]
               Ryan, B., Moxey, J., Meagher, T., Weinstein, J., and S.
@@ -2177,13 +2282,20 @@ Internet-Draft          Agent Settlement Records            October 2026
               Interledger Foundation, "Open Payments API", n.d.,
               <https://openpayments.dev/>.
 
+   [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
+              Code: The Implementation Status Section", BCP 205,
+              RFC 7942, DOI 10.17487/RFC7942, July 2016,
+              <https://www.rfc-editor.org/rfc/rfc7942>.
 
 
 
 
-Mih                        Expires 4 May 2027                  [Page 39]
+
+
+
+Mih                        Expires 28 May 2027                 [Page 41]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    [RFC9338]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
@@ -2237,9 +2349,9 @@ Conformance Vectors
 
 
 
-Mih                        Expires 4 May 2027                  [Page 40]
+Mih                        Expires 28 May 2027                 [Page 42]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
    object, a wrapped object whose content does not match its digest, a
@@ -2293,9 +2405,9 @@ Example
 
 
 
-Mih                        Expires 4 May 2027                  [Page 41]
+Mih                        Expires 28 May 2027                 [Page 43]
 
-Internet-Draft          Agent Settlement Records            October 2026
+Internet-Draft          Agent Settlement Records           November 2026
 
 
 Changes from draft-mih-agent-settlement-records-00
@@ -2314,7 +2426,17 @@ Changes from draft-mih-agent-settlement-records-00
       with any canonical R, and a key not of small order (Section 8).  A
       key holder's signature with an R of small or mixed order is still
       found.  Security Considerations says that the absence of
-      wrapped_resigned does not clear the sealer (Section 14).
+      wrapped_resigned does not clear the sealer (Section 15).
+
+   *  References: the informative references are updated to the current
+      revisions, draft-mih-agent-bilateral-attestation-03, draft-mih-
+      sokolov-scitt-payload-binding-06, draft-mih-zhang-agent-
+      disclosure-bundle-02 and draft-mih-agent-evidence-request-03.
+      Section pointers into draft-mih-sokolov-scitt-payload-binding
+      follow its renumbering (jcs is Section 5.1 and as-transmitted is
+      Section 5.4).
+
+   *  Implementation Status: added (Section 14), following RFC 7942.
 
    *  Wire unchanged: the settlement member's version is still "0"
       (Section 4.2).
@@ -2339,14 +2461,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 4 May 2027                  [Page 42]
+Mih                        Expires 28 May 2027                 [Page 44]

@@ -1,7 +1,7 @@
 # Evidence Layer padding record vectors
 
 Conformance cases for the padding record of
-`draft-mih-agent-evidence-layer-00`, Privacy Considerations, "What a
+`draft-mih-agent-evidence-layer-01`, Privacy Considerations, "What a
 Checkpoint Reveals". A store appends padding records so that a checkpoint's
 size falls on a bucket boundary.
 

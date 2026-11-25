@@ -100,6 +100,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/minimum-necessary/` | `spec/REGISTRY.md` §10, §14, §16 (provisional entries) | pack, verify | 15 |
 | `vectors/judgment/` | `x-judgment-v1` extension (provisional) | record, verify | 5 |
 | `vectors/evidence-layer/padding/` | `draft-mih-agent-evidence-layer-00` (What a Checkpoint Reveals) | record, verify | 17 |
+| `vectors/evidence-layer/retention/` | `draft-mih-agent-evidence-layer-01` (UNDISCLOSED and policy_uri) | record, verify | 12 |
 | `vectors/registry-conformance/` | `spec/REGISTRY.md` | verify | 26 |
 | `vectors/cbor-nesting/` | `spec/interop-profile-v1.md` §5.2 (CBOR nesting limit) | record, verify | 9 |
 | `vectors/cbor-request-model/` | `spec/interop-profile-v1.md` §5.2 (CBOR request data model) | record, verify | 18 |
