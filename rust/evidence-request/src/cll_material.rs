@@ -736,6 +736,27 @@ fn check_inclusion(peaks: &[Hash], entry: &Hash, octets: &[u8]) -> Result<(), &'
     }
 }
 
+/// Whether `octets`, a `cll-consistency-proof` item (profile §6.2.1 step 13),
+/// proves that the MMR of `to_size` nodes with peaks `to_peaks` extends the
+/// one of `from_size` nodes with peaks `from_peaks`. The proof's own sizes
+/// must be those two; otherwise the check is the one `check_anchor_inclusion`
+/// runs at step 13 (deterministic CBOR, the size and path limits, and the
+/// peaks re-derived). For a reader that holds both checkpoints itself, such
+/// as one checking a chain of checkpoints.
+pub fn check_consistency_proof(
+    from_size: u64,
+    from_peaks: &[Hash],
+    to_size: u64,
+    to_peaks: &[Hash],
+    octets: &[u8],
+) -> Result<(), &'static str> {
+    let parts = proof_parts(octets, 4)?;
+    if uint(Some(&parts[0])) != Some(from_size) || uint(Some(&parts[1])) != Some(to_size) {
+        return Err("the proof is between other sizes");
+    }
+    check_consistency(from_peaks, to_peaks, octets)
+}
+
 /// Step 13: `new_peaks` extends `old_peaks` by the consistency proof.
 fn check_consistency(
     old_peaks: &[Hash],
