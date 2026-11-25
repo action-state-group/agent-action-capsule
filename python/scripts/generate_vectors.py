@@ -308,25 +308,25 @@ def build_cases() -> list[dict]:
     # ---- POSITIVE: chain / store ----
     parent = c_verdict("po-parent-hitl", "hitl_dispatched", "needs_input", "human", False)
     resolution = seal({
-        **ident("po-resolution"),
+        **ident("po-parent-hitl"),
         "effect": {"status": "confirmed", "type": "write_order", "response_digest": HEX_R, "effect_attestation": "gate_executed"},
         "assurance": assurance("confirmed", ledger_mode="chained"),
         "disposition": {"decision": "accept", "approver": "human", "human_disposed": True, "verdict_class": "executed"},
         "chain": {"parent_capsule_id": parent["capsule_id"], "relation": "supersedes"},
     })
     add("pos-supersedes-chain", "store",
-        "supersedes chain: a hitl_dispatched parent + a superseding resolution capsule; parent's open item is resolved.",
+        "supersedes chain: a hitl_dispatched parent + a superseding resolution capsule for the same action_id (§5.4.4 deferral binding rule); parent's open item is resolved.",
         {"ledger": [parent, resolution]})
 
     parent2 = c_verdict("po-parent2", "hitl_dispatched", "needs_input", "human", False)
-    res_a = seal({**ident("po-res-a"), "assurance": assurance("not_applicable", ledger_mode="chained"),
+    res_a = seal({**ident("po-parent2"), "assurance": assurance("not_applicable", ledger_mode="chained"),
                   "disposition": {"decision": "reject", "approver": "human", "human_disposed": True, "verdict_class": "resolved"},
                   "chain": {"parent_capsule_id": parent2["capsule_id"], "relation": "supersedes"}})
-    res_b = seal({**ident("po-res-b"), "assurance": assurance("not_applicable", ledger_mode="chained"),
-                  "disposition": {"decision": "reject", "approver": "human", "human_disposed": True, "verdict_class": "resolved"},
+    res_b = seal({**ident("po-parent2"), "assurance": assurance("not_applicable", ledger_mode="chained"),
+                  "disposition": {"decision": "reject", "approver": "policy", "human_disposed": False, "verdict_class": "resolved"},
                   "chain": {"parent_capsule_id": parent2["capsule_id"], "relation": "supersedes"}})
     add("pos-concurrent-supersedes", "store",
-        "two supersedes over one parent: earliest in ledger order is authoritative; the later one surfaces an info finding; both remain ok.",
+        "two supersedes over one parent, both for the parent's action_id (a human and a policy closure): earliest in ledger order is authoritative; the later one surfaces an info finding; both remain ok.",
         {"ledger": [parent2, res_a, res_b]})
 
     # ---- POSITIVE/OVERCLAIM: cross-party assurance rung (§5.3 Cross-party assurance) ----
@@ -446,7 +446,202 @@ def build_cases() -> list[dict]:
               "disposition": {"decision": "reject", "approver": "policy", "human_disposed": False, "verdict_class": "denied"},
               "effect": {"status": "confirmed", "type": "write_order", "effect_attestation": "gate_executed"}}))
 
+    # ---- Deferral binding rule (§5.4.4, check 6; AAC#321) ----
+    # A deferral commits to its action with a planned Effect Record carrying the
+    # request the decider disposes; each negative breaks exactly one binding.
+    for name, kind, description, ledger in deferral_binding_ledgers():
+        add(name, kind, description, {"ledger": ledger})
+
     return cases
+
+
+def deferral_binding_ledgers() -> list[tuple[str, str, str, list[dict]]]:
+    """The -05 store cases of the §5.4.4 deferral binding rule."""
+    def v5(action_id: str) -> dict:
+        return ident(action_id, spec_version=CURRENT_SPEC)
+
+    def deferral(action_id: str, verdict_class: str = "deferred", decision: str = "deferred") -> dict:
+        return seal_v4({
+            **v5(action_id),
+            "effect": {"status": "planned", "type": "send_payment", "request_digest": HEX_R2},
+            "assurance": assurance("not_applicable"),
+            "disposition": {"decision": decision, "approver": "human", "human_disposed": True, "verdict_class": verdict_class},
+        })
+
+    def closure(parent: dict, action_id: str, effect_type: str = "send_payment",
+                request_digest: str | None = HEX_R2, approver: str = "human") -> dict:
+        effect = {"status": "confirmed", "type": effect_type, "response_digest": HEX_R,
+                  "effect_attestation": "gate_executed"}
+        if request_digest is not None:
+            effect["request_digest"] = request_digest
+        return seal_v4({
+            **v5(action_id),
+            "effect": effect,
+            "assurance": assurance("confirmed", ledger_mode="chained"),
+            "disposition": {"decision": "accept", "approver": approver, "human_disposed": approver == "human",
+                            "verdict_class": "executed"},
+            "chain": {"parent_capsule_id": parent["capsule_id"], "relation": "supersedes"},
+        })
+
+    bound = deferral("pay-vendor-a")
+    expired = deferral("pay-vendor-a", verdict_class="expired", decision="needs_input")
+    escalation = seal_v4({
+        **v5("pay-vendor-b"),
+        "assurance": assurance("not_applicable", ledger_mode="chained"),
+        "disposition": {"decision": "needs_input", "approver": "policy", "human_disposed": False,
+                        "verdict_class": "escalated"},
+        "chain": {"parent_capsule_id": expired["capsule_id"], "relation": "supersedes"},
+    })
+    def escalate(parent: dict, action_id: str = "pay-vendor-a", effect: dict | None = None) -> dict:
+        cap = {
+            **v5(action_id),
+            "assurance": assurance("not_applicable", ledger_mode="chained"),
+            "disposition": {"decision": "needs_input", "approver": "policy", "human_disposed": False,
+                            "verdict_class": "escalated"},
+            "chain": {"parent_capsule_id": parent["capsule_id"], "relation": "supersedes"},
+        }
+        if effect is not None:
+            cap["effect"] = effect
+        return seal_v4(cap)
+
+    def resolve(parent: dict, action_id: str = "pay-vendor-a") -> dict:
+        return seal_v4({
+            **v5(action_id),
+            "assurance": assurance("not_applicable", ledger_mode="chained"),
+            "disposition": {"decision": "reject", "approver": "human", "human_disposed": True,
+                            "verdict_class": "resolved"},
+            "chain": {"parent_capsule_id": parent["capsule_id"], "relation": "supersedes"},
+        })
+
+    def unplanned(action_id: str, verdict_class: str, decision: str, approver: str) -> dict:
+        return seal_v4({
+            **v5(action_id),
+            "assurance": assurance("not_applicable"),
+            "disposition": {"decision": decision, "approver": approver, "human_disposed": approver == "human",
+                            "verdict_class": verdict_class},
+        })
+
+    hop = escalate(bound)
+    no_effect_closure = seal_v4({
+        **v5("pay-vendor-a"),
+        "assurance": assurance("not_applicable", ledger_mode="chained"),
+        "disposition": {"decision": "accept", "approver": "human", "human_disposed": True, "verdict_class": "executed"},
+        "chain": {"parent_capsule_id": bound["capsule_id"], "relation": "supersedes"},
+    })
+    done = seal_v4({
+        **v5("pay-vendor-a"),
+        "effect": {"status": "confirmed", "type": "send_payment", "request_digest": HEX_R2,
+                   "response_digest": HEX_R, "effect_attestation": "gate_executed"},
+        "assurance": assurance("confirmed"),
+        "disposition": {"decision": "accept", "approver": "human", "human_disposed": True, "verdict_class": "executed"},
+    })
+    forged = {**bound, "action_id": "pay-vendor-b"}  # carries bound's capsule_id, not its bytes
+    per_class = [
+        (verdict_class, unplanned(f"po-{verdict_class.replace('_', '-')}", verdict_class, decision, approver))
+        for verdict_class, decision, approver in (
+            ("hitl_dispatched", "needs_input", "human"),
+            ("needs_decision", "needs_input", "policy"),
+            ("escalated", "needs_input", "policy"),
+            ("blocked", "reject", "policy"),
+        )
+    ]
+    return [
+        *[(f"neg-supersedes-{vc.replace('_', '-')}-action-mismatch", "store",
+           f"a resolved Capsule chained supersedes to a {vc} parent but carrying a different action_id -> "
+           "supersedes_action_mismatch (check 6, §5.4.4 deferral binding rule).",
+           [parent, resolve(parent, action_id="po-other")]) for vc, parent in per_class],
+        ("pos-supersedes-escalation-hop", "store",
+         "deferral (planned send_payment, request_digest) -> escalated with no Effect Record -> executed closure "
+         "matching the deferral's effect.type and request_digest: the escalation passes the commitment through; "
+         "all ok (§5.4.4 effect anchor).",
+         [bound, hop, closure(hop, "pay-vendor-a")]),
+        ("neg-supersedes-escalation-hop-effect-type-mismatch", "store",
+         "deferral -> escalated with no Effect Record -> executed closure with another effect.type: the anchor is "
+         "the deferral's Effect Record two links up -> supersedes_effect_type_mismatch (check 6, §5.4.4).",
+         [bound, hop, closure(hop, "pay-vendor-a", effect_type="write_order")]),
+        ("neg-supersedes-intermediate-effect-mismatch", "store",
+         "an escalation over a deferral that carries an Effect Record of another effect.type -> "
+         "supersedes_effect_type_mismatch on the escalation (check 6, §5.4.4): any Capsule in the chain that "
+         "carries an Effect Record matches the nearest one up the chain.",
+         [bound, escalate(bound, effect={"status": "planned", "type": "write_order", "request_digest": HEX_R2})]),
+        ("neg-supersedes-effect-absent", "store",
+         "an executed closure with no Effect Record over a deferral whose Effect Record carries effect.type and "
+         "request_digest -> supersedes_effect_type_mismatch and supersedes_request_digest_mismatch (check 6, "
+         "§5.4.4).",
+         [bound, no_effect_closure]),
+        ("pos-supersedes-resolved-over-planned", "store",
+         "a non-executing resolved closure with no Effect Record over a deferral with a planned Effect Record: "
+         "only the action_id binding applies; ok (§5.4.4).",
+         [bound, resolve(bound)]),
+        ("pos-supersedes-unbound-parent", "store",
+         "supersedes over an executed parent (not an open-item or expired class) by a Capsule for another "
+         "action_id: the deferral binding rule does not apply; ok (§5.4.4).",
+         [done, closure(done, "pay-vendor-b", effect_type="write_order", request_digest=None)]),
+        ("neg-supersedes-escalation-hop-request-digest-mismatch", "store",
+         "deferral -> escalated with no Effect Record -> executed closure with the deferral's effect.type but "
+         "another request_digest: the deferral's request_digest is carried through the hop -> "
+         "supersedes_request_digest_mismatch (check 6, §5.4.4).",
+         [bound, hop, closure(hop, "pay-vendor-a", request_digest=HEX_R)]),
+        ("neg-supersedes-violating-intermediate-not-anchor", "store",
+         "deferral (send_payment) -> escalation carrying a write_order Effect Record (fails) -> executed "
+         "write_order closure over the escalation: the anchor is the first Effect Record up the bound path, "
+         "the deferral's, so the closure fails too -> supersedes_effect_type_mismatch on both (check 6, §5.4.4).",
+         [bound, (swap := escalate(bound, effect={"status": "planned", "type": "write_order", "request_digest": HEX_R2})),
+          closure(swap, "pay-vendor-a", effect_type="write_order")]),
+        ("neg-supersedes-ancestor-unresolved", "store",
+         "an escalation whose deferral is absent from the store, and an executed closure over it: the escalation "
+         "fails chain_parent_missing; the closure's effect binding cannot be evaluated, which is reported as "
+         "deferral_binding_not_evaluated (info), not as a pass (check 6, §5.4.4).",
+         [hop, closure(hop, "pay-vendor-a", effect_type="write_order")]),
+        ("pos-supersedes-forged-parent-legitimate-closure", "store",
+         "a forged copy of the deferral (another action_id, the real capsule_id) placed first, then the real "
+         "deferral and a closure bound to it: the copy fails check 2 and does not make the legitimate closure "
+         "fail; the closure is ok (§5.4.4).",
+         [forged, bound, closure(bound, "pay-vendor-a")]),
+        ("neg-supersedes-parent-class-not-string", "store",
+         "a parent whose disposition.verdict_class is an array (field_not_string, check 1) and a closure for "
+         "another action_id over it: a mistyped verdict_class binds nothing, so the closure is ok; every "
+         "implementation agrees and none throws (§5.4.4).",
+         [(odd := seal_v4({**v5("pay-vendor-a"), "assurance": assurance("not_applicable"),
+                           "disposition": {"decision": "deferred", "approver": "human", "human_disposed": True,
+                                           "verdict_class": ["deferred"]}})),
+          resolve(odd, action_id="pay-vendor-b")]),
+        ("neg-supersedes-forged-parent", "store",
+         "a forged copy of the deferral (another action_id, the real capsule_id) placed first, then the real "
+         "deferral, then a closure for the forged action_id: the copy fails check 2 and is never the parent; "
+         "the closure binds to the Capsule that recomputes -> supersedes_action_mismatch (check 6, §5.4.4).",
+         [forged, bound, closure(bound, "pay-vendor-b")]),
+        ("pos-supersedes-bound-request", "store",
+         "a deferred parent with a planned send_payment Effect Record carrying request_digest, closed by an "
+         "executed Capsule with the same action_id, effect.type and request_digest -> both ok; a planned "
+         "effect MAY carry request_digest (§5.2, §5.4.4 deferral binding rule).",
+         [bound, closure(bound, "pay-vendor-a")]),
+        ("neg-supersedes-action-mismatch", "store",
+         "an executed closure chained supersedes to a deferral but carrying a different action_id -> "
+         "supersedes_action_mismatch (check 6, §5.4.4 deferral binding rule).",
+         [bound, closure(bound, "pay-vendor-b")]),
+        ("neg-supersedes-effect-type-mismatch", "store",
+         "an executed closure for the deferral's action_id whose effect.type differs from the parent's planned "
+         "effect.type -> supersedes_effect_type_mismatch (check 6, §5.4.4 deferral binding rule).",
+         [bound, closure(bound, "pay-vendor-a", effect_type="write_order")]),
+        ("neg-supersedes-request-digest-mismatch", "store",
+         "an executed closure for the deferral's action_id and effect.type whose request_digest differs from "
+         "the parent's -> supersedes_request_digest_mismatch (check 6, §5.4.4 deferral binding rule).",
+         [bound, closure(bound, "pay-vendor-a", request_digest=HEX_R)]),
+        ("neg-supersedes-request-digest-absent", "store",
+         "an executed closure that omits request_digest when the parent's Effect Record carries one -> "
+         "supersedes_request_digest_mismatch (check 6, §5.4.4 deferral binding rule).",
+         [bound, closure(bound, "pay-vendor-a", request_digest=None)]),
+        ("neg-supersedes-expired-action-mismatch", "store",
+         "an escalation chained supersedes to an expired parent but carrying a different action_id -> "
+         "supersedes_action_mismatch (check 6): expired is bound like the open-item classes (§5.4.4).",
+         [expired, escalation]),
+        ("neg-supersedes-mismatch-not-authoritative", "store",
+         "a deferral closed first by a closure for another action_id, then by one bound to it: the first fails "
+         "supersedes_action_mismatch and does not close the parent, so the bound closure is the earliest "
+         "authoritative supersedes and carries no concurrent_supersedes finding (§5.4.4).",
+         [bound, closure(bound, "pay-vendor-b"), closure(bound, "pay-vendor-a", approver="policy")]),
+    ]
 
 
 # ---- Provenance mode vectors (§5.3(bis), draft -05) ------------------------

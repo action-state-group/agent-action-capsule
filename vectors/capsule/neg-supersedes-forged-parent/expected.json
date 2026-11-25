@@ -1,0 +1,56 @@
+{
+  "description": "a forged copy of the deferral (another action_id, the real capsule_id) placed first, then the real deferral, then a closure for the forged action_id: the copy fails check 2 and is never the parent; the closure binds to the Capsule that recomputes -> supersedes_action_mismatch (check 6, §5.4.4).",
+  "kind": "store",
+  "results": [
+    {
+      "capsule_id_recomputed": "b0ea4c9daa67eea5cdca641c748888fc420df7c89d9ab66f79b092925161fc77",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "not_applicable",
+        "ledger_mode": "standalone"
+      },
+      "findings": [
+        {
+          "check": 2,
+          "code": "capsule_id_mismatch",
+          "detail": "recomputed b0ea4c9daa67eea5cdca641c748888fc420df7c89d9ab66f79b092925161fc77 != carried 6e9f03473ccdf69cf0206042095e7f6e3a0a4c7b7ba9ee8f65e1fbfd44205397",
+          "severity": "error"
+        }
+      ],
+      "ok": false
+    },
+    {
+      "capsule_id_recomputed": "6e9f03473ccdf69cf0206042095e7f6e3a0a4c7b7ba9ee8f65e1fbfd44205397",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "not_applicable",
+        "ledger_mode": "standalone"
+      },
+      "findings": [],
+      "ok": true
+    },
+    {
+      "capsule_id_recomputed": "e43a483ff27430500ee45eb706cc8cea1a27f2afa954af9ff5cd00af78439b66",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "confirmed",
+        "ledger_mode": "chained"
+      },
+      "findings": [
+        {
+          "check": 6,
+          "code": "supersedes_action_mismatch",
+          "detail": "supersedes over a deferred parent MUST carry the parent's action_id 'pay-vendor-a'; found 'pay-vendor-b' (§5.4.4 deferral binding rule)",
+          "severity": "error"
+        }
+      ],
+      "ok": false
+    }
+  ],
+  "provenance": "spec-derived",
+  "canonical_preimages": {
+    "ledger[0].capsule_id": "{\"action_id\":\"pay-vendor-b\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"deferred\",\"human_disposed\":true,\"verdict_class\":\"deferred\"},\"effect\":{\"request_digest\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"status\":\"planned\",\"type\":\"send_payment\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}",
+    "ledger[1].capsule_id": "{\"action_id\":\"pay-vendor-a\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"deferred\",\"human_disposed\":true,\"verdict_class\":\"deferred\"},\"effect\":{\"request_digest\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"status\":\"planned\",\"type\":\"send_payment\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}",
+    "ledger[2].capsule_id": "{\"action_id\":\"pay-vendor-b\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"confirmed\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"chain\":{\"parent_capsule_id\":\"6e9f03473ccdf69cf0206042095e7f6e3a0a4c7b7ba9ee8f65e1fbfd44205397\",\"relation\":\"supersedes\"},\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"accept\",\"human_disposed\":true,\"verdict_class\":\"executed\"},\"effect\":{\"effect_attestation\":\"gate_executed\",\"request_digest\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"response_digest\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"status\":\"confirmed\",\"type\":\"send_payment\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}"
+  }
+}

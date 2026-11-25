@@ -347,6 +347,158 @@ func sortedKeysOf(m map[string]interface{}) []string {
 	return keys
 }
 
+// deferralBindingParentClasses are the parent verdict classes whose supersedes
+// child is bound to the parent's action (§5.4.4 deferral binding rule): the
+// open-item classes plus expired.
+var deferralBindingParentClasses = map[string]bool{
+	"deferred": true, "needs_decision": true, "hitl_dispatched": true,
+	"escalated": true, "blocked": true, "expired": true,
+}
+
+// deferralBindingCodes are the check-6 error codes of the deferral binding
+// rule; a child carrying any of them does not close its parent (§5.4.4).
+var deferralBindingCodes = map[string]bool{
+	"supersedes_action_mismatch":         true,
+	"supersedes_effect_type_mismatch":    true,
+	"supersedes_request_digest_mismatch": true,
+}
+
+// stringMember returns m[key] when it is a string.
+func stringMember(m map[string]interface{}, key string) (string, bool) {
+	if m == nil {
+		return "", false
+	}
+	v, ok := m[key].(string)
+	return v, ok
+}
+
+func verdictClass(m map[string]interface{}) string {
+	vc, _ := stringMember(asMap(m["disposition"]), "verdict_class")
+	return vc
+}
+
+// storeCapsule returns the first Capsule in store that recomputes to id under
+// check 2's profile and digest. A carried capsule_id alone never selects a
+// Capsule, so a forged copy cannot stand in for the real one (§5.4.4).
+func storeCapsule(store []interface{}, id string) map[string]interface{} {
+	for _, item := range store {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if cid, _ := m["capsule_id"].(string); cid != id {
+			continue
+		}
+		if fv, _ := m["format_version"].(string); fv != "4" {
+			continue
+		}
+		if c14n, _ := m["canonicalization_id"].(string); c14n != "jcs" {
+			continue
+		}
+		if computed, err := canonical.ComputeCapsuleID(m); err == nil && computed == id {
+			return m
+		}
+	}
+	return nil
+}
+
+// effectAnchor returns the Effect Record farthest up the bound path from parent
+// (§5.4.4), and whether the walk reached the end of that path. The walk is
+// incomplete when an earlier Capsule is known only by an identifier or does not
+// recompute.
+func effectAnchor(parent map[string]interface{}, store []interface{}) (map[string]interface{}, bool) {
+	seen := make(map[string]bool)
+	var anchor map[string]interface{}
+	node := parent
+	for deferralBindingParentClasses[verdictClass(node)] {
+		if effect := asMap(node["effect"]); effect != nil {
+			anchor = effect
+		}
+		chain := asMap(node["chain"])
+		if rel, _ := stringMember(chain, "relation"); rel != "supersedes" {
+			break
+		}
+		up, ok := stringMember(chain, "parent_capsule_id")
+		if !ok || seen[up] {
+			break
+		}
+		seen[up] = true
+		upper := storeCapsule(store, up)
+		if upper == nil {
+			return anchor, false
+		}
+		node = upper
+	}
+	return anchor, true
+}
+
+// deferralBindingFindings applies the §5.4.4 deferral binding rule to a
+// supersedes child over parent. It runs only when the parent's verdict_class is
+// an open-item class or expired, and compares only string values; a mistyped
+// field is already a check-1 failure on the Capsule that carries it.
+func deferralBindingFindings(capsule, parent map[string]interface{}, store []interface{}) []Finding {
+	parentClass := verdictClass(parent)
+	if !deferralBindingParentClasses[parentClass] {
+		return nil
+	}
+	var findings []Finding
+	if parentAction, ok := parent["action_id"].(string); ok {
+		childAction, childOK := capsule["action_id"].(string)
+		if !childOK || childAction != parentAction {
+			findings = append(findings, Finding{
+				Code: "supersedes_action_mismatch",
+				Detail: fmt.Sprintf(
+					"supersedes over a %s parent MUST carry the parent's action_id %q (§5.4.4 deferral binding rule)",
+					parentClass, parentAction,
+				),
+				Severity: "error", Check: mkCheck(6),
+			})
+		}
+	}
+	childEffect := asMap(capsule["effect"])
+	if verdictClass(capsule) != "executed" && childEffect == nil {
+		return findings
+	}
+	anchor, complete := effectAnchor(parent, store)
+	if !complete {
+		return append(findings, Finding{
+			Code:     "deferral_binding_not_evaluated",
+			Detail:   "an earlier Capsule on the bound supersedes path is in the store only as an identifier or does not recompute; the effect binding was not evaluated (§5.4.4)",
+			Severity: "info", Check: mkCheck(6),
+		})
+	}
+	if anchor == nil {
+		return findings
+	}
+	if anchorType, ok := anchor["type"].(string); ok {
+		childType, childOK := stringMember(childEffect, "type")
+		if !childOK || childType != anchorType {
+			findings = append(findings, Finding{
+				Code: "supersedes_effect_type_mismatch",
+				Detail: fmt.Sprintf(
+					"effect.type MUST equal %q, the first Effect Record up the supersedes chain (§5.4.4 deferral binding rule)",
+					anchorType,
+				),
+				Severity: "error", Check: mkCheck(6),
+			})
+		}
+	}
+	if anchorRequest, ok := anchor["request_digest"].(string); ok {
+		childRequest, childOK := stringMember(childEffect, "request_digest")
+		if !childOK || childRequest != anchorRequest {
+			findings = append(findings, Finding{
+				Code: "supersedes_request_digest_mismatch",
+				Detail: fmt.Sprintf(
+					"effect.request_digest MUST equal %s, the first Effect Record up the supersedes chain (§5.4.4 deferral binding rule)",
+					anchorRequest,
+				),
+				Severity: "error", Check: mkCheck(6),
+			})
+		}
+	}
+	return findings
+}
+
 // storeIDs extracts capsule_id strings from a store (slice of capsule maps or strings).
 func storeIDs(store []interface{}) map[string]bool {
 	ids := make(map[string]bool)
@@ -695,12 +847,28 @@ func verify(capsule interface{}, store []interface{}, regs map[string]map[string
 			})
 		} else {
 			ids := storeIDs(store)
-			if parentStr, ok := parent.(string); ok && !ids[parentStr] {
+			parentStr, parentIsString := parent.(string)
+			relation, _ := chain["relation"].(string)
+			switch {
+			case parentIsString && !ids[parentStr]:
 				findings = append(findings, Finding{
 					Code:     "chain_parent_missing",
 					Detail:   fmt.Sprintf("chain parent %s not found in the store (§6)", parentStr),
 					Severity: "error", Check: mkCheck(6),
 				})
+			case parentIsString && relation == "supersedes":
+				if parentCapsule := storeCapsule(store, parentStr); parentCapsule != nil {
+					findings = append(findings, deferralBindingFindings(capsuleMap, parentCapsule, store)...)
+				} else {
+					findings = append(findings, Finding{
+						Code: "deferral_binding_not_evaluated",
+						Detail: fmt.Sprintf(
+							"chain parent %s is in the store only as an identifier or does not recompute; the deferral binding rule was not evaluated (§5.4.4)",
+							parentStr,
+						),
+						Severity: "info", Check: mkCheck(6),
+					})
+				}
 			}
 		}
 	}
@@ -1027,7 +1195,9 @@ func VerifyStore(capsules []interface{}, regs map[string]map[string]bool) []Veri
 	}
 
 	// Concurrent-supersedes (§5.4.4): earliest supersedes over a given parent is
-	// authoritative; any later one surfaces as an (info) finding.
+	// authoritative; any later one surfaces as an (info) finding. A supersedes
+	// that violates the deferral binding rule does not close its parent, so it
+	// is not a candidate for the earliest authoritative one.
 	seenParent := make(map[string]bool)
 	for i, c := range capsules {
 		cm, ok := c.(map[string]interface{})
@@ -1039,6 +1209,9 @@ func VerifyStore(capsules []interface{}, regs map[string]map[string]bool) []Veri
 			continue
 		}
 		if rel, _ := ch["relation"].(string); rel != "supersedes" {
+			continue
+		}
+		if hasDeferralBindingFinding(results[i].Findings) {
 			continue
 		}
 		parent, _ := ch["parent_capsule_id"].(string)
@@ -1159,4 +1332,13 @@ func DecodeCapsuleJSON(data []byte) (interface{}, error) {
 		return nil, fmt.Errorf("JSON nested more than %d levels deep", canonical.MaxNestingDepth)
 	}
 	return v, nil
+}
+
+func hasDeferralBindingFinding(findings []Finding) bool {
+	for _, f := range findings {
+		if deferralBindingCodes[f.Code] {
+			return true
+		}
+	}
+	return false
 }

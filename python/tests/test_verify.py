@@ -137,12 +137,57 @@ def test_store_missing_parent_fails():
 def test_store_concurrent_supersedes_is_finding():
     parent = base_blocked()
     pid = parent["capsule_id"]
-    c1 = reseal({**base_executed(), "action_id": "c1", "chain": {"parent_capsule_id": pid, "relation": "supersedes"}})
-    c2 = reseal({**base_executed(), "action_id": "c2", "chain": {"parent_capsule_id": pid, "relation": "supersedes"}})
+    # Both closures carry the parent's action_id (§5.4.4 deferral binding rule);
+    # c2 differs by timestamp so the two are distinct Capsules.
+    c1 = reseal({**base_executed(), "action_id": parent["action_id"],
+                 "chain": {"parent_capsule_id": pid, "relation": "supersedes"}})
+    c2 = reseal({**base_executed(), "action_id": parent["action_id"], "timestamp": "2026-06-13T00:00:01Z",
+                 "chain": {"parent_capsule_id": pid, "relation": "supersedes"}})
     r_parent, r1, r2 = verify_store([parent, c1, c2])
     assert r_parent.ok and r1.ok and r2.ok
     assert "concurrent_supersedes" not in codes(r1)
     assert "concurrent_supersedes" in codes(r2)  # later one flagged
+
+
+def test_single_verify_with_object_store_applies_deferral_binding():
+    # verify() with a store of Capsule objects runs the §5.4.4 binding rule, not
+    # only verify_store(): a closure for another action over a blocked parent fails.
+    parent = base_blocked()
+    child = reseal({**base_executed(), "action_id": "other-action",
+                    "chain": {"parent_capsule_id": parent["capsule_id"], "relation": "supersedes"}})
+    res = verify(child, store=[parent, child])
+    assert not res.ok and [f.code for f in res.findings].count("supersedes_action_mismatch") == 1
+
+
+def test_id_only_store_reports_deferral_binding_not_evaluated():
+    # A store of bare capsule_id strings proves parent existence only: the binding
+    # rule reads the parent's fields, so it is reported as not evaluated (§5.4.4).
+    parent = base_blocked()
+    child = reseal({**base_executed(), "action_id": "other-action",
+                    "chain": {"parent_capsule_id": parent["capsule_id"], "relation": "supersedes"}})
+    res = verify(child, store=[parent["capsule_id"]])
+    assert res.ok and "supersedes_action_mismatch" not in codes(res)
+    assert any(f.code == "deferral_binding_not_evaluated" and f.severity == "info" for f in res.findings)
+
+
+def test_one_shot_store_iterable_applies_deferral_binding():
+    # A generator store is read for parent ids and again for the parent Capsule.
+    parent = base_blocked()
+    child = reseal({**base_executed(), "action_id": "other-action",
+                    "chain": {"parent_capsule_id": parent["capsule_id"], "relation": "supersedes"}})
+    res = verify(child, store=(c for c in [parent, child]))
+    assert not res.ok and "supersedes_action_mismatch" in codes(res)
+
+
+def test_forged_parent_copy_does_not_capture_the_binding():
+    # A copy of the parent that carries its capsule_id but not its bytes is never
+    # the parent (§5.4.4): the closure binds to the Capsule that recomputes.
+    parent = base_blocked()
+    forged = {**parent, "action_id": "other-action"}
+    child = reseal({**base_executed(), "action_id": "other-action",
+                    "chain": {"parent_capsule_id": parent["capsule_id"], "relation": "supersedes"}})
+    res = verify(child, store=[forged, parent, child])
+    assert not res.ok and "supersedes_action_mismatch" in codes(res)
 
 
 # ---- Check 7: Assurance reconciliation -------------------------------------

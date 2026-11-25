@@ -79,7 +79,7 @@ of any positive vector's `input.json`, run the language's command, then
 
 | Set | Owning specification | Verbs | Cases |
 |---|---|---|---|
-| `vectors/capsule/` | `draft-mih-scitt-agent-action-capsule-05` (format 4, Class-1) | record, verify | 121 |
+| `vectors/capsule/` | `draft-mih-scitt-agent-action-capsule-05` (format 4, Class-1) | record, verify | 144 |
 | `provenance-mode-vectors/` | `draft-mih-scitt-agent-action-capsule-05` (provenance mode) | record, verify | 27 |
 | `vectors/producer-envelope/` | `draft-mih-scitt-agent-action-capsule-04#producer-envelope` | record, verify | 49 |
 | `vectors/disclosure-envelope/` | `draft-mih-agent-disclosure-envelope-00` | record, verify | 9 |

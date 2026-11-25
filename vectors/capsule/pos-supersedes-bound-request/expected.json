@@ -1,0 +1,31 @@
+{
+  "description": "a deferred parent with a planned send_payment Effect Record carrying request_digest, closed by an executed Capsule with the same action_id, effect.type and request_digest -> both ok; a planned effect MAY carry request_digest (§5.2, §5.4.4 deferral binding rule).",
+  "kind": "store",
+  "results": [
+    {
+      "capsule_id_recomputed": "6e9f03473ccdf69cf0206042095e7f6e3a0a4c7b7ba9ee8f65e1fbfd44205397",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "not_applicable",
+        "ledger_mode": "standalone"
+      },
+      "findings": [],
+      "ok": true
+    },
+    {
+      "capsule_id_recomputed": "1fe00b220cec7d1c31d39ea8759637b62c5c27825fd94d6dec1ef75f14fb864e",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "confirmed",
+        "ledger_mode": "chained"
+      },
+      "findings": [],
+      "ok": true
+    }
+  ],
+  "provenance": "spec-derived",
+  "canonical_preimages": {
+    "ledger[0].capsule_id": "{\"action_id\":\"pay-vendor-a\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"deferred\",\"human_disposed\":true,\"verdict_class\":\"deferred\"},\"effect\":{\"request_digest\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"status\":\"planned\",\"type\":\"send_payment\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}",
+    "ledger[1].capsule_id": "{\"action_id\":\"pay-vendor-a\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"confirmed\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"chain\":{\"parent_capsule_id\":\"6e9f03473ccdf69cf0206042095e7f6e3a0a4c7b7ba9ee8f65e1fbfd44205397\",\"relation\":\"supersedes\"},\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"accept\",\"human_disposed\":true,\"verdict_class\":\"executed\"},\"effect\":{\"effect_attestation\":\"gate_executed\",\"request_digest\":\"2222222222222222222222222222222222222222222222222222222222222222\",\"response_digest\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"status\":\"confirmed\",\"type\":\"send_payment\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}"
+  }
+}

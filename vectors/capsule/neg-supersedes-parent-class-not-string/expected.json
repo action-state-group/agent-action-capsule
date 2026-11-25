@@ -1,0 +1,38 @@
+{
+  "description": "a parent whose disposition.verdict_class is an array (field_not_string, check 1) and a closure for another action_id over it: a mistyped verdict_class binds nothing, so the closure is ok; every implementation agrees and none throws (§5.4.4).",
+  "kind": "store",
+  "results": [
+    {
+      "capsule_id_recomputed": "32cd28e5d177e17fd6be1d0278d6da18ed4d3a5bdf10a3f47d3ff33c985796f9",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "not_applicable",
+        "ledger_mode": "standalone"
+      },
+      "findings": [
+        {
+          "check": 1,
+          "code": "field_not_string",
+          "detail": "disposition.verdict_class MUST be a string when present (§6 check 1)",
+          "severity": "error"
+        }
+      ],
+      "ok": false
+    },
+    {
+      "capsule_id_recomputed": "e16a524c391c9c57631a874bd8f14ec0bf0526d53f07286fc6506ecfda18c96e",
+      "derived": {
+        "attestation_mode": "self_attested",
+        "effect_mode": "not_applicable",
+        "ledger_mode": "chained"
+      },
+      "findings": [],
+      "ok": true
+    }
+  ],
+  "provenance": "spec-derived",
+  "canonical_preimages": {
+    "ledger[0].capsule_id": "{\"action_id\":\"pay-vendor-a\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"deferred\",\"human_disposed\":true,\"verdict_class\":[\"deferred\"]},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}",
+    "ledger[1].capsule_id": "{\"action_id\":\"pay-vendor-b\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"chain\":{\"parent_capsule_id\":\"32cd28e5d177e17fd6be1d0278d6da18ed4d3a5bdf10a3f47d3ff33c985796f9\",\"relation\":\"supersedes\"},\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"reject\",\"human_disposed\":true,\"verdict_class\":\"resolved\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-05\",\"timestamp\":\"2026-06-13T00:00:00Z\"}"
+  }
+}

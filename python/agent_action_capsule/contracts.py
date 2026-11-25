@@ -218,12 +218,11 @@ class EffectRecord:
                 "the observed response (§5.2 confirmed-effect invariant)"
             )
         # Status/digest table (§5.2).
-        if self.status == "planned" and (
-            self.request_digest is not None or self.response_digest is not None
-        ):
+        # A planned effect MAY carry request_digest: the request a decider is
+        # asked to dispose (§5.2, §5.4.4 deferral binding rule).
+        if self.status == "planned" and self.response_digest is not None:
             raise InvariantError(
-                "effect.status 'planned': request_digest and response_digest MUST "
-                "be absent (§5.2)"
+                "effect.status 'planned': response_digest MUST be absent (§5.2)"
             )
         if self.status == "dispatched" and self.response_digest is not None:
             raise InvariantError(

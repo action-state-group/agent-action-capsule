@@ -1,5 +1,5 @@
 {
-  "description": "supersedes chain: a hitl_dispatched parent + a superseding resolution capsule; parent's open item is resolved.",
+  "description": "supersedes chain: a hitl_dispatched parent + a superseding resolution capsule for the same action_id (§5.4.4 deferral binding rule); parent's open item is resolved.",
   "kind": "store",
   "results": [
     {
@@ -13,7 +13,7 @@
       "ok": true
     },
     {
-      "capsule_id_recomputed": "7de5b036ec83e98f3d4f21398dae8c35f272ecfd60ba2dbc97ad038fd64aa388",
+      "capsule_id_recomputed": "c19f48f4d6ba74bd3fbd95e7a3f5ce3d85b3aaf83bd03d0eddff9b09a003592f",
       "derived": {
         "attestation_mode": "self_attested",
         "effect_mode": "confirmed",
@@ -26,6 +26,6 @@
   "provenance": "spec-derived",
   "canonical_preimages": {
     "ledger[0].capsule_id": "{\"action_id\":\"po-parent-hitl\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"not_applicable\",\"ledger_mode\":\"standalone\"},\"canonicalization_id\":\"jcs\",\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"needs_input\",\"human_disposed\":false,\"verdict_class\":\"hitl_dispatched\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-06-13T00:00:00Z\"}",
-    "ledger[1].capsule_id": "{\"action_id\":\"po-resolution\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"confirmed\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"chain\":{\"parent_capsule_id\":\"7af44dadf6d5303f7ec75c7c761933740dee4c8a88598238ec9df6cb40623854\",\"relation\":\"supersedes\"},\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"accept\",\"human_disposed\":true,\"verdict_class\":\"executed\"},\"effect\":{\"effect_attestation\":\"gate_executed\",\"response_digest\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"status\":\"confirmed\",\"type\":\"write_order\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-06-13T00:00:00Z\"}"
+    "ledger[1].capsule_id": "{\"action_id\":\"po-parent-hitl\",\"action_type\":\"decide\",\"assurance\":{\"attestation_mode\":\"self_attested\",\"effect_mode\":\"confirmed\",\"ledger_mode\":\"chained\"},\"canonicalization_id\":\"jcs\",\"chain\":{\"parent_capsule_id\":\"7af44dadf6d5303f7ec75c7c761933740dee4c8a88598238ec9df6cb40623854\",\"relation\":\"supersedes\"},\"developer\":\"agent@v1\",\"disposition\":{\"approver\":\"human\",\"decision\":\"accept\",\"human_disposed\":true,\"verdict_class\":\"executed\"},\"effect\":{\"effect_attestation\":\"gate_executed\",\"response_digest\":\"1111111111111111111111111111111111111111111111111111111111111111\",\"status\":\"confirmed\",\"type\":\"write_order\"},\"format_version\":\"4\",\"operator\":\"ACME-CO\",\"spec_version\":\"draft-mih-scitt-agent-action-capsule-04\",\"timestamp\":\"2026-06-13T00:00:00Z\"}"
   }
 }
