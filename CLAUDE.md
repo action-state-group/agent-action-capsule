@@ -9,7 +9,7 @@ Scope rules and review gates are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Commands
 
-Before every push, run `scripts/check.sh` (about 7 minutes on an Apple-silicon Mac). It runs what CI runs on pull requests and main, every workflow whatever its paths filter, except the neutrality and leak-lint scans, which need repository secrets, and spec.yml's non-gating idnits.
+Before every push, run `scripts/check.sh` (about 8 minutes on an Apple-silicon Mac). It runs what CI runs on pull requests and main, every workflow whatever its paths filter, except the neutrality and leak-lint scans, which need repository secrets, and spec.yml's non-gating idnits.
 
 ```bash
 # python/  (Python 3.9 compatible)
