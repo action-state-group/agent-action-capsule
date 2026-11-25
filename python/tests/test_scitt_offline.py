@@ -570,6 +570,12 @@ def test_second_receipt_complete_passes(tmp_path):
         ({4: b"k"}, []),
         ({34: [-16, b"\x00" * 32]}, []),  # x5t in place of kid
         ({33: b"cert"}, []),  # x5chain in place of kid
+        ({33: [b"leaf", b"ca"]}, []),
+        ({34: 0}, ["kid"]),  # placeholders do not stand in
+        ({34: [-16, b""]}, ["kid"]),
+        ({33: b""}, ["kid"]),
+        ({33: []}, ["kid"]),
+        ({33: [b"leaf", 7]}, ["kid"]),
         ({}, ["kid"]),
         ({4: "k"}, ["kid"]),
     ],

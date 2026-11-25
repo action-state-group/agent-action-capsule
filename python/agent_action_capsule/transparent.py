@@ -108,6 +108,22 @@ def _eddsa_not_strict(cose: bytes, key_pem: bytes) -> bool:
     return not (isinstance(signature, bytes) and strict_encoding(raw, signature))
 
 
+def _names_x509_key(ext: dict) -> bool:
+    """A well-formed ``x5t`` ([hash alg, non-empty bstr]) or ``x5chain`` (a
+    non-empty bstr or non-empty array of them), RFC 9360 Section 2."""
+    x5t = ext.get(_HDR_X5T)
+    if (
+        isinstance(x5t, (list, tuple)) and len(x5t) == 2
+        and isinstance(x5t[0], (int, str)) and not isinstance(x5t[0], bool)
+        and isinstance(x5t[1], bytes) and x5t[1]
+    ):
+        return True
+    chain = ext.get(_HDR_X5CHAIN)
+    if isinstance(chain, bytes):
+        return bool(chain)
+    return isinstance(chain, (list, tuple)) and bool(chain) and all(isinstance(c, bytes) and c for c in chain)
+
+
 def _missing_receipt_headers(res) -> list[str]:
     """The RFC 9943 Section 6 Receipt headers a verified ``res`` lacks."""
     missing = []
@@ -117,7 +133,7 @@ def _missing_receipt_headers(res) -> list[str]:
         missing.append("sub")
     ext = res.protected_header_ext or {}
     kid = ext.get(_HDR_KID)
-    if not (isinstance(kid, bytes) and kid) and _HDR_X5T not in ext and _HDR_X5CHAIN not in ext:
+    if not (isinstance(kid, bytes) and kid) and not _names_x509_key(ext):
         missing.append("kid")
     return missing
 
