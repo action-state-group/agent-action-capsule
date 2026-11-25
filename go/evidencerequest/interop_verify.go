@@ -432,13 +432,7 @@ func (v *Verifier) envelopeProperties(env map[string]any, received receivedValue
 	case !received.wellFormed:
 		props["envelope_signature"] = report("envelope_signature", StatusFail, method, "not well-formed (§5.2): "+received.why)
 	default:
-		signed := map[string]any{}
-		for _, k := range envelopeSigned {
-			if present(env, k) {
-				signed[k] = env[k]
-			}
-		}
-		body := jcsOrNil(signed)
+		body := EnvelopeSigningInput(env)
 		props["envelope_signature"] = report("envelope_signature", passIf(body != nil && verifyHexSignature(responder, env["sig"], body)), method, "")
 	}
 	method = "trust policy: responder keys, as of the envelope's issued_at"

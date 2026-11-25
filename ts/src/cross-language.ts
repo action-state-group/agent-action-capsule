@@ -144,27 +144,74 @@ async function composedVerify(): Promise<number> {
   const composed = result.extensions.find(
     (e) => e.composed !== undefined,
   )?.composed;
-  if (composed === undefined || !("joins" in composed)) {
+  if (composed === undefined) {
     console.error("no composed/v1 block");
     return 1;
   }
-  const joins = composed.joins.map((join, i) => {
-    const corroboration = composed.corroboration[i]!;
-    return {
-      members: [...join.members],
-      declared: join.declared,
-      derived: join.derived ?? null,
-      result: join.result,
-      corroboration: corroboration.result,
-      reason: "reason" in corroboration ? corroboration.reason : null,
-    };
-  });
+  // A malformed block reports no composition result: no joins.
+  const joins = !("joins" in composed)
+    ? []
+    : composed.joins.map((join, i) => {
+        const corroboration = composed.corroboration[i]!;
+        const t = join.historyTimes;
+        return {
+          members: [...join.members],
+          declared: join.declared,
+          derived: join.derived ?? null,
+          result: join.result,
+          corroboration: corroboration.result,
+          reason: "reason" in corroboration ? corroboration.reason : null,
+          // -03: present only for a same_key join that derives unjoined, and
+          // for a join between a History member and a root record.
+          ...(join.keySources === undefined
+            ? {}
+            : {
+                key_sources: join.keySources.map((k) => ({
+                  member: k.member,
+                  source: k.source,
+                })),
+              }),
+          ...(join.keys !== undefined && join.keys.length > 0
+            ? { keys: join.keys.map((k) => ({ member: k.member, key: k.key })) }
+            : {}),
+          ...(t === undefined
+            ? {}
+            : {
+                history_times: {
+                  history: t.history,
+                  history_time: t.historyTime,
+                  record: t.record,
+                  record_time: t.recordTime,
+                  relation: t.relation,
+                },
+              }),
+        };
+      });
+  const histories = !("members" in composed)
+    ? []
+    : composed.members.flatMap((m) =>
+        m.history === undefined
+          ? []
+          : [
+              {
+                id: m.id,
+                envelope_signature: m.history.envelopeSignature,
+                artifact_digest: m.history.artifactDigest,
+                request_digest: m.history.requestDigest,
+                artifact_anchor: m.history.artifactAnchor,
+                anchor_checkpoint: m.history.anchorCheckpoint,
+                key: m.history.key ?? null,
+                time: m.history.time ?? null,
+              },
+            ],
+      );
   process.stdout.write(
     `${new TextDecoder().decode(
       jcs({
         status: composed.status,
         findings: [...composed.findings].sort(),
         joins,
+        ...(histories.length > 0 ? { histories } : {}),
       }),
     )}\n`,
   );

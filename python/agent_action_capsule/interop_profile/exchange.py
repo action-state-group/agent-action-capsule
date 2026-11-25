@@ -38,6 +38,7 @@ from ._common import (
     VerificationPolicy,
     b64url_decode,
     ed25519_verify_hex,
+    envelope_signing_input,
     is_digest,
     is_key_id,
     is_profile_time,
@@ -83,9 +84,6 @@ REFUSAL_PROPERTIES = (
     "refusal_signature", "responder_trust", "responder_key_current", "request_binding", "reason_registered",
     "issued_at_form",
 )
-# §6.2: the members covered by the envelope signature, when present.
-_ENVELOPE_SIGNED = ("profile", "request_digest", "subject", "derivation", "anchor", "artifact_digest",
-                    "verification", "responder", "issued_at")
 _ABSENCE_MEMBERS = frozenset({"outcome", "request_digest", "route", "window", "recorded_at", "retention",
                               "key_id", "sig"})
 
@@ -456,7 +454,7 @@ class InteropVerifier:
             props["envelope_signature"] = PropertyReport("envelope_signature", FAIL, method,
                                                          f"not well-formed (§5.2): {why}")
         else:
-            body = jcs_or_none({k: env[k] for k in _ENVELOPE_SIGNED if k in env})
+            body = envelope_signing_input(env)
             ok = body is not None and ed25519_verify_hex(responder, env["sig"], body)
             props["envelope_signature"] = PropertyReport("envelope_signature", PASS if ok else FAIL, method)
         # responder_trust: reported on the key the envelope names, as of its issued_at (P-54).

@@ -251,7 +251,17 @@
             ],
             "declared": "agree",
             "derived": "agree",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -506,7 +516,17 @@
             ],
             "declared": "unjoined",
             "derived": "unjoined",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -726,7 +746,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -979,7 +1009,17 @@
             ],
             "declared": "agree",
             "derived": "unjoined",
-            "result": "join_state_mismatch"
+            "result": "join_state_mismatch",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -1224,7 +1264,17 @@
             ],
             "declared": "unjoined",
             "derived": "unjoined",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -1469,7 +1519,17 @@
             ],
             "declared": "unjoined",
             "derived": "unjoined",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -1714,7 +1774,17 @@
             ],
             "declared": "unjoined",
             "derived": "unjoined",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -1959,7 +2029,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -2208,7 +2288,17 @@
             ],
             "declared": "agree",
             "derived": "agree",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -2459,7 +2549,17 @@
             ],
             "declared": "agree",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "record_signature"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -2689,7 +2789,17 @@
             ],
             "declared": "one_sided",
             "derived": "one_sided",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "log_checkpoint"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -2927,7 +3037,17 @@
             ],
             "declared": "unjoined",
             "derived": "unjoined",
-            "result": "derived_matches"
+            "result": "derived_matches",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "log_checkpoint"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -3157,7 +3277,17 @@
             ],
             "declared": "agree",
             "derived": "one_sided",
-            "result": "join_state_mismatch"
+            "result": "join_state_mismatch",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "log_checkpoint"
+              }
+            ]
           }
         ],
         "corroboration": [
@@ -3377,7 +3507,17 @@
             ],
             "declared": "one_sided",
             "derived": null,
-            "result": "not_derivable"
+            "result": "not_derivable",
+            "key_sources": [
+              {
+                "member": "responder-a",
+                "source": "record_signature"
+              },
+              {
+                "member": "responder-b",
+                "source": "none"
+              }
+            ]
           }
         ],
         "corroboration": [

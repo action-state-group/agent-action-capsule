@@ -12,9 +12,79 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in a `ts` tag yet: everything after `ts/v0.14.0`. The Go and Python entries up to `go/v0.24.0` and `python/v0.18.0` are also listed under those tags. The Rust crates keep their own
+Not in any tag yet: nothing after `go/v0.24.0`, `python/v0.19.0` and `ts/v0.16.0`. The `reason` entry below shipped in `ts/v0.16.0` and is listed here until a `go` tag carries it. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
+
+- Evidence Result v0: an optional, display-only claim member `reason` (`spec/evidence-result-v0.md` §4.4, #657), one lowercase token naming why a requirement claim is unavailable or why its grade stopped short of `countersigned`. Four registered tokens (`capsule_signature_did_not_verify`, `capsule_signer_not_trusted`, `counterparty_leg_signature_did_not_verify`, `counterparty_leg_signer_not_trusted`), each bound to the claims it may appear on. A producer writes only registered tokens; a reader accepts an unregistered one (from a later revision) and shows it raw. A verifier never reads it to decide anything, and a renderer labels it as the producer's statement. The schema, its Go copy, Go `evidenceresult.Claim.Reason` and TypeScript `ResultClaim.reason` / `reasonKind` (with `REASON_KINDS`) carry it; two positive and eight negative vectors in `vectors/evidence-result/` pin it. A validator from before this change rejects a claim carrying `reason`, so a producer keeps its `x-` reason member until its readers update.
+
+- Spec: Person Signature v0 (`spec/person-signature-v0.md`, informational). A person's signature,
+  made with the person's own key, over the digest of a record that another party signed, carried
+  beside the record in `person_signatures`, never inside it. The first key type is `webauthn`: an
+  assertion whose challenge is `person-signature/0:<record_digest>`, checked offline against the
+  person keys, relying party id and origins the using profile supplies. A record without one reads
+  `NOT_PRESENT`, "not signed by the person". Conformance vectors: `vectors/person-signature-v0/`
+  (55 cases) with a Python generator and an independent evaluator test (#627).
+
+- Evidence Bundle -03 `composed/v1`: a History answer can be a member (#537). It is an `artifact` member whose body is `history`: the evidence-interop envelope as received and the anchor checkpoint its `anchor.digest` names, with the envelope's digest as the member digest. A verifier checks the envelope signature, the artifact, request and card-anchor digests and the anchor checkpoint, never the card's counts, and a History that passes has a join view: its responder key and anchor time. A new join basis, `same_key`, ties a party's History to its own half of an exchange: a member Bundle's key is read only from its root record's verified producer signature, never through a pointer, and an agreement is always redundant. `controller_binding` also derives with a History member, two Histories included. For a join between a History and a root record the verifier reports both times and whether the History's is before, equal to or after the record's, as facts with no join state. Python, Go, TypeScript and Rust implement it, and `vectors/bundle/composed-history/` (30 cases) pins it, with an independent Python re-derivation and the cross-language interlock. A verifier from before this change reads a `same_key` join as malformed and a `history` member as carrying no body, so a producer adds either only once -03 is posted.
+
+## ts 0.16.0 — 2026-11-22
+
+Tag `ts/v0.16.0`. The pull requests that changed `ts/` since `ts/v0.15.0`:
+
+- feat(evidence-result): optional display-only claim member reason (#657) (#658)
+
+The changes, from the entries listed under Unreleased since `ts/v0.15.0`: the ones that changed the TypeScript package, and those that changed no package directory (spec, vectors, examples). The Person Signature v0 entry changed the Go and Python packages and stays under Unreleased:
+
+- Evidence Result v0: an optional, display-only claim member `reason` (`spec/evidence-result-v0.md` §4.4, #657), one lowercase token naming why a requirement claim is unavailable or why its grade stopped short of `countersigned`. Four registered tokens (`capsule_signature_did_not_verify`, `capsule_signer_not_trusted`, `counterparty_leg_signature_did_not_verify`, `counterparty_leg_signer_not_trusted`), each bound to the claims it may appear on. A producer writes only registered tokens; a reader accepts an unregistered one (from a later revision) and shows it raw. A verifier never reads it to decide anything, and a renderer labels it as the producer's statement. The schema, its Go copy, Go `evidenceresult.Claim.Reason` and TypeScript `ResultClaim.reason` / `reasonKind` (with `REASON_KINDS`) carry it; two positive and eight negative vectors in `vectors/evidence-result/` pin it. A validator from before this change rejects a claim carrying `reason`, so a producer keeps its `x-` reason member until its readers update.
+
+## python 0.19.0 — 2026-11-21
+
+Tag `python/v0.19.0`. The pull requests that changed `python/` since `python/v0.18.0`:
+
+- feat(spec): register a Standard History card on a SCITT transparency service (#639) (#641)
+- feat(vectors): record push carriage vectors over MCP and A2A (RP-1) (#632)
+- feat(spec): give the ranged checkpoints form its own token, checkpoint_range (#644) (#645)
+- chore: re-vendor the CPB registry snapshots from scitt-payload-binding b4af581 (#642) (#643)
+
+The changes, from the changelog fragments folded in this release, and the entries that changed no Python package directory (the witnessed checkpoint follow-up draft):
+
+- Spec: a holder MAY register a Standard History card on a SCITT transparency service
+  (`spec/standard-history-v0.md` §13, #639). A card statement is a Transparent Statement under the
+  holder key over the SHA-256 of the card octets, with RFC 9942 Receipts in its `receipts` header,
+  carried beside the card; the new check `card_registered` reports `PASS` when a Receipt by a service
+  the relying party lists covers it, with the registration time when the Receipt carries one. It shows
+  that the card existed by that time (a passing Receipt with no time shows only that the service
+  logged the statement) and nothing else: `anchor_inclusion` stays `NOT_CHECKED` (IP P-13 stays open for
+  cards), it does not show that the holder registered no other card (SH-18), and it does not
+  check the counts. Opt-in; no card, token, counting table or wording pack changes. 49 vectors in
+  `vectors/card-registration-v0/`.
+- Python, Go and TypeScript: `check_card_registered` and `check_card_statement` (Go `CheckCardRegistered`, TypeScript `checkCardRegistered`) in the
+  witness modules run those vectors.
+
+- **Breaking** for readers of the unposted Evidence Request -03: the ranged checkpoints subject is now its own subject form, `checkpoint_range` with content `[a, b]` (`spec/draft-mih-agent-evidence-request-03`, §3.1 and §8.1.3), and `checkpoints` is again only the content-free form, exactly as posted in -02. A list of the forms a responder answers names each by its own token, so a responder whose full checkpoint list outgrows one answer stops listing `checkpoints` and still lists `checkpoint_range` and the history cards; the Privacy Considerations note what that tells a reader. `{"checkpoints": [a, b]}` is now `request_malformed`. The released Python 0.17.0 and 0.18.0 and Go 0.22.0 and 0.23.0 readers accept `{"checkpoints": [a, b]}` and reject `{"checkpoint_range": [a, b]}`; upgrade them together. Python adds `SUBJECT_CHECKPOINT_RANGE` and Go adds `SubjectCheckpointRange` (and drops `Subject.Ranged`); `SUBJECT_FORMS` and `SubjectForms` stay the six forms of -02's §3.1 table, so a manifest built from them for `evidence-interop/1`, which pins -02, names no token beyond that profile, and a list of the -03 forms adds the new constant. `vectors/evidence-request/checkpoints-range.json` is rewritten with the new token and two more MUST-reject request cases (`neg-checkpoints-content-range`, `neg-checkpoint-range-null`). ([#644](https://github.com/action-state-group/agent-action-capsule/issues/644))
+
+- Add `vectors/record-push-v0/`, carriage vectors for the record push binding over MCP and A2A (RP-1): the `record_push` tool call and the A2A `Message`, strict base64url members, an error against an answer, how a sender classifies a reply, and the fixed tool definition and extension entry. They pin the carriage only, and no implementation runs them yet.
+
+- The vendored CPB registry snapshots (`cpb_registry.json` in Python, `cpb_provisional.json` in Python, Go, TypeScript and Rust) are re-vendored from `scitt-payload-binding@b4af581`. The `mesh-inference-exchange` `reference` now reads "`action-state-group/capsule-emit-mesh` @ `9be03df`" with no dangling " —", and the `trace-trust-record` `reference` now carries its whole wrapped Reference field instead of its first line. Verifier output does not change. ([#642](https://github.com/action-state-group/agent-action-capsule/issues/642))
+
+- Spec: `spec/witnessed-checkpoint-v0.md` (Informational, pre-Internet-Draft) defines the witnessed checkpoint follow-up between the two sides of a book: a stamp proof of `spec/shelf-forms-v0.md` with the witness receipts the holder holds for its shelf checkpoint (CLL `WitnessRecord`) and a CLL consistency proof from a shelf checkpoint the receiver kept, the receiver's checks and answer, an unauthenticated ask whose answer is always empty, and their carriage over MCP (the tool `witnessed_checkpoint`) and A2A, reusing `spec/bindings/record-push-v0.md`. No vectors yet (open point WC-1).
+
+## ts 0.15.0 — 2026-11-21
+
+Tag `ts/v0.15.0`. The pull requests that changed `ts/` since `ts/v0.14.0`:
+
+- feat(spec): register a Standard History card on a SCITT transparency service (#639) (#641)
+- chore: re-vendor the CPB registry snapshots from scitt-payload-binding b4af581 (#642) (#643)
+- feat(spec): Evidence Request -03, history_card/2 and a checkpoints range (#630)
+- refactor(ts): outcome-report matches the case record from its sealed fields (#343) (#612)
+- feat: adopt checkpointed-local-log 0.9.0 (CLL -02 checkpoint sub) across four languages (#611)
+- chore: drop the stale mesh-inference-exchange capsule_field_values from the CPB snapshots (#602) (#605)
+- chore: re-vendor the CPB registry snapshots; drop the withdrawn jcs-n context (#600) (#601)
+- fix!: verify producer signatures under jcs only; the withdrawn jcs-n is invalid (capsule-emit#447) (#599)
+- feat(ts): verifyRetainedHead for ladder rung 6 (#513) (#592)
+
+The changes, from the entries listed under Unreleased since `ts/v0.14.0`: the ones that changed the TypeScript package, and those that changed no package directory (spec, vectors, examples). Entries that changed only the Go or Python package are under `go` and `python`:
 
 - Spec: Evidence Result v0's `ClaimType` gains `calibration` (`spec/evidence-result-v0.md` §4.1,
   AAC#548), the claim the outcome-report reader's calibration reading (#488) reads. It keeps every
@@ -22,9 +92,6 @@ has not yet.
   record and otherwise only `human-rating/v1` records, a rule the Python reference checker and Go
   `evidenceresult.Check` enforce over the cited records. Additive: every Result that validated
   before still validates. Six vectors in `vectors/evidence-result/`.
-- Go: `evidenceresult.TypeCalibration`, and `Check` refuses a calibration claim whose cited records
-  break that rule or are not supplied. The cited records are read as given, so pass the unwrapped judge
-  records, not records wrapped in `agent_input`.
 - Spec, experimental: `spec/bindings/nostr-mailbox-v0.md`, a carriage of the `evidence-interop/0`
   exchange through a Nostr relay for a responder with no inbound reachability, with its adapter
   declaration `spec/adapters/nostr-mailbox-v0.md`, vectors in `vectors/adapters/nostr-mailbox/` and
@@ -70,15 +137,12 @@ has not yet.
 
 - `spec/adapters/README.md`: add the `nostr-mailbox-v0` declaration to the worked-examples table with its `{id, digest}` pair, and to the list of declarations in the directory.
 
-- Go: `inferencehistory` reads the checkpoints of a real `history_card/1` (action-state-group/agent-action-capsule#563): each history entry's checkpoint as a hex `cll-checkpoint` statement with its `consistency_from_previous` proof (ER §8.1), as an evidencebook Book or Mesh node answers it. `history_card_content` checks every statement's signature under a pinned log key, that the entries are in order and each extends the one before by its proof, and that the anchor is the digest of the last statement; `period_alignment` and `period_anchor` read the statements' `issued_at` and `log_size`. The vectors' JSON checkpoint form still works. `evidencerequest` gains `DecodeCLLCheckpoint` and `CLLCheckpoint.VerifySignature`. No wire or normative change; additive.
 
-- Go: new packages `personalhistoryoutcome` and `inferencehistory` (action-state-group/agent-action-capsule#555): readers for `personal_history_outcome/1` and `inference-service-history/0` (Standard and Detailed) at parity with the Python vector evaluators, each reporting its History properties as PASS, FAIL or NOT_CHECKED over `evidencerequest.Verifier`. `personalhistoryoutcome.Evaluate` also gives claim properties, requirement results and deal commitment openings; a native object's check is a caller-supplied `NativeChecker`, `NOT_CHECKED` without one. `inferencehistory.Evaluate` gives the coverage report, witness receipts and exchange labels shown, and `EvaluatePair` checks `period_fixed`. They pass `vectors/personal-history-outcome-v0`, `vectors/inference-service-history-v0` and `-interop-v1`. No wire or normative change; additive.
 
 - Spec, experimental: `spec/bindings/evidence-commitment-carriers-v0.md` adds a fourth carrier, §5.4 ERC-8004 (AAC#581): one `services[]` entry `{name: "evidence-commitment", endpoint, version, digest}` in an agent's registration file, read only when the file's `registrations[]` matches the agent it was reached from (`erc8004_registration`), with an `erc8004_entry` form check; no `supportedTrust` value is defined and the list is not read, and nothing uses the Reputation or Validation Registry. ERC-8004 is pinned at `ethereum/ERCs` `503591a6` in §2. `vectors/adapters/evidence-commitment-carriers/` gains fourteen cases, among them `four-carriers-one-commitment`. `examples/erc8004-base-sepolia/` registers an agent with the entry on the Base Sepolia Identity Registry and resolves an `agentId` to a verified commitment, handing its cards to `capsulectl verify --history`.
 
 - Spec: `spec/adapters/erc-8183-v0.md` is a new adapter profile for ERC-8183 Agentic Commerce jobs (AAC#583). The job's `description` starts with the line `<contract_ref> sha256:<contract_digest>`. `deliverable` is the provider capsule's Capsule ID, and the evaluator's `reason` is the Capsule ID of a sealed `evaluation-report/v1` with one case citing that deliverable. `met` maps to `complete` and `not_met` to `reject`. For `not_evaluable` and `out_of_scope` the evaluator makes no call, and the job is refunded after expiry. A verifier reports seven checks as `native_check` results: `is_evaluation`, `reason_binding`, `capsule_verifies`, `contract_binding`, `contract_digest`, `deliverable_cited` and `verdict_call`. ERC-8183 is pinned at `ethereum/ERCs` `a078cab5`. The new `vectors/adapters/erc-8183/` has five passing jobs and twenty MUST-reject ones.
 
-- Go: `evidencerequest` implements `evidence-interop/2` (`ProfileIDv2`, AAC#438): the Verifier checks a refusal's signature over the signing input of the identifier its request asks for, which under `/2` covers `policy_digest` when present (v2 §6.3, P-69), and passes `vectors/interop-profile-v2` and `-requirement-facts`. `Refusal` gains `PolicyDigest`, `SigningBodyUnder`, `SignUnder` and `VerifyUnder`, `CheckRefusalUnder` reads a refusal object under a named identifier, and `ParseReply` keeps a refusal's `policy_digest` and refuses an empty one. `Sign`, `Verify`, `SigningBody` and `CheckRefusal` keep the ERV A7 members; `Sign` now refuses a refusal carrying a `PolicyDigest`, which it would leave unsigned. Additive.
 
 - Spec: Evidence Request `-02` ("The History Card") states that a `history_card/1` answers either the `checkpoints` subject or the `full_history` subject (action-state-group/agent-action-capsule#430). It records what the section already implied ("for the named evidence stream") and what the built-in derivation table and the vectors' `supported_derivations` already declare; `capsulectl verify --history` accepts both (action-state-group/capsule-cli#536).
 
@@ -102,11 +166,6 @@ has not yet.
   `policy_digest` checked by a `/1`-only verifier, and, under an identifier the verifier does not
   implement, an unbound, a signed and a malformed signed `policy_digest`) and 2 in
   `vectors/interop-profile-v2-requirement-facts/`.
-- Python: the interop verifier implements `evidence-interop/2` (`PROFILE_V2`); `sign_refusal` takes
-  `policy_digest` and `profile`, and `check_refusal`, `check_refusal_cbor`,
-  `verify_refusal_offline` and `Refusal.signing_body` take the `profile` the request asked for
-  (`refusal_signed_members`). `parse_reply` keeps a refusal's `policy_digest`. Defaults are
-  unchanged.
 
 - Spec: the Outcome level of the Personal-Agent History Profile
   (`spec/personal-agent-history-outcome-v0.md`) carries tick paths. Its one-file History (§11) gains
@@ -119,9 +178,6 @@ has not yet.
   `mutant-tick-path-consistency-changed`, and two files that are not a History at this level,
   `not-a-history-other-member` and `not-a-history-tick-path-other-member`, whose `expected` holds
   only `"not_a_history": true` and an empty `fails`.
-- Go: `personalhistoryoutcome.ParseFile` reads the §11 one-file History and rejects any other file
-  with `ErrInvalid`; `Inputs.TickPaths` takes the tick paths a History carries, and
-  `Result.TickPaths` reports each path's check (`personalhistory.CheckTickPaths`).
 
 - Spec: Evidence Bundle `-03` working revision (`spec/draft-mih-zhang-agent-disclosure-bundle-03.md`) defines and
   registers the `parent-log-witness/v1` extension kind (action-state-group/agent-action-capsule#347): a chain from the
@@ -156,11 +212,6 @@ has not yet.
   `epistemic_type`. The Outcome level applies the same entry forms through its references to PH.
   Nine new cases in `vectors/personal-history-basic-v0/` (23 in all). `personal_history_basic/1`
   keeps its name and its counting table and wording pack bytes.
-- Go: `personalhistory` reads and writes `tick_paths` in the one-file History (`File.TickPaths`,
-  `ParseTickPaths`) and runs the tick path check (`CheckTickPaths`); its `artifact_form`, and
-  `personalhistoryoutcome`'s, hold the §4.3 entry forms. `evidencerequest.CLLCheckpoint` gains
-  `Iss` and `Sub`, `TrustPolicy.AcceptsLogKey` is exported, and `DecodeCLLCheckpoint` marks a
-  checkpoint whose signature is not checked with `ErrCheckpointNotChecked`.
 
 - Spec: `spec/standard-history-v0.md` closes SH-3 (action-state-group/evidencebook#211): how a recipient is handed what `counts_recompute` needs. The carriage is one `evidence-bundle/v2` per log the anchor commits, with no new member, derivation or token; `counts_recompute` is evaluated only when coverage is shown (every leaf of every committed log, none withheld), recomputes over the card's own `window` and no longer needs the policy, and is `NOT_CHECKED` otherwise. A salted or sparse anchor tree cannot show coverage yet (new open point SH-10). Normative; the Python and Go `check` take the window from the card, and `vectors/standard-history-v0/` gains `person-3-months-without-policy` and `window-not-in-policy-counts-match` and changes `window-not-in-policy`.
 
@@ -233,11 +284,7 @@ has not yet.
   and carries the shelf log's `coverage_start`. Its counting table and wording pack are in `spec/history-frame/`
   (History frame §6.1), its row in `spec/REGISTRY.md` §16, and its 27 vectors in
   `vectors/standard-history-v0/vectors-3.json`.
-- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
-  `standard_history/3` cards (`DERIVATION_3` and `outcome`; `Derivation3`, `Outcome`, `Deal.Rows`,
-  `Deal.LeftOut` and `AsOf.CoverageStartTime`).
 
-- `python/scripts/vendor_cpb_registry.py` now reads a hard-wrapped `**Reference:**` field in the CPB provisional registry in full (continuation lines up to the next label, blank line or heading) instead of only its first line, so a wrapped entry no longer vendors a truncated reference. ([scitt-payload-binding#111](https://github.com/action-state-group/scitt-payload-binding/issues/111))
 
 - Spec: a new derivation token `standard_history/4` (`spec/standard-history-v0.md` §12, #634),
   beside `standard_history/1` to `/3`, which are unchanged in every member, rule, document and
@@ -249,8 +296,6 @@ has not yet.
   SH-13 say how `/3` and `/4` differ. Its counting table and wording pack are in
   `spec/history-frame/` (History frame §6.1), its row in `spec/REGISTRY.md` §16, and its 8 vectors
   in `vectors/standard-history-v0/vectors-4.json`.
-- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
-  `standard_history/4` cards (`DERIVATION_4`; `Derivation4`).
 
 - Spec: a holder MAY register a Standard History card on a SCITT transparency service
   (`spec/standard-history-v0.md` §13, #639). A card statement is a Transparent Statement under the

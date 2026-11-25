@@ -555,7 +555,8 @@ References to external authorization records carried in the Effect Record
 (for example, permit receipts per {{I-D.munoz-scitt-permit-profile}}, or
 machine mandates) are typed digest references per
 {{I-D.mih-sokolov-scitt-payload-binding}}'s Typed Digest References
-section, with artifact types drawn from the CPB Artifact Type registry.
+section. CPB defines no artifact-type registry; the artifact types such a
+reference may name are accepted as {{xref}} states.
 Cross-profile comparability of digest values (comparable only under
 compatible declared digest contexts; otherwise indeterminate/deny, never
 equal-looking-hex) follows that document's Cross-Profile Comparability
@@ -571,7 +572,7 @@ This profile's own `chain.parent_capsule_id`, `reason_digest`,
 the typed digest reference above: they are bare intra-profile digests and
 join keys, either a current JSON digest or an opaque correlation string, not
 `{type, digest_alg, digest}` objects citing an external artifact by
-registered artifact type. They MUST NOT be interpreted as CPB typed digest
+declared artifact type. They MUST NOT be interpreted as CPB typed digest
 references. Only the external-authorization references described in this
 paragraph use the CPB typed-reference mechanism.
 
@@ -997,6 +998,20 @@ digest-committed record that the constraint or policy fired and the
 action did not proceed. Recording only successes makes the evidence trail
 survivorship-biased and the refusal path unverifiable.
 
+This requirement binds the producer; it is not a property a verifier can
+check from the Capsules it holds. A blocked or denied Capsule shows that
+the gate fired when that Capsule exists, but a producer that refused and
+recorded nothing looks, at Class 1, the same as one that was never asked.
+Such a Capsule also cannot carry an attested observer of the gate: a
+never-dispatching `verdict_class` requires the derived `effect_mode` to
+be `"not_applicable"`, where the effect-attestation matrix requires
+`effect_attestation` to be absent ({{effect}}). Showing that a refused
+transition is absent needs an artifact over the attempt itself, whose
+collection scope and completeness are established by something other than
+its issuer's word, for example an anchored ledger head or an independent
+run. This revision defines no such artifact and no gate-scoped attestation
+grade.
+
 ### Chained Capsules and human-in-the-loop resolution {#hitl}
 
 Every Capsule that references a prior Capsule carries a digested `chain`
@@ -1025,7 +1040,8 @@ resolution Capsule, preserving the append-only model.
 Concurrent-supersedes rule: the ledger is append-only and totally
 ordered; the earliest capsule in ledger order with `relation=supersedes`
 over a given parent is authoritative; any later supersedes over the same
-parent is structurally valid but MUST surface as a verification finding.
+parent is structurally valid but MUST surface as an informational
+verification finding; it does not affect `ok` ({{verification}}, check 6).
 
 Open-items predicate: an item is open when its Capsule's
 `verdict_class` is one of `deferred`, `needs_decision`,
@@ -1091,27 +1107,46 @@ parent and is the only field {{assurance}}'s `ledger_mode` derivation
 reads. `references` is exclusively for everything else. A `references`
 entry MUST NOT name the same target as `chain.parent_capsule_id` — a
 producer citing its own same-stream parent states that once, in
-`chain`, never redundantly in `references`.
+`chain`, never redundantly in `references`. An entry names that target
+exactly when its `type` is `agent-action-capsule`, its `digest_alg` is
+`SHA-256`, and its `digest` equals `chain.parent_capsule_id`; an entry
+of any other `type` or `digest_alg` over the same hex names a different
+target (Digest as identity, below) and is not a duplicate.
 
 **Shape.** Each `references` entry's identity is a CPB typed digest
 reference {{I-D.mih-sokolov-scitt-payload-binding}}: `{type, digest_alg,
 digest}`, the same mechanism this profile already uses for the
 external-authorization references of the Effect Record ({{effect}}).
-`type` names an artifact type per the CPB Artifact Type registry; this
-document defines the `references` entry shape, not an exhaustive list
-of what may be cited.
+`type` is an artifact-type identifier. CPB defines no artifact-type
+registry, and this document creates none. This document declares one
+artifact type, `agent-action-capsule`, with one digest context and no
+purpose label: `digest_alg` is exactly `"SHA-256"` and `digest` is the
+cited Capsule's `capsule_id` ({{identity}}), 64 lowercase hexadecimal
+characters. Every other `type` is accepted only through an artifact-type
+declaration that a citing profile identifies by stable normative
+reference, of which a deployment MAY accept a subset, as CPB's
+Cross-Profile Comparability subsection requires; a verifier MUST NOT
+discover a type from an unspecified or mutable registry snapshot. A
+well-formed `references` entry whose `type` matches no accepted
+declaration is Unresolved (cause: `context`) in CPB's terms,
+which check 8 of {{verification}} reports as informational and never as a
+rejection. This document defines the `references` entry shape, not an
+exhaustive list of what may be cited.
 
 **Digest as identity.** A `references` entry's target is identified
-solely by the `{digest_alg, digest}` pair from its shape (above); no
-producer-local identifier, URI, or other locator carried alongside an
-entry constitutes an alternative identity. Two entries whose
-`{digest_alg, digest}` match MUST be treated as citing the same target
-regardless of any other identifier either carries, and two entries whose
-digests differ MUST NOT be treated as citing the same target merely
-because they share a locator or producer-local identifier. Comparison,
-deduplication, and cross-record correlation over `references` entries
-therefore key on `{digest_alg, digest}` alone: a locator can be
-repointed without altering the entry that carries it; the digest cannot.
+solely by its typed digest, the `{type, digest_alg, digest}` triple from
+its shape (above); no producer-local identifier, URI, or other locator
+carried alongside an entry constitutes an alternative identity. `type`
+is part of the identity because it fixes what the digest was computed
+over: the same digest octets under a different `type` are a different
+claim. Two entries whose `{type, digest_alg, digest}` triples match MUST
+be treated as citing the same target regardless of any other identifier
+either carries, and two entries whose triples differ MUST NOT be treated
+as citing the same target merely because they share a locator or
+producer-local identifier. Comparison, deduplication, and cross-record
+correlation over `references` entries therefore key on that triple
+alone: a locator can be repointed without altering the entry that
+carries it; the digest cannot.
 
 **Why the digest is the identity.** A reference whose identity is a
 name — a URI, a record identifier, a position in some other party's
@@ -1130,8 +1165,8 @@ mechanism that CPB profiles share; the requirement that a cited
 artifact be identified by content rather than by name originates here.
 
 **Identity references, never policy references.** Every `references`
-entry, as defined above, is an IDENTITY reference: its `{digest_alg,
-digest}` pair pins the exact bytes of one target, the same discipline
+entry, as defined above, is an IDENTITY reference: its typed digest
+`{type, digest_alg, digest}` pins the exact bytes of one target, the same discipline
 `capsule_id` gives this Capsule itself ({{identity}}) — for a cited AAC
 Capsule, checking a `references` entry against that Capsule's own
 `capsule_id` computation is exactly this comparison. This profile
@@ -1237,8 +1272,8 @@ recorded and MUST NOT report it as independently verified.
 a registry-governed (Specification Required, {{iana}}) string stating
 why this Capsule cites the target. `citation_purpose` is a distinct
 vocabulary from CPB's own `purpose` field on a typed digest reference:
-CPB's `purpose` selects among an artifact type's registered digest
-contexts, and `citation_purpose` is this profile's own, separately-named
+CPB's `purpose` selects among the digest contexts that an artifact
+type's declaration defines, and `citation_purpose` is this profile's own, separately-named
 field for the citing relationship, never a repurposing of CPB's field.
 The seeded vocabulary:
 
@@ -1346,7 +1381,12 @@ its result is not `ok`.
 1. Structural: REQUIRED fields present and typed; `format_version` is exactly
    the string `"4"`; `canonicalization_id` is exactly the string `"jcs"`; and
    no floating-point values occur in digest-bearing fields. Any other format
-   or canonicalization declaration fails closed. A member of the wrong
+   or canonicalization declaration fails closed: `ok` is false and no
+   Capsule ID is recomputed at check 2. The verifier still runs the
+   remaining checks and reports their findings and the derived modes,
+   except the `references` checks ({{xref}}), which run only when
+   `format_version` is `"4"`; like every field `ok` gates, these results
+   carry no trust. A member of the wrong
    JSON type (for example, an array or an object where a string is
    defined) fails this check; the never-reject rule for unregistered
    values (check 8, {{iana}}) applies only to well-typed values.
@@ -1367,7 +1407,11 @@ its result is not `ok`.
    a `supersedes` Capsule whose parent is in the store and that violates
    the deferral binding rule of {{hitl}} is a failure, and one whose
    parent cannot be resolved to a Capsule is reported as informational;
-   concurrent supersedes surface as findings per {{hitl}}. A
+   a later concurrent supersedes is an informational finding per
+   {{hitl}}. A verifier given no store does not run these
+   store-level checks; for a Capsule that carries a `chain` block it
+   reports that they were not run as an informational finding, which
+   does not affect `ok`. A
    `references` entry ({{xref}}) is a different claim: it is informational
    cross-stream correlation, never a chain-integrity input, and a
    verifier MUST NOT treat a `references` entry naming an unresolvable
@@ -1375,12 +1419,17 @@ its result is not `ok`.
    entry that duplicates `chain.parent_capsule_id` is a failure, per the
    boundary rule of {{xref}}.
 7. Assurance reconciliation: rederive the assurance modes from evidence
-   actually verified; report overclaims.
+   actually verified; report overclaims. Only overclaims are reported: a
+   claimed mode that the derived mode outranks (an under-claim) is
+   conforming and does not affect `ok`.
 8. Unknown registry values (`verdict_class`, `decision`,
    `effect.type`, `irreversibility_class`, `effect_attestation`,
    `chain.relation`, `citation_purpose`): report as informational
    findings; MUST NOT reject ({{iana}}). An unknown `effect_attestation`
    is additionally graded no stronger than `runtime_claimed` ({{effect}}).
+   A well-formed `references` entry whose `type` matches no accepted
+   artifact-type declaration ({{xref}}) is likewise reported as an informational
+   finding (Unresolved, cause `context`); MUST NOT reject.
 9. Provenance mode: `provenance_mode.mode: "backfilled"` without a
    well-formed `provenance_mode` block (`source_ref`, `source_asserted_at`,
    `import_batch`, and `imported_at` all present and well-formed) is a
@@ -1746,8 +1795,8 @@ Initial contents are the seeded values of this document, verbatim:
    from, and never a
    repurposing of, CPB's own
    `purpose` field on a typed digest reference
-   ({{I-D.mih-sokolov-scitt-payload-binding}}), which selects among an
-   artifact type's registered digest contexts and is orthogonal to any
+   ({{I-D.mih-sokolov-scitt-payload-binding}}), which selects among the
+   digest contexts an artifact type's declaration defines and is orthogonal to any
    role a companion profile assigns a digest within a cross-document
    citation. Designated-expert guidance: `acted_on`, `responds_to`, and
    `ran_under` name a citation whose target is outside the citing Capsule's own chain — a
@@ -2012,6 +2061,18 @@ before publication.
   and signature are byte strings, and no octet follows the envelope or the
   protected map inside its byte string; a verifier rejects any violation
   ({{envelope}}).
+* Reference identity: a `references` target is identified by the whole
+  typed digest `{type, digest_alg, digest}`, and an entry duplicates the
+  chain parent only under type `agent-action-capsule` with `SHA-256`
+  ({{xref}}).
+* Verifier reporting: a fail-closed format or canonicalization declaration
+  still reports the other checks and the derived modes; a verifier given
+  no store reports the store-level chain checks as not run; a later
+  concurrent supersedes and the not-run report are informational; an
+  under-claimed assurance mode is not a finding ({{verification}}).
+* A Capsule on every verdict: the requirement binds the producer and is
+  not checkable from held Capsules; a blocked Capsule cannot
+  carry an attested observer of the gate ({{everyverdict}}).
 * Deferral binding: a Capsule chained `supersedes` to an open item, or
   to an `expired` one, carries the parent's `action_id`; an executing
   closure, and any Capsule in the chain that carries an Effect Record,

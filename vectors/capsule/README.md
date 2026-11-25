@@ -4,10 +4,12 @@ These are frozen Class-1 vectors for the Agent Action Capsule profile in
 `../../spec/`. Every case contains an input and its expected structured result.
 
 Format 4 with `canonicalization_id: "jcs"` is the only supported construction.
-Capsule ID removes only the top-level `capsule_id` and applies plain RFC 8785
-JCS. Present null, empty-array, empty-object, `chain`, and `references` members
-all participate. Deliberate negative cases prove that format versions 1, 2,
-and 3 and invalid format-4 canonicalization declarations fail closed.
+Capsule ID removes the top-level `capsule_id` and, when present in a local
+composite representation, the local-only `signature` and `key_id` envelope
+fields (check 2), and applies plain RFC 8785 JCS. Present null, empty-array,
+empty-object, `chain`, and `references` members all participate. Deliberate
+negative cases prove that format versions 1, 2, and 3 and invalid format-4
+canonicalization declarations fail closed.
 
 ## Expected-result provenance
 

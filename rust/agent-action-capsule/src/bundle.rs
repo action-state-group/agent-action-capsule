@@ -1241,6 +1241,67 @@ fn same_integer(stated: &Value, signed: u64) -> bool {
     }
 }
 
+/// The signed fields of the Bundle's checkpoint when the record `capsule_id`
+/// is carried, its identity holds (its `capsule_id` recomputes from its
+/// content) and its own membership entry proves it under that signed
+/// checkpoint: the entry names the checkpoint's `log_id`, has
+/// `leaf_index = seq - 1` and the checkpoint's `mmr_size`, and its proof
+/// verifies against the signed root, not a stated one. `None` otherwise,
+/// including when the checkpoint does not verify (Python
+/// `record_logged_under_checkpoint`).
+///
+/// It answers for this one record only: a failure elsewhere in the Bundle
+/// (another record, the range proof, a padding leaf) does not change it.
+/// -03 "Joins" reads a key from it for an unsigned root record.
+pub(crate) fn record_logged_under_checkpoint(
+    bundle: &Map<String, Value>,
+    capsule_id: &str,
+) -> Option<cll::checkpoint::DecodedCheckpointCose> {
+    let stated = bundle.get("checkpoint")?.as_object()?;
+    let certificate = bundle.get("completeness_certificate")?.as_object()?;
+    let (claim, signed) = signed_checkpoint(stated, certificate);
+    let (signed, _) = signed?;
+    if claim.status != "pass" {
+        return None;
+    }
+    let record = bundle
+        .get("records")?
+        .as_array()?
+        .iter()
+        .find(|r| r.get("capsule_id").and_then(Value::as_str) == Some(capsule_id))?;
+    let identity = verify::verify(record, None);
+    if !identity.ok || identity.capsule_id.as_deref() != Some(capsule_id) {
+        return None;
+    }
+    let member = certificate
+        .get("memberships")?
+        .as_object()?
+        .get(capsule_id)?
+        .as_object()?;
+    let coords = member.get("log_coordinates")?.as_object()?;
+    let seq = as_bundle_int(coords.get("seq"))?;
+    let index = as_bundle_int(coords.get("leaf_index"))?;
+    let size_safe = i64::try_from(signed.mmr_size).is_ok_and(|n| n <= canonical::MAX_SAFE_INTEGER);
+    if coords.get("log_id").and_then(Value::as_str) != Some(signed.log_id.as_str())
+        || seq < 1
+        || index != seq - 1
+        || !size_safe
+        || !verify::is_hex64(&signed.root)
+    {
+        return None;
+    }
+    let proof = parse_inclusion_proof(member.get("inclusion_proof"))?;
+    let root: [u8; 32] = hex::decode(&signed.root).ok()?.try_into().ok()?;
+    let leaf: [u8; 32] = hex::decode(capsule_id).ok()?.try_into().ok()?;
+    if proof.size != signed.mmr_size
+        || proof.leaf_index != index as u64
+        || !mmr::verify_inclusion(&root, signed.mmr_size, index as u64, &leaf, &proof)
+    {
+        return None;
+    }
+    Some(signed)
+}
+
 /// Verifies `checkpoint.cose` and holds the JSON copy, and the completeness
 /// certificate's `log_id` when stated, to it. Returns the claim and, when it
 /// passed, the signed fields and the COSE bytes.

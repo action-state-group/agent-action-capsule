@@ -3,7 +3,7 @@
     "4"
   ],
   "spec": "draft-mih-scitt-agent-action-capsule-05",
-  "count": 142,
+  "count": 144,
   "cases": [
     {
       "name": "pos-v4-jcs-chain-committed",
@@ -596,6 +596,16 @@
       "name": "reference-tampered-after-seal",
       "kind": "negative",
       "description": "changing a format-4 reference after sealing causes Capsule ID mismatch"
+    },
+    {
+      "name": "reference-undeclared-type",
+      "kind": "positive",
+      "description": "an artifact type with no accepted declaration is Unresolved (cause: context), informational, never a rejection"
+    },
+    {
+      "name": "reference-undeclared-type-malformed",
+      "kind": "negative",
+      "description": "a malformed reference is reported by check 1 only, never also as Unresolved"
     },
     {
       "name": "reference-unknown-type-algorithm",

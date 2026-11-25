@@ -266,6 +266,21 @@ mechanical half):
      Every judge record in a calibration sidecar MUST validate against its
      schemas/judge/ schema (a fixture check, not a verifier rule).
 
+  19. REASON (spec section 4.4): pos-example-org-reason-result (three
+     registered tokens) and pos-example-org-reason-unregistered-result (the
+     fourth, plus an unregistered token, which is valid) MUST validate, and
+     each without `reason` MUST be pos-example-org-claims-result byte for
+     byte. Eight schema negatives MUST fail, each with a strip-the-rule
+     mutant: neg-reason-uppercase (the grammar), neg-reason-trailing-newline
+     (the grammar read as ECMA-262, item 15), neg-reason-list (one
+     string), neg-reason-capsule-code-on-satisfied-claim and
+     neg-reason-counterparty-code-on-unavailable-claim (the registry rows),
+     neg-reason-on-countersigned-claim, neg-reason-on-out-of-scope-claim and
+     neg-reason-on-close-claim (the placement rule). Display-only: adding a
+     permitted reason to every eligible claim of every fixture MUST leave
+     its schema errors and every cross-element finding unchanged; a mutant
+     shows the comparison sees a refused reason.
+
 Usage:
     python3 schemas/check_evidence_result_examples.py       # from repo root
     python3 check_evidence_result_examples.py                # from schemas/
@@ -598,6 +613,8 @@ POSITIVES = [
     "pos-example-org-requirements-covered-result",
     "pos-example-org-dataset-result",
     "pos-example-org-calibration-result",
+    "pos-example-org-reason-result",
+    "pos-example-org-reason-unregistered-result",
 ]
 
 # name -> (mutant description, path to the $defs entry whose rule is
@@ -639,13 +656,58 @@ NEGATIVES = [
     "neg-plan-ref-inline-plan",
     "neg-calibration-with-close-body",
     "neg-out-of-scope-on-calibration-claim",
+    "neg-reason-uppercase",
+    "neg-reason-trailing-newline",
+    "neg-reason-list",
+    "neg-reason-capsule-code-on-satisfied-claim",
+    "neg-reason-counterparty-code-on-unavailable-claim",
+    "neg-reason-on-countersigned-claim",
+    "neg-reason-on-out-of-scope-claim",
+    "neg-reason-on-close-claim",
 ]
+
+# Spec section 4.4: each reason positive and the positive it is a copy of;
+# removing `reason` from every claim MUST give that source byte for byte.
+REASON_SOURCES = {
+    "pos-example-org-reason-result": "pos-example-org-claims-result",
+    "pos-example-org-reason-unregistered-result": "pos-example-org-claims-result",
+}
+# The registered tokens of section 4.4's table, by the claims they may sit on.
+REASON_CAPSULE = ("capsule_signature_did_not_verify", "capsule_signer_not_trusted")
+REASON_COUNTERPARTY = ("counterparty_leg_signature_did_not_verify", "counterparty_leg_signer_not_trusted")
+
+
+def _with_permitted_reasons(doc: object) -> object:
+    """`doc` with a registered `reason` added to every claim section 4.4
+    admits one on, and every other claim untouched: a capsule_* token where
+    sufficiency is not SATISFIED, a counterparty_leg_* token on a met or
+    not_met claim graded below countersigned. Requirement claims only."""
+    doc = copy.deepcopy(doc)
+    claims = doc.get("claims") if isinstance(doc, dict) else None
+    for claim in claims if isinstance(claims, list) else []:
+        if not isinstance(claim, dict) or claim.get("type", "requirement") != "requirement":
+            continue
+        if claim.get("sufficiency") != "SATISFIED":
+            claim["reason"] = REASON_CAPSULE[1]
+        elif claim.get("verdict") in ("met", "not_met") and claim.get("grade") != "countersigned":
+            claim["reason"] = REASON_COUNTERPARTY[1]
+    return doc
+
+
+def _without_reasons(doc: object) -> object:
+    doc = copy.deepcopy(doc)
+    claims = doc.get("claims") if isinstance(doc, dict) else None
+    for claim in claims if isinstance(claims, list) else []:
+        if isinstance(claim, dict):
+            claim.pop("reason", None)
+    return doc
 
 # Section 15: the schema negatives Python's `re` would accept.
 PATTERN_NEGATIVES = (
     "neg-digest-trailing-newline",
     "neg-applies-from-trailing-newline",
     "neg-contract-ref-ecma-whitespace",
+    "neg-reason-trailing-newline",
 )
 
 # Spec sections 3, 4.2 and 4.3: cross-element negatives that pass the schema
@@ -1400,6 +1462,89 @@ def main() -> int:
     ):
         if negative_errors_by_name[name]:
             _mutant_check(name, mutant_schema, label)
+    # --- Spec section 4.4: reason ----------------------------------------
+    placement_rule = "`reason` appears only on a requirement claim"
+    capsule_rule = "a capsule_* reason names a record"
+    counterparty_rule = "a counterparty_leg_* reason explains a grade"
+    open_reason = copy.deepcopy(schema)
+    open_reason["$defs"]["Reason"] = {"type": "string"}
+    any_reason = copy.deepcopy(schema)
+    any_reason["$defs"]["Reason"] = {}
+    for name, mutant_schema, label in (
+        ("neg-reason-uppercase", open_reason, "Reason's token grammar"),
+        ("neg-reason-list", any_reason, "Reason's one-string type"),
+        ("neg-reason-capsule-code-on-satisfied-claim", _without_claim_rule(capsule_rule),
+         "Claim's capsule_* reason rule"),
+        ("neg-reason-counterparty-code-on-unavailable-claim", _without_claim_rule(counterparty_rule),
+         "Claim's counterparty_leg_* reason rule"),
+        ("neg-reason-on-countersigned-claim", _without_claim_rule(placement_rule),
+         "Claim's reason placement rule"),
+        ("neg-reason-on-out-of-scope-claim", _without_claim_rule(placement_rule),
+         "Claim's reason placement rule"),
+        ("neg-reason-on-close-claim", _without_claim_rule(placement_rule),
+         "Claim's reason placement rule"),
+    ):
+        if negative_errors_by_name[name]:
+            _mutant_check(name, mutant_schema, label)
+
+    # Display-only (section 4.4): `reason` adds nothing to and removes
+    # nothing from what is checked. Every reason positive minus its reasons
+    # is its source byte for byte; and adding a permitted reason to every
+    # eligible claim of every fixture leaves its schema errors and every
+    # cross-element finding unchanged.
+    for name, source in REASON_SOURCES.items():
+        if _without_reasons(_load(name)) != _load(source):
+            findings.append(f"REASON-NOT-ADDITIVE {name}: without `reason` it is not {source}")
+        else:
+            print(f"OK  REASON        {name} -- without `reason` it is {source}")
+
+    def _all_findings(name: str, doc: object) -> tuple:
+        records = _records_for(name) or []
+
+        def _run(rule, *args):
+            # A schema negative may be malformed past what a rule reads; the
+            # failure itself must then be the same with and without reason.
+            try:
+                return rule(*args)
+            except (KeyError, TypeError, ValueError, AttributeError) as exc:
+                return f"raised {type(exc).__name__}"
+
+        return (
+            sorted(e.message for e in validator.iter_errors(doc)),
+            _run(revision_findings, doc),
+            _run(coverage_findings, doc),
+            _run(close_state_findings, name, doc, records),
+            _run(calibration_findings, name, doc, records),
+        )
+
+    every_fixture = sorted(
+        {p.name.removesuffix(".json") for p in VECTORS_DIR.glob("*.json")}
+        - {p.name.removesuffix(".json") for p in VECTORS_DIR.glob("*.records.json")}
+    )
+    changed = 0
+    for name in every_fixture:
+        doc = _load(name)
+        if not isinstance(doc, dict) or doc.get("result_version") != "evidence-result-v0":
+            continue
+        reasoned = _with_permitted_reasons(_without_reasons(doc))
+        if reasoned == _without_reasons(doc):
+            continue
+        changed += 1
+        if _all_findings(name, reasoned) != _all_findings(name, _without_reasons(doc)):
+            findings.append(f"REASON-NOT-DISPLAY-ONLY {name}: a permitted `reason` changed what is checked")
+    print(f"OK  REASON        a permitted `reason` on every eligible claim of {changed} fixture(s) "
+          "changes no schema error and no cross-element finding")
+    # MUTANT: the comparison above can go red -- a reason the placement rule
+    # refuses does change the schema errors.
+    refused = _load("neg-reason-on-countersigned-claim")
+    if _all_findings("neg-reason-on-countersigned-claim", refused) == _all_findings(
+        "neg-reason-on-countersigned-claim", _without_reasons(refused)
+    ):
+        findings.append("MUTANT-DID-NOT-FLIP neg-reason-on-countersigned-claim: the display-only comparison "
+                        "did not see a refused reason")
+    else:
+        print("OK  MUTANT        neg-reason-on-countersigned-claim -- the display-only comparison sees a refused reason")
+
     bucket_mutant = copy.deepcopy(schema)
     bucket_mutant["$defs"]["EvidenceResult"]["allOf"] = []
     for name in ("neg-out-of-scope-bucket-absent", "neg-out-of-scope-bucket-without-switch"):

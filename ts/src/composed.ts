@@ -7,7 +7,21 @@ import {
   type BindingReport,
   type Instant,
 } from "./controller-binding.js";
+import {
+  decodeCose,
+  loadCheckpointMetadata,
+  signedCheckpointFields,
+} from "./cll-checkpoint.js";
+import {
+  CborMap,
+  CborTag,
+  decodeWellFormedItem,
+  type CborValue,
+} from "./cose-receipt.js";
+import { verifyEd25519Strict } from "./ed25519-strict.js";
 import { isHex64, jcs, jsonDigest, sha256Hex } from "./json.js";
+import { recordLoggedUnderCheckpoint } from "./bundle.js";
+import { verifyRecordSignature } from "./producer-envelope-verification.js";
 
 /**
  * The `composed/v1` Evidence Bundle extension, verified
@@ -77,6 +91,38 @@ export interface ComposedMemberResult {
   readonly refusalSignature?: "verified" | "invalid" | "signature_unverified";
   /** Set for an artifact member that carries its signed response. */
   readonly responseSignature?: "verified" | "invalid" | "signature_unverified";
+  /** Set for a carried History member (-03 "History Members"). */
+  readonly history?: HistoryMemberResult;
+}
+
+/**
+ * A carried History member's checks (-03 "History Members"): the envelope
+ * signature, the artifact, request and artifact-anchor digests, and the
+ * anchor checkpoint (`mismatch` when its digest is not `anchor.digest`).
+ * `key` and `time` are its join view, set only when every check passed.
+ */
+export interface HistoryMemberResult {
+  readonly derivation: unknown;
+  readonly envelopeSignature: "verified" | "invalid" | "signature_unverified";
+  readonly artifactDigest: "matches" | "mismatch";
+  readonly requestDigest: "matches" | "mismatch";
+  readonly artifactAnchor: "matches" | "mismatch";
+  /** `unverified`: no CLL checkpoint verifier is available. */
+  readonly anchorCheckpoint: "verified" | "mismatch" | "invalid" | "unverified";
+  readonly key?: string;
+  readonly time?: string;
+}
+
+/**
+ * A History's time against a root record's, as facts (-03 "Joins", History
+ * times): `relation` is the History's time relative to the record's.
+ */
+export interface HistoryTimes {
+  readonly history: string;
+  readonly historyTime: string;
+  readonly record: string;
+  readonly recordTime: string;
+  readonly relation: "before" | "equal" | "after";
 }
 
 export interface CompositionClosureResult extends ComposedClaim {
@@ -104,13 +150,22 @@ export interface ComposedJoinResult {
   readonly derived?: JoinState;
   readonly result: "derived_matches" | "join_state_mismatch" | "not_derivable";
   readonly differences: readonly JoinDifference[];
+  /** A same_key join that derives unjoined: each member's key. */
+  readonly keys?: readonly { readonly member: string; readonly key: string }[];
+  /** Every controller_binding and same_key join: each side's key source. */
+  readonly keySources?: readonly {
+    readonly member: string;
+    readonly source: KeySource;
+  }[];
+  readonly historyTimes?: HistoryTimes;
 }
 
 export type RedundancyReason =
   | "same_observer"
   | "same_custody_domain"
   | "same_key_id"
-  | "controller_binding";
+  | "controller_binding"
+  | "same_key";
 
 export type CorroborationResult =
   | {
@@ -192,13 +247,36 @@ const OUTCOME_BODY: Readonly<Record<string, string>> = {
   refusal: "refusal",
   absence: "absence",
 };
+/** Every member body name; an artifact member carries `bundle` or `history`. */
+const BODY_KEYS = ["bundle", "history", "refusal", "absence"];
 const JOIN_BASES = new Set([
   "pre_agreed_identifier",
   "shared_artifact_digest",
   "issued_receipt",
   "same_interval",
   "controller_binding",
+  "same_key",
 ]);
+/** The bases that derive with a History member (-03 "Joins"). */
+const HISTORY_BASES = new Set(["controller_binding", "same_key"]);
+/** The envelope profiles whose member names and signature -03 reads. */
+const HISTORY_PROFILES = new Set([
+  "evidence-interop/0",
+  "evidence-interop/1",
+  "evidence-interop/2",
+]);
+/** The evidence-interop envelope's signed members (IP §6.2), when present. */
+const ENVELOPE_SIGNED = [
+  "profile",
+  "request_digest",
+  "subject",
+  "derivation",
+  "anchor",
+  "artifact_digest",
+  "verification",
+  "responder",
+  "issued_at",
+];
 const JOIN_STATES = new Set(["agree", "mismatch", "unjoined", "one_sided"]);
 
 interface Member {
@@ -210,6 +288,8 @@ interface Member {
   readonly body?: Obj;
   /** An artifact member's signed response envelope, without the artifact. */
   readonly response?: Obj;
+  /** The carried body is a History (`history`), not a Bundle. */
+  readonly history?: boolean;
 }
 interface Join {
   readonly members: readonly [string, string];
@@ -301,12 +381,20 @@ function parseMember(
   if (!isHex64(digest)) return bad("digest");
   if (!isString(outcome) || !Object.hasOwn(OUTCOME_BODY, outcome))
     return bad("outcome");
-  const bodyKey = OUTCOME_BODY[outcome]!;
+  let bodyKey = OUTCOME_BODY[outcome]!;
+  if (outcome === "artifact" && Object.hasOwn(raw, "history")) {
+    if (Object.hasOwn(raw, "bundle")) return bad("artifact_body_conflict");
+    bodyKey = "history";
+  }
   // A body under another outcome's member name would convert one outcome
   // into another; the outcomes are never converted.
-  for (const other of Object.values(OUTCOME_BODY))
+  for (const other of BODY_KEYS)
     if (other !== bodyKey && Object.hasOwn(raw, other))
       return bad("body_outcome_conflict");
+  // The envelope is the History's response, and it is digest-covered; a
+  // response member beside it is not.
+  if (Object.hasOwn(raw, "response") && bodyKey === "history")
+    return bad("history_response");
   let response: Obj | undefined;
   if (Object.hasOwn(raw, "response")) {
     const value = raw.response;
@@ -337,6 +425,9 @@ function parseMember(
       !isString(body.issued_at)
     )
       return bad("refusal_body");
+  } else if (bodyKey === "history") {
+    if (!historyShape(body)) return bad("history_body");
+    return ok({ ...member, body, history: true });
   } else if (outcome === "absence") {
     const window = body.window;
     if (
@@ -352,6 +443,32 @@ function parseMember(
       return bad("absence_body");
   }
   return ok({ ...member, body });
+}
+
+/**
+ * The `history` body's form (-03 "History Members"); a body outside it makes
+ * the block malformed.
+ */
+function historyShape(body: Obj): boolean {
+  const env = body.envelope;
+  if (!object(env)) return false;
+  const subject = env.subject;
+  const anchor = env.anchor;
+  return (
+    object(subject) &&
+    Object.keys(subject).length === 1 &&
+    Object.hasOwn(subject, "full_history") &&
+    subject.full_history === null &&
+    Object.hasOwn(env, "derivation") &&
+    isHex64(env.responder) &&
+    isString(env.sig) &&
+    decodeCose(env.artifact) !== undefined &&
+    isHex64(env.artifact_digest) &&
+    isHex64(env.request_digest) &&
+    object(anchor) &&
+    isHex64(anchor.digest) &&
+    decodeCose(body.anchor_checkpoint) !== undefined
+  );
 }
 
 // go/bundle/composed.go:682-740
@@ -388,6 +505,12 @@ function parseJoin(raw: unknown, members: ReadonlySet<string>): Parsed<Join> {
     }
     compareCarried = true;
   }
+  // same_key reads each member's own key: nothing to select or compare.
+  if (
+    basis === "same_key" &&
+    (pointer !== undefined || identifier !== undefined || compareCarried)
+  )
+    return bad("same_key_members");
   return ok({
     members: [first, second],
     basis,
@@ -544,7 +667,7 @@ export async function composedDigest(raw: unknown): Promise<string> {
 
 // go/bundle/composed.go:315-330
 function rootRecord(m: Member | undefined): Obj | undefined {
-  if (m?.body === undefined) return undefined;
+  if (m?.body === undefined || m.history === true) return undefined;
   const root = m.body.root;
   if (!isString(root)) return undefined;
   const records = m.body.records;
@@ -594,15 +717,6 @@ const isEmptyHistory = (body: Obj): boolean =>
 interface BindingSide {
   readonly key: string | undefined;
   readonly at: Instant | undefined;
-}
-
-/** A root record's side: the key identifier `pointer` selects, and its timestamp. */
-function recordSide(record: Obj, pointer: string): BindingSide {
-  const resolved = resolvePointer(record, pointer);
-  return {
-    key: resolved.ok && isString(resolved.value) ? resolved.value : undefined,
-    at: parseRecordTime(record.timestamp),
-  };
 }
 
 /**
@@ -789,15 +903,186 @@ async function controllerBindingLink(
   return { linked: false, derivable };
 }
 
+/** A History member's join view: its responder key and anchor time. */
+interface HistoryView {
+  readonly key: string;
+  readonly at: Instant;
+  readonly time: string;
+}
+
+type Derived = {
+  derived?: JoinState;
+  differences: JoinDifference[];
+  keys?: { member: string; key: string }[];
+};
+
+/**
+ * A root record's same_key side: its `key_id` when its producer signature
+ * verifies under that key, never a key it merely names; undefined for a
+ * record that is unsigned or whose signature does not verify.
+ */
+async function signerSide(record: Obj): Promise<BindingSide | undefined> {
+  const { verdict } = await verifyRecordSignature(record);
+  const key = record.key_id;
+  if (verdict !== "authored" || !isString(key)) return undefined;
+  return { key, at: parseRecordTime(record.timestamp) };
+}
+
+/**
+ * Each member's side of a controller_binding or same_key join, or undefined
+ * when one has none (not derivable). The key and its time come from
+ * `memberKey`; under controller_binding a `pointer`, when present, must
+ * select that same key in a root record.
+ */
+async function keySides(
+  j: Join,
+  members: readonly Member[],
+  views: ReadonlyMap<string, HistoryView>,
+  checkpoints: ReadonlyMap<string, EmptyCheckpoint>,
+): Promise<BindingSide[] | undefined> {
+  const sides: BindingSide[] = [];
+  for (const m of members) {
+    const found = await memberKey(m, views, checkpoints);
+    if (found === undefined) return undefined;
+    if (
+      j.basis === "controller_binding" &&
+      j.pointer !== undefined &&
+      m.history !== true
+    ) {
+      const record = rootRecord(m);
+      if (record !== undefined) {
+        const value = resolvePointer(record, j.pointer);
+        if (!value.ok || value.value !== found.side.key) return undefined;
+      }
+    }
+    sides.push(found.side);
+  }
+  return sides;
+}
+
+export type KeySource =
+  | "record_signature"
+  | "log_checkpoint"
+  | "history"
+  | "none";
+
+/**
+ * A member's key, its time and where the key came from (-03 "Joins"): a
+ * History member's join view (`history`); an empty-history Bundle's
+ * checkpoint signer at that checkpoint's time (`log_checkpoint`); for a
+ * member Bundle with records, the key its root record's producer signature
+ * verifies under at the record's time (`record_signature`) or, for a root
+ * record that carries neither `signature` nor `key_id`, the key that signed
+ * the Bundle's checkpoint at that checkpoint's time, when the record's
+ * identity and its own membership under that checkpoint hold
+ * (`log_checkpoint`). Undefined when it has no key: a present signature that
+ * fails never falls back to the checkpoint key.
+ */
+async function memberKey(
+  m: Member,
+  views: ReadonlyMap<string, HistoryView>,
+  checkpoints: ReadonlyMap<string, EmptyCheckpoint>,
+): Promise<{ side: BindingSide; source: KeySource } | undefined> {
+  if (m.body === undefined) return undefined;
+  if (m.history === true) {
+    const view = views.get(m.id);
+    return view === undefined
+      ? undefined
+      : { side: { key: view.key, at: view.at }, source: "history" };
+  }
+  if (isEmptyHistory(m.body)) {
+    const checkpoint = checkpoints.get(m.id);
+    return checkpoint === undefined
+      ? undefined
+      : {
+          side: {
+            key: checkpoint.keyId,
+            at: parseRecordTime(checkpoint.timestamp),
+          },
+          source: "log_checkpoint",
+        };
+  }
+  const record = rootRecord(m);
+  if (record === undefined) return undefined;
+  if (Object.hasOwn(record, "signature") || Object.hasOwn(record, "key_id")) {
+    const side = await signerSide(record);
+    return side === undefined
+      ? undefined
+      : { side, source: "record_signature" };
+  }
+  const signed = await recordLoggedUnderCheckpoint(m.body, record.capsule_id);
+  if (signed === undefined || !isString(signed.key_id)) return undefined;
+  return {
+    side: { key: signed.key_id, at: parseRecordTime(signed.timestamp) },
+    source: "log_checkpoint",
+  };
+}
+
+/**
+ * Where each side's key came from, in the join's member order, on every
+ * controller_binding and same_key join, whatever it derived. A member with no
+ * key reports `none`.
+ */
+async function keySources(
+  j: Join,
+  byId: ReadonlyMap<string, Member>,
+  views: ReadonlyMap<string, HistoryView>,
+  checkpoints: ReadonlyMap<string, EmptyCheckpoint>,
+): Promise<{ member: string; source: KeySource }[] | undefined> {
+  if (!HISTORY_BASES.has(j.basis)) return undefined;
+  const out: { member: string; source: KeySource }[] = [];
+  for (const id of j.members) {
+    const m = byId.get(id)!;
+    const found =
+      m.outcome === "artifact"
+        ? await memberKey(m, views, checkpoints)
+        : undefined;
+    out.push({ member: id, source: found?.source ?? "none" });
+  }
+  return out;
+}
+
+/**
+ * Each member's key, in the join's member order, for a same_key join that
+ * derives unjoined.
+ */
+function joinKeys(
+  j: Join,
+  members: readonly Member[],
+  sides: readonly BindingSide[],
+): { keys?: { member: string; key: string }[] } {
+  if (j.basis !== "same_key") return {};
+  const byMember = new Map(members.map((m, i) => [m.id, sides[i]!.key!]));
+  return {
+    keys: j.members.map((member) => ({ member, key: byMember.get(member)! })),
+  };
+}
+
+/** `{linked, derivable}` for a controller_binding or same_key join. */
+async function keyedLink(
+  j: Join,
+  a: BindingSide,
+  b: BindingSide,
+  options: ComposedOptions,
+): Promise<{ linked: boolean; derivable: boolean }> {
+  if (j.basis === "same_key")
+    return {
+      linked: a.key !== undefined && b.key !== undefined && a.key === b.key,
+      derivable: true,
+    };
+  return controllerBindingLink(j, a, b, options);
+}
+
 // go/bundle/composed.go:346-406, with -02's controller_binding basis and
-// empty-history members.
+// empty-history members, and -03's History members and same_key basis.
 async function derivedState(
   j: Join,
   byId: ReadonlyMap<string, Member>,
   missing: ReadonlySet<string>,
   checkpoints: ReadonlyMap<string, EmptyCheckpoint>,
+  views: ReadonlyMap<string, HistoryView>,
   options: ComposedOptions,
-): Promise<{ derived?: JoinState; differences: JoinDifference[] }> {
+): Promise<Derived> {
   const a = byId.get(j.members[0])!;
   const b = byId.get(j.members[1])!;
   // A join with a declared-missing artifact member (listed in missing and
@@ -809,77 +1094,109 @@ async function derivedState(
     )
   )
     return { differences: [] };
+  // A History member derives only through its join view, and only on the
+  // bases -03 defines a derivation for with one.
+  const histories = [a, b].filter((m) => m.history === true);
+  if (
+    histories.length > 0 &&
+    (!HISTORY_BASES.has(j.basis) || histories.some((m) => !views.has(m.id)))
+  )
+    return { differences: [] };
   // An artifact member counts as having records unless its carried Bundle is
-  // an empty-history Bundle, which shows no history.
+  // an empty-history Bundle, which shows no history. A History member with a
+  // join view counts as having records.
   const withRecords: Member[] = [];
   const empty: Member[] = [];
   for (const m of [a, b]) {
     if (m.outcome !== "artifact") continue;
-    if (m.body !== undefined && isEmptyHistory(m.body)) empty.push(m);
+    if (m.history !== true && m.body !== undefined && isEmptyHistory(m.body))
+      empty.push(m);
     else withRecords.push(m);
   }
+  const keyed = HISTORY_BASES.has(j.basis);
   if (withRecords.length === 0) return { derived: "unjoined", differences: [] };
   if (withRecords.length === 1) {
-    if (empty.length === 0 || j.basis !== "controller_binding")
+    if (empty.length === 0 || !keyed)
       return { derived: "one_sided", differences: [] };
-    // controller_binding still derives against an empty-history member, from
-    // the key that signed its checkpoint at that checkpoint's time.
-    const full = withRecords[0]!;
-    if (j.pointer === undefined) return { differences: [] };
-    const record = rootRecord(full);
-    const checkpoint = checkpoints.get(empty[0]!.id);
-    if (record === undefined || checkpoint === undefined)
-      return { differences: [] };
-    const { linked, derivable } = await controllerBindingLink(
+    // controller_binding and same_key still derive against an empty-history
+    // member, from the key that signed its checkpoint at that time.
+    const sides = await keySides(
       j,
-      recordSide(record, j.pointer),
-      { key: checkpoint.keyId, at: parseRecordTime(checkpoint.timestamp) },
+      [withRecords[0]!, empty[0]!],
+      views,
+      checkpoints,
+    );
+    if (sides === undefined) return { differences: [] };
+    const { linked, derivable } = await keyedLink(
+      j,
+      sides[0]!,
+      sides[1]!,
       options,
     );
     if (!derivable) return { differences: [] };
-    return { derived: linked ? "one_sided" : "unjoined", differences: [] };
+    if (linked) return { derived: "one_sided", differences: [] };
+    return {
+      derived: "unjoined",
+      differences: [],
+      ...joinKeys(j, [withRecords[0]!, empty[0]!], sides),
+    };
   }
-  const ra = rootRecord(a);
-  const rb = rootRecord(b);
-  if (ra === undefined || rb === undefined) return { differences: [] };
-  let linked: boolean;
-  if (j.basis === "pre_agreed_identifier") {
-    linked =
-      j.pointer !== undefined &&
-      j.identifier !== undefined &&
-      (await identifierMatches(ra, j.pointer, j.identifier)) &&
-      (await identifierMatches(rb, j.pointer, j.identifier));
-  } else if (j.basis === "shared_artifact_digest") {
-    linked = false;
-    if (j.pointer !== undefined) {
-      const va = resolvePointer(ra, j.pointer);
-      const vb = resolvePointer(rb, j.pointer);
-      linked =
-        va.ok &&
-        vb.ok &&
-        isString(va.value) &&
-        isString(vb.value) &&
-        va.value === vb.value;
-    }
-  } else if (j.basis === "controller_binding") {
-    if (j.pointer === undefined) return { differences: [] };
-    const link = await controllerBindingLink(
+  if (keyed) {
+    const sides = await keySides(j, [a, b], views, checkpoints);
+    if (sides === undefined) return { differences: [] };
+    const { linked, derivable } = await keyedLink(
       j,
-      recordSide(ra, j.pointer),
-      recordSide(rb, j.pointer),
+      sides[0]!,
+      sides[1]!,
       options,
     );
-    if (!link.derivable) return { differences: [] };
-    linked = link.linked;
+    if (!derivable) return { differences: [] };
+    if (!linked)
+      return {
+        derived: "unjoined",
+        differences: [],
+        ...joinKeys(j, [a, b], sides),
+      };
   } else {
-    // issued_receipt and same_interval are reserved: not derivable here.
-    return { differences: [] };
+    const ra = rootRecord(a);
+    const rb = rootRecord(b);
+    if (ra === undefined || rb === undefined) return { differences: [] };
+    let linked: boolean;
+    if (j.basis === "pre_agreed_identifier") {
+      linked =
+        j.pointer !== undefined &&
+        j.identifier !== undefined &&
+        (await identifierMatches(ra, j.pointer, j.identifier)) &&
+        (await identifierMatches(rb, j.pointer, j.identifier));
+    } else if (j.basis === "shared_artifact_digest") {
+      linked = false;
+      if (j.pointer !== undefined) {
+        const va = resolvePointer(ra, j.pointer);
+        const vb = resolvePointer(rb, j.pointer);
+        linked =
+          va.ok &&
+          vb.ok &&
+          isString(va.value) &&
+          isString(vb.value) &&
+          va.value === vb.value;
+      }
+    } else {
+      // issued_receipt and same_interval are reserved: not derivable here.
+      return { differences: [] };
+    }
+    if (!linked) return { derived: "unjoined", differences: [] };
   }
-  if (!linked) return { derived: "unjoined", differences: [] };
   const differences: JoinDifference[] = [];
+  // A History member has no root record: no compare pointer resolves in it.
+  const resolveIn = (m: Member, pointer: string) => {
+    const record = rootRecord(m);
+    return record === undefined
+      ? ({ ok: false } as const)
+      : resolvePointer(record, pointer);
+  };
   for (const pointer of j.compare) {
-    const va = resolvePointer(ra, pointer);
-    const vb = resolvePointer(rb, pointer);
+    const va = resolveIn(a, pointer);
+    const vb = resolveIn(b, pointer);
     if (va.ok && vb.ok && sameJcs(va.value, vb.value)) continue;
     differences.push({
       pointer,
@@ -896,6 +1213,39 @@ async function derivedState(
   return differences.length > 0
     ? { derived: "mismatch", differences }
     : { derived: "agree", differences: [] };
+}
+
+/**
+ * For a join between a History member with a join view and a member with a
+ * root record: both times and how they compare, as facts.
+ */
+function historyTimes(
+  j: Join,
+  byId: ReadonlyMap<string, Member>,
+  views: ReadonlyMap<string, HistoryView>,
+): HistoryTimes | undefined {
+  const a = byId.get(j.members[0])!;
+  const b = byId.get(j.members[1])!;
+  for (const [history, other] of [
+    [a, b],
+    [b, a],
+  ] as const) {
+    const view = views.get(history.id);
+    if (view === undefined) continue;
+    const record = rootRecord(other);
+    if (record === undefined) return undefined;
+    const stated = record.timestamp;
+    const at = parseRecordTime(stated);
+    if (at === undefined || !isString(stated)) return undefined;
+    return {
+      history: history.id,
+      historyTime: view.time,
+      record: other.id,
+      recordTime: stated,
+      relation: view.at < at ? "before" : view.at > at ? "after" : "equal",
+    };
+  }
+  return undefined;
 }
 
 // go/bundle/composed.go:418-445
@@ -923,6 +1273,8 @@ function corroboration(
   // A controller_binding agreement is the bound keys' holders agreeing: their
   // keys are not independent issuers (bundle -02).
   if (j.basis === "controller_binding") reasons.push("controller_binding");
+  // A same_key agreement is one key signing or answering for both members.
+  if (j.basis === "same_key") reasons.push("same_key");
   if (reasons.length > 0)
     return {
       members: j.members,
@@ -981,7 +1333,15 @@ async function verifyMember(
 
   let computed: string | undefined;
   let bundle: ComposedMemberClaims | undefined;
-  if (m.outcome === "artifact") {
+  let history: HistoryMemberResult | undefined;
+  if (m.history === true) {
+    const checked = await verifyHistory(m);
+    computed = checked.computed;
+    history = checked.history;
+    findings.push(...checked.findings);
+    failed.push(...checked.failed);
+    withheld.push(...checked.withheld);
+  } else if (m.outcome === "artifact") {
     const verification = await verifyMemberBundle(m.body);
     computed = verification.bundleDigest;
     bundle = {
@@ -1021,6 +1381,12 @@ async function verifyMember(
     digest = "mismatch";
     findings.push("member_digest_mismatch");
     closure.push(`member_digest_mismatch:${m.id}`);
+    // An envelope that does not reproduce the declared digest is not the
+    // History the composed digest names: it has no join view.
+    if (history !== undefined) {
+      const { key: _key, time: _time, ...rest } = history;
+      history = rest;
+    }
   }
   let refusalSignature: ComposedMemberResult["refusalSignature"];
   if (m.outcome === "refusal") {
@@ -1042,8 +1408,175 @@ async function verifyMember(
       ...(bundle === undefined ? {} : { bundle }),
       ...(refusalSignature === undefined ? {} : { refusalSignature }),
       ...(responseSignature === undefined ? {} : { responseSignature }),
+      ...(history === undefined ? {} : { history }),
     },
     closure,
+    failed,
+    withheld,
+  };
+}
+
+const hexBytes = (value: string): Uint8Array =>
+  Uint8Array.from(value.match(/../gu) ?? [], (byte) =>
+    Number.parseInt(byte, 16),
+  );
+
+/**
+ * The `anchor` member of an artifact that is the UTF-8 JCS of a JSON object,
+ * or undefined when it is not exactly that serialization.
+ */
+function artifactAnchor(artifact: Uint8Array): unknown {
+  try {
+    const value: unknown = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(artifact),
+    );
+    if (!object(value)) return undefined;
+    const again = jcs(value);
+    if (
+      again.length !== artifact.length ||
+      !again.every((byte, i) => byte === artifact[i])
+    )
+      return undefined;
+    return value.anchor;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * An anchor checkpoint's timestamp and state: `verified` when it is a CLL
+ * COSE checkpoint in the one form the interop profile fixes (tagged
+ * COSE_Sign1, an empty unprotected header) that verifies under its own key;
+ * `invalid` otherwise; `unverified` when no CLL verifier is available.
+ */
+async function checkpointTime(cose: Uint8Array): Promise<{
+  timestamp?: string;
+  state: "verified" | "invalid" | "unverified";
+}> {
+  const verify = await loadCheckpointMetadata();
+  if (verify === undefined) return { state: "unverified" };
+  let outer: CborValue;
+  try {
+    outer = decodeWellFormedItem(cose, true);
+  } catch {
+    return { state: "invalid" };
+  }
+  if (
+    !(outer instanceof CborTag) ||
+    outer.tag !== 18n ||
+    !Array.isArray(outer.value) ||
+    outer.value.length !== 4 ||
+    !(outer.value[1] instanceof CborMap) ||
+    outer.value[1].entries.length !== 0
+  )
+    return { state: "invalid" };
+  const stated = (await signedCheckpointFields(cose, verify))?.timestamp;
+  return isString(stated) && parseRecordTime(stated) !== undefined
+    ? { timestamp: stated, state: "verified" }
+    : { state: "invalid" };
+}
+
+/**
+ * Check a carried History member (-03 "History Members", checks 1 to 5). The
+ * body's shape was checked when the block was parsed.
+ */
+async function verifyHistory(m: Member): Promise<{
+  computed?: string;
+  history: HistoryMemberResult;
+  findings: string[];
+  failed: string[];
+  withheld: string[];
+}> {
+  const body = m.body!;
+  const env = body.envelope as Obj;
+  const anchorDigest = (env.anchor as Obj).digest as string;
+  let computed: string | undefined;
+  try {
+    computed = await jsonDigest(env);
+  } catch {
+    computed = undefined;
+  }
+  let envelopeSignature: HistoryMemberResult["envelopeSignature"] =
+    "signature_unverified";
+  if (isString(env.profile) && HISTORY_PROFILES.has(env.profile)) {
+    const signed: Obj = {};
+    for (const name of ENVELOPE_SIGNED)
+      if (Object.hasOwn(env, name)) signed[name] = env[name];
+    let signingInput: Uint8Array | undefined;
+    try {
+      signingInput = jcs(signed);
+    } catch {
+      signingInput = undefined;
+    }
+    const sig = env.sig as string;
+    if (signingInput === undefined || !SIGNATURE_HEX.test(sig))
+      envelopeSignature = "invalid";
+    else
+      try {
+        envelopeSignature = (await verifyEd25519Strict(
+          hexBytes(env.responder as string),
+          hexBytes(sig),
+          signingInput,
+        ))
+          ? "verified"
+          : "invalid";
+      } catch {
+        // Only SubtleCrypto throws here (no Ed25519): the signature is not
+        // checked, which is neither failed nor absent.
+        envelopeSignature = "signature_unverified";
+      }
+  }
+  const artifact = decodeCose(env.artifact) ?? new Uint8Array();
+  const artifactDigest: HistoryMemberResult["artifactDigest"] =
+    (await sha256Hex(artifact)) === env.artifact_digest
+      ? "matches"
+      : "mismatch";
+  const requestDigest: HistoryMemberResult["requestDigest"] =
+    env.request_digest === m.requestDigest ? "matches" : "mismatch";
+  const anchor = artifactAnchor(artifact);
+  const artifactAnchorState: HistoryMemberResult["artifactAnchor"] =
+    isString(anchor) && anchor === anchorDigest ? "matches" : "mismatch";
+  const checkpoint = decodeCose(body.anchor_checkpoint) ?? new Uint8Array();
+  let anchorCheckpoint: HistoryMemberResult["anchorCheckpoint"];
+  let timestamp: string | undefined;
+  if ((await sha256Hex(checkpoint)) !== anchorDigest)
+    anchorCheckpoint = "mismatch";
+  else
+    ({ timestamp, state: anchorCheckpoint } = await checkpointTime(checkpoint));
+  const findings: string[] = [];
+  const failed: string[] = [];
+  const withheld: string[] = [];
+  for (const [state, finding] of [
+    [envelopeSignature, "history_envelope_signature_invalid"],
+    [artifactDigest, "history_artifact_digest_mismatch"],
+    [requestDigest, "history_request_digest_mismatch"],
+    [artifactAnchorState, "history_artifact_anchor_mismatch"],
+    [anchorCheckpoint, `history_anchor_checkpoint_${anchorCheckpoint}`],
+  ] as const)
+    if (state === "invalid" || state === "mismatch") {
+      findings.push(finding);
+      failed.push(`${finding}:${m.id}`);
+    }
+  if (envelopeSignature === "signature_unverified")
+    withheld.push(`history_signature_unverified:${m.id}`);
+  if (anchorCheckpoint === "unverified")
+    withheld.push(`history_anchor_checkpoint_unverified:${m.id}`);
+  const view =
+    failed.length === 0 && withheld.length === 0 && timestamp !== undefined
+      ? { key: env.responder as string, time: timestamp }
+      : {};
+  return {
+    ...(computed === undefined ? {} : { computed }),
+    history: {
+      derivation: env.derivation,
+      envelopeSignature,
+      artifactDigest,
+      requestDigest,
+      artifactAnchor: artifactAnchorState,
+      anchorCheckpoint,
+      ...view,
+    },
+    findings,
     failed,
     withheld,
   };
@@ -1099,6 +1632,7 @@ export async function verifyComposed(
 
   const byId = new Map<string, Member>();
   const checkpoints = new Map<string, EmptyCheckpoint>();
+  const views = new Map<string, HistoryView>();
   const members: ComposedMemberResult[] = [];
   for (const m of block.members) {
     byId.set(m.id, m);
@@ -1109,6 +1643,13 @@ export async function verifyComposed(
       checkpoints,
     );
     members.push(result.member);
+    const view = result.member.history;
+    if (view?.key !== undefined && view.time !== undefined)
+      views.set(m.id, {
+        key: view.key,
+        at: parseRecordTime(view.time) ?? 0n,
+        time: view.time,
+      });
     closureFindings.push(...result.closure);
     failed.push(...result.failed);
     withheld.push(...result.withheld);
@@ -1136,13 +1677,16 @@ export async function verifyComposed(
   const joins: ComposedJoinResult[] = [];
   const corroborations: CorroborationResult[] = [];
   for (const j of block.joins) {
-    const { derived, differences } = await derivedState(
+    const { derived, differences, keys } = await derivedState(
       j,
       byId,
       missing,
       checkpoints,
+      views,
       options,
     );
+    const times = historyTimes(j, byId, views);
+    const sources = await keySources(j, byId, views, checkpoints);
     const result: ComposedJoinResult["result"] =
       derived === undefined
         ? "not_derivable"
@@ -1156,6 +1700,9 @@ export async function verifyComposed(
       ...(derived === undefined ? {} : { derived }),
       result,
       differences,
+      ...(keys === undefined ? {} : { keys }),
+      ...(sources === undefined ? {} : { keySources: sources }),
+      ...(times === undefined ? {} : { historyTimes: times }),
     });
     const pair = `${j.members[0]},${j.members[1]}`;
     if (result === "join_state_mismatch")

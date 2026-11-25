@@ -137,8 +137,9 @@ func TestEmptyMemberCheckpointKeyMustBeBound(t *testing.T) {
 // The member with records still needs its pointer and its body.
 func TestEmptyMemberJoinNeedsTheOtherRootRecord(t *testing.T) {
 	container, block, c := emptyCase(t, "controller-binding-empty-member-linked")
+	// Bundle -03: pointer is optional; the key is the record's signer (#663).
 	delete(block["joins"].([]interface{})[0].(map[string]interface{}), "pointer")
-	require.Equal(t, "not_derivable", verifyBlock(t, container, bindingOptions(c)).Joins[0].Result)
+	require.Equal(t, "derived_matches", verifyBlock(t, container, bindingOptions(c)).Joins[0].Result)
 
 	// Declared missing (listed, no body), the member with records does not
 	// derive.

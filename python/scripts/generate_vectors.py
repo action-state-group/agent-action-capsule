@@ -791,11 +791,14 @@ def build_provenance_mode_cases(spec_version: str = RELEASED_PM_SPEC) -> list[di
     # derived.provenance_time_rung='witnessed'. A backfilled record claims
     # time_rung='witnessed' AND carries a well-formed references[] entry citing
     # citation_purpose='corroborates_source_time' (non-empty type/digest_alg/digest)
-    # -> verifies clean (no overclaim), derived.provenance_time_rung='witnessed'.
+    # -> verifies ok with no overclaim, derived.provenance_time_rung='witnessed'. Its
+    # x- artifact type has no accepted declaration, so check 8 reports it Unresolved
+    # (informational only; §5.5.5).
     add("pos-provenance-mode-witnessed-corroborated", "positive",
         "a backfilled record claiming provenance_mode.time_rung='witnessed' WITH a well-formed "
         "references[] entry citing citation_purpose='corroborates_source_time' (all of "
-        "type/digest_alg/digest non-empty) -> verifies clean; this is the ONLY case where "
+        "type/digest_alg/digest non-empty) -> verifies ok with no overclaim (its undeclared "
+        "artifact type is reported Unresolved, informational only); this is the ONLY case where "
         "derived.provenance_time_rung='witnessed' (the cap rederived from cited evidence, "
         "not from the claim).",
         seal_v4({**ident("prov-witnessed-corroborated"), "assurance": assurance("not_applicable"),

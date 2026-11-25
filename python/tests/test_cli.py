@@ -107,7 +107,12 @@ def test_transparent_two_layers_self_attested_then_anchored(capsys, tmp_path):
 
     # with a verified receipt -> anchored
     leaf = hashlib.sha256(stmt).hexdigest()
-    receipt = build_receipt(leaf_entry_hex=leaf, leaf_index=0, tree_entries_hex=[leaf], alg="EdDSA", log_private_key_pem=priv)
+    # RFC 9943 Section 6: a Receipt carries iss, sub and kid (and the
+    # verifier requires them on a receipt issued from the cutoff on).
+    receipt = build_receipt(
+        leaf_entry_hex=leaf, leaf_index=0, tree_entries_hex=[leaf], alg="EdDSA", log_private_key_pem=priv,
+        iss="did:web:ts.example", sub="urn:agent-action-capsule:po", kid=b"log-key", iat=1795651200,
+    )
     tf = tmp_path / "transparent.cose"
     tf.write_bytes(attach_receipts(stmt, [receipt]))
     rc = main(["verify", "--transparent", str(tf), "--issuer-key", str(pk), "--log-key", str(pk), "--leaf-entry-hex", leaf])

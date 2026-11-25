@@ -316,8 +316,8 @@ later revisions). Governs the `citation_purpose` field of a `references[]`
 entry — a Capsule's citation of a record outside its own `chain` scope (a
 different producer or stream). Distinct from, and never a repurposing of,
 CPB's own `purpose` field on a typed digest reference
-(scitt-payload-binding), which selects among an artifact type's registered
-digest contexts.
+(scitt-payload-binding), which selects among the digest contexts that an
+artifact type's declaration defines.
 
 | Value | Semantics |
 |---|---|
@@ -475,6 +475,13 @@ then, the binding is used beside the composition, under issuer independence
 (`spec/interop-profile-v0.md` §6.7.4). Conformance vectors:
 `vectors/bundle/composed-controller-binding/` (the join) and
 `vectors/controller-binding-v0/` (the binding record under issuer independence).
+**`-03` registers `same_key`** with its derivation, and defines the History
+member ("History Members"), which `controller_binding` and `same_key` also
+derive with. A `-02` verifier reads a block that carries `same_key` as
+malformed, and a `history` member as one that carries no body (a
+composition-closure failure), so a producer MUST NOT put either in a
+`composed/v1` block until `-03` is posted; from then on it MAY. Conformance
+vectors: `vectors/bundle/composed-history/`.
 
 | Value | Defined by | Semantics |
 |---|---|---|
@@ -482,7 +489,8 @@ then, the binding is used beside the composition, under issuer independence
 | `shared_artifact_digest` | `-01` | `pointer` selects a digest string in each root record; linked when the two values are identical. |
 | `issued_receipt` | `-01`, reserved | No derivation: a verifier reports the join `not_derivable`. |
 | `same_interval` | `-01`, reserved | No derivation: a verifier reports the join `not_derivable`. |
-| `controller_binding` | `-02` | `identifier_digest` is the binding digest of a controller binding record delivered beside the block (SHA-256 of the UTF-8 JCS of the record without `sigs`), and `pointer` selects a key identifier in each member root record, for example `key_id`. The two members are linked when a delivered record with that digest applies to the two selected values: it is well formed, both keys signed it under a method the verifier implements, each root record's `timestamp` is in its window, and no received revocation statement applies at or before either. No record with that digest, only well-formed ones under a method the verifier does not implement, or a join without `pointer` or `identifier_digest` is `not_derivable`; any other record with that digest that does not apply (malformed, not signed by both keys, other keys, outside its window, revoked) leaves them `unjoined`. A `controller_binding` join that derives `agree` is redundant, never corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
+| `controller_binding` | `-02` | `identifier_digest` is the binding digest of a controller binding record delivered beside the block (SHA-256 of the UTF-8 JCS of the record without `sigs`). The two members are linked when a delivered record with that digest applies to the two members' keys: it is well formed, both keys signed it under a method the verifier implements, each member's T is in its window, and no received revocation statement applies at or before either. Under `-02`, `pointer` selects a key identifier in each member root record and T is that record's `timestamp`. From `-03` each member's key and T come from its "Member keys" (a History's join view, an empty-history Bundle's checkpoint signer, a root record's verified producer signature, or for an unsigned root record the checkpoint signer when the record's identity and own membership hold, at the checkpoint's time); a key is never read from a value the record states, `pointer` is optional and, when present, must select that key, and every join reports each member's key source. No record with that digest, only well-formed ones under a method the verifier does not implement, a join without `identifier_digest`, or a member with no key is `not_derivable`; any other record with that digest that does not apply (malformed, not signed by both keys, other keys, outside its window, revoked) leaves them `unjoined`. A `controller_binding` join that derives `agree` is redundant, never corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
+| `same_key` | `-03` | No `pointer`, `identifier_digest` or `compare`. Each member's key is its "Member keys" key (a History member's envelope `responder` once its envelope and anchor checkpoint verify; a member Bundle's root record's verified producer signature key; for an unsigned root record, the Bundle's checkpoint signer when the record's identity and own membership hold; an empty-history Bundle's checkpoint signer), never a value the record states; the members are linked when the two keys are equal, and every join reports each member's key source. A member without a key is `not_derivable`, except a refusal or absence, which the state rules decide. Against an empty-history Bundle, linked is `one_sided`. A `same_key` join that derives `agree` is redundant, never corroborating. It states that one key signed, logged or answered for both members, never that a History counts the other member's record. |
 
 ### Provisional: controller binding key types and signing event kind
 
@@ -500,6 +508,21 @@ with the NIPs (that document's CB-8). Conformance vectors:
 | `ed25519` | Key type. The key identifier is a raw Ed25519 public key (RFC 8032); the key signs with Ed25519 over the signed octets. |
 | `bip340` | Key type. The key identifier is a BIP-340 x-only secp256k1 public key, as a Nostr identity is; the key signs a Nostr event (NIP-01) of kind 3374, with no tags, whose `content` is the signed object's version and the SHA-256 of its signed octets (`<version>:<digest>`); `sig` carries the event's `created_at` and its BIP-340 signature. |
 | `3374` | Nostr event kind of the `bip340` signing event. Its events are signatures over one binding record or revocation statement, and are not published. |
+
+### Provisional: person signature key types
+
+**Held for ratification; not yet registered.** `spec/person-signature-v0.md`
+(an informational document, not an Internet-Draft) names the kind of key that
+made a person signature in `key_type` (§3.2). A verifier that meets a token it
+does not know reports that person signature `NOT_CHECKED`, and it never reads
+as signed by the person. A key type is added only by a revision of that
+document, and only for a key that the person holds and that the agent's
+runtime cannot use without the person present. Conformance vectors:
+`vectors/person-signature-v0/`.
+
+| Value | Semantics |
+|---|---|
+| `webauthn` | Key type. The key is a WebAuthn credential's public key, as `{alg, spki}` with COSE algorithm -7 (ES256) or -8 (EdDSA); it signs by a WebAuthn assertion whose challenge is the UTF-8 octets of `person-signature/0:<record_digest>`. |
 
 ## 15. Evidence Bundle countersignature type
 

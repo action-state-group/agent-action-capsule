@@ -40,17 +40,14 @@ from .contracts import (
     derive_effect_mode,
     is_hex64,
 )
-from .registries import load_cpb_provisional_values, load_registries
+from .registries import load_registries
 
 __all__ = ["Finding", "VerificationResult", "verify", "verify_store"]
 
 
-def _load_provisional() -> dict:
-    """Best-effort load of the vendored CPB provisional values; never raises."""
-    try:
-        return load_cpb_provisional_values()
-    except Exception:  # provisional enrichment is optional, never gating
-        return {}
+# The one artifact type this profile declares (§5.5.5). Every other ``type`` in a
+# ``references`` entry needs a declaration a deployment or citing profile names.
+AAC_ARTIFACT_TYPE = "agent-action-capsule"
 
 REQUIRED_FIELDS = (
     "spec_version",
@@ -219,7 +216,7 @@ def _reference_findings(
         # Compare only a known AAC identity context, never equal-looking digests
         # belonging to a different artifact type or hash algorithm (CPB §7).
         digest = ref.get("digest")
-        if ref.get("type") == "agent-action-capsule" and ref.get("digest_alg") == "SHA-256":
+        if ref.get("type") == AAC_ARTIFACT_TYPE and ref.get("digest_alg") == "SHA-256":
             if isinstance(digest, str) and digest != "" and not is_hex64(digest):
                 findings.append(Finding(
                     "reference_malformed",
@@ -232,6 +229,17 @@ def _reference_findings(
                     f"{path} duplicates chain.parent_capsule_id (§5.5.5)",
                     check=6,
                 ))
+        # This verifier accepts only AAC's own artifact type and never discovers
+        # one from a registry snapshot (CPB Cross-Profile Comparability). Only a
+        # well-formed reference is Unresolved; a malformed one is check 1's.
+        ref_type = ref.get("type")
+        well_formed = all(isinstance(ref.get(f), str) and ref.get(f) for f in ("type", "digest_alg", "digest"))
+        if well_formed and ref_type != AAC_ARTIFACT_TYPE:
+            findings.append(Finding(
+                "reference_type_unresolved",
+                f"{path}.type is not agent-action-capsule, the one artifact type this verifier accepts; Unresolved (cause: context), informational, not rejected (§5.5.5)",
+                severity="info", check=8,
+            ))
         if "citation_purpose" in ref:
             purpose = ref.get("citation_purpose")
             if not isinstance(purpose, str) or not purpose:
@@ -729,12 +737,7 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
 
     # ---- Check 8: Unknown registry values -----------------------------------
     # A value not seeded in the six §12 registries is informational (never a
-    # rejection — §4, §12). Before calling it "unknown", we consult the vendored
-    # CPB *provisional* registry snapshot: a value a provisional payload class is
-    # known to set (e.g. a not-yet-registered
-    # effect.type its producer emits) resolves as *known with status
-    # provisional* — still informational, but no longer unknown.
-    provisional = _load_provisional()
+    # rejection — §4, §12).
     for reg_name, (block, member) in _REGISTRY_FIELDS:
         blk = _obj(capsule, block)
         if blk is None:
@@ -748,16 +751,6 @@ def _verify(capsule, findings, store, registries) -> VerificationResult:
             continue
         seeded = registries.get(reg_name, frozenset())
         if val in seeded:
-            continue
-        prov_class = provisional.get(reg_name, {}).get(val)
-        if prov_class is not None:
-            findings.append(Finding(
-                "known_provisional_registry_value",
-                f"{block}.{member}={val!r} resolves as known with status "
-                f"'provisional' via the vendored CPB registry (payload class "
-                f"{prov_class!r}); informational, not rejected (§12)",
-                severity="info", check=8,
-            ))
             continue
         findings.append(Finding("unknown_registry_value", f"{block}.{member}={val!r} is not a seeded {reg_name} value; informational, not rejected (§12)", severity="info", check=8))
         if reg_name == "effect_attestation":

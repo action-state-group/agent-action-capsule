@@ -26,6 +26,8 @@ CASES = [
     ("external-capsule", {"references": [REF | {"citation_purpose": "responds_to"}]}, "valid external Capsule citation"),
     ("unknown-type-algorithm", {"references": [{"type": "future-artifact", "digest_alg": "future-hash", "digest": "opaque-digest"}]}, "foreign digest contexts remain open"),
     ("same-hex-other-type", {"references": [REF | {"type": "foreign-artifact", "digest": PARENT}]}, "same digest under another artifact type is not the chain parent"),
+    ("undeclared-type", {"references": [REF | {"type": "example-undeclared-artifact", "digest": "c" * 64}]}, "an artifact type with no accepted declaration is Unresolved (cause: context), informational, never a rejection"),
+    ("undeclared-type-malformed", {"references": [{"type": "example-undeclared-artifact", "digest_alg": "", "digest": "c" * 64}]}, "a malformed reference is reported by check 1 only, never also as Unresolved"),
     ("same-hex-other-algorithm", {"references": [REF | {"digest_alg": "future-hash", "digest": PARENT}]}, "same digest under another algorithm is not the chain parent"),
     ("duplicate-parent", {"references": [REF | {"digest": PARENT}]}, "AAC SHA-256 reference must not duplicate the chain parent"),
     ("future-purpose", {"references": [REF | {"citation_purpose": "example-purpose"}]}, "unknown citation purpose is informational"),

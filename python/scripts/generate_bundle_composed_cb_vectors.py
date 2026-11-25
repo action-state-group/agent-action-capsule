@@ -211,7 +211,14 @@ def case(case_id: str, description: str, record: dict, *, declared: str, derived
             "members": (copy.deepcopy(MEMBERS_EXPECT) if empty_b is None else
                         members_with_empty_b(EMPTY_CHECKPOINT_TIME if empty_b[0] is not None else None)),
             "composition_closure": {"status": "pass", "missing": []},
-            "joins": [{"members": PAIR, "declared": declared, "derived": derived, "result": result}],
+            "joins": [{"members": PAIR, "declared": declared, "derived": derived, "result": result,
+                       # -03: where each side's key came from. Both root
+                       # records are signed; an empty-history responder-b's
+                       # key is its checkpoint signer, when it has one.
+                       "key_sources": [{"member": "responder-a", "source": "record_signature"},
+                                       {"member": "responder-b",
+                                        "source": ("record_signature" if empty_b is None else
+                                                   "log_checkpoint" if empty_b[0] is not None else "none")}]}],
             "corroboration": [corroboration],
         },
     }

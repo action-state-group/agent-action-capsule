@@ -170,6 +170,35 @@ def _fetch_log_pubkey_pem(ts_url: str, timeout: float) -> bytes:
     return _raw_ed25519_to_pem(data["pubkey_hex"])
 
 
+#: ``entry_hash_scheme`` values a Transparency Service may declare in its
+#: register answer. ``sig_structure``: the entry is SHA-256 of the statement's
+#: RFC 9052 Section 4.4 ``Sig_structure`` (the signature excluded, so a
+#: malleated signature cannot register a second entry). ``legacy``: SHA-256 of
+#: the statement bytes. A service that predates the field answers without it
+#: and hashes the statement bytes, so an absent field means ``legacy``.
+ENTRY_HASH_SCHEME_SIG_STRUCTURE = "sig_structure"
+ENTRY_HASH_SCHEME_LEGACY = "legacy"
+
+
+def _expected_entry_hash(statement_bytes: bytes, scheme: object) -> str:
+    """The ``entry_hash`` the service must return for ``statement_bytes``
+    under the ``scheme`` it declared. Raises ``ValueError`` on a scheme this
+    client does not know, rather than accepting an entry it cannot check."""
+    if scheme == ENTRY_HASH_SCHEME_LEGACY:
+        return hashlib.sha256(statement_bytes).hexdigest()
+    if scheme == ENTRY_HASH_SCHEME_SIG_STRUCTURE:
+        import cbor2  # type: ignore
+
+        # statement_bytes is the COSE_Sign1 this client just built, with an
+        # embedded payload, so it always has the four-element shape.
+        outer = cbor2.loads(statement_bytes)
+        sign1 = outer.value if isinstance(outer, cbor2.CBORTag) else outer
+        protected_bstr, _unprotected, payload, _signature = sign1
+        sig_structure = cbor2.dumps(["Signature1", protected_bstr, b"", payload])
+        return hashlib.sha256(sig_structure).hexdigest()
+    raise ValueError(f"TS declared an unknown entry_hash_scheme {scheme!r}")
+
+
 def _post_statement(statement_bytes: bytes, ts_url: str, timeout: float) -> dict:
     body = json.dumps(
         {"signed_statement_b64": base64.b64encode(statement_bytes).decode("ascii")}
@@ -241,6 +270,7 @@ def submit_anchor(
         PublicFormat,
         load_pem_private_key,
     )
+    from scitt_cose.receipt import verify_receipt  # type: ignore
     from scitt_cose.statement import attach_receipts, build_signed_statement  # type: ignore
 
     try:
@@ -276,12 +306,18 @@ def submit_anchor(
     receipt_bytes = base64.b64decode(resp["receipt_b64"])
     entry_hash: str = resp["entry_hash"]
 
-    expected_entry_hash = hashlib.sha256(statement_bytes).hexdigest()
+    scheme = resp.get("entry_hash_scheme", ENTRY_HASH_SCHEME_LEGACY)
+    expected_entry_hash = _expected_entry_hash(statement_bytes, scheme)
     if entry_hash != expected_entry_hash:
         raise ValueError(
             f"TS entry_hash mismatch: got {entry_hash!r}, "
-            f"expected SHA-256(statement) = {expected_entry_hash!r}"
+            f"expected {expected_entry_hash!r} under entry_hash_scheme {scheme!r}"
         )
+    # The entry_hash check binds the service's answer to our statement; the
+    # receipt must then prove that entry's inclusion under the log key.
+    checked = verify_receipt(receipt_bytes, leaf_entry_hex=entry_hash, log_public_key_pem=log_pubkey_pem)
+    if not checked.ok:
+        raise ValueError(f"TS receipt does not verify for entry {entry_hash}: {checked.errors}")
 
     transparent = attach_receipts(statement_bytes, [receipt_bytes])
 

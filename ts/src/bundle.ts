@@ -958,6 +958,68 @@ async function selectedMembership(
   return findings.length ? fail(...findings) : pass();
 }
 
+/**
+ * The signed fields of the Bundle's checkpoint when the record `capsuleId` is
+ * carried, its identity holds (its `capsule_id` recomputes from its content)
+ * and its own membership entry proves it under that signed checkpoint: the
+ * entry names the checkpoint's `log_id`, has `leaf_index = seq - 1` and the
+ * checkpoint's `mmr_size`, and its proof verifies against the signed root,
+ * not a stated one. Undefined otherwise, including when the checkpoint does
+ * not verify or no CLL verifier is available.
+ *
+ * It answers for this one record only: a failure elsewhere in the Bundle
+ * does not change it. -03 "Joins" reads a key from it for an unsigned root
+ * record (python `bundle.record_logged_under_checkpoint`).
+ */
+export async function recordLoggedUnderCheckpoint(
+  bundle: Bundle,
+  capsuleId: unknown,
+): Promise<SignedCheckpointFields | undefined> {
+  const stated = bundle.checkpoint;
+  const certificate = bundle.completeness_certificate;
+  if (!object(stated) || !object(certificate)) return undefined;
+  const { claim, signed } = await strictCheckpoint(stated, certificate);
+  if (claim.status !== "pass" || signed === undefined) return undefined;
+  if (!isHex64(capsuleId) || !Array.isArray(bundle.records)) return undefined;
+  const record = bundle.records.find(
+    (r: unknown) => object(r) && r.capsule_id === capsuleId,
+  );
+  if (!object(record)) return undefined;
+  const identity = await verifyClass1(record as ParsedJson);
+  if (!identity.ok || identity.capsuleId !== capsuleId) return undefined;
+  const members = certificate.memberships;
+  const member =
+    object(members) && Object.hasOwn(members, capsuleId)
+      ? members[capsuleId]
+      : undefined;
+  const coordinates = object(member) ? member.log_coordinates : undefined;
+  if (!object(coordinates)) return undefined;
+  const seq = coordinates.seq,
+    index = coordinates.leaf_index;
+  const size = signed.mmr_size,
+    root = signed.root;
+  if (
+    coordinates.log_id !== signed.log_id ||
+    !integer(seq) ||
+    !integer(index) ||
+    seq < 1 ||
+    index !== seq - 1 ||
+    !integer(size) ||
+    !isHex64(root)
+  )
+    return undefined;
+  const proof = parseProof((member as Bundle).inclusion_proof);
+  if (proof === undefined || proof.size !== size || proof.leaf_index !== index)
+    return undefined;
+  try {
+    if (!(await verifyProof(hex(root), capsuleId, proof, index)))
+      return undefined;
+  } catch {
+    return undefined;
+  }
+  return signed;
+}
+
 /** Each record's `seq` as its membership's `log_coordinates` state it. */
 function membershipSeqs(bundle: Bundle): Map<string, number> {
   const certificate = bundle.completeness_certificate;

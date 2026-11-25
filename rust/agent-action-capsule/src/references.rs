@@ -95,9 +95,11 @@ pub(crate) fn reference_findings(capsule: &Map<String, Value>, regs: &Registries
                 continue;
             }
         };
+        let mut well_formed = true;
         for field in ["type", "digest_alg", "digest"] {
             let ok = matches!(reference.get(field), Some(Value::String(s)) if !s.is_empty());
             if !ok {
+                well_formed = false;
                 findings.push(mkf(
                     "reference_malformed",
                     &format!("{path}.{field} MUST be a non-empty string (§5.5.5)"),
@@ -133,6 +135,19 @@ pub(crate) fn reference_findings(capsule: &Map<String, Value>, regs: &Registries
                     ));
                 }
             }
+        }
+        // This verifier accepts only AAC's own artifact type and never discovers
+        // one from a registry snapshot (CPB Cross-Profile Comparability). Only a
+        // well-formed reference is Unresolved; a malformed one is check 1's.
+        if well_formed
+            && !matches!(reference.get("type"), Some(Value::String(t)) if t == "agent-action-capsule")
+        {
+            findings.push(mkf(
+                "reference_type_unresolved",
+                &format!("{path}.type is not agent-action-capsule, the one artifact type this verifier accepts; Unresolved (cause: context), informational, not rejected (§5.5.5)"),
+                Some(8),
+                "info",
+            ));
         }
         match reference.get("citation_purpose") {
             Some(Value::String(purpose)) if !purpose.is_empty() => {

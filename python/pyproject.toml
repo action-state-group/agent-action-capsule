@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-action-capsule"
-version = "0.18.0"
+version = "0.19.0"
 description = "Reference verifier for the Agent Action Capsule SCITT profile (draft-mih-scitt-agent-action-capsule), with the typed Capsule carriers and their sealing boundary Capsule.seal(), and the anchor client."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -36,17 +36,17 @@ Draft = "https://datatracker.ietf.org/doc/draft-mih-scitt-agent-action-capsule/"
 # §3.2.2) names as its reference RFC 8785 implementation, used only by the
 # TRACE digest-agreement interop test to cross-check AAC's in-repo JCS against
 # an independent implementation. Not a runtime dependency.
-dev = ["pytest>=7.0", "ruff>=0.4,<0.16", "scitt-cose>=0.3.0", "rfc8785==0.1.4", "cryptography>=42"]
+dev = ["pytest>=7.0", "ruff>=0.4,<0.16", "scitt-cose>=0.5.0", "rfc8785==0.1.4", "cryptography>=44"]
 envelope = ["scitt-cose>=0.1.1"]
 # OPTIONAL two-layer verification: the SCITT/COSE substrate verifier. The
 # payload-only core stays stdlib-only; this extra is needed only for
 # `verify --transparent`. scitt-cose is the public action-state-group/scitt-cose
 # package (deps: cbor2 + cryptography); it drags in nothing private.
-transparent = ["scitt-cose>=0.1.1"]
+transparent = ["scitt-cose>=0.5.0"]
 # OPTIONAL anchor client (rung 6): async, digest-only TS submission. Depends on
 # scitt-cose (for COSE Signed Statement construction + receipt embedding) which
 # in turn pulls in cbor2 + cryptography. No private packages are introduced.
-anchor = ["scitt-cose>=0.1.1"]
+anchor = ["scitt-cose>=0.5.0"]
 # OPTIONAL Evidence Bundle completeness proofs: verify_bundle checks interval
 # coverage and per-record membership against real CLL MMR proofs. Without this
 # extra those two claims fail closed as `completeness_verifier_unavailable`
@@ -62,7 +62,7 @@ where = ["."]
 include = ["agent_action_capsule*"]
 
 [tool.setuptools.package-data]
-"agent_action_capsule.data" = ["REGISTRY.md", "cpb_registry.json", "cpb_provisional.json"]
+"agent_action_capsule.data" = ["REGISTRY.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

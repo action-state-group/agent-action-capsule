@@ -1,0 +1,25 @@
+{
+  "description": "a malformed reference is reported by check 1 only, never also as Unresolved",
+  "kind": "negative",
+  "ok": false,
+  "derived": {
+    "effect_mode": "not_applicable",
+    "attestation_mode": "self_attested",
+    "ledger_mode": "chained"
+  },
+  "capsule_id_recomputed": "c7023d74507109906198c570ea553b4c90791442ace3811a7e0afc85d23f9477",
+  "findings": [
+    {
+      "check": 1,
+      "severity": "error",
+      "code": "reference_malformed",
+      "detail": "references[0].digest_alg MUST be a non-empty string (\u00a75.5.5)"
+    },
+    {
+      "check": 6,
+      "severity": "info",
+      "code": "chain_check_store_level",
+      "detail": "chain parent-existence and concurrent-supersedes are store-level checks (\u00a76); not run without a store"
+    }
+  ]
+}
