@@ -96,7 +96,7 @@
     "contract_digest": "6f6605015976f77d230ba62870bd585cb547392add86bf2efb9d46f762ee9561",
     "schema": {
       "name": "evidence-contract-v0.json",
-      "sha256": "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770"
+      "sha256": "bf9a1cdee27c8cf6d35b2371fe3b778cf5e1db671dd9c4bce9f503e8842cb78b"
     }
   },
   "logs": {

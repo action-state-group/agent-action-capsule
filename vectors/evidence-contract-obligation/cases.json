@@ -1,0 +1,74 @@
+{
+  "set": "aac-evidence-contract-obligation",
+  "spec": "spec/interop-profile-v2.md",
+  "provenance": "spec-derived",
+  "schema": {
+    "name": "evidence-contract-v0.json",
+    "sha256": "bf9a1cdee27c8cf6d35b2371fe3b778cf5e1db671dd9c4bce9f503e8842cb78b"
+  },
+  "count": 3,
+  "cases": [
+    {
+      "id": "pos-obligation-native",
+      "accept": true,
+      "description": "An obligation requirement in the native, pack-declared shape: evidence_rule, both verdicts and a structured clause. Valid (v2 §11.3.2).",
+      "document": {
+        "id": "C-obligation-shape",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-retention",
+            "profile": "obligation",
+            "statement": "The record of each action is kept for the period the example instrument requires.",
+            "evidence_rule": "a retention record names the action and its period",
+            "forward_verdict": "DETERMINISTIC",
+            "backward_verdict": "DETERMINISTIC",
+            "clause": {
+              "instrument": "Example Instrument A",
+              "article": "Article 1",
+              "effective_from": "2027-08-02"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "neg-obligation-abstract",
+      "accept": false,
+      "description": "The same obligation in the abstract shape: clause_ref and no evidence_rule. The engine copy pinned by evidence-interop/0 and /1 accepts it; the schema evidence-interop/2 pins refuses it, because the obligation profile has one shape (v2 §11.3.2, P-71).",
+      "document": {
+        "id": "C-obligation-shape",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-retention",
+            "profile": "obligation",
+            "statement": "The record of each action is kept for the period the example instrument requires.",
+            "clause_ref": "Example Instrument A, Article 1"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pos-outcome-abstract",
+      "accept": true,
+      "description": "An outcome requirement in the abstract shape. Still valid: only the obligation profile was reduced to one shape, and the outcome profile keeps both (v2 §11.3.2).",
+      "document": {
+        "id": "C-obligation-shape",
+        "version": "1",
+        "requirements": [
+          {
+            "id": "r-served",
+            "profile": "outcome",
+            "statement": "The record is served under a verified envelope.",
+            "evidence_requirements": {
+              "accepted_epistemic_types": [
+                "observed_event"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

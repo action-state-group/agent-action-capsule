@@ -125,6 +125,7 @@ its 11 `record_signatures`.
 | `vectors/interop-profile-v1-requirement-facts/` | `spec/interop-profile-v1.md` §8.3 | evaluate | 2 |
 | `vectors/interop-profile-v2/` | `spec/interop-profile-v2.md` (`evidence-interop/2`) | respond, verify | 79 |
 | `vectors/interop-profile-v2-requirement-facts/` | `spec/interop-profile-v2.md` §8.3 | evaluate | 2 |
+| `vectors/evidence-contract-obligation/` | `spec/interop-profile-v2.md` §11.3.2 (one obligation shape) | evaluate | 3 |
 | `vectors/cll-material/` | `spec/interop-profile-v0.md` §6.2.1 | respond, verify | 184 |
 | `vectors/anchor-witness-v1/` | `spec/interop-profile-v1.md` §6.2.2 | verify | 69 |
 | `vectors/card-registration-v0/` | `spec/standard-history-v0.md` §13 | verify | 49 |

@@ -55,6 +55,12 @@ SPEC = "spec/interop-profile-v0.md"
 STATUS = ("Conformance vectors for the pre-Internet-Draft profile evidence-interop/0. Every key is a "
           "test key derived from a public seed; never use one for anything else.")
 ER_DRAFT = "draft-mih-agent-evidence-request-01"
+# The Evidence Contract v0 schema this corpus's contract validates against (the profile's EC pin).
+# v0 and v1 pin the capsule-engine copy; v2 pins this repository's copy without the abstract
+# obligation shape (v2 §11.3.2, P-71).
+EC_SCHEMA_ENGINE = "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770"
+EC_SCHEMA_V2 = "bf9a1cdee27c8cf6d35b2371fe3b778cf5e1db671dd9c4bce9f503e8842cb78b"
+EC_SCHEMA = {"name": "evidence-contract-v0.json", "sha256": EC_SCHEMA_ENGINE}
 
 
 def _names(version: int) -> dict:
@@ -73,18 +79,14 @@ def _names(version: int) -> dict:
                    "key is a test key derived from a public seed; never use one for anything else."),
         # The ER revision a responder's manifest names in `drafts` (§11.4.2): -01 for v0 (P-64), -02 for v1.
         "ER_DRAFT": "draft-mih-agent-evidence-request-01" if version == 0 else "draft-mih-agent-evidence-request-02",
+        "EC_SCHEMA": {"name": "evidence-contract-v0.json",
+                      "sha256": EC_SCHEMA_V2 if version >= 2 else EC_SCHEMA_ENGINE},
     }
 
 
 assert _names(0) == {name: globals()[name] for name in _names(0)}, "the v0 names drifted"
 EXT_URI = "https://datatracker.ietf.org/doc/draft-mih-agent-evidence-request/"
 KINDS = ["cll-checkpoint", "cll-inclusion-proof", "cll-consistency-proof"]
-
-# The Evidence Contract v0 schema this corpus's contract validates against (the profile's EC pin).
-EC_SCHEMA = {
-    "name": "evidence-contract-v0.json",
-    "sha256": "6b969610e6f120a9f5b98555aa5045644c62665f14075bb83fb9e78bab21b770",
-}
 
 # ---------------------------------------------------------------------------
 # Encodings
