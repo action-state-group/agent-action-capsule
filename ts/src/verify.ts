@@ -1,5 +1,4 @@
 import { referenceFindings } from "./references.js";
-import { provisionalClass } from "./provisional.js";
 import { registries as known } from "./registries.js";
 import {
   asJsonObject,
@@ -642,16 +641,6 @@ export async function verifyClass1(
       ...(extensions[registry] ?? []),
     ]);
     if (typeof value === "string" && !accepted.has(value)) {
-      const provisional = provisionalClass(registry, value);
-      if (provisional !== undefined) {
-        add(
-          "known_provisional_registry_value",
-          `${member}=${JSON.stringify(value)} resolves known status 'provisional' via vendored CPB registry (payload class ${JSON.stringify(provisional)}); informational, not rejected (§12)`,
-          8,
-          "info",
-        );
-        continue;
-      }
       add(
         "unknown_registry_value",
         `${member}=${JSON.stringify(value)} is not a seeded ${registry} value; informational, not rejected (§12)`,

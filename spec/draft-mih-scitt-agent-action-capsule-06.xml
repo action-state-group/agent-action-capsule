@@ -611,7 +611,8 @@ runtime-claimed execution. It is not copied into a Producer Envelope header.</t>
 (for example, permit receipts per <xref target="I-D.munoz-scitt-permit-profile"/>, or
 machine mandates) are typed digest references per
 <xref target="I-D.mih-sokolov-scitt-payload-binding"/>'s Typed Digest References
-section, with artifact types drawn from the CPB Artifact Type registry.
+section. CPB defines no artifact-type registry; the artifact types such a
+reference may name are accepted as <xref target="xref"/> states.
 Cross-profile comparability of digest values (comparable only under
 compatible declared digest contexts; otherwise indeterminate/deny, never
 equal-looking-hex) follows that document's Cross-Profile Comparability
@@ -625,7 +626,7 @@ Comparability rule across AAC, AEP, and SCITT under the profile label
 the typed digest reference above: they are bare intra-profile digests and
 join keys, either a current JSON digest or an opaque correlation string, not
 <tt>{type, digest_alg, digest}</tt> objects citing an external artifact by
-registered artifact type. They MUST NOT be interpreted as CPB typed digest
+declared artifact type. They MUST NOT be interpreted as CPB typed digest
 references. Only the external-authorization references described in this
 paragraph use the CPB typed-reference mechanism.</t>
       </section>
@@ -1255,9 +1256,21 @@ producer citing its own same-stream parent states that once, in
 reference <xref target="I-D.mih-sokolov-scitt-payload-binding"/>: <tt>{type, digest_alg,
 digest}</tt>, the same mechanism this profile already uses for the
 external-authorization references of the Effect Record (<xref target="effect"/>).
-<tt>type</tt> names an artifact type per the CPB Artifact Type registry; this
-document defines the <tt>references</tt> entry shape, not an exhaustive list
-of what may be cited.</t>
+<tt>type</tt> is an artifact-type identifier. CPB defines no artifact-type
+registry, and this document creates none. This document declares one
+artifact type, <tt>agent-action-capsule</tt>, with one digest context and no
+purpose label: <tt>digest_alg</tt> is exactly <tt>"SHA-256"</tt> and <tt>digest</tt> is the
+cited Capsule's <tt>capsule_id</tt> (<xref target="identity"/>), 64 lowercase hexadecimal
+characters. Every other <tt>type</tt> is accepted only through an artifact-type
+declaration that a citing profile identifies by stable normative
+reference, of which a deployment MAY accept a subset, as CPB's
+Cross-Profile Comparability subsection requires; a verifier MUST NOT
+discover a type from an unspecified or mutable registry snapshot. A
+well-formed <tt>references</tt> entry whose <tt>type</tt> matches no accepted
+declaration is Unresolved (cause: <tt>context</tt>) in CPB's terms,
+which check 8 of <xref target="verification"/> reports as informational and never as a
+rejection. This document defines the <tt>references</tt> entry shape, not an
+exhaustive list of what may be cited.</t>
           <t><strong>Digest as identity.</strong> A <tt>references</tt> entry's target is identified
 solely by the <tt>{digest_alg, digest}</tt> pair from its shape (above); no
 producer-local identifier, URI, or other locator carried alongside an
@@ -1408,8 +1421,8 @@ recorded and MUST NOT report it as independently verified.</t>
 a registry-governed (Specification Required, <xref target="iana"/>) string stating
 why this Capsule cites the target. <tt>citation_purpose</tt> is a distinct
 vocabulary from CPB's own <tt>purpose</tt> field on a typed digest reference:
-CPB's <tt>purpose</tt> selects among an artifact type's registered digest
-contexts, and <tt>citation_purpose</tt> is this profile's own, separately-named
+CPB's <tt>purpose</tt> selects among the digest contexts that an artifact
+type's declaration defines, and <tt>citation_purpose</tt> is this profile's own, separately-named
 field for the citing relationship, never a repurposing of CPB's field.
 The seeded vocabulary:</t>
           <table>
@@ -1588,7 +1601,10 @@ actually verified; report overclaims.</t>
 <tt>effect.type</tt>, <tt>irreversibility_class</tt>, <tt>effect_attestation</tt>,
 <tt>chain.relation</tt>, <tt>citation_purpose</tt>): report as informational
 findings; MUST NOT reject (<xref target="iana"/>). An unknown <tt>effect_attestation</tt>
-is additionally graded no stronger than <tt>runtime_claimed</tt> (<xref target="effect"/>).</t>
+is additionally graded no stronger than <tt>runtime_claimed</tt> (<xref target="effect"/>).
+A well-formed <tt>references</tt> entry whose <tt>type</tt> matches no accepted
+artifact-type declaration (<xref target="xref"/>) is likewise reported as an informational
+finding (Unresolved, cause <tt>context</tt>); MUST NOT reject.</t>
         </li>
         <li>
           <t>Provenance mode: <tt>provenance_mode.mode: "backfilled"</tt> without a
@@ -1960,8 +1976,8 @@ This registry is distinct
 from, and never a
 repurposing of, CPB's own
 <tt>purpose</tt> field on a typed digest reference
-(<xref target="I-D.mih-sokolov-scitt-payload-binding"/>), which selects among an
-artifact type's registered digest contexts and is orthogonal to any
+(<xref target="I-D.mih-sokolov-scitt-payload-binding"/>), which selects among the
+digest contexts an artifact type's declaration defines and is orthogonal to any
 role a companion profile assigns a digest within a cross-document
 citation. Designated-expert guidance: <tt>acted_on</tt>, <tt>responds_to</tt>, and
 <tt>ran_under</tt> name a citation whose target is outside the citing Capsule's own chain — a
@@ -3024,7 +3040,7 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 1947?>
+    <?line 1963?>
 
 <section anchor="changes-from-05">
       <name>Changes from draft-mih-scitt-agent-action-capsule-05</name>

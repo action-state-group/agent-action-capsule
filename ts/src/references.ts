@@ -81,8 +81,10 @@ export function referenceFindings(
       add("reference_malformed", `${path} MUST be an object (§5.5.5)`, 1);
       continue;
     }
+    let wellFormed = true;
     for (const field of ["type", "digest_alg", "digest"]) {
       if (typeof ref[field] !== "string" || ref[field] === "") {
+        wellFormed = false;
         add(
           "reference_malformed",
           `${path}.${field} MUST be a non-empty string (§5.5.5)`,
@@ -116,6 +118,17 @@ export function referenceFindings(
           6,
         );
       }
+    }
+    // This verifier accepts only AAC's own artifact type and never discovers
+    // one from a registry snapshot (CPB Cross-Profile Comparability). Only a
+    // well-formed reference is Unresolved; a malformed one is check 1's.
+    if (wellFormed && ref.type !== "agent-action-capsule") {
+      add(
+        "reference_type_unresolved",
+        `${path}.type is not agent-action-capsule, the one artifact type this verifier accepts; Unresolved (cause: context), informational, not rejected (§5.5.5)`,
+        8,
+        "info",
+      );
     }
     if ("citation_purpose" in ref) {
       if (

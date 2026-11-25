@@ -193,27 +193,22 @@ def test_unknown_chain_relation_is_informational(executed):
     assert res.ok and "unknown_registry_value" in codes(res)
 
 
-# ---- Check 8: vendored CPB provisional resolution --------------------------
+# ---- Check 8: registered values resolve as seeded --------------------------
 def test_mesh_effect_type_resolves_seeded(executed):
     # effect.type='inference_completion' is registered (REGISTRY.md §3), so
-    # check 8 resolves it as seeded, so it is neither known-provisional nor
-    # unknown for this field (the vendored CPB provisional snapshot no longer
-    # lists it).
+    # check 8 resolves it as seeded and reports nothing for it.
     d = dict(executed)
     d["effect"] = dict(d["effect"], type="inference_completion")
     res = verify(reseal(d))
     assert res.ok
-    flagged = [
-        f.detail for f in res.findings
-        if f.code in ("known_provisional_registry_value", "unknown_registry_value")
-    ]
-    assert not any("inference_completion" in det for det in flagged)
+    assert not any(
+        "inference_completion" in f.detail for f in res.findings if f.code == "unknown_registry_value"
+    )
 
 
-def test_provisional_only_value_resolves_known_provisional(executed, monkeypatch, tmp_path):
-    # The provisional-resolution path itself, exercised with a synthetic
-    # snapshot carrying a value no AAC registry seeds: known-provisional, not
-    # unknown, and still never a rejection.
+def test_cpb_snapshot_env_var_is_not_consulted(executed, monkeypatch, tmp_path):
+    # The retired AAC_CPB_PROVISIONAL_PATH snapshot is no longer read (#418): a
+    # value only such a snapshot lists stays unknown, never known-provisional.
     snap = tmp_path / "cpb_provisional.json"
     snap.write_text(json.dumps({"provisional_artifact_types": {"example-class": {
         "status": "provisional",
@@ -224,37 +219,30 @@ def test_provisional_only_value_resolves_known_provisional(executed, monkeypatch
     d["effect"] = dict(d["effect"], type="example_provisional_effect")
     res = verify(reseal(d))
     assert res.ok
-    c = codes(res)
-    assert "known_provisional_registry_value" in c
-    unknown_details = [
-        f.detail for f in res.findings if f.code == "unknown_registry_value"
-    ]
-    assert not any("example_provisional_effect" in det for det in unknown_details)
+    assert "known_provisional_registry_value" not in codes(res)
+    assert any(
+        "example_provisional_effect" in f.detail for f in res.findings if f.code == "unknown_registry_value"
+    )
 
 
 def test_mesh_effect_attestation_resolves_seeded_no_floor(executed):
     # effect_attestation='host_served_observed' is registered (REGISTRY.md §5,
-    # equal in grade to runtime_claimed): seeded, so neither known-provisional
-    # nor unknown, and never graded to the floor (the floor only fires on an
-    # *unknown* effect_attestation).
+    # equal in grade to runtime_claimed): seeded, so not unknown, and never
+    # graded to the floor (the floor only fires on an *unknown* effect_attestation).
     d = dict(executed)
     d["effect"] = dict(d["effect"], effect_attestation="host_served_observed")
     res = verify(reseal(d))
     assert res.ok
     c = codes(res)
-    assert "known_provisional_registry_value" not in c
     assert "unknown_registry_value" not in c
     assert "effect_attestation_graded_floor" not in c
 
 
 def test_genuinely_unknown_value_still_unknown(executed):
-    # A value NOT carried by any vendored provisional class stays unknown —
-    # the provisional consult must not swallow real unknowns.
     d = dict(executed)
     d["effect"] = dict(d["effect"], type="teleport_completion")
     res = verify(reseal(d))
     assert res.ok and "unknown_registry_value" in codes(res)
-    assert "known_provisional_registry_value" not in codes(res)
 
 
 # ---- Never throw -----------------------------------------------------------
