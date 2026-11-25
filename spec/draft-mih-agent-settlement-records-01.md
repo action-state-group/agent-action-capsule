@@ -2,7 +2,7 @@
 title: "Two-Party Settlement Records for Agent Payments"
 abbrev: "Agent Settlement Records"
 docname: draft-mih-agent-settlement-records-01
-date: 2026-11-21
+date: 2026-11-24
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -43,6 +43,7 @@ normative:
     date: 2026-10
 
 informative:
+  RFC7942:
   RFC9338:
   RFC9562:
   RFC9942:
@@ -1092,6 +1093,74 @@ both.
 countersignature {{RFC9338}}. Each leg is a separate Capsule from a
 separate sealer.
 
+# Implementation Status {#impl-status}
+
+Note to RFC Editor: Please remove this section and the reference to
+{{RFC7942}} before publication.
+
+This section records the status of known implementations of the protocol
+defined by this specification at the time of posting of this
+Internet-Draft, and is based on a proposal described in {{RFC7942}}. The
+description of implementations in this section is intended to assist the
+IETF in its decision processes in progressing drafts to RFCs. Please note
+that the listing of any individual implementation here does not imply
+endorsement by the IETF. Furthermore, no effort has been spent to verify the
+information presented here that was supplied by IETF contributors. This is
+not intended as, and must not be construed to be, a catalog of available
+implementations or their features. Readers are advised to note that other
+implementations may exist.
+
+According to {{RFC7942}}, "this will allow reviewers and working groups to
+assign due consideration to documents that have the benefit of running
+code, which may serve as evidence of valuable experimentation and feedback
+that have made the implemented protocols more mature. It is up to the
+individual working groups to use this information as they see fit".
+
+## Agent Action Capsule reference implementations
+
+Organization:
+: Action State Group, Inc.
+
+Implementations:
+: Four verifiers of this document in the agent-action-capsule source
+  repository, [](https://github.com/action-state-group/agent-action-capsule):
+  Python, the reference
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/python),
+  release 0.19.0); and ports in Go
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/go),
+  release 0.24.0), TypeScript
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/ts),
+  release 0.16.0) and Rust
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/rust/agent-action-capsule),
+  release 0.14.0).
+
+Description:
+: Each checks every leg record on its own (the Capsule checks, its
+  Producer Envelope, the `settlement` member, its amounts and its wrapped
+  objects), groups the legs by `terms_ref`, and derives the payment and
+  delivery states of {{states}}, including the same-key rule of
+  {{sealers}}. They verify; they do not seal leg records.
+
+Level of maturity:
+: Pre-1.0 releases. The test suite of each implementation runs the
+  conformance vectors below.
+
+Coverage:
+: All of this document's verifier rules that the conformance vectors
+  exercise. Whether a key may seal a role is checked only when a key policy
+  is supplied, as in {{sealers}}.
+
+Licensing:
+: BSD-3-Clause.
+
+Contact:
+: [](https://github.com/action-state-group/agent-action-capsule/issues)
+
+Conformance vectors:
+: [](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/settlement),
+  described in {{vectors}}. Their expected results are derived from this
+  document's text, not from any implementation.
+
 # Security Considerations {#security}
 
 **One party sealing both sides.** The main attack on a two-party record is
@@ -1395,6 +1464,7 @@ before publication.
   draft-mih-agent-evidence-request-03. Section pointers into
   draft-mih-sokolov-scitt-payload-binding follow its renumbering
   (`jcs` is Section 5.1 and `as-transmitted` is Section 5.4).
+* Implementation Status: added ({{impl-status}}), following RFC 7942.
 * Wire unchanged: the `settlement` member's `version` is still `"0"`
   ({{settlement-member}}).
 
