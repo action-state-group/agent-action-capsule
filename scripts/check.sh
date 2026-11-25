@@ -7,12 +7,23 @@
 # changelog-fragments.yml, publish-python.yml's build job and
 # neutrality.yml's scanner self-test. Not run: the neutrality and leak-lint
 # scans (they need repository secrets), spec.yml's idnits (non-gating in CI)
-# and dco.yml. Needs uv (Python 3.9 and 3.12), Go, npm (Node 22 comes
-# through npx), a Rust toolchain with rustfmt and clippy, and Ruby's gem
-# (kramdown-rfc is installed into a temporary directory).
+# and dco.yml (sign-off and AI co-author trailers). Needs uv (Python 3.9 and
+# 3.12), Go, npm (Node 22 comes through npx), the current stable Rust with
+# rustfmt and clippy, as CI installs (`rustup update stable` if older), and
+# Ruby's gem (kramdown-rfc is installed into a temporary directory).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 root="$PWD"
+
+# The vector generators and `go mod tidy` rewrite these paths and then compare
+# them with HEAD, so uncommitted work there would be overwritten or reported
+# as drift. Refuse to start until it is committed.
+regenerated=(vectors provenance-mode-vectors go/go.mod go/go.sum)
+if [ -n "$(git status --porcelain --untracked-files=all -- "${regenerated[@]}")" ]; then
+  git status --short -- "${regenerated[@]}" >&2
+  echo "check.sh rewrites ${regenerated[*]}: commit or stash these changes first" >&2
+  exit 1
+fi
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
