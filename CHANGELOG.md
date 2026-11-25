@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: nothing after `go/v0.24.0`, `python/v0.19.0` and `ts/v0.16.0`. The `reason` entry below shipped in `ts/v0.16.0` and is listed here until a `go` tag carries it. The Rust crates keep their own
+Not yet in every package tag it touches. The latest tags are `go/v0.24.0`, `python/v0.20.0` and `ts/v0.16.0`; the `reason` entry below shipped in `ts/v0.16.0`, and the other entries below in `python/v0.20.0`. Each is listed here until the remaining package tags (`go`, and `ts` where it changed the TypeScript package) carry it. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
@@ -27,6 +27,110 @@ has not yet.
   (55 cases) with a Python generator and an independent evaluator test (#627).
 
 - Evidence Bundle -03 `composed/v1`: a History answer can be a member (#537). It is an `artifact` member whose body is `history`: the evidence-interop envelope as received and the anchor checkpoint its `anchor.digest` names, with the envelope's digest as the member digest. A verifier checks the envelope signature, the artifact, request and card-anchor digests and the anchor checkpoint, never the card's counts, and a History that passes has a join view: its responder key and anchor time. A new join basis, `same_key`, ties a party's History to its own half of an exchange: a member Bundle's key is read only from its root record's verified producer signature, never through a pointer, and an agreement is always redundant. `controller_binding` also derives with a History member, two Histories included. For a join between a History and a root record the verifier reports both times and whether the History's is before, equal to or after the record's, as facts with no join state. Python, Go, TypeScript and Rust implement it, and `vectors/bundle/composed-history/` (30 cases) pins it, with an independent Python re-derivation and the cross-language interlock. A verifier from before this change reads a `same_key` join as malformed and a `history` member as carrying no body, so a producer adds either only once -03 is posted.
+
+- Evidence Bundle -03 `composed/v1` member keys (#663): under `controller_binding` and `same_key`, a member Bundle's key comes from its root record's verified producer signature or, for a root record with neither `signature` nor `key_id`, from the Bundle's checkpoint signer when the record's identity and its own membership under that checkpoint hold, at the checkpoint's time. A present signature that fails never falls back, and a key is never read from a value the record states, so `controller_binding`'s `pointer` is optional and, when present, must select that key. Every such join reports each member's key source (`record_signature`, `log_checkpoint`, `history` or `none`). A block that -02 rules linked through a key its root record merely names becomes `not_derivable`. Python, Go, TypeScript and Rust implement it; `vectors/bundle/composed-key-source/` (18 cases) pins it, and the `controller_binding` and History vectors gain the reported key sources.
+
+- Spec: draft-06 no longer cites a CPB Artifact Type registry, which CPB does not define (#412). It
+  declares one artifact type, `agent-action-capsule` (`digest_alg` `"SHA-256"`, `digest` the cited
+  Capsule ID), and accepts every other `references[].type` only through a declaration a citing
+  profile names by stable normative reference, of which a deployment may accept a subset. The
+  verifiers accept only `agent-action-capsule`: check 8 reports a well-formed `references` entry of
+  any other type as the new informational finding `reference_type_unresolved` (CPB Unresolved, cause
+  `context`). It never rejects, and `ok` does not change. Python, Go and TypeScript report it; the
+  vectors `reference-unknown-type-algorithm`, `reference-same-hex-other-type`,
+  `reference-unregistered-capsule-token` and the two `pos-provenance-mode-witnessed-corroborated`
+  vectors now expect it, the new vector `reference-undeclared-type` pins it, and
+  `reference-undeclared-type-malformed` pins that a malformed reference is reported by check 1 only.
+- Removed: the vendored CPB registry snapshots (`cpb_registry.json` and `cpb_provisional.json` in
+  Python, `cpb_provisional.json` in Go and TypeScript), the `vendor_cpb_registry.py` refresh script,
+  the Python `load_cpb_provisional_values` and `find_cpb_provisional` functions, the
+  `AAC_CPB_PROVISIONAL_PATH` override, the Go `registries.ProvisionalValues` function, the Go check-8
+  `registry_snapshot_unavailable` warning and the check-8 `known_provisional_registry_value` finding
+  (#418). CPB does not authorize artifact-type discovery from a registry snapshot. The bundled
+  snapshot listed no capsule field values since #602, so it produced that finding for no input; in
+  Python, a caller-supplied snapshot through `AAC_CPB_PROVISIONAL_PATH` still could, and no longer
+  does.
+
+## python 0.20.0 — 2026-11-25
+
+Tag `python/v0.20.0`. The pull requests that changed `python/` since `python/v0.19.0`:
+
+- fix(anchor): entry_hash under the declared scheme; Receipts carry iss, sub, kid (#685)
+- fix(spec): declare artifact types per CPB; drop the vendored CPB registry (#650)
+- fix(bundle-03): member keys from verified signatures or the log checkpoint (#663) (#666)
+- feat(bundle-03): composed/v1 History members and the same_key join (#537) (#664)
+- feat(spec): person signature v0, the person's own key beside an approval record (#627) (#656)
+
+Changes since `python/v0.19.0`: every Unreleased entry that changed the Python package or no package directory (spec, vectors). The Evidence Result `reason` entry changed only the Go and TypeScript packages and stays under Unreleased.
+
+- Spec: Person Signature v0 (`spec/person-signature-v0.md`, informational). A person's signature,
+  made with the person's own key, over the digest of a record that another party signed, carried
+  beside the record in `person_signatures`, never inside it. The first key type is `webauthn`: an
+  assertion whose challenge is `person-signature/0:<record_digest>`, checked offline against the
+  person keys, relying party id and origins the using profile supplies. A record without one reads
+  `NOT_PRESENT`, "not signed by the person". Conformance vectors: `vectors/person-signature-v0/`
+  (55 cases) with a Python generator and an independent evaluator test (#627).
+
+- Evidence Bundle -03 `composed/v1`: a History answer can be a member (#537). It is an `artifact` member whose body is `history`: the evidence-interop envelope as received and the anchor checkpoint its `anchor.digest` names, with the envelope's digest as the member digest. A verifier checks the envelope signature, the artifact, request and card-anchor digests and the anchor checkpoint, never the card's counts, and a History that passes has a join view: its responder key and anchor time. A new join basis, `same_key`, ties a party's History to its own half of an exchange: a member Bundle's key is read only from its root record's verified producer signature, never through a pointer, and an agreement is always redundant. `controller_binding` also derives with a History member, two Histories included. For a join between a History and a root record the verifier reports both times and whether the History's is before, equal to or after the record's, as facts with no join state. Python, Go, TypeScript and Rust implement it, and `vectors/bundle/composed-history/` (30 cases) pins it, with an independent Python re-derivation and the cross-language interlock. A verifier from before this change reads a `same_key` join as malformed and a `history` member as carrying no body, so a producer adds either only once -03 is posted.
+
+- Spec, clarifications of verifier output in -06 (AAC#89, AAC#105): a `references` target is
+  identified by its whole typed digest `{type, digest_alg, digest}`, and only an
+  `agent-action-capsule`/`SHA-256` entry can duplicate the chain parent (§xref). Class 1 now says
+  that a fail-closed declaration still reports the other checks and the derived modes, except the
+  format-4-only `references` checks; that a verifier with no store reports the store-level chain
+  checks as not run (info); that a later concurrent supersedes is info; and that only overclaims
+  are reported. §everyverdict states that the every-verdict requirement binds the producer and
+  cannot be checked from the Capsules a verifier holds. The Python, Go, TypeScript and Rust
+  verifiers already behave this way, and no vector expectation changes. The capsule vectors
+  README now lists every member removed for the Capsule ID.
+
+- Python anchor client and transparent verifier (#683). `submit_anchor` checks the service's `entry_hash` under the `entry_hash_scheme` it declares: `sig_structure` (SHA-256 of the statement's RFC 9052 `Sig_structure`, what the `ts.agentactioncapsule.org` witness sends) or `legacy` (SHA-256 of the statement bytes, also assumed when the field is absent); it refuses any other scheme, and it now verifies the returned Receipt for that entry under the log key. Before, it required the legacy digest and raised on every registration at the witness. `verify_transparent` requires a verified Receipt to carry the CWT `iss` and `sub` claims and a `kid` (or `x5t`/`x5chain`) header, as RFC 9943 Section 6 makes them MUST; a Receipt without them is not verified and the statement is not `anchored`. A Receipt whose log-signed `iat` is before 2026-11-26T00:00:00Z (`LEGACY_RECEIPT_IAT_CUTOFF`) and lacks them is reported in the new `TransparentReport.receipt_findings` instead, so receipts the witness issued before it signed the headers keep verifying. The `anchor` and `transparent` extras require `scitt-cose>=0.5.0`.
+
+- Spec: `spec/bilateral-attestation-mapping-v0.md` (informational, pre-Internet-Draft) maps the
+  records two producers seal for a two-party exchange onto
+  `draft-mih-agent-bilateral-attestation-03`: a compute-exchange plugin's settlement legs, its
+  session agreement and its payment lifecycle records, and every record type of both versions of
+  a marketplace plugin's deal record profile (v0 and v1), with the countersign and cadence of the core it builds on.
+  Each row is a `draft-mih-agent-settlement-records-01` leg, an interop-profile acceptance record,
+  plugin-local or not emitted, and names its nearest BA object and what it lacks to be one. Findings: no record
+  either producer seals today is a BA object; countersign and cadence do not fit BA without loss; the cadence chain matches the Evidence
+  Bundle `-03` `parent-log-witness/v1` kind link for link, and the mapping lists every member
+  cadence lacks or adds against it, and bundles already sealed under the cadence name are
+  read by a plugin-side verifier, not re-carried; BA
+  has no slot for intent, and an optional digest reference carries it with no new member; the
+  negotiation trail is plugin-local in both versions, though v1 signs each party's own moves; the
+  agreed terms verify without the trail only as an SR terms leg cited by the other side, which v1
+  carries on an offer with one payment row; the v1 agreement pair is not a BA exchange; and v1 seals
+  no delivered leg, so the core is complete at neither version of the deal profile. It changes no draft and
+  registers nothing.
+
+- Evidence Bundle -03 `composed/v1` member keys (#663): under `controller_binding` and `same_key`, a member Bundle's key comes from its root record's verified producer signature or, for a root record with neither `signature` nor `key_id`, from the Bundle's checkpoint signer when the record's identity and its own membership under that checkpoint hold, at the checkpoint's time. A present signature that fails never falls back, and a key is never read from a value the record states, so `controller_binding`'s `pointer` is optional and, when present, must select that key. Every such join reports each member's key source (`record_signature`, `log_checkpoint`, `history` or `none`). A block that -02 rules linked through a key its root record merely names becomes `not_derivable`. Python, Go, TypeScript and Rust implement it; `vectors/bundle/composed-key-source/` (18 cases) pins it, and the `controller_binding` and History vectors gain the reported key sources.
+
+- Spec: draft-06 no longer cites a CPB Artifact Type registry, which CPB does not define (#412). It
+  declares one artifact type, `agent-action-capsule` (`digest_alg` `"SHA-256"`, `digest` the cited
+  Capsule ID), and accepts every other `references[].type` only through a declaration a citing
+  profile names by stable normative reference, of which a deployment may accept a subset. The
+  verifiers accept only `agent-action-capsule`: check 8 reports a well-formed `references` entry of
+  any other type as the new informational finding `reference_type_unresolved` (CPB Unresolved, cause
+  `context`). It never rejects, and `ok` does not change. Python, Go and TypeScript report it; the
+  vectors `reference-unknown-type-algorithm`, `reference-same-hex-other-type`,
+  `reference-unregistered-capsule-token` and the two `pos-provenance-mode-witnessed-corroborated`
+  vectors now expect it, the new vector `reference-undeclared-type` pins it, and
+  `reference-undeclared-type-malformed` pins that a malformed reference is reported by check 1 only.
+- Removed: the vendored CPB registry snapshots (`cpb_registry.json` and `cpb_provisional.json` in
+  Python, `cpb_provisional.json` in Go and TypeScript), the `vendor_cpb_registry.py` refresh script,
+  the Python `load_cpb_provisional_values` and `find_cpb_provisional` functions, the
+  `AAC_CPB_PROVISIONAL_PATH` override, the Go `registries.ProvisionalValues` function, the Go check-8
+  `registry_snapshot_unavailable` warning and the check-8 `known_provisional_registry_value` finding
+  (#418). CPB does not authorize artifact-type discovery from a registry snapshot. The bundled
+  snapshot listed no capsule field values since #602, so it produced that finding for no input; in
+  Python, a caller-supplied snapshot through `AAC_CPB_PROVISIONAL_PATH` still could, and no longer
+  does.
+
+- Spec: `spec/standard-history-v0.md` §10 adds open point SH-19 (agent-action-capsule#505): the
+  outcomes of each role's deals. `/1` to `/4` keep `roles` and `outcomes` as separate tallies; the
+  split is not adopted until a reader of a card needs it, and would be a new token. Not normative; no
+  card member, counting table, pack, vector or wire form changes.
 
 ## ts 0.16.0 — 2026-11-22
 
