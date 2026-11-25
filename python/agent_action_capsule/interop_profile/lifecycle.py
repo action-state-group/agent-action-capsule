@@ -27,6 +27,7 @@ from ._common import (
     PropertyReport,
     TrustPolicy,
     ed25519_verify_hex,
+    envelope_signing_input,
     is_digest,
     is_key_id,
     is_profile_time,
@@ -49,8 +50,6 @@ RECORD_KINDS = ("lifecycle_statement", "producer_record", "acceptance_record", "
                 "envelope", "refusal", "absence_record", "other")
 # §11.2.4: kinds an amends or supersedes statement must not target.
 _EXCLUDED = frozenset({"acceptance_record", "acceptance_receipt", "envelope", "refusal", "absence_record"})
-_ENVELOPE_SIGNED = ("profile", "request_digest", "subject", "derivation", "anchor", "artifact_digest",
-                    "verification", "responder", "issued_at")
 
 
 @dataclass(frozen=True)
@@ -191,7 +190,7 @@ def _issuer(kind: str, v: dict | None) -> str | None:
         body = jcs_or_none({k: v.get(k) for k in ("issued_at", "reason", "request_digest")})
         return v.get("key_id") if body is not None and ed25519_verify_hex(v.get("key_id"), v.get("sig"), body) else None
     if kind == "envelope":
-        body = jcs_or_none({k: v[k] for k in _ENVELOPE_SIGNED if k in v})
+        body = envelope_signing_input(v)
         key = v.get("responder")
         return key if body is not None and ed25519_verify_hex(key, v.get("sig"), body) else None
     return None

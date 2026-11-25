@@ -155,6 +155,15 @@ of <date>" with the label that the dates and the switch come from the
 contract and are not re-checked here. `ResultClaim.outOfScopeAllowed`,
 `appliesFrom` and `later` carry the copied facts.
 
+**Reason (spec §4.4).** `ResultClaim.reason` carries a claim's `reason` token
+as written, and `reasonKind` its kind from `REASON_KINDS`, the section's
+registry: `finding` (a check failed; a renderer shows it as a warning),
+`setting` (the producer's trust configuration; shown neutrally) or
+`unregistered` (a token this revision does not list; shown raw and
+neutrally, never as a finding). Nothing in this module reads either: no
+bucket, count or claim axis changes with them. A renderer labels the reason
+as the producer's statement.
+
 **Counts are recomputed from the claims.** Coverage counts evaluations, one
 per claim (`spec/evidence-result-v0.md` §3), so `evaluated_population` and
 `unknown_count` are recomputed as the claim count and the claims whose

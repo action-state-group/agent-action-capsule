@@ -555,7 +555,8 @@ References to external authorization records carried in the Effect Record
 (for example, permit receipts per {{I-D.munoz-scitt-permit-profile}}, or
 machine mandates) are typed digest references per
 {{I-D.mih-sokolov-scitt-payload-binding}}'s Typed Digest References
-section, with artifact types drawn from the CPB Artifact Type registry.
+section. CPB defines no artifact-type registry; the artifact types such a
+reference may name are accepted as {{xref}} states.
 Cross-profile comparability of digest values (comparable only under
 compatible declared digest contexts; otherwise indeterminate/deny, never
 equal-looking-hex) follows that document's Cross-Profile Comparability
@@ -571,7 +572,7 @@ This profile's own `chain.parent_capsule_id`, `reason_digest`,
 the typed digest reference above: they are bare intra-profile digests and
 join keys, either a current JSON digest or an opaque correlation string, not
 `{type, digest_alg, digest}` objects citing an external artifact by
-registered artifact type. They MUST NOT be interpreted as CPB typed digest
+declared artifact type. They MUST NOT be interpreted as CPB typed digest
 references. Only the external-authorization references described in this
 paragraph use the CPB typed-reference mechanism.
 
@@ -1075,9 +1076,21 @@ target (Digest as identity, below) and is not a duplicate.
 reference {{I-D.mih-sokolov-scitt-payload-binding}}: `{type, digest_alg,
 digest}`, the same mechanism this profile already uses for the
 external-authorization references of the Effect Record ({{effect}}).
-`type` names an artifact type per the CPB Artifact Type registry; this
-document defines the `references` entry shape, not an exhaustive list
-of what may be cited.
+`type` is an artifact-type identifier. CPB defines no artifact-type
+registry, and this document creates none. This document declares one
+artifact type, `agent-action-capsule`, with one digest context and no
+purpose label: `digest_alg` is exactly `"SHA-256"` and `digest` is the
+cited Capsule's `capsule_id` ({{identity}}), 64 lowercase hexadecimal
+characters. Every other `type` is accepted only through an artifact-type
+declaration that a citing profile identifies by stable normative
+reference, of which a deployment MAY accept a subset, as CPB's
+Cross-Profile Comparability subsection requires; a verifier MUST NOT
+discover a type from an unspecified or mutable registry snapshot. A
+well-formed `references` entry whose `type` matches no accepted
+declaration is Unresolved (cause: `context`) in CPB's terms,
+which check 8 of {{verification}} reports as informational and never as a
+rejection. This document defines the `references` entry shape, not an
+exhaustive list of what may be cited.
 
 **Digest as identity.** A `references` entry's target is identified
 solely by its typed digest, the `{type, digest_alg, digest}` triple from
@@ -1218,8 +1231,8 @@ recorded and MUST NOT report it as independently verified.
 a registry-governed (Specification Required, {{iana}}) string stating
 why this Capsule cites the target. `citation_purpose` is a distinct
 vocabulary from CPB's own `purpose` field on a typed digest reference:
-CPB's `purpose` selects among an artifact type's registered digest
-contexts, and `citation_purpose` is this profile's own, separately-named
+CPB's `purpose` selects among the digest contexts that an artifact
+type's declaration defines, and `citation_purpose` is this profile's own, separately-named
 field for the citing relationship, never a repurposing of CPB's field.
 The seeded vocabulary:
 
@@ -1370,6 +1383,9 @@ its result is not `ok`.
    `chain.relation`, `citation_purpose`): report as informational
    findings; MUST NOT reject ({{iana}}). An unknown `effect_attestation`
    is additionally graded no stronger than `runtime_claimed` ({{effect}}).
+   A well-formed `references` entry whose `type` matches no accepted
+   artifact-type declaration ({{xref}}) is likewise reported as an informational
+   finding (Unresolved, cause `context`); MUST NOT reject.
 9. Provenance mode: `provenance_mode.mode: "backfilled"` without a
    well-formed `provenance_mode` block (`source_ref`, `source_asserted_at`,
    `import_batch`, and `imported_at` all present and well-formed) is a
@@ -1735,8 +1751,8 @@ Initial contents are the seeded values of this document, verbatim:
    from, and never a
    repurposing of, CPB's own
    `purpose` field on a typed digest reference
-   ({{I-D.mih-sokolov-scitt-payload-binding}}), which selects among an
-   artifact type's registered digest contexts and is orthogonal to any
+   ({{I-D.mih-sokolov-scitt-payload-binding}}), which selects among the
+   digest contexts an artifact type's declaration defines and is orthogonal to any
    role a companion profile assigns a digest within a cross-document
    citation. Designated-expert guidance: `acted_on`, `responds_to`, and
    `ran_under` name a citation whose target is outside the citing Capsule's own chain — a

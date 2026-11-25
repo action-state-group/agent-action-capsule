@@ -63,8 +63,10 @@ func referenceFindings(capsule map[string]interface{}, known map[string]map[stri
 			add("reference_malformed", path+" MUST be an object (§5.5.5)", 1, "error")
 			continue
 		}
+		wellFormed := true
 		for _, field := range []string{"type", "digest_alg", "digest"} {
 			if value, ok := ref[field].(string); !ok || value == "" {
+				wellFormed = false
 				add("reference_malformed", path+"."+field+" MUST be a non-empty string (§5.5.5)", 1, "error")
 			}
 		}
@@ -78,6 +80,12 @@ func referenceFindings(capsule map[string]interface{}, known map[string]map[stri
 			if parent != "" && digest == parent {
 				add("reference_duplicates_chain_parent", path+" duplicates chain.parent_capsule_id (§5.5.5)", 6, "error")
 			}
+		}
+		// This verifier accepts only AAC's own artifact type and never discovers
+		// one from a registry snapshot (CPB Cross-Profile Comparability). Only a
+		// well-formed reference is Unresolved; a malformed one is check 1's.
+		if wellFormed && ref["type"] != "agent-action-capsule" {
+			add("reference_type_unresolved", path+".type is not agent-action-capsule, the one artifact type this verifier accepts; Unresolved (cause: context), informational, not rejected (§5.5.5)", 8, "info")
 		}
 		if rawPurpose, present := ref["citation_purpose"]; present {
 			purpose, ok := rawPurpose.(string)

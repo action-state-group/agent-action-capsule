@@ -165,6 +165,9 @@ type Claim struct {
 	// (section 4.2): the fourth bucket is present exactly when a claim
 	// carries it.
 	OutOfScopeAllowed bool
+	// Reason is the claim's reason token, or empty (section 4.4): the
+	// producer's statement, display-only. No rule in this package reads it.
+	Reason string
 	// Evidence is evidence[].digest in order; CarrierEvidence is
 	// presentation.evidence[].digest when the carrier is a disclosure.
 	Evidence        []string
@@ -282,6 +285,7 @@ func readClaims(doc map[string]interface{}) ([]Claim, []string) {
 		claim.Verdict, _ = object["verdict"].(string)
 		claim.AppliesFrom, _ = object["applies_from"].(string)
 		claim.OutOfScopeAllowed, _ = object["out_of_scope_allowed"].(bool)
+		claim.Reason, _ = object["reason"].(string)
 		claim.Evidence = digests(object["evidence"])
 		if presentation, ok := object["presentation"].(map[string]interface{}); ok && presentation["kind"] == "disclosure" {
 			claim.CarrierEvidence = digests(presentation["evidence"])

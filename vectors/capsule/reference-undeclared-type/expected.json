@@ -1,0 +1,25 @@
+{
+  "description": "an artifact type with no accepted declaration is Unresolved (cause: context), informational, never a rejection",
+  "kind": "positive",
+  "ok": true,
+  "derived": {
+    "effect_mode": "not_applicable",
+    "attestation_mode": "self_attested",
+    "ledger_mode": "chained"
+  },
+  "capsule_id_recomputed": "79fd6b61e0d1bcb821dc39364306efe0588841e41e0ff0728d19731c7974eccb",
+  "findings": [
+    {
+      "check": 6,
+      "severity": "info",
+      "code": "chain_check_store_level",
+      "detail": "chain parent-existence and concurrent-supersedes are store-level checks (\u00a76); not run without a store"
+    },
+    {
+      "check": 8,
+      "severity": "info",
+      "code": "reference_type_unresolved",
+      "detail": "references[0].type is not agent-action-capsule, the one artifact type this verifier accepts; Unresolved (cause: context), informational, not rejected (\u00a75.5.5)"
+    }
+  ]
+}

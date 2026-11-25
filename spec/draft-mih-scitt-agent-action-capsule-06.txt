@@ -4,8 +4,8 @@
 
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Standards Track                        21 November 2026
-Expires: 25 May 2027
+Intended status: Standards Track                        24 November 2026
+Expires: 28 May 2027
 
 
                An Agent Action Capsule Profile for SCITT
@@ -47,13 +47,13 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 25 May 2027.
+   This Internet-Draft will expire on 28 May 2027.
 
 
 
 
 
-Mih                        Expires 25 May 2027                  [Page 1]
+Mih                        Expires 28 May 2027                  [Page 1]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Mih                        Expires 25 May 2027                  [Page 2]
+Mih                        Expires 28 May 2027                  [Page 2]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -165,7 +165,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 3]
+Mih                        Expires 28 May 2027                  [Page 3]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -221,7 +221,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 4]
+Mih                        Expires 28 May 2027                  [Page 4]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -277,7 +277,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 5]
+Mih                        Expires 28 May 2027                  [Page 5]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -333,7 +333,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 6]
+Mih                        Expires 28 May 2027                  [Page 6]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -389,7 +389,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 7]
+Mih                        Expires 28 May 2027                  [Page 7]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -445,7 +445,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 8]
+Mih                        Expires 28 May 2027                  [Page 8]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -501,7 +501,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                  [Page 9]
+Mih                        Expires 28 May 2027                  [Page 9]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -557,7 +557,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 10]
+Mih                        Expires 28 May 2027                 [Page 10]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -613,7 +613,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 11]
+Mih                        Expires 28 May 2027                 [Page 11]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -669,7 +669,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 12]
+Mih                        Expires 28 May 2027                 [Page 12]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -725,7 +725,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 13]
+Mih                        Expires 28 May 2027                 [Page 13]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -781,7 +781,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 14]
+Mih                        Expires 28 May 2027                 [Page 14]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -837,7 +837,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 15]
+Mih                        Expires 28 May 2027                 [Page 15]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -893,7 +893,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 16]
+Mih                        Expires 28 May 2027                 [Page 16]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -902,8 +902,9 @@ Internet-Draft            Agent Action Capsules            November 2026
    Record (for example, permit receipts per
    [I-D.munoz-scitt-permit-profile], or machine mandates) are typed
    digest references per [I-D.mih-sokolov-scitt-payload-binding]'s Typed
-   Digest References section, with artifact types drawn from the CPB
-   Artifact Type registry.  Cross-profile comparability of digest values
+   Digest References section.  CPB defines no artifact-type registry;
+   the artifact types such a reference may name are accepted as
+   Section 5.5.5 states.  Cross-profile comparability of digest values
    (comparable only under compatible declared digest contexts; otherwise
    indeterminate/deny, never equal-looking-hex) follows that document's
    Cross-Profile Comparability subsection.
@@ -919,8 +920,8 @@ Internet-Draft            Agent Action Capsules            November 2026
    the typed digest reference above: they are bare intra-profile digests
    and join keys, either a current JSON digest or an opaque correlation
    string, not {type, digest_alg, digest} objects citing an external
-   artifact by registered artifact type.  They MUST NOT be interpreted
-   as CPB typed digest references.  Only the external-authorization
+   artifact by declared artifact type.  They MUST NOT be interpreted as
+   CPB typed digest references.  Only the external-authorization
    references described in this paragraph use the CPB typed-reference
    mechanism.
 
@@ -948,8 +949,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-
-Mih                        Expires 25 May 2027                 [Page 17]
+Mih                        Expires 28 May 2027                 [Page 17]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 18]
+Mih                        Expires 28 May 2027                 [Page 18]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 19]
+Mih                        Expires 28 May 2027                 [Page 19]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 20]
+Mih                        Expires 28 May 2027                 [Page 20]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 21]
+Mih                        Expires 28 May 2027                 [Page 21]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1229,7 +1229,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 22]
+Mih                        Expires 28 May 2027                 [Page 22]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1285,7 +1285,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 23]
+Mih                        Expires 28 May 2027                 [Page 23]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1341,7 +1341,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 24]
+Mih                        Expires 28 May 2027                 [Page 24]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1397,7 +1397,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 25]
+Mih                        Expires 28 May 2027                 [Page 25]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1453,7 +1453,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 26]
+Mih                        Expires 28 May 2027                 [Page 26]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1509,7 +1509,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 27]
+Mih                        Expires 28 May 2027                 [Page 27]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1565,7 +1565,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 28]
+Mih                        Expires 28 May 2027                 [Page 28]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1621,7 +1621,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 29]
+Mih                        Expires 28 May 2027                 [Page 29]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1677,7 +1677,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 30]
+Mih                        Expires 28 May 2027                 [Page 30]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1733,7 +1733,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 31]
+Mih                        Expires 28 May 2027                 [Page 31]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1779,21 +1779,33 @@ Internet-Draft            Agent Action Capsules            November 2026
    reference [I-D.mih-sokolov-scitt-payload-binding]: {type, digest_alg,
    digest}, the same mechanism this profile already uses for the
    external-authorization references of the Effect Record (Section 5.3).
-   type names an artifact type per the CPB Artifact Type registry; this
-   document defines the references entry shape, not an exhaustive list
-   of what may be cited.
+   type is an artifact-type identifier.  CPB defines no artifact-type
+   registry, and this document creates none.  This document declares one
+   artifact type, agent-action-capsule, with one digest context and no
+   purpose label: digest_alg is exactly "SHA-256" and digest is the
+   cited Capsule's capsule_id (Section 5.1), 64 lowercase hexadecimal
+   characters.  Every other type is accepted only through an artifact-
+   type declaration that a citing profile identifies by stable normative
 
-   *Digest as identity.* A references entry's target is identified
-   solely by its typed digest, the {type, digest_alg, digest} triple
-   from its shape (above); no producer-local identifier, URI, or other
 
 
-
-Mih                        Expires 25 May 2027                 [Page 32]
+Mih                        Expires 28 May 2027                 [Page 32]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
 
+   reference, of which a deployment MAY accept a subset, as CPB's Cross-
+   Profile Comparability subsection requires; a verifier MUST NOT
+   discover a type from an unspecified or mutable registry snapshot.  A
+   well-formed references entry whose type matches no accepted
+   declaration is Unresolved (cause: context) in CPB's terms, which
+   check 8 of Section 6 reports as informational and never as a
+   rejection.  This document defines the references entry shape, not an
+   exhaustive list of what may be cited.
+
+   *Digest as identity.* A references entry's target is identified
+   solely by its typed digest, the {type, digest_alg, digest} triple
+   from its shape (above); no producer-local identifier, URI, or other
    locator carried alongside an entry constitutes an alternative
    identity. type is part of the identity because it fixes what the
    digest was computed over: the same digest octets under a different
@@ -1824,38 +1836,20 @@ Internet-Draft            Agent Action Capsules            November 2026
    artifact be identified by content rather than by name originates
    here.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 25 May 2027                 [Page 33]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    *Identity references, never policy references.* Every references
    entry, as defined above, is an IDENTITY reference: its typed digest
    {type, digest_alg, digest} pins the exact bytes of one target, the
    same discipline capsule_id gives this Capsule itself (Section 5.1) —
    for a cited AAC Capsule, checking a references entry against that
    Capsule's own capsule_id computation is exactly this comparison.
+
+
+
+Mih                        Expires 28 May 2027                 [Page 33]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
    This profile defines no POLICY reference: a citation of the shape
    "this issuer, this subject, at least this version," which
    deliberately pins no historical bytes and instead names an evolving
@@ -1901,7 +1895,13 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 34]
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 34]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -1957,7 +1957,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 35]
+Mih                        Expires 28 May 2027                 [Page 35]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2013,7 +2013,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 36]
+Mih                        Expires 28 May 2027                 [Page 36]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2031,10 +2031,10 @@ Internet-Draft            Agent Action Capsules            November 2026
    registry-governed (Specification Required, Section 12) string stating
    why this Capsule cites the target. citation_purpose is a distinct
    vocabulary from CPB's own purpose field on a typed digest reference:
-   CPB's purpose selects among an artifact type's registered digest
-   contexts, and citation_purpose is this profile's own, separately-
-   named field for the citing relationship, never a repurposing of CPB's
-   field.  The seeded vocabulary:
+   CPB's purpose selects among the digest contexts that an artifact
+   type's declaration defines, and citation_purpose is this profile's
+   own, separately-named field for the citing relationship, never a
+   repurposing of CPB's field.  The seeded vocabulary:
 
    +========================+=========================================+
    | citation_purpose       | Meaning                                 |
@@ -2069,7 +2069,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 37]
+Mih                        Expires 28 May 2027                 [Page 37]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2125,7 +2125,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 38]
+Mih                        Expires 28 May 2027                 [Page 38]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2181,7 +2181,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 39]
+Mih                        Expires 28 May 2027                 [Page 39]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2237,7 +2237,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 40]
+Mih                        Expires 28 May 2027                 [Page 40]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2293,7 +2293,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 41]
+Mih                        Expires 28 May 2027                 [Page 41]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2313,7 +2313,10 @@ Internet-Draft            Agent Action Capsules            November 2026
        citation_purpose): report as informational findings; MUST NOT
        reject (Section 12).  An unknown effect_attestation is
        additionally graded no stronger than runtime_claimed
-       (Section 5.3).
+       (Section 5.3).  A well-formed references entry whose type matches
+       no accepted artifact-type declaration (Section 5.5.5) is likewise
+       reported as an informational finding (Unresolved, cause context);
+       MUST NOT reject.
 
    9.  Provenance mode: provenance_mode.mode: "backfilled" without a
        well-formed provenance_mode block (source_ref,
@@ -2332,28 +2335,6 @@ Internet-Draft            Agent Action Capsules            November 2026
        likewise a failure — the laundering shape Section 5.4.3 already
        describes.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 25 May 2027                 [Page 42]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    Disposition honesty is structurally guaranteed, not a live check
    above.  The honesty invariant — human_disposed: true REQUIRES
    approver: "human" (Section 5.5) — is enforced when the disposition is
@@ -2365,6 +2346,14 @@ Internet-Draft            Agent Action Capsules            November 2026
    disposition is an unrepresentable state rather than a runtime failure
    mode.  A verifier consuming arbitrary bytes not produced by a
    conforming constructor SHOULD nonetheless assert the invariant
+
+
+
+Mih                        Expires 28 May 2027                 [Page 42]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
    defensively against hand-crafted input.  The closed approver enum
    (Section 5.5) is likewise structural: an approver value outside the
    closed set defined in Section 5.5 is non-conforming by construction
@@ -2403,13 +2392,6 @@ Internet-Draft            Agent Action Capsules            November 2026
       set is Section 6.  Producer Envelope and Receipt results are
       reported independently and do not alter payload Class 1.
 
-
-
-Mih                        Expires 25 May 2027                 [Page 43]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    Class 2 verifier:  A Class 1 verifier that additionally performs
       manifest-aware verification (Section 8.2): constraint evidence-
       schema checks and manifest-sourced thresholds.  Class 2
@@ -2417,6 +2399,16 @@ Internet-Draft            Agent Action Capsules            November 2026
       manifest and the private evidence its Constraint Records bind;
       absent those inputs, a Class 2 verifier reports Class 1 results
       unchanged.
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 43]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
 
 8.  Manifest-dependent material
 
@@ -2459,18 +2451,20 @@ Internet-Draft            Agent Action Capsules            November 2026
    complete Class 1 set (Section 6); their results never weaken a Class
    1 result — they extend it.
 
-
-
-Mih                        Expires 25 May 2027                 [Page 44]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    1.  Constraint evidence-schema check: for each Constraint Record
        (Section 8.1) carrying an evidence_digest, confirm the bound
        evidence conforms to the manifest's evidence schema for that
        constraint id and that the recomputed digest matches; a mismatch
        is a failure.
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 44]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
 
    2.  Threshold checks: confirm that manifest-sourced thresholds were
        applied as the manifest states.
@@ -2515,18 +2509,19 @@ Internet-Draft            Agent Action Capsules            November 2026
    [I-D.ietf-spice-sd-cwt] (the CBOR sibling) for SCITT-ecosystem
    consistency.
 
-
-
-Mih                        Expires 25 May 2027                 [Page 45]
-
-Internet-Draft            Agent Action Capsules            November 2026
-
-
    The complete normative profile of this mechanism — including the
    commitment encoding, disclosure syntax, and verifier checks — is
    defined in the companion Internet-Draft
    [I-D.mih-scitt-agent-action-capsule-sel-disc].  This profile (AAC)
    retains only the eligibility-policy annex: the declaration of which
+
+
+
+Mih                        Expires 28 May 2027                 [Page 45]
+
+Internet-Draft            Agent Action Capsules            November 2026
+
+
    AAC payload fields are eligible for selective disclosure and which
    are non-eligible because this profile's own verifier requires their
    values in clear.
@@ -2570,16 +2565,18 @@ Internet-Draft            Agent Action Capsules            November 2026
    transparency obligations of EU AI Act Article 50.
    [I-D.sato-soos-gar] defines session-level Governance Audit Records
    produced by a governing enforcement component; this profile differs
+   in recording per-action verdicts with effect-state binding rather
+   than session-close summaries.
 
 
 
-Mih                        Expires 25 May 2027                 [Page 46]
+
+
+
+Mih                        Expires 28 May 2027                 [Page 46]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
-
-   in recording per-action verdicts with effect-state binding rather
-   than session-close summaries.
 
    The distinction this profile contributes is verdict-level disposition
    with effect-state binding: authorization records prove permission was
@@ -2629,7 +2626,10 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 47]
+
+
+
+Mih                        Expires 28 May 2027                 [Page 47]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2685,7 +2685,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 48]
+Mih                        Expires 28 May 2027                 [Page 48]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2741,7 +2741,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 49]
+Mih                        Expires 28 May 2027                 [Page 49]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2781,14 +2781,14 @@ Internet-Draft            Agent Action Capsules            November 2026
        counterparty_half, counterparty_inclusion.  This registry is
        distinct from, and never a repurposing of, CPB's own purpose
        field on a typed digest reference
-       ([I-D.mih-sokolov-scitt-payload-binding]), which selects among an
-       artifact type's registered digest contexts and is orthogonal to
-       any role a companion profile assigns a digest within a cross-
-       document citation.  Designated-expert guidance: acted_on,
-       responds_to, and ran_under name a citation whose target is
-       outside the citing Capsule's own chain — a different producer or
-       a different stream (Section 5.5.5); a citation to the producer's
-       own same-stream chain parent is never expressed here.
+       ([I-D.mih-sokolov-scitt-payload-binding]), which selects among
+       the digest contexts an artifact type's declaration defines and is
+       orthogonal to any role a companion profile assigns a digest
+       within a cross-document citation.  Designated-expert guidance:
+       acted_on, responds_to, and ran_under name a citation whose target
+       is outside the citing Capsule's own chain — a different producer
+       or a different stream (Section 5.5.5); a citation to the
+       producer's own same-stream chain parent is never expressed here.
        corroborates_source_time is the seeded exception to that same-
        stream/cross-stream framing: it cites, by digest, a signed or
        independently witnessed timestamp supporting a provenance_mode
@@ -2797,7 +2797,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 50]
+Mih                        Expires 28 May 2027                 [Page 50]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2853,7 +2853,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 51]
+Mih                        Expires 28 May 2027                 [Page 51]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2909,7 +2909,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 52]
+Mih                        Expires 28 May 2027                 [Page 52]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -2965,7 +2965,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 53]
+Mih                        Expires 28 May 2027                 [Page 53]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3021,7 +3021,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 54]
+Mih                        Expires 28 May 2027                 [Page 54]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3077,7 +3077,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 55]
+Mih                        Expires 28 May 2027                 [Page 55]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3133,7 +3133,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 56]
+Mih                        Expires 28 May 2027                 [Page 56]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3189,7 +3189,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 57]
+Mih                        Expires 28 May 2027                 [Page 57]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3245,7 +3245,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 58]
+Mih                        Expires 28 May 2027                 [Page 58]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3301,7 +3301,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 59]
+Mih                        Expires 28 May 2027                 [Page 59]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3357,7 +3357,7 @@ Internet-Draft            Agent Action Capsules            November 2026
 
 
 
-Mih                        Expires 25 May 2027                 [Page 60]
+Mih                        Expires 28 May 2027                 [Page 60]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3413,7 +3413,7 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-05
 
 
 
-Mih                        Expires 25 May 2027                 [Page 61]
+Mih                        Expires 28 May 2027                 [Page 61]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3469,7 +3469,7 @@ Appendix B.  Changes from draft-mih-scitt-agent-action-capsule-04
 
 
 
-Mih                        Expires 25 May 2027                 [Page 62]
+Mih                        Expires 28 May 2027                 [Page 62]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3525,7 +3525,7 @@ Acknowledgments
 
 
 
-Mih                        Expires 25 May 2027                 [Page 63]
+Mih                        Expires 28 May 2027                 [Page 63]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
@@ -3581,4 +3581,4 @@ Author's Address
 
 
 
-Mih                        Expires 25 May 2027                 [Page 64]
+Mih                        Expires 28 May 2027                 [Page 64]

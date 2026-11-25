@@ -104,12 +104,20 @@ function expectShape(
     status: result.status,
     members,
     composition_closure: closure,
-    joins: result.joins.map((j) => ({
-      members: [...j.members],
-      declared: j.declared,
-      derived: j.derived ?? null,
-      result: j.result,
-    })),
+    joins: result.joins.map((j) => {
+      const value: Obj = {
+        members: [...j.members],
+        declared: j.declared,
+        derived: j.derived ?? null,
+        result: j.result,
+      };
+      if (j.keySources !== undefined)
+        value.key_sources = j.keySources.map((k) => ({
+          member: k.member,
+          source: k.source,
+        }));
+      return value;
+    }),
     corroboration: result.corroboration.map((c) => {
       const value: Obj = { members: [...c.members], result: c.result };
       if (c.result === "redundant") {

@@ -76,6 +76,13 @@ normative:
     date: 2026-10-14
 
 informative:
+  EVIDENCE-INTEROP:
+    title: "Minimum Evidence Interoperability Profile"
+    target: https://github.com/action-state-group/agent-action-capsule/blob/105231a8560fd0ff8a8b3dc0597efcff5c67c176/spec/interop-profile-v2.md
+    author:
+      - org: Action State Group
+    date: false
+    refcontent: "Profile identifiers evidence-interop/0, evidence-interop/1 and evidence-interop/2"
   I-D.mih-agent-evidence-layer:
     title: "Evidence Layer"
     seriesinfo:
@@ -758,7 +765,8 @@ answers of several responders as one portable object. Each responder answered
 one Evidence Request ({{I-D.mih-agent-evidence-request}}) with exactly one of
 three outcomes:
 
-- an artifact, here an Evidence Bundle;
+- an artifact, here an Evidence Bundle or a History answer
+  ({{composed-history}});
 - a signed refusal;
 - a recorded absence.
 
@@ -830,7 +838,13 @@ member-common = (
 
 artifact-member = { member-common, outcome: "artifact",
                     ? bundle: { * tstr => any },   ; a Bundle
+                    ? history: history-body,       ; a History answer
                     ? response: artifact-response }
+
+history-body = {                  ; see "History Members"
+  envelope: { * tstr => any },    ; the envelope as received
+  anchor_checkpoint: tstr,        ; unpadded base64url
+}
 refusal-member  = { member-common, outcome: "refusal",
                     ? refusal: signed-refusal }
 absence-member  = { member-common, outcome: "absence",
@@ -873,7 +887,7 @@ composed-join = {
 
 join-basis = "pre_agreed_identifier" / "shared_artifact_digest" /
              "issued_receipt" / "same_interval" /
-             "controller_binding"
+             "controller_binding" / "same_key"
 join-state = "agree" / "mismatch" / "unjoined" / "one_sided"
 
 label-id   = text .regexp "[A-Za-z0-9._:-]{1,128}"
@@ -884,7 +898,10 @@ A join's `pointer` and each `compare` element are JSON Pointers {{RFC6901}}.
 Member `id` values are unique, and so are observer `id` values. Every member's
 `observer` names a declared observer. Every join names two distinct declared
 members, in ascending order. No two joins share the same `members`, `basis`
-and `pointer`. `not_requested` names participants that the composing party
+and `pointer`. A `same_key` join carries none of `pointer`,
+`identifier_digest` and `compare`. An artifact member carries at most one of
+`bundle` and `history`, and a member that carries `history` carries no
+`response`. `not_requested` names participants that the composing party
 knew of but did not ask. A participant listed there is not a member, and its
 identifier MUST NOT also appear as a member `id`. A block that violates any of
 these rules is malformed. A verifier reports a malformed block as a failed
@@ -905,13 +922,15 @@ are never converted into one another:
 `digest` depends on the outcome:
 
 - For `artifact`, it is the member Evidence Bundle's bundle digest
-  ({{bundle-digest}}).
+  ({{bundle-digest}}), or, for a History member ({{composed-history}}), the
+  lowercase hexadecimal SHA-256 of the UTF-8 JCS {{RFC8785}} serialization
+  of its `history.envelope` object, as carried.
 - For `refusal` and `absence`, it is the lowercase hexadecimal SHA-256 of the
   UTF-8 JCS {{RFC8785}} serialization of the refusal or absence object, as
   carried.
 
-When the body (`bundle`, `refusal` or `absence`) is carried, a verifier MUST
-recompute `digest` from it. For a refusal or absence, it MUST also require the
+When the body (`bundle`, `history`, `refusal` or `absence`) is carried, a
+verifier MUST recompute `digest` from it. For a refusal or absence, it MUST also require the
 body's `request_digest` to equal the member's. A refusal's signature is
 verified under the deployment's signature profile. A verifier that does not
 implement that profile reports the refusal as signature-unverified. It does
@@ -947,6 +966,96 @@ The verifier MUST NOT merge one member's claims with another member's, or with
 the containing Bundle's. The containing Bundle's claims are about its own
 `records` only. A refusal or absence member is not a failed claim: a verifier
 reports it as what it is.
+
+### History Members {#composed-history}
+
+A *History* is a responder's answer to one Evidence Request for its
+`full_history` subject under a derivation that counts its evidence stream up
+to one anchor, such as a History card, whose artifact is the UTF-8 JCS
+serialization of a JSON object that states that anchor in its `anchor`
+member, as the cards of `standard_history` and `inference-service-history`
+do. It is an artifact answer, so a History
+member is an `artifact` member: ER's three outcomes are unchanged. It is not
+an Evidence Bundle and has no root record. Each History is still asked for
+and answered by its own request, one subject per request.
+
+A History member carries, as its body, `history`:
+
+- `envelope`: the artifact response ({{I-D.mih-agent-evidence-request}},
+  "The Artifact Response") as received, artifact octets included. ER lets a
+  deployment profile name the envelope's members. This document reads the
+  members as the Minimum Evidence Interoperability Profile {{EVIDENCE-INTEROP}}
+  names them, under its profile identifiers `evidence-interop/0`,
+  `evidence-interop/1` and `evidence-interop/2`: `profile`, `request_digest`,
+  `subject`, `derivation`, `anchor` (with `anchor.digest`), `artifact_digest`,
+  `verification` when present, `responder`, `issued_at`, `sig` and
+  `artifact` (unpadded base64url).
+- `anchor_checkpoint`: the checkpoint that `anchor.digest` names, as the
+  unpadded base64url of its octets: a CLL COSE checkpoint
+  {{I-D.mih-scitt-checkpointed-local-log}} in the one form whose SHA-256 is
+  `anchor.digest`.
+
+The member's `digest` is the digest of `envelope` ({{composed-members}}). It
+covers the signed `responder`, `anchor` and `artifact_digest`, so the
+composed digest ({{composed-digest}}) binds whose History it is and the
+anchor it is as of. The `response` member is not used for a History: it is
+outside the composed digest, so a second envelope over the same artifact
+octets could change a derived join without changing the composed digest. A
+History member therefore carries no `response`.
+
+The `history` body is malformed, and the block with it, when `envelope` is not
+an object; when its `subject` is not `{"full_history": null}`; when it
+carries no `derivation`; when `responder` is not a key identifier
+({{composed-binding}}); when `sig` is not a string; when `artifact` is not a
+string of unpadded base64url; when `artifact_digest`, `request_digest` or
+`anchor.digest` is not a `digest-hex`; or when `anchor_checkpoint` is not a
+string of unpadded base64url. Unpadded base64url here is the one canonical
+form of {{RFC4648}}, Section 5: its pad bits are zero, so one octet string
+has one text. This is the rule a refusal or absence body outside its form
+already follows ({{composed-block}}): the form is what the composing party
+can check before it composes. A History that is well formed but fails a
+check below is a failed member, never a malformed block.
+
+A verifier checks a carried History member as follows, and reports each
+result on the member:
+
+1. **Envelope signature.** Under the profile identifiers above, `sig` is the
+   Ed25519 {{RFC8032}} signature, in lowercase hexadecimal, by `responder`
+   over the UTF-8 JCS serialization of the object made of those of
+   `profile`, `request_digest`, `subject`, `derivation`, `anchor`,
+   `artifact_digest`, `verification`, `responder` and `issued_at` that are
+   present. A signature that does not verify is failed. An envelope under
+   any other `profile`, or one the verifier cannot check because it has no
+   Ed25519 verifier, is signature-unverified, as a refusal under a profile
+   the verifier does not implement is ({{composed-members}}): neither failed
+   nor absent.
+2. **Artifact digest.** SHA-256 of the `artifact` octets equals
+   `artifact_digest`.
+3. **Request digest.** The envelope's `request_digest` equals the member's.
+4. **Artifact anchor.** The artifact octets are the UTF-8 JCS serialization
+   of a JSON object whose `anchor` member equals `anchor.digest`.
+5. **Anchor checkpoint.** SHA-256 of the `anchor_checkpoint` octets equals
+   `anchor.digest`, and those octets are a CLL COSE checkpoint in the one
+   form {{EVIDENCE-INTEROP}} fixes for a checkpoint (a tagged COSE_Sign1
+   with an empty unprotected header) that verifies under its own key. A
+   verifier that cannot verify a CLL COSE checkpoint reports the checkpoint
+   unverified: neither failed nor verified. The responder signed
+   `anchor.digest`, so the checkpoint's `timestamp` is the responder's
+   statement of when its History is as of.
+
+A failed check 1 to 5 is a failed check of the member. It is not a fourth
+outcome, and a verifier MUST NOT present the History as checked. A verifier
+does not recompute or check the History's counts; that is the History
+derivation's own check, and nothing in this document reads them.
+
+**Join view.** A carried History member that passes checks 1 to 5 has a
+*key*, its envelope's `responder`, and a *time*, its anchor checkpoint's
+`timestamp`. A History member that is declared missing, is
+signature-unverified, or fails any of checks 1 to 5 has no join view, and
+every join naming it is `not_derivable` ({{composed-joins}}). So does a
+History member whose anchor checkpoint is unverified, or whose `envelope`
+does not reproduce the member's `digest`: it is not the History the composed
+digest names.
 
 ### Composition Closure {#composed-closure}
 
@@ -1134,12 +1243,13 @@ The states derive as follows:
 
 - **`one_sided`**: exactly one of the two members has outcome `artifact`
   with records, and the other has none: it is not an artifact, or it is an
-  empty-history Bundle ({{empty-history}}). Under `controller_binding`, a
-  join with an empty-history member is `one_sided` only when the two are
-  linked (below).
+  empty-history Bundle ({{empty-history}}). Under `controller_binding` and
+  `same_key`, a join with an empty-history member is `one_sided` only when
+  the two are linked (below).
 - **`unjoined`**: neither member has outcome `artifact` with records; or one
   has records, the other is an empty-history Bundle, and the
-  `controller_binding` linkage does not link them; or both have records, but
+  `controller_binding` or `same_key` linkage does not link them; or both
+  have records, but
   the linkage basis does not establish that their records are about the same
   thing.
 - **`agree`**: both members are artifacts with records and are linked, and
@@ -1150,8 +1260,16 @@ The states derive as follows:
   at least one `compare` pointer resolves to different values, or does not
   resolve on one side.
 
+A History member with a join view ({{composed-history}}) counts as an
+artifact with records in these rules. It has no root record, so no
+`compare` pointer resolves in it: a linked join naming one that carries
+`compare` derives `mismatch`. A verifier derives a join naming a History
+member only on the bases that define a derivation for one,
+`controller_binding` and `same_key`.
+
 Linkage is evaluated on each artifact member's root record (its bundle's
-`root`). This document defines the derivation for three bases:
+`root`), or on a History member's join view. This document defines the
+derivation for four bases:
 
 - **`pre_agreed_identifier`**: `pointer` selects a string in each root record.
   The members are linked when SHA-256 of that string's UTF-8 octets equals
@@ -1159,28 +1277,114 @@ Linkage is evaluated on each artifact member's root record (its bundle's
   block.
 - **`shared_artifact_digest`**: `pointer` selects a digest string in each root
   record. The members are linked when the two values are identical.
-- **`controller_binding`**: `pointer` selects a key identifier string in each
-  root record, for example `/key_id`, and `identifier_digest` is a binding
-  digest ({{composed-binding}}). The members are linked when a delivered
-  binding record whose binding digest equals `identifier_digest` applies to
-  the two selected values, with T the `timestamp` of each root record
-  ({{I-D.mih-scitt-agent-action-capsule}}). A verifier that received no
-  record with that digest, or only well-formed records with that digest whose
-  `method` or key types it does not implement, reports the join as
-  `not_derivable`; so does a join without `pointer` or `identifier_digest`. Any other record with
+- **`controller_binding`**: `identifier_digest` is a binding digest
+  ({{composed-binding}}). The members are linked when a delivered binding
+  record whose binding digest equals `identifier_digest` applies to the two
+  members' keys, each at its time T, as "Member keys" below determines them.
+  A verifier that received no record with that digest, or only well-formed
+  records with that digest whose `method` or key types it does not
+  implement, reports the join as `not_derivable`; so does a join without
+  `identifier_digest`, or with a member that has no key. Any other record with
   that digest that does not apply (malformed, not signed by both keys, other
-  keys, outside its window, or revoked) leaves the members unjoined. A join on this basis states that the
-  two root records are under keys whose holders bound them, as both of them
-  stated it; it says nothing about who those holders are.
+  keys, outside its window, or revoked) leaves the members unjoined. A join on
+  this basis states that the two members are under keys whose holders bound
+  them, as both of them stated it; it says nothing about who those holders
+  are. T only tests whether the binding was in effect. For a History member
+  it does not state whether that History covers any record of the other
+  member.
+
+  `pointer` is not needed: each key is determined below. A join MAY carry
+  it, as a block written under -02 does; then `pointer` MUST select, in the
+  root record of each member that has one, the key determined below for that
+  member, and a `pointer` that selects any other value there, or does not
+  resolve there, makes the join `not_derivable`. A History member or an
+  empty-history Bundle has no root record, and `pointer` is not checked
+  against it. A composing party following this revision SHOULD omit
+  `pointer`. A -02 verifier reads a join without `pointer` as
+  `not_derivable`, which never overstates it; a verifier following this
+  revision can turn a join that -02 linked into `not_derivable`, when the key
+  a root record names is not a key that signed or logged it.
 
   When one member is an empty-history Bundle ({{empty-history}}), the
-  derivation still runs. That member's key identifier is the key that signed
-  its `checkpoint.cose`, as that signature authenticates it, and its T is
-  that checkpoint's `timestamp`; `pointer` selects the key identifier in the
-  other member's root record only. Linked gives `one_sided`, never `agree`,
-  because nothing was compared; not linked gives `unjoined`. An empty-history
-  member without a `checkpoint.cose` that verifies has no key, and the join is
-  `not_derivable`.
+  derivation still runs. Linked gives `one_sided`, never `agree`, because
+  nothing was compared; not linked gives `unjoined`.
+- **`same_key`**: the members are linked when both have the same key, as
+  "Member keys" below determines them. A join with a member that has no key,
+  other than a refusal or absence, which the state rules above already
+  decide, is `not_derivable`. Against an empty-history Bundle, linked gives
+  `one_sided` and not linked gives `unjoined`, as for `controller_binding`.
+  Both members with records and linked gives `agree`; with different keys,
+  `unjoined`. On every `same_key` join that derives `unjoined`, a verifier
+  reports both keys. A `same_key` join states only that one key signed,
+  logged or answered for both members. It is how a party's History attaches
+  to that party's own half of an exchange, signed by that party or held in
+  its log: the two halves join each other on
+  an identifier they share (for example `pre_agreed_identifier`), and each
+  History joins its own party's half on `same_key`.
+
+**Member keys.** Under `controller_binding` and `same_key`, a member's key
+identifier, its time T and the key's source are:
+
+- for a History member, its join view's key and time ({{composed-history}});
+  source `history`;
+- for an empty-history Bundle, the key that signed its `checkpoint.cose`, as
+  that signature authenticates it, and that checkpoint's `timestamp`; source
+  `log_checkpoint`. Without a `checkpoint.cose` that verifies it has no key;
+- for a member Bundle with records whose root record carries `signature` or
+  `key_id`, the key under which its producer signature verifies
+  ({{I-D.mih-scitt-agent-action-capsule}}) and the root record's
+  `timestamp`; source `record_signature`. A root record that carries only one
+  of the two, or whose signature does not verify, or that a verifier cannot
+  check because it has no signature verifier, has no key. It never falls back
+  to the source below: removing a bad signature must not upgrade a record;
+- for a member Bundle with records whose root record carries neither
+  `signature` nor `key_id`, the key that signed the Bundle's
+  `checkpoint.cose` and that checkpoint's `timestamp`, only when all of these
+  hold: the checkpoint verifies and every stated copy of its fields matches
+  it ({{completeness}}); the root record's `capsule_id` recomputes from its
+  content, since an inclusion proof binds only the `capsule_id`; and the root
+  record's own membership holds under that checkpoint: its entry in
+  `completeness_certificate.memberships` names the checkpoint's log
+  identifier, has a `leaf_index` of its `seq` minus one and a proof of the
+  checkpoint's MMR size whose own `leaf_index` is that same value, and that
+  proof verifies against the checkpoint's signed root. A failure elsewhere in the Bundle, such as another record's
+  membership, does not remove the key. Otherwise the member has no key.
+  Source `log_checkpoint`. T is the checkpoint's time, not the record's
+  `timestamp`, because no key signed that `timestamp`; the key signed only the
+  checkpoint. Such a key states that the key's log holds the root record, not
+  that the key's holder authored it: an unsigned record establishes its place
+  in a log, never its authorship. A verifier MUST NOT present a
+  `log_checkpoint` key as the author of a root record.
+
+A key is never read from a value a root record states, because a root
+record can name a key that did not sign or log it. For every
+`controller_binding` and `same_key` join, whatever it derives, a verifier
+reports each member's key source: `history`, `log_checkpoint`,
+`record_signature`, or `none` for a member with no key. The source is
+reported whether or not a `pointer` matched it, so a join can report a key
+source beside a `not_derivable` result that a mismatched `pointer` caused.
+
+A join under `pre_agreed_identifier` or `shared_artifact_digest` one of whose
+members is a History member is `not_derivable`: this revision defines no
+derivation for a History member on those bases.
+
+**History times.** For every join between a History member with a join view
+and a member with a root record, a verifier reports the History's time, the
+root record's `timestamp`, and whether the History's time is before, equal
+to or after it, compared as instants to the nanosecond (fractional digits
+beyond the ninth are ignored). These are facts the two members state; they
+derive no join state. A History anchored before a record is a History as of
+a time before that record; a History anchored at or after it may count that
+record, or not, as its own derivation decides. A verifier MUST NOT present
+the comparison as showing that a History counts or omits that record, or
+that it was available to anyone at its anchor time.
+
+**Histories under two keys.** Two History members whose keys differ are
+separate subjects. A verifier MUST NOT present them together, as one view,
+as comparable, or as parties to one exchange, except through a path of joins
+each of which derives `agree`: for example, History A `same_key` half A,
+half A `pre_agreed_identifier` half B, half B `same_key` History B. Being
+members of one block, or each verifying, is not such a path.
 
 The bases `issued_receipt` (the two records cite one Receipt) and
 `same_interval` (the two records fall in one declared interval) are reserved
@@ -1211,12 +1415,16 @@ labels are identical octet sequences.
 
 - both members name the same observer;
 - the two observers have the same `custody_domain`;
-- the two members' root records carry the same `key_id`;
+- the two members' root records carry the same `key_id` (a stated `key_id`
+  can only make a pair redundant here, never link it);
 - the join's basis is `controller_binding`: the holders of the two keys have
-  stated that the keys are not independent issuers ({{composed-binding}}).
+  stated that the keys are not independent issuers ({{composed-binding}});
+- the join's basis is `same_key`: one key signed, logged or answered for
+  both members.
 
 It MUST present the result as "redundant, not corroborating", with the reason.
-A `controller_binding` join therefore never yields corroboration.
+A `controller_binding` or `same_key` join therefore never yields
+corroboration.
 Otherwise it MAY report the pair as corroborating, and it MUST qualify that as
 resting on *declared* custody.
 
@@ -1290,10 +1498,15 @@ separately:
    and, for a carried member bundle, its own three completeness claims, no
    history for an empty-history Bundle ({{empty-history}}), and, when it
    carries `response`, whether the response's digests match and its
-   signature state;
+   signature state; for a carried History member, the result of each check
+   of {{composed-history}}, its derivation, and its join view's key and
+   time;
 3. composition closure;
 4. per join: the declared state, the derived state (or `not_derivable`), and
-   whether they match;
+   whether they match; for a `controller_binding` or `same_key` join, each
+   member's key source; for a `same_key` join that derives `unjoined`, both
+   keys; for a join between a History member and a member with a root
+   record, the History times ({{composed-joins}});
 5. per derived `agree`: `redundant` (with reason) or corroborating on
    declared custody.
 
@@ -1689,6 +1902,14 @@ are listed per check and never combined, because an aggregate would hide a
   `controller_binding` agreement is then reported redundant all the same,
   never more. A revocation the producer did not account for derives
   `unjoined` and fails a declared `agree` (`join_state_mismatch`).
+- **Member keys.** A key read from what a root record states could name a
+  key that never signed it, linking a record to a binding it is not under.
+  So a key comes only from a producer signature that verifies or, for an
+  unsigned record, from the signed checkpoint of a log whose own inclusion
+  proof holds the record with its identity intact, at that checkpoint's time
+  ({{composed-joins}}). The second states which log holds the record, not who
+  wrote it, and a verifier reports which source it used. A record whose
+  signature fails is never read through its log instead.
 - **No history.** An empty-history Bundle ({{empty-history}}) is its
   producer's statement that its stream holds no record. Its signed checkpoint
   shows that the stream exists, under which key, and the size of its log at
@@ -1700,6 +1921,16 @@ are listed per check and never combined, because an aggregate would hide a
 - **Outcomes.** Keeping refusal and absence distinct is evidentiary:
   synthesizing either one from the other forges the stronger record from the
   weaker.
+- **History members.** A `same_key` join shows that one key answered for a
+  History and signed a record; it does not show that the History counts that
+  record, and its times are the key holder's own statements. A verifier
+  reads the key of a member Bundle only from a producer signature that
+  verifies, never from a value the record states, so a party cannot attach
+  its History to a record that merely names its key. The composed digest
+  covers each History member's envelope digest, so swapping in another
+  responder's envelope changes the composed digest. Showing two parties'
+  Histories side by side without an `agree` path between them would suggest
+  a relationship no evidence states; {{composed-joins}} forbids it.
 
 ## Category Coverage {#category-security}
 
@@ -1820,6 +2051,25 @@ Since -02:
   extent of what was witnessed itself. Added Security and Privacy
   Considerations for it.
 - Cites the Checkpointed Local Log -02.
+- `composed/v1` member keys: under `controller_binding` and
+  `same_key`, a member Bundle's key comes from its root record's verified
+  producer signature or, for a root record with neither `signature` nor
+  `key_id`, from the Bundle's checkpoint signer when the record's identity
+  and its own membership under that checkpoint hold, at that checkpoint's
+  time. A present signature that fails never falls back. A key is never read
+  from a value the record states: `controller_binding`'s `pointer` is
+  optional and, when present, must select that key. Every such join reports
+  each member's key source.
+- `composed/v1`: a History answer can be an `artifact` member, carried as
+  `history` (its artifact response envelope and anchor checkpoint), with the
+  envelope's digest as the member digest and a join view (its responder key
+  and anchor time) ({{composed-history}}). Added the join basis `same_key`,
+  which reads a member Bundle's key from its root record's verified producer
+  signature; `controller_binding` also derives with a History member. A
+  verifier reports a History's time against a root record's as facts, with
+  no join state, and presents two Histories under different keys together
+  only through a path of derived agreements. Added Security Considerations
+  for History members.
 
 Since -01:
 

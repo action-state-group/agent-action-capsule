@@ -1,0 +1,12 @@
+{
+  "draft": "draft-mih-zhang-agent-disclosure-bundle-03 (Joins: key sources)",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_bundle_composed_key_source_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "c876cfddd4a5579df8f7dcacf82a27f3211a983fc8c95f6956c7691b2905b6fd",
+      "count": 18
+    }
+  ]
+}

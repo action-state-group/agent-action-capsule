@@ -92,6 +92,20 @@ func expectShape(result *ComposedResult) map[string]interface{} {
 				"signature":       m.ResponseSignature,
 			}
 		}
+		if h := m.History; h != nil {
+			orNil := func(v string) interface{} {
+				if v == "" {
+					return nil
+				}
+				return v
+			}
+			member["history_member"] = map[string]interface{}{
+				"derivation": h.Derivation, "envelope_signature": h.EnvelopeSignature,
+				"artifact_digest": h.ArtifactDigest, "request_digest": h.RequestDigest,
+				"artifact_anchor": h.ArtifactAnchor, "anchor_checkpoint": h.AnchorCheckpoint,
+				"key": orNil(h.Key), "time": orNil(h.Time),
+			}
+		}
 		members[m.ID] = member
 	}
 	closure := map[string]interface{}{"status": result.CompositionClosure.Status, "missing": stringValues(result.CompositionClosure.Missing)}
@@ -104,9 +118,30 @@ func expectShape(result *ComposedResult) map[string]interface{} {
 		if j.Derived != "" {
 			derived = j.Derived
 		}
-		joins = append(joins, map[string]interface{}{
+		join := map[string]interface{}{
 			"members": stringValues(j.Members[:]), "declared": j.Declared, "derived": derived, "result": j.Result,
-		})
+		}
+		if len(j.Keys) != 0 {
+			keys := []interface{}{}
+			for _, k := range j.Keys {
+				keys = append(keys, map[string]interface{}{"member": k.Member, "key": k.Key})
+			}
+			join["keys"] = keys
+		}
+		if len(j.KeySources) != 0 {
+			sources := []interface{}{}
+			for _, k := range j.KeySources {
+				sources = append(sources, map[string]interface{}{"member": k.Member, "source": k.Source})
+			}
+			join["key_sources"] = sources
+		}
+		if t := j.HistoryTimes; t != nil {
+			join["history_times"] = map[string]interface{}{
+				"history": t.History, "history_time": t.HistoryTime, "record": t.Record,
+				"record_time": t.RecordTime, "relation": t.Relation,
+			}
+		}
+		joins = append(joins, join)
 	}
 	corroboration := []interface{}{}
 	for _, c := range result.Corroboration {
