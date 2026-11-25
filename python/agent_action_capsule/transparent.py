@@ -33,6 +33,32 @@ from ._ed25519_strict import strict_encoding
 from .canonical import loads_bounded
 from .media_types import CAPSULE_ID_MEDIA_TYPE
 
+#: RFC 9943 Section 6 makes the CWT ``iss`` and ``sub`` claims MUST on a
+#: Receipt, and the ``kid`` header MUST when neither ``x5t`` nor ``x5chain`` is
+#: in the protected header. scitt-cose surfaces them and leaves the MUST to the
+#: profile, so this profile requires them.
+#:
+#: The ``ts.agentactioncapsule.org`` witness issued receipts carrying none of
+#: the three until capsule-anchor#103, and published interop runs cite such
+#: receipts. A receipt whose ``iat`` is before this cutoff and which lacks a
+#: header is therefore reported in ``receipt_findings`` instead of failing.
+#: ``iat`` is in the protected header the log key signs, so only that key's
+#: holder can place a receipt before the cutoff; a receipt without an integer
+#: ``iat`` gets no exception. Any log key's holder can backdate ``iat``, but
+#: the caller already trusts that key for inclusion, and a backdated receipt
+#: still reports the finding.
+#:
+#: The cutoff (2026-11-26T00:00:00Z) must not be earlier than the fixed
+#: witness's deploy, or receipts the unfixed witness issues in between fail;
+#: if that deploy slips past it, move it later before the next release
+#: (agent-action-capsule#683).
+LEGACY_RECEIPT_IAT_CUTOFF = 1795651200
+
+#: COSE header labels (RFC 9052 Section 3.1, RFC 9360 Section 2).
+_HDR_KID = 4
+_HDR_X5CHAIN = 33
+_HDR_X5T = 34
+
 
 class SubstrateInputError(Exception):
     """The Signed Statement / key material could not be read or decoded."""
@@ -47,6 +73,7 @@ class TransparentReport:
     content_type: str | None = None
     authenticated_capsule_id: str | None = None
     substrate_errors: list[str] = field(default_factory=list)
+    receipt_findings: list[str] = field(default_factory=list)
     payload: VerificationResult | None = None
     ok: bool = False
 
@@ -79,6 +106,36 @@ def _eddsa_not_strict(cose: bytes, key_pem: bytes) -> bool:
         return False
     raw = key.public_bytes(Encoding.Raw, PublicFormat.Raw)
     return not (isinstance(signature, bytes) and strict_encoding(raw, signature))
+
+
+def _names_x509_key(ext: dict) -> bool:
+    """A well-formed ``x5t`` ([hash alg, non-empty bstr]) or ``x5chain`` (a
+    non-empty bstr or non-empty array of them), RFC 9360 Section 2."""
+    x5t = ext.get(_HDR_X5T)
+    if (
+        isinstance(x5t, (list, tuple)) and len(x5t) == 2
+        and isinstance(x5t[0], (int, str)) and not isinstance(x5t[0], bool)
+        and isinstance(x5t[1], bytes) and x5t[1]
+    ):
+        return True
+    chain = ext.get(_HDR_X5CHAIN)
+    if isinstance(chain, bytes):
+        return bool(chain)
+    return isinstance(chain, (list, tuple)) and bool(chain) and all(isinstance(c, bytes) and c for c in chain)
+
+
+def _missing_receipt_headers(res) -> list[str]:
+    """The RFC 9943 Section 6 Receipt headers a verified ``res`` lacks."""
+    missing = []
+    if not (isinstance(res.issuer, str) and res.issuer):
+        missing.append("iss")
+    if not (isinstance(res.subject, str) and res.subject):
+        missing.append("sub")
+    ext = res.protected_header_ext or {}
+    kid = ext.get(_HDR_KID)
+    if not (isinstance(kid, bytes) and kid) and not _names_x509_key(ext):
+        missing.append("kid")
+    return missing
 
 
 def verify_transparent(
@@ -127,6 +184,20 @@ def verify_transparent(
                 report.substrate_errors.append("receipt EdDSA signature is not strict Ed25519")
                 continue
             if res.ok:
+                missing = _missing_receipt_headers(res)
+                if missing:
+                    text = "receipt lacks " + ", ".join(missing) + " (RFC 9943 Section 6)"
+                    iat = res.iat
+                    pre_fix = (
+                        isinstance(iat, int) and not isinstance(iat, bool)
+                        and iat < LEGACY_RECEIPT_IAT_CUTOFF
+                    )
+                    if not pre_fix:
+                        report.substrate_errors.append(text)
+                        continue
+                    report.receipt_findings.append(
+                        text + f"; accepted as issued before the cutoff (iat {iat})"
+                    )
                 verified = True
                 break
             report.substrate_errors.extend(res.errors)

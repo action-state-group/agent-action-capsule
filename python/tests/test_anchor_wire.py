@@ -6,7 +6,8 @@ Acceptance criteria:
   2. TS returns a COSE Receipt; transparent.py reports attestation_tier='anchored'.
   3. scitt-cose verifies the receipt standalone (no transparent.py).
   4. async_anchor returns immediately (agent never blocks on the TS round-trip).
-  5. digest-only: statement payload = capsule_id bytes; entry_hash = SHA-256(stmt).
+  5. digest-only: statement payload = capsule_id bytes; entry_hash = SHA-256 of
+     the statement's Sig_structure (the witness's ``sig_structure`` scheme).
   6. Repoint: AAC_ANCHOR_URL env var redirects the submission.
   7. No dependency on the private authority package (must NOT be imported).
 
@@ -119,7 +120,7 @@ def test_scitt_cose_standalone():
 
 @skip_if_offline
 def test_digest_only():
-    """Payload = capsule_id bytes only; entry_hash = SHA-256(statement_bytes)."""
+    """Payload = capsule_id bytes only; entry_hash = SHA-256(Sig_structure)."""
     import cbor2  # type: ignore
 
     from agent_action_capsule.anchor import submit_anchor
@@ -127,12 +128,13 @@ def test_digest_only():
     capsule_id = _make_capsule_id()
     result = submit_anchor(capsule_id, ts_url=_TS_URL)
 
-    # entry_hash must equal SHA-256 of the raw statement bytes (interop contract)
-    expected_entry_hash = hashlib.sha256(result.signed_statement).hexdigest()
-    assert result.entry_hash == expected_entry_hash
+    # The witness hashes the statement's RFC 9052 Sig_structure (its
+    # ``sig_structure`` entry_hash_scheme), not the statement bytes.
+    outer = cbor2.loads(result.signed_statement)
+    sig_structure = cbor2.dumps(["Signature1", outer.value[0], b"", outer.value[2]])
+    assert result.entry_hash == hashlib.sha256(sig_structure).hexdigest()
 
     # Statement payload must be capsule_id bytes — not a full capsule JSON
-    outer = cbor2.loads(result.signed_statement)
     payload_bytes = outer.value[2]  # COSE_Sign1: [protected, unprotected, payload, sig]
     assert isinstance(payload_bytes, (bytes, bytearray))
     assert payload_bytes == bytes.fromhex(capsule_id), (
