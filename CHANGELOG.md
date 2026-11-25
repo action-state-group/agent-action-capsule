@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in any tag yet: nothing after `go/v0.24.0`, `python/v0.20.0` and `ts/v0.16.0`. The `reason` entry below shipped in `ts/v0.16.0`, and the other entries below shipped in `python/v0.20.0`; each is listed here until the remaining package tags (`go`, and `ts` where it changed the TypeScript package) carry it. The Rust crates keep their own
+Not yet in every package tag it touches. The latest tags are `go/v0.24.0`, `python/v0.20.0` and `ts/v0.16.0`; the `reason` entry below shipped in `ts/v0.16.0`, and the other entries below in `python/v0.20.0`. Each is listed here until the remaining package tags (`go`, and `ts` where it changed the TypeScript package) carry it. The Rust crates keep their own
 Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or
 has not yet.
 
@@ -61,7 +61,7 @@ Tag `python/v0.20.0`. The pull requests that changed `python/` since `python/v0.
 - feat(bundle-03): composed/v1 History members and the same_key join (#537) (#664)
 - feat(spec): person signature v0, the person's own key beside an approval record (#627) (#656)
 
-The changes, from the entries listed under Unreleased since `python/v0.19.0`: the ones that changed the Python package, and those that changed no package directory (spec, vectors). The Evidence Result `reason` entry changed only the Go and TypeScript packages and stays under Unreleased:
+Changes since `python/v0.19.0`: every Unreleased entry that changed the Python package or no package directory (spec, vectors). The Evidence Result `reason` entry changed only the Go and TypeScript packages and stays under Unreleased.
 
 - Spec: Person Signature v0 (`spec/person-signature-v0.md`, informational). A person's signature,
   made with the person's own key, over the digest of a record that another party signed, carried
