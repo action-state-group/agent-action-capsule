@@ -18,14 +18,14 @@
         <email>spec@actionstate.ai</email>
       </address>
     </author>
-    <date year="2026" month="November" day="25"/>
+    <date year="2026" month="November" day="24"/>
     <area>Security</area>
     <keyword>evidence</keyword>
     <keyword>transparency</keyword>
     <keyword>audit</keyword>
     <keyword>local store</keyword>
     <abstract>
-      <?line 104?>
+      <?line 94?>
 
 <t>This document defines the evidence layer: the conformance requirements for
 a local evidence store that records evidence and the relationships between
@@ -48,7 +48,7 @@ specific host-identity, signing, payload-storage, or replication mechanism.</t>
     </abstract>
   </front>
   <middle>
-    <?line 125?>
+    <?line 115?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -544,20 +544,6 @@ Transparency Service, any other append-only transparency log, or an
 implementer's own authenticated log all qualify: a
 store conforms by satisfying the four properties above under whichever
 substrate it uses, and states which substrate that is.</t>
-      <t><strong>Logs and checkpoints.</strong> Several drafts commit their records to a log of
-their own. <xref target="I-D.malhotra-scitt-oar"/> defines a sealing service that seals
-statements into a log and signs checkpoints over it;
-<xref target="I-D.noa-scitt-ai-agent-receipt"/> defines a separately signed checkpoint
-(<tt>noa.checkpoint/0.1</tt>) asserting a receipt chain's head; and
-<xref target="I-D.kamimura-scitt-vcp"/> binds each anchored batch's Merkle root in an
-AnchorRecord. The Checkpointed Local Log is a producer-operated log of the
-same kind that defines no payload semantics, so one log can carry records
-of every type a store holds side by side. Its signed checkpoints are SCITT
-Signed Statements that can be registered with one or more Transparency
-Services, and inclusion and consistency proofs against a registered
-checkpoint give a relying party order, contemporaneity and completeness
-for every record in the log, whatever its type. It is one substrate among
-those above; this document does not require it.</t>
     </section>
     <section anchor="answers">
       <name>Answering a Request</name>
@@ -1366,9 +1352,9 @@ whether a payload resolves to bytes, not what a Capsule records.</t>
             <author initials="S." surname="Mih" fullname="Steven Mih">
               <organization>Action State Group, Inc.</organization>
             </author>
-            <date year="2026" month="November" day="24"/>
+            <date year="2026" month="September" day="26"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-06"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-05"/>
         </reference>
         <reference anchor="I-D.mih-scitt-checkpointed-local-log">
           <front>
@@ -1419,78 +1405,13 @@ whether a payload resolves to bytes, not what a Capsule records.</t>
             <author initials="S." surname="Mih" fullname="Steven Mih">
               <organization>Action State Group, Inc.</organization>
             </author>
-            <date year="2026" month="November" day="24"/>
+            <date year="2026" month="November" day="21"/>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-mih-agent-settlement-records-01"/>
         </reference>
-        <reference anchor="I-D.malhotra-scitt-oar">
-          <front>
-            <title>Open Action Record (OAR): Authority, Approval and Outcome Evidence for AI Agent Actions</title>
-            <author initials="R." surname="Malhotra" fullname="Ravish Malhotra">
-              <organization/>
-            </author>
-            <date year="2026" month="November" day="25"/>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-malhotra-scitt-oar-01"/>
-        </reference>
-        <reference anchor="I-D.noa-scitt-ai-agent-receipt">
-          <front>
-            <title>A SCITT Profile for AI-Agent Action Receipts</title>
-            <author fullname="Tora Toraman" initials="T." surname="Toraman">
-              <organization>NordenSoft</organization>
-            </author>
-            <date day="14" month="August" year="2026"/>
-            <abstract>
-              <t>   This document profiles the IETF SCITT (Supply Chain Integrity,
-   Transparency, and Trust) architecture for AI-agent action receipts:
-   tamper-evident, signed, offline-verifiable records of what an
-   autonomous agent was recorded as doing at the governed boundary,
-   under which recorded principal class, with what recorded verdict, and
-   -- where the issuer records one -- under which policy identity.  Each
-   receipt is a signed record over a canonical JSON payload, hash-
-   chained so that each record commits to its predecessor, and presented
-   either bare -- the payload with its own native signature -- or
-   enveloped in a COSE_Sign1.  This revision specifies how such a
-   receipt is carried as a SCITT Signed Statement, with the protected
-   claims a Transparency Service requires, so that a receipt can be
-   registered.  Registration obtains a Transparency Service's signed
-   proof that the statement was registered in its log -- a property a
-   self-signed chain cannot provide alone.  It does not, by itself, give
-   an offline holder non-equivocation: that requires consistency proofs
-   and monitoring of the log, which this profile does not specify.  The
-   profile makes a deliberately narrow, checkable claim: this is an
-   issuer-authenticated, signature-verifiable, tamper-evident record of
-   the action, the recorded principal class, the recorded verdict, and
-   any policy identity the receipt carries.  It explicitly does not
-   claim that the agent was correct, safe, or wise, that the recorded
-   inputs were true or complete, that a named approver authorized this
-   exact action before it ran, that a downstream controller succeeded,
-   or that any physical effect occurred.  This revision separates those
-   last three as distinct claims with independent failure behaviour,
-   states the boundary of a shared action digest, and keeps a
-   deterministic offline policy-replay capability out of scope.
-
-              </t>
-            </abstract>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-noa-scitt-ai-agent-receipt-01"/>
-        </reference>
-        <reference anchor="I-D.kamimura-scitt-vcp">
-          <front>
-            <title>A SCITT Profile for Verifiable Audit Trails in Algorithmic Trading: The VeritasChain Protocol (VCP)</title>
-            <author fullname="TOKACHI KAMIMURA" initials="K." surname="Tokachi">
-              <organization>VeritasChain Standards Organization</organization>
-            </author>
-            <date day="23" month="November" year="2026"/>
-            <abstract>
-              <t>This document defines a profile of the SCITT (Supply Chain Integrity, Transparency, and Trust) architecture for creating tamper-evident audit trails of AI-driven algorithmic trading decisions and executions. The VeritasChain Protocol (VCP) applies the SCITT framework to address the specific requirements of financial markets, including high-precision timestamps, considerations arising from recordkeeping regimes such as the EU AI Act and MiFID II, and a crypto-shredding mechanism intended to support erasure obligations such as those under the GDPR. This profile specifies how VCP events are encoded as SCITT Signed Statements, registered with Transparency Services, and verified using COSE Receipts. It further defines SCITT conformance profiles for interoperability and an ERASURE event type that records crypto-shredding operations as append-only audit events. The profile makes trading records auditable and attributable after the fact; it does not prevent or block any trading activity, and it does not warrant the correctness of any recorded decision.</t>
-            </abstract>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-kamimura-scitt-vcp-07"/>
-        </reference>
       </references>
     </references>
-    <?line 1039?>
+    <?line 1014?>
 
 <section anchor="acknowledgments">
       <name>Acknowledgments</name>
@@ -1540,13 +1461,9 @@ seventh form of the Evidence Request at -03.</t>
         </li>
         <li>
           <t>References: RFC 3986 is added as a normative reference, for
-<tt>policy_uri</tt>. The Agent Action Capsule profile is cited at -06, the
+<tt>policy_uri</tt>. The Agent Action Capsule profile is cited at -05, the
 Evidence Request at -03, the Evidence Bundle at -02, the Settlement Records
 at -01, and the Checkpointed Local Log at -02.</t>
-        </li>
-        <li>
-          <t>Commitment substrate: added a paragraph on logs and checkpoints in other
-drafts and what the Checkpointed Local Log offers as a shared substrate.</t>
         </li>
       </ul>
     </section>

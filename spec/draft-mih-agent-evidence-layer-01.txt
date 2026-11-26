@@ -4,8 +4,8 @@
 
 Network Working Group                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
-Intended status: Informational                          25 November 2026
-Expires: 29 May 2027
+Intended status: Informational                          24 November 2026
+Expires: 28 May 2027
 
 
                              Evidence Layer
@@ -49,11 +49,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 29 May 2027.
+   This Internet-Draft will expire on 28 May 2027.
 
 
 
-Mih                        Expires 29 May 2027                  [Page 1]
+Mih                        Expires 28 May 2027                  [Page 1]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -104,17 +104,17 @@ Table of Contents
    15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  26
      15.1.  Normative References . . . . . . . . . . . . . . . . . .  26
      15.2.  Informative References . . . . . . . . . . . . . . . . .  27
-   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  29
-   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  29
+   Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  28
+   Change Log  . . . . . . . . . . . . . . . . . . . . . . . . . . .  28
 
 
 
-Mih                        Expires 29 May 2027                  [Page 2]
+Mih                        Expires 28 May 2027                  [Page 2]
 
 Internet-Draft               Evidence Layer                November 2026
 
 
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  30
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  29
 
 1.  Introduction
 
@@ -165,7 +165,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                  [Page 3]
+Mih                        Expires 28 May 2027                  [Page 3]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -221,7 +221,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                  [Page 4]
+Mih                        Expires 28 May 2027                  [Page 4]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -277,7 +277,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                  [Page 5]
+Mih                        Expires 28 May 2027                  [Page 5]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -333,7 +333,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                  [Page 6]
+Mih                        Expires 28 May 2027                  [Page 6]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -389,7 +389,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                  [Page 7]
+Mih                        Expires 28 May 2027                  [Page 7]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -445,7 +445,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                  [Page 8]
+Mih                        Expires 28 May 2027                  [Page 8]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -501,7 +501,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                  [Page 9]
+Mih                        Expires 28 May 2027                  [Page 9]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -557,7 +557,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 10]
+Mih                        Expires 28 May 2027                 [Page 10]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -613,7 +613,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 11]
+Mih                        Expires 28 May 2027                 [Page 11]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -669,7 +669,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 12]
+Mih                        Expires 28 May 2027                 [Page 12]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -725,7 +725,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 13]
+Mih                        Expires 28 May 2027                 [Page 13]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -737,22 +737,6 @@ Internet-Draft               Evidence Layer                November 2026
    qualify: a store conforms by satisfying the four properties above
    under whichever substrate it uses, and states which substrate that
    is.
-
-   *Logs and checkpoints.* Several drafts commit their records to a log
-   of their own.  [I-D.malhotra-scitt-oar] defines a sealing service
-   that seals statements into a log and signs checkpoints over it;
-   [I-D.noa-scitt-ai-agent-receipt] defines a separately signed
-   checkpoint (noa.checkpoint/0.1) asserting a receipt chain's head; and
-   [I-D.kamimura-scitt-vcp] binds each anchored batch's Merkle root in
-   an AnchorRecord.  The Checkpointed Local Log is a producer-operated
-   log of the same kind that defines no payload semantics, so one log
-   can carry records of every type a store holds side by side.  Its
-   signed checkpoints are SCITT Signed Statements that can be registered
-   with one or more Transparency Services, and inclusion and consistency
-   proofs against a registered checkpoint give a relying party order,
-   contemporaneity and completeness for every record in the log,
-   whatever its type.  It is one substrate among those above; this
-   document does not require it.
 
 9.  Answering a Request
 
@@ -781,7 +765,23 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 14]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 14]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -837,7 +837,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 15]
+Mih                        Expires 28 May 2027                 [Page 15]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -893,7 +893,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 16]
+Mih                        Expires 28 May 2027                 [Page 16]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -949,7 +949,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 17]
+Mih                        Expires 28 May 2027                 [Page 17]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 18]
+Mih                        Expires 28 May 2027                 [Page 18]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 19]
+Mih                        Expires 28 May 2027                 [Page 19]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 20]
+Mih                        Expires 28 May 2027                 [Page 20]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 21]
+Mih                        Expires 28 May 2027                 [Page 21]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1229,7 +1229,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 22]
+Mih                        Expires 28 May 2027                 [Page 22]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1285,7 +1285,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 23]
+Mih                        Expires 28 May 2027                 [Page 23]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1341,7 +1341,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 24]
+Mih                        Expires 28 May 2027                 [Page 24]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1397,7 +1397,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 25]
+Mih                        Expires 28 May 2027                 [Page 25]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1453,7 +1453,7 @@ Internet-Draft               Evidence Layer                November 2026
 
 
 
-Mih                        Expires 29 May 2027                 [Page 26]
+Mih                        Expires 28 May 2027                 [Page 26]
 
 Internet-Draft               Evidence Layer                November 2026
 
@@ -1474,21 +1474,6 @@ Internet-Draft               Evidence Layer                November 2026
 
 15.2.  Informative References
 
-   [I-D.kamimura-scitt-vcp]
-              Tokachi, K., "A SCITT Profile for Verifiable Audit Trails
-              in Algorithmic Trading: The VeritasChain Protocol (VCP)",
-              Work in Progress, Internet-Draft, draft-kamimura-scitt-
-              vcp-07, 23 November 2026,
-              <https://datatracker.ietf.org/doc/html/draft-kamimura-
-              scitt-vcp-07>.
-
-   [I-D.malhotra-scitt-oar]
-              Malhotra, R., "Open Action Record (OAR): Authority,
-              Approval and Outcome Evidence for AI Agent Actions", Work
-              in Progress, Internet-Draft, draft-malhotra-scitt-oar-01,
-              25 November 2026, <https://datatracker.ietf.org/doc/html/
-              draft-malhotra-scitt-oar-01>.
-
    [I-D.mih-agent-disclosure-envelope]
               Mih, S., "Disclosure Envelope Profile for Agent Action
               Capsules", Work in Progress, Internet-Draft, draft-mih-
@@ -1506,24 +1491,28 @@ Internet-Draft               Evidence Layer                November 2026
    [I-D.mih-agent-settlement-records]
               Mih, S., "Two-Party Settlement Records for Agent
               Payments", Work in Progress, Internet-Draft, draft-mih-
-
-
-
-Mih                        Expires 29 May 2027                 [Page 27]
-
-Internet-Draft               Evidence Layer                November 2026
-
-
-              agent-settlement-records-01, 24 November 2026,
+              agent-settlement-records-01, 21 November 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-agent-
               settlement-records-01>.
 
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-06, 24 November 2026,
+              capsule-05, 26 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              agent-action-capsule-06>.
+              agent-action-capsule-05>.
+
+
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 27]
+
+Internet-Draft               Evidence Layer                November 2026
+
 
    [I-D.mih-scitt-checkpointed-local-log]
               Mih, S., "The Checkpointed Local Log (CLL)", Work in
@@ -1538,13 +1527,6 @@ Internet-Draft               Evidence Layer                November 2026
               disclosure-bundle-02, 31 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-zhang-
               agent-disclosure-bundle-02>.
-
-   [I-D.noa-scitt-ai-agent-receipt]
-              Toraman, T., "A SCITT Profile for AI-Agent Action
-              Receipts", Work in Progress, Internet-Draft, draft-noa-
-              scitt-ai-agent-receipt-01, 14 August 2026,
-              <https://datatracker.ietf.org/doc/html/draft-noa-scitt-ai-
-              agent-receipt-01>.
 
    [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
               Code: The Implementation Status Section", BCP 205,
@@ -1562,14 +1544,6 @@ Internet-Draft               Evidence Layer                November 2026
               DOI 10.17487/RFC9943, June 2026,
               <https://www.rfc-editor.org/rfc/rfc9943>.
 
-
-
-
-Mih                        Expires 29 May 2027                 [Page 28]
-
-Internet-Draft               Evidence Layer                November 2026
-
-
 Appendix A.  Acknowledgments
 
    This document distills operational experience running local evidence
@@ -1585,6 +1559,16 @@ Change Log
    *  Padding records: named the member that carries the random value
       store_nonce, 32 bytes encoded as 64 lowercase hexadecimal
       characters.
+
+
+
+
+
+
+Mih                        Expires 28 May 2027                 [Page 28]
+
+Internet-Draft               Evidence Layer                November 2026
+
 
    *  Retention: added the UNDISCLOSED retention state and the
       policy_uri header field it requires, and established the "Evidence
@@ -1611,20 +1595,9 @@ Change Log
    *  Implementation Status: added (Section 11), following RFC 7942.
 
    *  References: RFC 3986 is added as a normative reference, for
-      policy_uri.  The Agent Action Capsule profile is cited at -06, the
+      policy_uri.  The Agent Action Capsule profile is cited at -05, the
       Evidence Request at -03, the Evidence Bundle at -02, the
       Settlement Records at -01, and the Checkpointed Local Log at -02.
-
-   *  Commitment substrate: added a paragraph on logs and checkpoints in
-      other drafts and what the Checkpointed Local Log offers as a
-      shared substrate.
-
-
-
-Mih                        Expires 29 May 2027                 [Page 29]
-
-Internet-Draft               Evidence Layer                November 2026
-
 
 Author's Address
 
@@ -1648,33 +1621,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih                        Expires 29 May 2027                 [Page 30]
+Mih                        Expires 28 May 2027                 [Page 29]
