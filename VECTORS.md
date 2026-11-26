@@ -94,7 +94,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 9 |
 | `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 34 |
 | `vectors/bundle/parent-log-witness/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`parent-log-witness/v1`) | verify | 36 |
-| `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`) | pack, verify | 8 |
+| `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`); -03 strict `countersign/v1` (#677) | pack, verify | 10 |
 | `vectors/bundle/report-single-record.json` | `draft-mih-zhang-agent-disclosure-bundle-00` (report of one record) | report | 3 |
 | `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 110 |
 | `vectors/bundle/fragment/` | `draft-mih-zhang-agent-disclosure-bundle` (Fragment Codec) | pack, report | 7 |
@@ -155,7 +155,7 @@ its 11 `record_signatures`.
 | `vectors/adapters/ucp/` | `spec/adapters/ucp-v0.md` §3 | verify | 2 |
 | `vectors/adapters/erc-8183/` | `spec/adapters/erc-8183-v0.md` §10 | verify | 25 |
 | `vectors/adapters/nostr-mailbox/` | `spec/bindings/nostr-mailbox-v0.md` §9 (experimental) | verify | 15 |
-| `vectors/adapters/evidence-commitment-carriers/` | `spec/bindings/evidence-commitment-carriers-v0.md` §10 (experimental) | verify | 34 |
+| `vectors/adapters/evidence-commitment-carriers/` | `spec/bindings/evidence-commitment-carriers-v0.md` §10 (experimental) | verify | 36 |
 
 ## Verbs with no corpus
 

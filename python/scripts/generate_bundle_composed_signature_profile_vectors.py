@@ -22,7 +22,6 @@ included in ``SHA256SUMS`` but never rewritten. The run is deterministic.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from pathlib import Path
@@ -30,8 +29,6 @@ from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-
-from agent_action_capsule._ed25519_cofactored import BASE, encode, mul
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ed25519_forgeries as forgeries  # noqa: E402
@@ -52,10 +49,8 @@ OTHER = composed.RESPONDER_B
 #: The identity point as a key, with R = [r]B and S = r: [S]B = R + [k]A holds
 #: for any message, since [k]A is the identity. R and S are canonical and R is
 #: not of small order, so only the small-order key condition refuses it.
-SMALL_ORDER_KEY = forgeries.IDENTITY.hex()
-_R_SCALAR = int.from_bytes(hashlib.sha256(b"composed/v1 carried signature profile vectors: r").digest(), "little") % (
-    (1 << 252) + 27742317777372353535851937790883648493)
-SMALL_ORDER_SIG = (encode(mul(_R_SCALAR, BASE)) + _R_SCALAR.to_bytes(32, "little")).hex()
+SMALL_ORDER_KEY, SMALL_ORDER_SIG = (x.hex() for x in forgeries.small_order_key(
+    b"composed/v1 carried signature profile vectors: r"))
 
 REQUEST_DIGEST = composed.sha256_hex(b"composed/v1 carried signature profile vectors: request")
 ANCHOR = composed.sha256_hex(b"composed/v1 carried signature profile vectors: anchor")

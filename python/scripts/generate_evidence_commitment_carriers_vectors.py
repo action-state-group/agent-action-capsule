@@ -33,7 +33,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -54,6 +54,7 @@ def _load(name: str):
 
 ip = _load("generate_interop_profile_v0_vectors")
 nm = _load("generate_nostr_mailbox_vectors")
+forgeries = _load("ed25519_forgeries")
 ip.use_profile(1)  # the binding pins evidence-interop/1 (binding Status)
 
 # §5.3: a placeholder in NIP-01's addressable range, absent from the kind list at the pinned commit (C-1).
@@ -79,6 +80,10 @@ ED_LABELS = {name: f"evidence-commitment-carriers-v0 vectors: {name} key"
 ED_PRIV = {"responder": ip.PRIV["responder"], "impostor": ip.PRIV["impostor"],
            **{n: Ed25519PrivateKey.from_private_bytes(ip.sha(label.encode())) for n, label in ED_LABELS.items()}}
 ED_PUB = {n: k.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw).hex() for n, k in ED_PRIV.items()}
+
+
+#: The DER SubjectPublicKeyInfo prefix of an Ed25519 key (RFC 8410), before its 32 raw octets.
+SPKI_PREFIX = bytes.fromhex("302a300506032b6570032100")
 
 
 def spki(name: str) -> bytes:
@@ -604,6 +609,34 @@ def build_cases() -> list[dict]:
          {"carriers": [carrier_result("erc8004", forged_octets)],
           "commitments": [refused(forged_octets, "commitment_signature")]},
          uris=served(**{URI_CUR: forged_octets}, **forged_served))
+
+    # Strict Ed25519 (§3 "Signing"): signatures a lenient verifier accepts.
+    small_key, small_sig = forgeries.small_order_key(b"evidence-commitment-carriers-v0 vectors: small-order r")
+    small = {k: v for k, v in commitment(T2, [("book-a", LATER)]).items() if k != "sig"}
+    small["key_id"] = small_key.hex()
+    small["spki"] = base64.b64encode(SPKI_PREFIX + small_key).decode()
+    small["sig"] = {"alg": "Ed25519", "canon": "jcs", "value": ip.b64u(small_sig)}
+    identity_r = {k: v for k, v in commitment(T2, [("book-a", LATER)]).items() if k != "sig"}
+    identity_r["sig"] = {"alg": "Ed25519", "canon": "jcs",
+                         "value": ip.b64u(forgeries.identity_r(ED_PRIV["responder"], ip.jcs(identity_r).encode()))}
+    for cid, forged_c, shows in (
+        ("strict-small-order-key", small,
+         "a commitment whose spki is the identity point, a small-order key, with a signature that verifies any "
+         "message under a lenient verifier and fails only the small-order key condition: refused"),
+        ("strict-identity-r", identity_r,
+         "a commitment signed by the responder's key with R the identity point, which a lenient verifier "
+         "accepts: refused"),
+    ):
+        body = {k: v for k, v in forged_c.items() if k != "sig"}
+        key = Ed25519PublicKey.from_public_bytes(bytes.fromhex(forged_c["key_id"]))
+        key.verify(base64.urlsafe_b64decode(forged_c["sig"]["value"] + "=" * (-len(forged_c["sig"]["value"]) % 4)),
+                   ip.jcs(body).encode())  # lenient accepts it
+        data = octets_of(forged_c)
+        case(cid, shows, ["§3", "§6 V2"],
+             [directory(URI_CUR, sha_tag(data))],
+             {"carriers": [carrier_result("directory", data)],
+              "commitments": [refused(data, "commitment_signature")]},
+             uris=served(**{URI_CUR: data}))
 
     return cases
 

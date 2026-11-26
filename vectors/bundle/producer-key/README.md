@@ -19,7 +19,7 @@ A malformed block is ignored and never fails the Bundle.
 ## Cases (`vectors.json`)
 
 Each case is a complete Bundle with one `countersign/v1` entry whose signature
-is valid over the case's `bundle_digest`. `expect.declared_producer_keys` is
+is valid over the case's `bundle_digest`, except the two `strict-*` cases. `expect.declared_producer_keys` is
 the key a verifier reads from the extension (empty when absent or malformed),
 and `expect.stamp` is the entry's state. No countersigner directory is
 consulted, so a valid independent entry is an `unresolved signer`.
@@ -34,6 +34,15 @@ consulted, so a valid independent entry is an `unresolved signer`.
 | `malformed-key-list` | `public_key` is a list | producer key | `unresolved signer` |
 | `malformed-block-not-object` | bare key string | producer key | `unresolved signer` |
 | `malformed-missing-public-key` | `{}` | producer key | `unresolved signer` |
+| `strict-small-order-key` | producer key | the identity point, a small-order key | `invalid` |
+| `strict-identity-r` | producer key | other key, R the identity point | `invalid` |
+
+The two `strict-*` cases carry a signature that a lenient Ed25519 verifier
+accepts (`expect.lenient_ed25519_verifies`) and strict Ed25519 refuses
+(`draft-mih-zhang-agent-disclosure-bundle-03`, "Conventions and Definitions"
+and countersign/v1 step 2), so `expect.signature` and `expect.stamp` are
+`invalid`. The small-order-key case uses R = [r]B and S = r, so only the
+small-order key condition refuses it.
 
 `extension_block_jcs` is the JCS form of the well-formed extension for the
 producer test key. It is byte-identical to the block capsulectl emits for a

@@ -83,7 +83,11 @@ other member rule.
 | `sig` | `{"alg": "Ed25519", "canon": "jcs", "value": <base64url>}` |
 
 **Signing.** The signed octets are the commitment without `sig`, in JCS (RFC 8785). The signature
-is Ed25519 (RFC 8032) over them, verified under the key in `spki`.
+is Ed25519 (RFC 8032) over them, verified under the key in `spki` with strict Ed25519 as the
+capsule draft's Conventions section defines it (`spec/draft-mih-scitt-agent-action-capsule-06.md`,
+the rule `spec/interop-profile-v1.md` §5.2 also names): the key and R canonical and not of small
+order, S below the group order, and the cofactorless equation. A signature that fails it is a failed
+signature, whatever trust a reader places in the key.
 
 **The Nostr route, `ask.nostr`.** A responder that is asked through the Nostr mailbox (NMB) or
 announces on Nostr (§5.3) carries `ask.nostr`, an object with exactly two members, both required
@@ -263,7 +267,8 @@ that fails names the result.
   `digest_mismatch` and changes nothing else: for a URI it means the pointer is stale. The octets
   are verified on their own, below.
 - **V2, signature.** The octets parse as a JSON object with a `profile` of §3; `key_id` is the raw
-  key of `spki`; and `sig` verifies over the JCS of the rest under `spki`. Failures:
+  key of `spki`; and `sig` verifies with strict Ed25519 (§3, "Signing") over the JCS of the rest
+  under `spki`. Failures:
   `commitment_form`, `key_id_spki`, `commitment_signature`. A commitment that fails here is
   refused, whichever carrier brought it.
 - **V3, staples.** `checkpoint.sha256` and every card's `sha256` are the SHA-256 of their decoded
@@ -342,7 +347,7 @@ and the mailbox key are public [NMB §8].
 The vectors are in `vectors/adapters/evidence-commitment-carriers/`.
 `python/scripts/generate_evidence_commitment_carriers_vectors.py` generates them
 deterministically, and `python/tests/test_evidence_commitment_carriers_vectors.py` checks them
-offline with its own code: Ed25519 for commitments, NIP-01 `id` and
+offline with its own code: strict Ed25519 for commitments, NIP-01 `id` and
 BIP-340 for events (NMB's checks), and bech32 for `naddr`. Answers for V5 are envelopes of the IP
 corpus, verified by IP's reference verifier. Each case carries the carrier entries, the octets each
 URI serves, for an ERC-8004 entry the agent the verifier resolved the file from (no chain is read), the verifier's time and, where it applies, the answer, with the expected result of
@@ -384,6 +389,8 @@ every step and, once V5 binds the commitment, the cards V6 hands on.
 | `erc8004-registrations-only` | a well-known file holding only `registrations`, beside a directory entry: no carrier entry, no result | §5.4 |
 | `erc8004-reached-by-link` | a file reached by a link, with no agent in hand: the registrations check is skipped, the entry is read | §5.4 |
 | `erc8004-forged-octets` | an ERC-8004 entry pointing to the commitment with a member changed: refused, `commitment_signature` | §5.4, §6 V2, §8 |
+| `strict-small-order-key` | a commitment under a small-order key (the identity point) with a signature a lenient verifier accepts over any message: refused, `commitment_signature` | §3, §6 V2 |
+| `strict-identity-r` | a commitment signed by the responder's key with R the identity point, which a lenient verifier accepts: refused, `commitment_signature` | §3, §6 V2 |
 
 The workflow `.github/workflows/evidence-commitment-carriers.yml` regenerates the vectors, fails
 when the committed files differ, and runs the test. No relay, directory, chain or host is contacted. V6

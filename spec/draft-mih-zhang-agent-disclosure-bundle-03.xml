@@ -126,6 +126,25 @@ Transparency Service function.</t>
           <t>The disclosure state of an eligible member absent from the Bundle-level
 disclosure overlay. It is neither an empty value nor a verification failure.</t>
         </dd>
+        <dt>Strict Ed25519:</dt>
+        <dd>
+          <t>Ed25519 <xref target="RFC8032"/> verification in which a verifier accepts a signature
+only if the public key A and the signature's point R are each a canonical
+encoding (<xref target="RFC8032"/>, Section 5.1.3: the y coordinate is below the field
+prime, and an x of zero does not carry the sign bit) and neither is of
+small order (the eight points whose order divides 8), if the scalar S is
+below the group order L, and if the cofactorless equation
+<tt>[S]B = R + [k]A</tt> of <xref target="RFC8032"/>, Section 5.1.7, holds. It rejects the
+signature if any condition fails; a rejected signature is a failed
+signature, whatever trust a deployment places in the key. A lenient
+verifier accepts, for a small-order A, a signature over any message that
+anyone can produce, and, for a small-order R, a signature that other
+verifiers refuse. This is the rule of the Conventions section of the
+working revision -06 of <xref target="I-D.mih-scitt-agent-action-capsule"/>, stated here
+because this document cites revision -05, which does not define it. When
+this document cites a revision that defines the rule, this definition is
+replaced by that citation.</t>
+        </dd>
       </dl>
       <t>The terms "Capsule", "capsule_id", <tt>chain.parent_capsule_id</tt>, <tt>references</tt>,
 <tt>seq</tt>, <tt>leaf_index</tt>, and <tt>log_coordinates</tt> are as defined in
@@ -1158,11 +1177,8 @@ signature-unverified.</t>
           </ul>
           <t>In each profile, <tt>key_id</tt> is a 32-byte Ed25519 <xref target="RFC8032"/> public key as 64
 lowercase hexadecimal characters, and the signature is 64 bytes as 128
-lowercase hexadecimal characters. A signature verifies only when the public
-key and the signature's R are each a canonical encoding and not of small
-order, S is less than the group order, and the cofactorless verification
-equation holds. A small-order key therefore never verifies, whatever trust a
-deployment places in it.</t>
+lowercase hexadecimal characters. A signature verifies only under strict
+Ed25519 (<xref target="conventions"/>), so a small-order key never verifies.</t>
           <t><strong><tt>three-member-refusal/v1</tt>.</strong> The signature is <tt>sig</tt>, under <tt>key_id</tt>. The
 signing input is that of an <xref target="EVIDENCE-INTEROP"/> signed refusal answering a
 request for <tt>evidence-interop/0</tt> or <tt>evidence-interop/1</tt> (its Section 6.3): the
@@ -2159,9 +2175,9 @@ differs is not a countersignature of this Bundle and MUST be reported as
 <tt>invalid</tt>;</t>
           </li>
           <li>
-            <t>verify <tt>signature</tt> over the signing input under <tt>signer.key_id</tt>. An entry
-whose signature fails is invalid, and its checks MUST NOT be displayed as
-results;</t>
+            <t>verify <tt>signature</tt> over the signing input under <tt>signer.key_id</tt> with
+strict Ed25519 (<xref target="conventions"/>). An entry whose signature fails is
+invalid, and its checks MUST NOT be displayed as results;</t>
           </li>
           <li>
             <t>determine independence as in <xref target="self-countersignature"/>.</t>
@@ -2324,8 +2340,14 @@ bytes coincide. A verified signature attributes the object to the holder
 of <tt>key_id</tt>, and nothing more: whether that key is the member's responder
 is a separate check. In <tt>three-member-refusal/v1</tt>, <tt>key_id</tt> is not signed,
 so binding the refusal to a responder rests on that check. Ed25519 is
-verified strictly, because a small-order key verifies a forged signature
-over any message under a lenient verifier.</t>
+verified strictly (<xref target="conventions"/>), because a small-order key verifies a
+forged signature over any message under a lenient verifier.</t>
+          </li>
+          <li>
+            <t><strong>Countersignatures.</strong> A countersign/v1 signature is verified with strict
+Ed25519 for the same reason: a countersigner directory can put a name to a
+small-order key, and under a lenient verifier a forged entry would then
+read as that countersigner's statement.</t>
           </li>
           <li>
             <t><strong>Outcomes.</strong> Keeping refusal and absence distinct is evidentiary:
@@ -2759,7 +2781,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 2235?>
+    <?line 2254?>
 
 <section numbered="false" anchor="change-log">
       <name>Change Log</name>
@@ -2774,6 +2796,12 @@ signature. The members an object carries decide which profile applies.
 Each signature is verified, invalid or signature-unverified under strict
 Ed25519, and the verifier report names the profile used. Added Security
 Considerations for them.</t>
+        </li>
+        <li>
+          <t>Defined strict Ed25519 (<xref target="conventions"/>), the capsule draft's rule, and
+required it for the carried signature profiles and for a countersign/v1
+signature (<xref target="countersign-verify"/>), whose verification rule was
+previously unstated.</t>
         </li>
         <li>
           <t>Defined and registered the <tt>parent-log-witness/v1</tt> extension kind

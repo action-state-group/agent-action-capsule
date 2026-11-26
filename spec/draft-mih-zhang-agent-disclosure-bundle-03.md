@@ -189,6 +189,24 @@ WITHHELD:
 : The disclosure state of an eligible member absent from the Bundle-level
   disclosure overlay. It is neither an empty value nor a verification failure.
 
+Strict Ed25519:
+: Ed25519 {{RFC8032}} verification in which a verifier accepts a signature
+  only if the public key A and the signature's point R are each a canonical
+  encoding ({{RFC8032}}, Section 5.1.3: the y coordinate is below the field
+  prime, and an x of zero does not carry the sign bit) and neither is of
+  small order (the eight points whose order divides 8), if the scalar S is
+  below the group order L, and if the cofactorless equation
+  `[S]B = R + [k]A` of {{RFC8032}}, Section 5.1.7, holds. It rejects the
+  signature if any condition fails; a rejected signature is a failed
+  signature, whatever trust a deployment places in the key. A lenient
+  verifier accepts, for a small-order A, a signature over any message that
+  anyone can produce, and, for a small-order R, a signature that other
+  verifiers refuse. This is the rule of the Conventions section of the
+  working revision -06 of {{I-D.mih-scitt-agent-action-capsule}}, stated here
+  because this document cites revision -05, which does not define it. When
+  this document cites a revision that defines the rule, this definition is
+  replaced by that citation.
+
 The terms "Capsule", "capsule_id", `chain.parent_capsule_id`, `references`,
 `seq`, `leaf_index`, and `log_coordinates` are as defined in
 {{I-D.mih-scitt-agent-action-capsule}}.
@@ -1092,11 +1110,8 @@ member whose value is JSON `null` is present:
 
 In each profile, `key_id` is a 32-byte Ed25519 {{RFC8032}} public key as 64
 lowercase hexadecimal characters, and the signature is 64 bytes as 128
-lowercase hexadecimal characters. A signature verifies only when the public
-key and the signature's R are each a canonical encoding and not of small
-order, S is less than the group order, and the cofactorless verification
-equation holds. A small-order key therefore never verifies, whatever trust a
-deployment places in it.
+lowercase hexadecimal characters. A signature verifies only under strict
+Ed25519 ({{conventions}}), so a small-order key never verifies.
 
 **`three-member-refusal/v1`.** The signature is `sig`, under `key_id`. The
 signing input is that of an {{EVIDENCE-INTEROP}} signed refusal answering a
@@ -1959,9 +1974,9 @@ A verifier MUST, for each `countersign/v1` entry:
 1. recompute the bundle digest and compare it to `over`. An entry whose `over`
    differs is not a countersignature of this Bundle and MUST be reported as
    `invalid`;
-2. verify `signature` over the signing input under `signer.key_id`. An entry
-   whose signature fails is invalid, and its checks MUST NOT be displayed as
-   results;
+2. verify `signature` over the signing input under `signer.key_id` with
+   strict Ed25519 ({{conventions}}). An entry whose signature fails is
+   invalid, and its checks MUST NOT be displayed as results;
 3. determine independence as in {{self-countersignature}}.
 
 A verifier MAY resolve `signer.key_id` against a directory of countersigners
@@ -2113,8 +2128,12 @@ are listed per check and never combined, because an aggregate would hide a
   of `key_id`, and nothing more: whether that key is the member's responder
   is a separate check. In `three-member-refusal/v1`, `key_id` is not signed,
   so binding the refusal to a responder rests on that check. Ed25519 is
-  verified strictly, because a small-order key verifies a forged signature
-  over any message under a lenient verifier.
+  verified strictly ({{conventions}}), because a small-order key verifies a
+  forged signature over any message under a lenient verifier.
+- **Countersignatures.** A countersign/v1 signature is verified with strict
+  Ed25519 for the same reason: a countersigner directory can put a name to a
+  small-order key, and under a lenient verifier a forged entry would then
+  read as that countersigner's statement.
 - **Outcomes.** Keeping refusal and absence distinct is evidentiary:
   synthesizing either one from the other forges the stronger record from the
   weaker.
@@ -2247,6 +2266,10 @@ Since -02:
   Each signature is verified, invalid or signature-unverified under strict
   Ed25519, and the verifier report names the profile used. Added Security
   Considerations for them.
+- Defined strict Ed25519 ({{conventions}}), the capsule draft's rule, and
+  required it for the carried signature profiles and for a countersign/v1
+  signature ({{countersign-verify}}), whose verification rule was
+  previously unstated.
 - Defined and registered the `parent-log-witness/v1` extension kind
   ({{parent-log-witness}}): a chain from the Bundle's checkpoint, or an
   earlier checkpoint of the same log with a consistency proof, through a
