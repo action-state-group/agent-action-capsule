@@ -92,6 +92,8 @@ COUNTERS = {
     "vectors/bundle/composed-controller-binding/": lambda: cases("vectors/bundle/composed-controller-binding/vectors.json"),
     "vectors/bundle/composed-history/": lambda: cases("vectors/bundle/composed-history/vectors.json"),
     "vectors/bundle/composed-key-source/": lambda: cases("vectors/bundle/composed-key-source/vectors.json"),
+    "vectors/bundle/composed-signature-profiles/": lambda: cases("vectors/bundle/composed-signature-profiles/vectors.json")
+    + cases("vectors/bundle/composed-signature-profiles/vectors.json", "composed_cases"),
     "vectors/bundle/non-record-leaves/": lambda: cases("vectors/bundle/non-record-leaves/vectors.json"),
     "vectors/bundle/certificate-mode/": lambda: cases("vectors/bundle/certificate-mode/vectors.json"),
     "vectors/bundle/category-coverage/": lambda: cases("vectors/bundle/category-coverage/vectors.json"),

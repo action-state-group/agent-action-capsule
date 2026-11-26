@@ -1,0 +1,1739 @@
+{
+  "draft": "draft-mih-zhang-agent-disclosure-bundle-03 (composed/v1: Carried Signature Profiles)",
+  "provenance": "spec-derived",
+  "profiles": [
+    "three-member-refusal/v1",
+    "whole-refusal/v1",
+    "digest-bound-artifact-response/v1"
+  ],
+  "states": [
+    "verified",
+    "invalid",
+    "signature_unverified"
+  ],
+  "keys": {
+    "responder-a": {
+      "seed_hex": "81e3d1a9bbf855784e3974729f26d41b77d0fb6e764ca4b832a181b44b9be5eb",
+      "public_key_hex": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af"
+    },
+    "responder-b": {
+      "seed_hex": "26345bf165956f357858796e821ecab3fa5d5e0a5b371857382aa97df4f71c34",
+      "public_key_hex": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4"
+    }
+  },
+  "count": 50,
+  "cases": [
+    {
+      "id": "three-member-verified",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A refusal carrying sig and no signature: three-member-refusal/v1. sig is the responder's Ed25519 signature over the JCS of {issued_at, reason, request_digest}, the signing input of an evidence-interop/0 or /1 signed refusal.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "bc10cd1b0846a44302125a1453d7bf5440cfdc4b334c40b2a04089eee1db77b6657d6a3190c1638eb37a421dd6c214b84da3c5f7f6d977e38266122a5a5d2a0f"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "three-member-extra-members",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As three-member-verified, also carrying detail and another member. Neither is signed in this profile, so the signature still verifies.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "bc10cd1b0846a44302125a1453d7bf5440cfdc4b334c40b2a04089eee1db77b6657d6a3190c1638eb37a421dd6c214b84da3c5f7f6d977e38266122a5a5d2a0f",
+        "detail": "declined by policy",
+        "note": "unsigned"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "refusal-with-policy-digest",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "An evidence-interop/2 refusal: sig, no signature, and policy_digest, signed over the four members policy_digest included. A refusal carrying sig, no signature and policy_digest is in none of these profiles, so it is signature-unverified, never read as a three-member refusal and reported invalid.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "policy_digest": "823412d1eacb67956220e532959f0104603057c88704863ca38e7cd188fda812",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "f796db528b6a4dbc9b2bf85c9ef3618148f0e94cbf0a56dce26c162f19405144d9d1998f2e2b0d54093602176b3f57a79532057b6779484fe170038ffda0ad01"
+      },
+      "expect": {
+        "profile": null,
+        "state": "signature_unverified"
+      }
+    },
+    {
+      "id": "whole-refusal-with-policy-digest",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A refusal carrying signature and policy_digest is in whole-refusal/v1, which signs policy_digest like every other member.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "policy_digest": "823412d1eacb67956220e532959f0104603057c88704863ca38e7cd188fda812",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "85f7a4a90be7bd4174e52a588f25eeb3f3d40b56a5dc1a07bfeee8296a9bda814db56ebdb4d367995b089f2aeea8cd999ecb9f4c05609449894d676d0b8b9d0a"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22706f6c6963795f646967657374223a2238323334313264316561636236373935363232306535333239353966303130343630333035376338383730343836336361333865376364313838666461383132222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "three-member-empty-reason",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "reason is the empty string, signed. An empty string is a string, and the signature state covers the signature alone, not whether reason is a registered token.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "c9c4119140341ce0ac2536f3af2afaada79ea5cbd4d3e71f6200c0cdb73f4a68b534c935de754fd36aa0d880b8b43385285f61e558e543a03efd64e57718b90b"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c22726561736f6e223a22222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "three-member-unregistered-reason",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "reason is not a registered token. The signature verifies; verified does not make the refusal conforming to Evidence Request.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "not-a-registered-reason",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "836cde96c7f1cafece9052230ace3fccf75358cfe51cb78be00f5f7737bc1cec474c51d40a3501549479b0ab55ea26b61763dfc353792c62d14268b941ba0a0a"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c22726561736f6e223a226e6f742d612d726567697374657265642d726561736f6e222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "three-member-tampered",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As three-member-verified, with reason changed after signing.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "not_authorized",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "bc10cd1b0846a44302125a1453d7bf5440cfdc4b334c40b2a04089eee1db77b6657d6a3190c1638eb37a421dd6c214b84da3c5f7f6d977e38266122a5a5d2a0f"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "three-member-other-key",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As three-member-verified, with key_id replaced by another key: the signature does not verify under the key the refusal carries.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+        "sig": "bc10cd1b0846a44302125a1453d7bf5440cfdc4b334c40b2a04089eee1db77b6657d6a3190c1638eb37a421dd6c214b84da3c5f7f6d977e38266122a5a5d2a0f"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "three-member-reason-not-string",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "reason is an array, signed as such. A signed member that is not a string is invalid, even though the signature verifies over the JCS of the members as carried.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": [
+          "policy_declined"
+        ],
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "2123b352707e70cc3698816f61270fda601768e6f4d40ca5f8e422ab177dfb60eca761d14aeebb7d65351e589412473f3d393b219a5705cd79ce04ba978ce502"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "three-member-missing-issued-at",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "issued_at is absent; sig is over the JCS of the two members present. A signed member that is absent is invalid.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "5ad399143fe59aabdd06ec66ab184cc5378b09997e82d101aaf41131b1af1d1b81931c5a9171d78fe141d9c55ffb4dc0ffca4f4a0c85b7eff5e5b4cad2a1c204"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "three-member-sig-without-key",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "sig without key_id: a signature without a key is invalid. The refusal carries sig, so it is in three-member-refusal/v1 and never signature-unverified.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "sig": "bc10cd1b0846a44302125a1453d7bf5440cfdc4b334c40b2a04089eee1db77b6657d6a3190c1638eb37a421dd6c214b84da3c5f7f6d977e38266122a5a5d2a0f"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "three-member-uppercase-sig",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As three-member-verified, with sig in uppercase hexadecimal: not of the stated form.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "BC10CD1B0846A44302125A1453D7BF5440CFDC4B334C40B2A04089EEE1DB77B6657D6A3190C1638EB37A421DD6C214B84DA3C5F7F6D977E38266122A5A5D2A0F"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "three-member-short-key",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "key_id is 62 hexadecimal characters: not of the stated form.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36",
+        "sig": "bc10cd1b0846a44302125a1453d7bf5440cfdc4b334c40b2a04089eee1db77b6657d6a3190c1638eb37a421dd6c214b84da3c5f7f6d977e38266122a5a5d2a0f"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "three-member-sig-null",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "sig is JSON null. Presence decides the profile, so the refusal is in three-member-refusal/v1; null is not a string of the stated form, so it is invalid.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": null
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "whole-refusal-verified",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A refusal carrying signature: whole-refusal/v1. signature is over the JCS of the refusal without signature, so key_id and detail are signed.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "detail": "declined by policy",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "cbbaad6bfd1cd196a8eb2b391af274ad788ddcb8d02ea9e40d0aae10e5c08b4c4b503326ba077f1bc0c46d359ccabdf6dab1e780bfe22434ad2dc4c45a0d7b0d"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b2264657461696c223a226465636c696e656420627920706f6c696379222c226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "whole-refusal-unsigned",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A refusal carrying none of sig, key_id and signature: whole-refusal/v1, with no signature to check.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "signature_unverified"
+      }
+    },
+    {
+      "id": "whole-refusal-key-without-signature",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "key_id without signature or sig: a key carried without a signature is invalid.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "whole-refusal-signature-without-key",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As whole-refusal-verified, without key_id.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "detail": "declined by policy",
+        "signature": "cbbaad6bfd1cd196a8eb2b391af274ad788ddcb8d02ea9e40d0aae10e5c08b4c4b503326ba077f1bc0c46d359ccabdf6dab1e780bfe22434ad2dc4c45a0d7b0d"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "whole-refusal-member-changed",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As whole-refusal-verified, with detail changed after signing: every member is signed.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "detail": "changed after signing",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "cbbaad6bfd1cd196a8eb2b391af274ad788ddcb8d02ea9e40d0aae10e5c08b4c4b503326ba077f1bc0c46d359ccabdf6dab1e780bfe22434ad2dc4c45a0d7b0d"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "whole-refusal-key-swapped",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As whole-refusal-verified, with key_id replaced by another key.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "detail": "declined by policy",
+        "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+        "signature": "cbbaad6bfd1cd196a8eb2b391af274ad788ddcb8d02ea9e40d0aae10e5c08b4c4b503326ba077f1bc0c46d359ccabdf6dab1e780bfe22434ad2dc4c45a0d7b0d"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "whole-refusal-carries-sig-and-signature",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A refusal carrying both sig and signature is in whole-refusal/v1. sig is then an ordinary member, covered by signature.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab",
+        "signature": "0db705bcdcf18fcc9dc14202e19037d0b597fbae307a465073bdcfaf1c8369884a623b091124eabb050dcd4e116fdcfae2a75907c223b03443cfd6836391e40a"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337222c22736967223a226162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162227d"
+    },
+    {
+      "id": "whole-refusal-non-string-member",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "reason is an array, signed. whole-refusal/v1 signs the object as carried, whatever its members' values, so it verifies; the string rule belongs to the three-member and digest-bound profiles.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": [
+          "policy_declined"
+        ],
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "0ae961477ce53b3a107652be5aec6a329c83eed2909459f5884307f40c490920c37515429d159afb97beba3a9c408c7cb1fbcce7dac74efd30f4540c6299e40c"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22726561736f6e223a5b22706f6c6963795f6465636c696e6564225d2c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "whole-refusal-integer-and-object-members",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Carries an integer member and an object member, both signed: any JSON value JCS can serialize is signed as carried.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "attempt": 2,
+        "detail": {
+          "lang": "en",
+          "text": "declined"
+        },
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "1e73cd7ef3715730b080e49432010fcbe357dffdb85cd1df6c3561d144ae13f9bf0840a8142ca9be3fcbf5438907e4131d1f083bd6ae5b530d14f6b0dc834408"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b22617474656d7074223a322c2264657461696c223a7b226c616e67223a22656e222c2274657874223a226465636c696e6564227d2c226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "whole-refusal-float-member",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Carries the number 1.5, which JCS cannot represent in this document's integer-only profile, so the signing input has no JCS serialization and the signature is invalid (as for category_coverage_signature). sig is over a sorted compact serialization that writes 1.5.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "attempt": 1.5,
+        "signature": "8150156d54fef32324837a1e75b3019800fe146651590785354dd0c303e207f6037714a14b759edef2415ddbd78d403a9df8e10837cdf5abde5cee3c55f2f307"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "whole-refusal-only-key-and-signature",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A refusal carrying only key_id and signature, signed over {key_id}. whole-refusal/v1 names no required member, so it verifies; whether the refusal conforms to Evidence Request is a separate check.",
+      "kind": "refusal",
+      "object": {
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "d67e48ef93625acefc6e1d61f07d021be6080f7282fba55207b14589cc81e1fe3d3e6c146d49ec1bfd300893ca9728b78bfa46b751db90d534de9583e01f6e08"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166227d"
+    },
+    {
+      "id": "whole-refusal-proto-member",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As whole-refusal-verified, also carrying a member named __proto__, which is signed like any other (an implementation that copies members by plain assignment in JavaScript would drop it).",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "__proto__": "signed member",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "3690ccba6cc0d8dd14babceaa4f3522a0911a5e74bee945042c59dacfcec78371cd520bc084fd70f5ad4a70b872a344c18624adda5dc4b7414cccef495ec0b0e"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b225f5f70726f746f5f5f223a227369676e6564206d656d626572222c226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c226b65795f6964223a2236376439646536303439316566613865623363373839313366653232643064386139326534313636326436633935633263383535393664663637366133366166222c22726561736f6e223a22706f6c6963795f6465636c696e6564222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337227d"
+    },
+    {
+      "id": "whole-refusal-proto-member-changed",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As whole-refusal-proto-member, with __proto__ changed after signing.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "__proto__": "changed after signing",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "3690ccba6cc0d8dd14babceaa4f3522a0911a5e74bee945042c59dacfcec78371cd520bc084fd70f5ad4a70b872a344c18624adda5dc4b7414cccef495ec0b0e"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "whole-refusal-three-member-signature",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "signature is a valid three-member signature (over issued_at, reason and request_digest), carried as signature: the refusal is in whole-refusal/v1, whose signing input also covers key_id, so it does not verify.",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "bc10cd1b0846a44302125a1453d7bf5440cfdc4b334c40b2a04089eee1db77b6657d6a3190c1638eb37a421dd6c214b84da3c5f7f6d977e38266122a5a5d2a0f"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "response-verified",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A response carrying no responder: digest-bound-artifact-response/v1. sig is over the JCS of the five members plus type evidence-artifact-response/v1, which the verifier supplies.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "8eb37d7fbf53850de0a213644a91e8dda45a384ec1a6d35362840edf62ad41cbd0c4ce4d7da3632a456adeedf08216f6f3095693f3d1a5149ae597bc9e638a06"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b22616e63686f72223a2233663963363135663435613562313162363962643863663434356332643835333834663664666239386432643630653964383539346166313030623432386538222c2261727469666163745f646967657374223a2232656162316462373563636333393334373631633934363865313232643639636365653863303663656166643332373239643231363736376431633233376239222c2261727469666163745f6b696e64223a2265766964656e63652d62756e646c652f7632222c226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337222c2274797065223a2265766964656e63652d61727469666163742d726573706f6e73652f7631227d"
+    },
+    {
+      "id": "response-carried-type-artifact-and-extra",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As response-verified, also carrying type with another value, artifact and an extra member. type is never read from the object, and neither is any other unsigned member.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "8eb37d7fbf53850de0a213644a91e8dda45a384ec1a6d35362840edf62ad41cbd0c4ce4d7da3632a456adeedf08216f6f3095693f3d1a5149ae597bc9e638a06",
+        "type": "something-else",
+        "artifact": "ignored",
+        "note": "unsigned"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "verified"
+      },
+      "signing_input_hex": "7b22616e63686f72223a2233663963363135663435613562313162363962643863663434356332643835333834663664666239386432643630653964383539346166313030623432386538222c2261727469666163745f646967657374223a2232656162316462373563636333393334373631633934363865313232643639636365653863303663656166643332373239643231363736376431633233376239222c2261727469666163745f6b696e64223a2265766964656e63652d62756e646c652f7632222c226973737565645f6174223a22323032362d31312d32325431323a30303a30305a222c22726571756573745f646967657374223a2230636363353033613138663437363338363562363664396365373166613236356634346232313530633966663431316663303563303039393038306562346337222c2274797065223a2265766964656e63652d61727469666163742d726573706f6e73652f7631227d"
+    },
+    {
+      "id": "response-unsigned",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "A response carrying neither key_id nor sig: no signature to check.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "signature_unverified"
+      }
+    },
+    {
+      "id": "response-carries-responder",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As response-verified, also carrying responder: in none of these profiles (for example an interop envelope), so signature-unverified, whatever else it carries.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "8eb37d7fbf53850de0a213644a91e8dda45a384ec1a6d35362840edf62ad41cbd0c4ce4d7da3632a456adeedf08216f6f3095693f3d1a5149ae597bc9e638a06",
+        "responder": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af"
+      },
+      "expect": {
+        "profile": null,
+        "state": "signature_unverified"
+      }
+    },
+    {
+      "id": "response-responder-null",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As response-carries-responder, with responder JSON null: presence decides.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "8eb37d7fbf53850de0a213644a91e8dda45a384ec1a6d35362840edf62ad41cbd0c4ce4d7da3632a456adeedf08216f6f3095693f3d1a5149ae597bc9e638a06",
+        "responder": null
+      },
+      "expect": {
+        "profile": null,
+        "state": "signature_unverified"
+      }
+    },
+    {
+      "id": "response-key-without-sig",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "key_id without sig: invalid.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "response-sig-without-key",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As response-verified, without key_id: invalid.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "sig": "8eb37d7fbf53850de0a213644a91e8dda45a384ec1a6d35362840edf62ad41cbd0c4ce4d7da3632a456adeedf08216f6f3095693f3d1a5149ae597bc9e638a06"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "response-tampered",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As response-verified, with anchor changed after signing.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "fa6c656f1c2864f43180e051776f6c8390b548e95d38c56cba408d7cd045e956",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "8eb37d7fbf53850de0a213644a91e8dda45a384ec1a6d35362840edf62ad41cbd0c4ce4d7da3632a456adeedf08216f6f3095693f3d1a5149ae597bc9e638a06"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "response-missing-artifact-kind",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "As response-verified, without artifact_kind: a signed member that is absent is invalid.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "8eb37d7fbf53850de0a213644a91e8dda45a384ec1a6d35362840edf62ad41cbd0c4ce4d7da3632a456adeedf08216f6f3095693f3d1a5149ae597bc9e638a06"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "response-issued-at-not-string",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "issued_at is a number, signed as such: a signed member that is not a string is invalid.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": 1795411300,
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "12792a5ec646fb19669e33755d534523ef4ec7774ee4ab1002d40e2e92fa14c2c65c9fa7b614fdfd21398b0362763451b654169dc2bf6e1439fd844a7a8b9601"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "response-signed-without-type",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "sig is over the JCS of the five members without type: the signing input always includes type, so it does not verify.",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "ebae1465dd4af8d8632b1009bc66c59f24ca2631f20af3c4b974fad6240d3a2e5c2110241093802015242c1fd86dca1d8527623da4e76fdc3e6ef2b094919903"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "invalid"
+      }
+    },
+    {
+      "id": "three-member-small-order-key",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Signed in three-member-refusal/v1 by a key of small order (the identity point) with R = [r]B and S = r, which verifies any message and fails only the small-order key condition. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "0100000000000000000000000000000000000000000000000000000000000000",
+        "sig": "03e8ae5e37a9142dbd714bb1d4ad5fc550d0be132b7aab5b905202b9030eb123714c2f6e23fdb8b63927927bb679078f093ad4214286d066e4c7ffd2961b4f0b"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      },
+      "lenient_ed25519_verifies": true
+    },
+    {
+      "id": "three-member-identity-r",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Signed in three-member-refusal/v1 by the responder's own key with R the identity point, a signature only that key holder can make. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "01000000000000000000000000000000000000000000000000000000000000007894c4234f2f1087103416eb3b1ca1d64db3884a3da4a5b615616d20d458cf08"
+      },
+      "expect": {
+        "profile": "three-member-refusal/v1",
+        "state": "invalid"
+      },
+      "lenient_ed25519_verifies": true
+    },
+    {
+      "id": "whole-refusal-small-order-key",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Signed in whole-refusal/v1 by a key of small order (the identity point) with R = [r]B and S = r, which verifies any message and fails only the small-order key condition. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "0100000000000000000000000000000000000000000000000000000000000000",
+        "signature": "03e8ae5e37a9142dbd714bb1d4ad5fc550d0be132b7aab5b905202b9030eb123714c2f6e23fdb8b63927927bb679078f093ad4214286d066e4c7ffd2961b4f0b"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      },
+      "lenient_ed25519_verifies": true
+    },
+    {
+      "id": "whole-refusal-identity-r",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Signed in whole-refusal/v1 by the responder's own key with R the identity point, a signature only that key holder can make. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
+      "kind": "refusal",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "reason": "policy_declined",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "signature": "010000000000000000000000000000000000000000000000000000000000000020f0f587a7e7945c0d1610697392bb5429cd068eb4c1fff935aed15cfd9f580f"
+      },
+      "expect": {
+        "profile": "whole-refusal/v1",
+        "state": "invalid"
+      },
+      "lenient_ed25519_verifies": true
+    },
+    {
+      "id": "response-small-order-key",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Signed in digest-bound-artifact-response/v1 by a key of small order (the identity point) with R = [r]B and S = r, which verifies any message and fails only the small-order key condition. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "0100000000000000000000000000000000000000000000000000000000000000",
+        "sig": "03e8ae5e37a9142dbd714bb1d4ad5fc550d0be132b7aab5b905202b9030eb123714c2f6e23fdb8b63927927bb679078f093ad4214286d066e4c7ffd2961b4f0b"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "invalid"
+      },
+      "lenient_ed25519_verifies": true
+    },
+    {
+      "id": "response-identity-r",
+      "section": [
+        "composed/v1: Carried Signature Profiles"
+      ],
+      "description": "Signed in digest-bound-artifact-response/v1 by the responder's own key with R the identity point, a signature only that key holder can make. A lenient Ed25519 verifier accepts it; strict Ed25519 refuses it, so the signature is invalid (named after the forged-refusal cases of vectors/interop-profile-v1/).",
+      "kind": "response",
+      "object": {
+        "request_digest": "0ccc503a18f4763865b66d9ce71fa265f44b2150c9ff411fc05c0099080eb4c7",
+        "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+        "artifact_kind": "evidence-bundle/v2",
+        "artifact_digest": "2eab1db75ccc3934761c9468e122d69ccee8c06ceafd32729d216767d1c237b9",
+        "issued_at": "2026-11-22T12:00:00Z",
+        "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+        "sig": "01000000000000000000000000000000000000000000000000000000000000005d25ae127f89b9a89d4041d3a8bf9adb225ae56c2e5fc869314d5834b4373308"
+      },
+      "expect": {
+        "profile": "digest-bound-artifact-response/v1",
+        "state": "invalid"
+      },
+      "lenient_ed25519_verifies": true
+    }
+  ],
+  "composed_cases": [
+    {
+      "id": "composed-refusal-verified",
+      "section": [
+        "composed/v1: Carried Signature Profiles",
+        "composed/v1: Members and Outcomes"
+      ],
+      "description": "responder-a granted a Bundle; responder-b refused with a three-member-refusal/v1 refusal whose signature verifies. Verified with both profile verifiers set: the refusal signature is verified, nothing is withheld, and a refusal is not a failed claim.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "refusal",
+                "digest": "d8040c4adda3acf31f1235fa9b0b42b97ee0f24b55bda9f3c7855c253a79fcaf",
+                "refusal": {
+                  "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                  "reason": "policy_declined",
+                  "issued_at": "2026-11-22T12:00:00Z",
+                  "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                  "sig": "c5ab137a72e9a6fb26b7e474be50cec0f10928c3303bd3dd4f71594a81f164ac6a0bf93acc5d8137c7af9b2d4aaae7f2028559d37511d0785eac7bee27a00e0e"
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "pre_agreed_identifier",
+                "pointer": "/model_attestation/compute_attestation/x-example-exchange-v1/exchange_id",
+                "identifier_digest": "e006d2f0045534fa35912ea3c7e3210c50a8cba21bb17b64360fa3d697a629a9",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "one_sided"
+              }
+            ],
+            "composed_digest": "ffc49b7a254c26dca907d7a016834998f79d56c4e3ace7b9df10f9c9d600d003"
+          }
+        }
+      },
+      "expect": {
+        "status": "pass",
+        "findings": [],
+        "members": {
+          "responder-b": {
+            "refusal_signature": "verified"
+          }
+        }
+      }
+    },
+    {
+      "id": "composed-refusal-invalid",
+      "section": [
+        "composed/v1: Carried Signature Profiles",
+        "composed/v1: Members and Outcomes"
+      ],
+      "description": "As composed-refusal-verified, with the refusal's reason changed after signing (the member digest recomputed over the refusal as carried): the refusal signature is invalid, so the block fails.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "refusal",
+                "digest": "86bc6c27af5789778070b1d48752305596e2b8ceb9488e43e9ee6ca286c0ed0d",
+                "refusal": {
+                  "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                  "reason": "not_authorized",
+                  "issued_at": "2026-11-22T12:00:00Z",
+                  "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                  "sig": "c5ab137a72e9a6fb26b7e474be50cec0f10928c3303bd3dd4f71594a81f164ac6a0bf93acc5d8137c7af9b2d4aaae7f2028559d37511d0785eac7bee27a00e0e"
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "pre_agreed_identifier",
+                "pointer": "/model_attestation/compute_attestation/x-example-exchange-v1/exchange_id",
+                "identifier_digest": "e006d2f0045534fa35912ea3c7e3210c50a8cba21bb17b64360fa3d697a629a9",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "one_sided"
+              }
+            ],
+            "composed_digest": "1bc98f1524966890a7d2a30ed94db2dbecec9fc02805f237f4c2c5b68a094a00"
+          }
+        }
+      },
+      "expect": {
+        "status": "fail",
+        "findings": [
+          "refusal_signature_invalid:responder-b"
+        ],
+        "members": {
+          "responder-b": {
+            "refusal_signature": "invalid"
+          }
+        }
+      }
+    },
+    {
+      "id": "composed-refusal-unsigned",
+      "section": [
+        "composed/v1: Carried Signature Profiles",
+        "composed/v1: Members and Outcomes"
+      ],
+      "description": "As composed-refusal-verified, with a refusal that carries no key and no signature (whole-refusal/v1, nothing to check): signature-unverified, so the block is withheld.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "refusal",
+                "digest": "d663e8d0728ec961cd6bd2896259479ae93a5003672917c1b60ae9a727311e07",
+                "refusal": {
+                  "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                  "reason": "policy_declined",
+                  "issued_at": "2026-11-22T12:00:00Z"
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "pre_agreed_identifier",
+                "pointer": "/model_attestation/compute_attestation/x-example-exchange-v1/exchange_id",
+                "identifier_digest": "e006d2f0045534fa35912ea3c7e3210c50a8cba21bb17b64360fa3d697a629a9",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "one_sided"
+              }
+            ],
+            "composed_digest": "e57d933a736fe6391f9de1c43aeb420540a2aa3998227918af6df2d9f1c24f9a"
+          }
+        }
+      },
+      "expect": {
+        "status": "withheld",
+        "findings": [
+          "refusal_signature_unverified:responder-b"
+        ],
+        "members": {
+          "responder-b": {
+            "refusal_signature": "signature_unverified"
+          }
+        }
+      }
+    },
+    {
+      "id": "composed-response-verified",
+      "section": [
+        "composed/v1: Carried Signature Profiles",
+        "composed/v1: Members and Outcomes"
+      ],
+      "description": "The agree composition, with responder-a carrying a digest-bound-artifact-response/v1 response bound to its request and its Bundle, signed by responder-a's key: verified, and the block passes.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                },
+                "response": {
+                  "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                  "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+                  "artifact_kind": "evidence-bundle/v2",
+                  "artifact_digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                  "issued_at": "2026-11-22T12:00:00Z",
+                  "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                  "sig": "9cf23c605cde52ef4fdc87ac03698f57b6c7d440ad3eae34574e35d66a0b43697a83937481ab442be450c55a5fc80492b8b1bcaf7f495b9175372670f0b78c0b"
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "artifact",
+                "digest": "690c028cc5dc1a859a592f41e78291cfebcbfa4e999c181afde11e96542e4c08",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-b",
+                      "action_type": "fyi",
+                      "operator": "responder-b.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:11:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "4d0c2ac3b851f692b652985e349e55268be73d0b8ecf815df8654d8a97df4cc7",
+                          "agent_output_digest": "f4b4e5e121309c1f13475ce0a60fd8acd33e418fbeb370bb740de596c490edfc",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                      "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4a058207692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff8917558403cd2597f164bf560620bf4db5813f6ee88b58ac67b3a285a88f4f21e50aa43f07acc84d96bb7721f63530e7fb06e92dfad8f9a870cc0307c0ab28d840badb400"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "pre_agreed_identifier",
+                "pointer": "/model_attestation/compute_attestation/x-example-exchange-v1/exchange_id",
+                "identifier_digest": "e006d2f0045534fa35912ea3c7e3210c50a8cba21bb17b64360fa3d697a629a9",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "agree"
+              }
+            ],
+            "composed_digest": "6e52f26bb542f226118db99956d6a68bcab7f00bb7f0ad0db30e5490ef396f9a"
+          }
+        }
+      },
+      "expect": {
+        "status": "pass",
+        "findings": [],
+        "members": {
+          "responder-a": {
+            "response_signature": "verified"
+          }
+        }
+      }
+    },
+    {
+      "id": "composed-response-invalid",
+      "section": [
+        "composed/v1: Carried Signature Profiles",
+        "composed/v1: Members and Outcomes"
+      ],
+      "description": "As composed-response-verified, with issued_at changed after signing: the response signature is invalid, so the block fails.",
+      "container": {
+        "bundle_version": "2",
+        "bundle_kind": "evidence-bundle/v2",
+        "root": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+        "records": [
+          {
+            "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+            "format_version": "4",
+            "canonicalization_id": "jcs",
+            "action_id": "example-run-0001/compose",
+            "action_type": "fyi",
+            "operator": "composer.example",
+            "developer": "composed-example-agent@1",
+            "timestamp": "2026-10-02T12:30:00Z",
+            "assurance": {
+              "attestation_mode": "self_attested",
+              "effect_mode": "not_applicable",
+              "ledger_mode": "standalone"
+            },
+            "capsule_id": "33e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd5",
+            "key_id": "8cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445",
+            "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d69640458208cfc9a0f292235507636960d2b3b9ebea36a7f6008010320264570701585c445a0582033e065087e9d96f89b56da191aeb914e1beb57f06566854388759df0e4b96cd55840826baeece8595bd78c13a703ea65b47363396c7e4d52b09e0d1b332699b158e0df728ae22dc26e2657c43a98f794deaf7e57f598ed570ea59338e13323d73c03"
+          }
+        ],
+        "completeness": {
+          "closure_depth": 0,
+          "records_mode": "complete",
+          "payloads_mode": "all"
+        },
+        "extensions": {
+          "composed/v1": {
+            "members": [
+              {
+                "id": "responder-a",
+                "observer": "obs-a",
+                "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                "outcome": "artifact",
+                "digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-a",
+                      "action_type": "fyi",
+                      "operator": "responder-a.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:10:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "0edfc9959ac786349dfd2e07e41bb73fa91d31113c64655836da2ee4e75da408",
+                          "agent_output_digest": "1e22a3578e1de8e7ec2b137b0dd14eb49730c5de7e8d4ce64a9cb4c72160d609",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b",
+                      "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d696404582067d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36afa05820443733b4177ab91f01095840e926630209ef37854e398fa22427d66044c6398b58400e6d1426561a70e79da41e4c68842b33ecfd222d114a9c34e8bba7005097ada331dd5fae0a1f8d83481b5052c2b7fe23ac1a0c570a1a695c944675f77f96ac01"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                },
+                "response": {
+                  "request_digest": "9c785bd673591d47171b69dfde6924cc1b9cc27e26606b19125326b3ec0b9f12",
+                  "anchor": "3f9c615f45a5b11b69bd8cf445c2d85384f6dfb98d2d60e9d8594af100b428e8",
+                  "artifact_kind": "evidence-bundle/v2",
+                  "artifact_digest": "595c070afb10f17aebc088b1eb578d85f82f97904b4c1457177f6a9b8ddb0795",
+                  "issued_at": "2026-11-22T12:00:01Z",
+                  "key_id": "67d9de60491efa8eb3c78913fe22d0d8a92e41662d6c95c2c85596df676a36af",
+                  "sig": "9cf23c605cde52ef4fdc87ac03698f57b6c7d440ad3eae34574e35d66a0b43697a83937481ab442be450c55a5fc80492b8b1bcaf7f495b9175372670f0b78c0b"
+                }
+              },
+              {
+                "id": "responder-b",
+                "observer": "obs-b",
+                "request_digest": "269b234128508191730b9211b6fcebca8d966ee12f97b5211d7b3acf6415aa75",
+                "outcome": "artifact",
+                "digest": "690c028cc5dc1a859a592f41e78291cfebcbfa4e999c181afde11e96542e4c08",
+                "bundle": {
+                  "bundle_version": "2",
+                  "bundle_kind": "evidence-bundle/v2",
+                  "root": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                  "records": [
+                    {
+                      "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+                      "format_version": "4",
+                      "canonicalization_id": "jcs",
+                      "action_id": "example-run-0001/responder-b",
+                      "action_type": "fyi",
+                      "operator": "responder-b.example",
+                      "developer": "composed-example-agent@1",
+                      "timestamp": "2026-10-02T12:11:00Z",
+                      "assurance": {
+                        "attestation_mode": "self_attested",
+                        "effect_mode": "not_applicable",
+                        "ledger_mode": "standalone"
+                      },
+                      "model_attestation": {
+                        "compute_attestation": {
+                          "agent_input_digest": "4d0c2ac3b851f692b652985e349e55268be73d0b8ecf815df8654d8a97df4cc7",
+                          "agent_output_digest": "f4b4e5e121309c1f13475ce0a60fd8acd33e418fbeb370bb740de596c490edfc",
+                          "x-example-exchange-v1": {
+                            "exchange_id": "example-run-0001",
+                            "transcript_digest": "07ead5b991047e91b5bc2d5e696b145cd3392e9abbab78d27b81b78ae6f7de87"
+                          }
+                        }
+                      },
+                      "capsule_id": "7692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff89175",
+                      "key_id": "bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4",
+                      "signature": "d284584ca301270378236170706c69636174696f6e2f6167656e742d616374696f6e2d63617073756c652d6964045820bf86c315f76c58d7f6419e85f0e61949b7ef96bfb94b6b7669cdf96e6a149fc4a058207692340a11c2c3bb8374e0afbed85408cffd39c41aa262b552948e8a6ff8917558403cd2597f164bf560620bf4db5813f6ee88b58ac67b3a285a88f4f21e50aa43f07acc84d96bb7721f63530e7fb06e92dfad8f9a870cc0307c0ab28d840badb400"
+                    }
+                  ],
+                  "completeness": {
+                    "closure_depth": 0,
+                    "records_mode": "complete",
+                    "payloads_mode": "all"
+                  }
+                }
+              }
+            ],
+            "observers": [
+              {
+                "id": "obs-a",
+                "role": "responder",
+                "custody_domain": "custody-a.example"
+              },
+              {
+                "id": "obs-b",
+                "role": "responder",
+                "custody_domain": "custody-b.example"
+              }
+            ],
+            "joins": [
+              {
+                "members": [
+                  "responder-a",
+                  "responder-b"
+                ],
+                "basis": "pre_agreed_identifier",
+                "pointer": "/model_attestation/compute_attestation/x-example-exchange-v1/exchange_id",
+                "identifier_digest": "e006d2f0045534fa35912ea3c7e3210c50a8cba21bb17b64360fa3d697a629a9",
+                "compare": [
+                  "/model_attestation/compute_attestation/x-example-exchange-v1/transcript_digest"
+                ],
+                "state": "agree"
+              }
+            ],
+            "composed_digest": "6e52f26bb542f226118db99956d6a68bcab7f00bb7f0ad0db30e5490ef396f9a"
+          }
+        }
+      },
+      "expect": {
+        "status": "fail",
+        "findings": [
+          "response_signature_invalid:responder-a"
+        ],
+        "members": {
+          "responder-a": {
+            "response_signature": "invalid"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -62,8 +62,10 @@ _DIGEST_ERRORS = (FloatInDigestError, UnsafeIntegerError, TypeError, ValueError)
 
 #: Checks a carried signed refusal (or a response envelope) under the
 #: deployment's signature profile and returns one of the ``REFUSAL_SIGNATURE_*``
-#: states. The neutral core ships no profile: without a verifier every refusal
-#: is signature-unverified, which is neither failed nor absent.
+#: states. No profile applies by default: without a verifier every refusal is
+#: signature-unverified, which is neither failed nor absent.
+#: :mod:`agent_action_capsule.carried_signatures` checks the profiles of -03,
+#: "Carried Signature Profiles".
 SignatureVerifier = Callable[[Mapping[str, Any]], str]
 
 

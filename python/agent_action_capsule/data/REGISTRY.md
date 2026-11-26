@@ -495,6 +495,24 @@ vectors: `vectors/bundle/composed-history/`.
 | `controller_binding` | `-02` | `identifier_digest` is the binding digest of a controller binding record delivered beside the block (SHA-256 of the UTF-8 JCS of the record without `sigs`). The two members are linked when a delivered record with that digest applies to the two members' keys: it is well formed, both keys signed it under a method the verifier implements, each member's T is in its window, and no received revocation statement applies at or before either. Under `-02`, `pointer` selects a key identifier in each member root record and T is that record's `timestamp`. From `-03` each member's key and T come from its "Member keys" (a History's join view, an empty-history Bundle's checkpoint signer, a root record's verified producer signature, or for an unsigned root record the checkpoint signer when the record's identity and own membership hold, at the checkpoint's time); a key is never read from a value the record states, `pointer` is optional and, when present, must select that key, and every join reports each member's key source. No record with that digest, only well-formed ones under a method the verifier does not implement, a join without `identifier_digest`, or a member with no key is `not_derivable`; any other record with that digest that does not apply (malformed, not signed by both keys, other keys, outside its window, revoked) leaves them `unjoined`. A `controller_binding` join that derives `agree` is redundant, never corroborating. The binding proves control of both keys at its ceremony, never who holds them. |
 | `same_key` | `-03` | No `pointer`, `identifier_digest` or `compare`. Each member's key is its "Member keys" key (a History member's envelope `responder` once its envelope and anchor checkpoint verify; a member Bundle's root record's verified producer signature key; for an unsigned root record, the Bundle's checkpoint signer when the record's identity and own membership hold; an empty-history Bundle's checkpoint signer), never a value the record states; the members are linked when the two keys are equal, and every join reports each member's key source. A member without a key is `not_derivable`, except a refusal or absence, which the state rules decide. Against an empty-history Bundle, linked is `one_sided`. A `same_key` join that derives `agree` is redundant, never corroborating. It states that one key signed, logged or answered for both members, never that a History counts the other member's record. |
 
+### composed/v1 carried signature profiles
+
+Defined in the Evidence Bundle draft `-03`, "Carried Signature Profiles". These
+are opt-in profiles in which a verifier checks the signature of a refusal or an
+artifact response that a `composed/v1` member carries. The carried object does
+not name its profile; which members it carries decides. A verifier that reports
+which profile it checked a signature under names the profile by its identifier.
+A verifier that implements none of these profiles reports every carried
+signature as `signature_unverified`. Each identifier is versioned, and a change
+to a signing input is a new identifier. Conformance vectors:
+`vectors/bundle/composed-signature-profiles/`.
+
+| Identifier | Name | Signature and signing input (UTF-8 of RFC 8785 JCS) |
+|---|---|---|
+| `three-member-refusal/v1` | three-member refusal signature | A refusal that carries `sig`, no `signature` and no `policy_digest`. `sig` under `key_id` over `{issued_at, reason, request_digest}`, the evidence-interop/0 and /1 refusal signing input of the Minimum Evidence Interoperability Profile (`spec/interop-profile-v2.md`), Section 6.3, the document the draft cites as EVIDENCE-INTEROP. A refusal that carries `sig`, no `signature` and `policy_digest` (an evidence-interop/2 refusal can sign it) is in none of these profiles and is `signature_unverified`. |
+| `whole-refusal/v1` | whole-refusal signature | A refusal that carries `signature`, or does not carry `sig`. `signature` under `key_id` over the refusal without `signature`. |
+| `digest-bound-artifact-response/v1` | digest-bound artifact response signature | A response that carries no `responder`. `sig` under `key_id` over the five members `request_digest`, `anchor`, `artifact_kind`, `artifact_digest` and `issued_at`, plus `type` `evidence-artifact-response/v1`, which the verifier supplies. |
+
 ### Provisional: controller binding key types and signing event kind
 
 **Held for ratification; not yet registered.** `spec/controller-binding-v0.md`

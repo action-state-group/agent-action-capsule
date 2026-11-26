@@ -65,9 +65,12 @@ const ENVELOPE_SIGNED: [&str; 9] = [
 /// Checks a carried signed refusal, or an artifact member's signed response
 /// envelope, under the deployment's signature profile. It returns
 /// [`SIGNATURE_VERIFIED`], [`SIGNATURE_INVALID`] or [`SIGNATURE_UNVERIFIED`].
-/// The draft leaves the signature format to the deployment, so the core
-/// ships no profile: without a verifier every refusal and response is
+/// The draft leaves the signature format to the deployment, so no profile
+/// applies by default: without a verifier every refusal and response is
 /// signature-unverified, which is neither failed nor absent.
+/// [`verify_carried_refusal`](super::verify_carried_refusal) and
+/// [`verify_carried_response`](super::verify_carried_response) check the
+/// profiles of -03, "Carried Signature Profiles".
 pub type SignatureVerifier = dyn Fn(&Map<String, Value>) -> &'static str;
 
 /// What a `composed/v1` block is verified with.
