@@ -2,7 +2,7 @@
 title: "Evidence Layer"
 abbrev: "Evidence Layer"
 docname: draft-mih-agent-evidence-layer-01
-date: 2026-11-24
+date: 2026-11-25
 category: info
 submissiontype: IETF
 ipr: trust200902
@@ -36,12 +36,12 @@ informative:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-05
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-06
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-09-26
+    date: 2026-11-24
   I-D.mih-scitt-checkpointed-local-log:
     title: "The Checkpointed Local Log (CLL)"
     seriesinfo:
@@ -89,7 +89,17 @@ informative:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-11-21
+    date: 2026-11-24
+  I-D.malhotra-scitt-oar:
+    title: "Open Action Record (OAR): Authority, Approval and Outcome Evidence for AI Agent Actions"
+    seriesinfo:
+      Internet-Draft: draft-malhotra-scitt-oar-01
+    author:
+      - ins: R. Malhotra
+        name: Ravish Malhotra
+    date: 2026-11-25
+  I-D.noa-scitt-ai-agent-receipt:
+  I-D.kamimura-scitt-vcp:
 
 --- abstract
 
@@ -543,6 +553,21 @@ Transparency Service, any other append-only transparency log, or an
 implementer's own authenticated log all qualify: a
 store conforms by satisfying the four properties above under whichever
 substrate it uses, and states which substrate that is.
+
+**Logs and checkpoints.** Several drafts commit their records to a log of
+their own. {{I-D.malhotra-scitt-oar}} defines a sealing service that seals
+statements into a log and signs checkpoints over it;
+{{I-D.noa-scitt-ai-agent-receipt}} defines a separately signed checkpoint
+(`noa.checkpoint/0.1`) asserting a receipt chain's head; and
+{{I-D.kamimura-scitt-vcp}} binds each anchored batch's Merkle root in an
+AnchorRecord. The Checkpointed Local Log is a producer-operated log of the
+same kind that defines no payload semantics, so one log can carry records
+of every type a store holds side by side. Its signed checkpoints are SCITT
+Signed Statements that can be registered with one or more Transparency
+Services, and inclusion and consistency proofs against a registered
+checkpoint give a relying party order, contemporaneity and completeness
+for every record in the log, whatever its type. It is one substrate among
+those above; this document does not require it.
 
 # Answering a Request {#answers}
 
@@ -1027,6 +1052,8 @@ Since -00:
   seventh form of the Evidence Request at -03.
 - Implementation Status: added ({{impl-status}}), following RFC 7942.
 - References: RFC 3986 is added as a normative reference, for
-  `policy_uri`. The Agent Action Capsule profile is cited at -05, the
+  `policy_uri`. The Agent Action Capsule profile is cited at -06, the
   Evidence Request at -03, the Evidence Bundle at -02, the Settlement Records
   at -01, and the Checkpointed Local Log at -02.
+- Commitment substrate: added a paragraph on logs and checkpoints in other
+  drafts and what the Checkpointed Local Log offers as a shared substrate.
