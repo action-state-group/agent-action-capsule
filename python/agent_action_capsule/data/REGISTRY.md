@@ -575,6 +575,20 @@ refuses rather than truncating the result.
 | `standard_history/3` | Counts of the holder's counted deals in the window its policy sets, as of one checkpoint of its shelf log of book facts, each deal counted from its term rows as of the anchor's time: held, did not hold or undecided, with how many that did not hold were remedied and how many did not honour a ruling, by value band, role, how it happened, and disputes, the deals not counted by reason, and the shelf log's coverage start. Recipient-free. Defined in `spec/standard-history-v0.md` §11. | The card members of `spec/standard-history-v0.md` §11.6: counts and their denominators only, and the year and month of the coverage start; no record content. |
 | `standard_history/4` | As `standard_history/3`, except that no deal is left out for want of a witness time: a started deal whose records hold no time from a witness its agreement names, or whose agreement names none, is counted and disclosed in `local_times`; the only deals not counted are shop purchases paid up front, so the card has no tally of the deals not counted by reason. Recipient-free. Defined in `spec/standard-history-v0.md` §12. | The card members of `spec/standard-history-v0.md` §12: counts and their denominators only, and the year and month of the coverage start; no record content. |
 
+### Deprecated derivations
+
+**Deprecation table.** Deprecation is a status of a registry entry, recorded here. It
+changes no definition: each token below stays registered, its row above stands, its defining
+specification still says how a card is built and verified, and a card under it still verifies.
+A deprecated derivation is kept for the cards that exist and the readers that check them; a
+requester choosing a derivation for a new request uses the one in "Ask instead" once the row
+names one, except for a use the row says still asks for the deprecated derivation.
+
+| Token | Deprecated | Ask instead | What still holds |
+|---|---|---|---|
+| `history_card/1` | 2026-11, as an asked form | `history_card/2` [ER "The History Card"] | A responder may still answer it. It stays the history card an Inference-Service History answer embeds (`spec/inference-service-history-profile-v0.md` §5.2, `embeds` `history_card/1`), byte-identical to the `history_card/1` artifact, and a requester comparing that embedded card with the standalone artifact still asks for `history_card/1` at the same anchor (§5.2). |
+| `standard_history/2` | 2026-11 | None registered yet; this row will name the replacement revision once it is registered. | A responder may still answer it, and a `/2` card still verifies under `spec/standard-history-v0.md` §4. ISH §6.1 item 8 still forbids a `/2` card beside an ISH Standard History. |
+
 ### Provisional: minimum-necessary report
 
 **Held for ratification; not yet registered.** Conformance vectors:
