@@ -2299,12 +2299,12 @@ been incorporated into this document. This document obsoletes RFC
             <author fullname="Emek Can Doğru" initials="E. C." surname="Doğru">
               <organization>VERAX TEKNOLOJI LIMITED SIRKETI</organization>
             </author>
-            <date day="7" month="October" year="2026"/>
+            <date day="25" month="November" year="2026"/>
             <abstract>
               <t>This document addresses auditable payments for AI agents and builds upon state-of-the-art HTTP 402, AP2 and credit card systems. We specify a cryptographically secured payment reconciliation protocol using a Trade Manifest (a signed offer before payment), a Policy Decision Point with default deny, a Spend Receipt (a COSE/CWT claim set issued after a gated payment), and rail-extract reconciliation.</t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-dogru-cedulon-core-04"/>
+          <seriesInfo name="Internet-Draft" value="draft-dogru-cedulon-core-05"/>
         </reference>
         <reference anchor="X402" target="https://github.com/x402-foundation/x402/blob/main/specs/x402-specification-v2.md">
           <front>

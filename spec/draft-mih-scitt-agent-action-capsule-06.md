@@ -123,13 +123,14 @@ informative:
     author:
       - organization: Mastercard
   I-D.rampalli-scitt-capsule-provenance-binding:
-    title: "SCITT Capsule Provenance Binding"
+    title: "Binding Per-Action Authorization and Memory Provenance into Agent Action Capsules"
     author:
       - ins: K. Rampalli
         name: Karthik Rampalli
         organization: Glyphzero
     seriesinfo:
-      Internet-Draft: draft-rampalli-scitt-capsule-provenance-binding
+      Internet-Draft: draft-rampalli-scitt-capsule-provenance-binding-00
+    date: 2026-07-04
 
 --- abstract
 

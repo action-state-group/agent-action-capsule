@@ -3605,9 +3605,9 @@ Internet-Draft            Agent Action Capsules            November 2026
    [I-D.malhotra-scitt-oar]
               Malhotra, R., "Open Action Record (OAR): Authority,
               Approval and Outcome Evidence for AI Agent Actions", Work
-              in Progress, Internet-Draft, draft-malhotra-scitt-oar-00,
-              18 November 2026, <https://datatracker.ietf.org/doc/html/
-              draft-malhotra-scitt-oar-00>.
+              in Progress, Internet-Draft, draft-malhotra-scitt-oar-01,
+              25 November 2026, <https://datatracker.ietf.org/doc/html/
+              draft-malhotra-scitt-oar-01>.
 
    [I-D.mih-agent-bilateral-attestation]
               Mih, S., "Bilateral Attestation of Cross-Organization
@@ -3669,11 +3669,12 @@ Internet-Draft            Agent Action Capsules            November 2026
               agent-receipt-01>.
 
    [I-D.rampalli-scitt-capsule-provenance-binding]
-              Rampalli, K., "SCITT Capsule Provenance Binding", Work in
-              Progress, Internet-Draft, draft-rampalli-scitt-capsule-
-              provenance-binding, n.d.,
+              Rampalli, K., "Binding Per-Action Authorization and Memory
+              Provenance into Agent Action Capsules", Work in Progress,
+              Internet-Draft, draft-rampalli-scitt-capsule-provenance-
+              binding-00, 4 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-rampalli-
-              scitt-capsule-provenance-binding>.
+              scitt-capsule-provenance-binding-00>.
 
    [I-D.sato-soos-gar]
               Sato, "The Governance Audit Record (GAR) for Agentic AI
@@ -3686,10 +3687,9 @@ Internet-Draft            Agent Action Capsules            November 2026
               "Notarized Agents: Decentralized, Verifiable AI Agent
               Receipts", 2026, <https://arxiv.org/abs/2606.04193>.
 
-   [RFC6839]  Hansen, T. and A. Melnikov, "Additional Media Type
-              Structured Syntax Suffixes", RFC 6839,
-              DOI 10.17487/RFC6839, January 2013,
-              <https://www.rfc-editor.org/rfc/rfc6839>.
+
+
+
 
 
 
@@ -3697,6 +3697,11 @@ Mih                        Expires 28 May 2027                 [Page 66]
 
 Internet-Draft            Agent Action Capsules            November 2026
 
+
+   [RFC6839]  Hansen, T. and A. Melnikov, "Additional Media Type
+              Structured Syntax Suffixes", RFC 6839,
+              DOI 10.17487/RFC6839, January 2013,
+              <https://www.rfc-editor.org/rfc/rfc6839>.
 
    [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
               Code: The Implementation Status Section", BCP 205,
@@ -3741,11 +3746,6 @@ Appendix A.  Changes from draft-mih-scitt-agent-action-capsule-05
       revisions.  The description of [I-D.kamimura-vap-framework]
       follows its current revision.  The Abstract cites no other
       document.
-
-
-
-
-
 
 
 

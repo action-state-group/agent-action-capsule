@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<reference anchor="I-D.malhotra-scitt-oar" target="https://datatracker.ietf.org/doc/html/draft-malhotra-scitt-oar-00">
+<reference anchor="I-D.malhotra-scitt-oar" target="https://datatracker.ietf.org/doc/html/draft-malhotra-scitt-oar-01">
    <front>
       <title>Open Action Record (OAR): Authority, Approval and Outcome Evidence for AI Agent Actions</title>
       <author initials="R." surname="Malhotra" fullname="Ravish Malhotra">
          </author>
-      <date month="November" day="18" year="2026" />
+      <date month="November" day="25" year="2026" />
       <abstract>
 	 <t>   Several profiles record what an AI agent was asked to do, and the
    decision taken, as signed statements registered with a transparency
@@ -31,6 +31,6 @@
 	 </t>
       </abstract>
    </front>
-   <seriesInfo name="Internet-Draft" value="draft-malhotra-scitt-oar-00" />
+   <seriesInfo name="Internet-Draft" value="draft-malhotra-scitt-oar-01" />
    
 </reference>

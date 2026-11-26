@@ -27,7 +27,7 @@
     <keyword>audit</keyword>
     <keyword>verdict</keyword>
     <abstract>
-      <?line 134?>
+      <?line 135?>
 
 <t>This document defines a SCITT statement profile for recording what an AI
 agent did: the Agent Action Capsule. A Capsule is a digest-committed record
@@ -44,14 +44,14 @@ auditor-grade evidence that a gate worked.</t>
     </abstract>
     <note>
       <name>Note to Readers</name>
-      <?line 149?>
+      <?line 150?>
 
 <t>This document is an individual submission. The intended venue for
 discussion is the SCITT Working Group (scitt@ietf.org).</t>
     </note>
   </front>
   <middle>
-    <?line 154?>
+    <?line 155?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -3220,7 +3220,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
             <title>Open Action Record (OAR): Authority, Approval and Outcome Evidence for AI Agent Actions</title>
             <author fullname="Ravish Malhotra" initials="R." surname="Malhotra">
          </author>
-            <date day="18" month="November" year="2026"/>
+            <date day="25" month="November" year="2026"/>
             <abstract>
               <t>   Several profiles record what an AI agent was asked to do, and the
    decision taken, as signed statements registered with a transparency
@@ -3247,7 +3247,7 @@ disclosure of JSON Web Token (JWT) claims.</t>
               </t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-malhotra-scitt-oar-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-malhotra-scitt-oar-01"/>
         </reference>
         <reference anchor="I-D.noa-scitt-ai-agent-receipt">
           <front>
@@ -3330,17 +3330,17 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
         <reference anchor="I-D.rampalli-scitt-capsule-provenance-binding">
           <front>
-            <title>SCITT Capsule Provenance Binding</title>
+            <title>Binding Per-Action Authorization and Memory Provenance into Agent Action Capsules</title>
             <author initials="K." surname="Rampalli" fullname="Karthik Rampalli">
               <organization>Glyphzero</organization>
             </author>
-            <date>n.d.</date>
+            <date year="2026" month="July" day="04"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-rampalli-scitt-capsule-provenance-binding"/>
+          <seriesInfo name="Internet-Draft" value="draft-rampalli-scitt-capsule-provenance-binding-00"/>
         </reference>
       </references>
     </references>
-    <?line 2253?>
+    <?line 2254?>
 
 <section anchor="changes-from-05">
       <name>Changes from draft-mih-scitt-agent-action-capsule-05</name>

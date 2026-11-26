@@ -2214,9 +2214,9 @@ Internet-Draft          Agent Settlement Records           November 2026
    [I-D.dogru-cedulon-core]
               Doğru, E. C., "Spend Receipts and Payment Rail
               Reconciliation for AI Agents", Work in Progress, Internet-
-              Draft, draft-dogru-cedulon-core-04, 7 October 2026,
+              Draft, draft-dogru-cedulon-core-05, 25 November 2026,
               <https://datatracker.ietf.org/doc/html/draft-dogru-
-              cedulon-core-04>.
+              cedulon-core-05>.
 
    [I-D.mih-agent-bilateral-attestation]
               Mih, S., "Bilateral Attestation of Cross-Organization
