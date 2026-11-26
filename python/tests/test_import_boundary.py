@@ -121,7 +121,11 @@ def test_clean_env_seal_without_engine(tmp_path):
     import venv
 
     venv_dir = tmp_path / "venv"
-    venv.create(str(venv_dir), with_pip=True, clear=True)
+    # Symlink the interpreter: a copied binary of a build that loads
+    # @executable_path/../lib/libpython3.X.dylib (uv's macOS CPython) finds no
+    # dylib beside the venv and dyld kills it at launch (issue #704). Windows
+    # keeps copies, since symlinks there need extra privileges.
+    venv.create(str(venv_dir), with_pip=True, clear=True, symlinks=sys.platform != "win32")
     pip = venv_dir / "bin" / "pip"
     python = venv_dir / "bin" / "python"
 

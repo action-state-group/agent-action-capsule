@@ -36,10 +36,7 @@ node --version
 venv() { # venv <name> <python> <uv pip install args...>
   local name="$1" py="$2"
   shift 2
-  # A system Python first: uv's own macOS 3.9 build links libpython as a
-  # dylib, so the venv that test_clean_env_seal_without_engine creates
-  # from it cannot start.
-  uv venv -q -p "$py" --python-preference system "$tmp/$name"
+  uv venv -q -p "$py" "$tmp/$name"
   VIRTUAL_ENV="$tmp/$name" uv pip install -q "$@"
 }
 unchanged() { # unchanged <path>: a regenerated corpus matches the committed one
