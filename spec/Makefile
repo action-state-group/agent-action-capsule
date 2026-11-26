@@ -18,7 +18,7 @@ DRAFT    = draft-mih-scitt-agent-action-capsule-06
 # that is resolved would simply land a red gate.
 BILATERAL = draft-mih-agent-bilateral-attestation-03
 CPB      = draft-mih-sokolov-scitt-payload-binding-00
-BUNDLE   = draft-mih-zhang-agent-disclosure-bundle-03
+BUNDLE   = draft-mih-zhang-agent-disclosure-bundle-04
 EVREQ    = draft-mih-agent-evidence-request-03
 EVIDENCELAYER = draft-mih-agent-evidence-layer-01
 SETTLEMENT = draft-mih-agent-settlement-records-01

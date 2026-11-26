@@ -41,8 +41,10 @@ from cll.checkpoint import (
     peaks,
     root_from_peaks,
 )
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ed25519_forgeries as forgeries  # noqa: E402
 import generate_bundle_strict_vectors as strict  # noqa: E402
 
 from agent_action_capsule.canonical import jcs  # noqa: E402
@@ -513,6 +515,27 @@ def coverage_cases() -> list[dict]:
     cases.append(coverage_case("neg-signature-s-not-reduced", "The valid signature with S replaced by S + L: "
                                "strict Ed25519 requires S < L.", with_member(unreduced), "INVALID",
                                props(signature="FAIL"), **full))
+    # Strict Ed25519 (-04 "Signature"): two signatures a lenient verifier
+    # accepts, each refused by one strict condition only.
+    small_key, small_sig = forgeries.small_order_key(b"bundle -02 category_coverage vectors: small-order r")
+    small = {**{k: v for k, v in declaration.items() if k not in ("signer", "signature")},
+             "signer": {"key_id": small_key.hex()}}
+    small["signature"] = small_sig.hex()
+    identity_r = {**{k: v for k, v in declaration.items() if k not in ("signer", "signature")},
+                  "signer": {"key_id": strict.raw_public(strict.PRODUCER).hex()}}
+    identity_r["signature"] = forgeries.identity_r(
+        strict.PRODUCER, jcs({"category_coverage": identity_r, "root": root})).hex()
+    for member in (small, identity_r):
+        signed = jcs({"category_coverage": {k: v for k, v in member.items() if k != "signature"}, "root": root})
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(member["signer"]["key_id"])).verify(
+            bytes.fromhex(member["signature"]), signed)  # a lenient verifier accepts it
+    cases.append(coverage_case("neg-signature-small-order-key", "Signed under a small-order key (the identity "
+                               "point) with R = [r]B and S = r, which a lenient verifier accepts over any message: "
+                               "strict Ed25519 refuses a small-order key.", with_member(small), "INVALID",
+                               props(signature="FAIL"), **full))
+    cases.append(coverage_case("neg-signature-identity-r", "Signed by the producer key with R the identity point, "
+                               "which a lenient verifier accepts: strict Ed25519 refuses a small-order R.",
+                               with_member(identity_r), "INVALID", props(signature="FAIL"), **full))
 
     def malformed(case_id: str, description: str, edit: Any) -> None:
         member = copy.deepcopy(declaration)

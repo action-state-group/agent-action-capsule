@@ -92,7 +92,7 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/bundle/composed-signature-profiles/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`composed/v1` carried signature profiles, #676) | verify | 50 |
 | `vectors/bundle/non-record-leaves/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Non-Record Leaves) | verify | 26 |
 | `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 9 |
-| `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 34 |
+| `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage); -04 strict Ed25519 (#680) | verify | 36 |
 | `vectors/bundle/parent-log-witness/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`parent-log-witness/v1`) | verify | 36 |
 | `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`); -03 strict `countersign/v1` (#677) | pack, verify | 10 |
 | `vectors/bundle/report-single-record.json` | `draft-mih-zhang-agent-disclosure-bundle-00` (report of one record) | report | 3 |
