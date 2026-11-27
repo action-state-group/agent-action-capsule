@@ -45,7 +45,8 @@ trap 'exit 143' TERM
 
 # dco.yml, on this branch's commits that origin/main lacks.
 if git rev-parse --verify -q origin/main > /dev/null; then
-  .github/scripts/check_dco.sh "$(git merge-base origin/main HEAD)" HEAD
+  dco_base="$(git merge-base origin/main HEAD)"
+  .github/scripts/check_dco.sh "$dco_base" HEAD
 else
   echo "check.sh: no origin/main; DCO check skipped" >&2
 fi
@@ -272,12 +273,13 @@ lane_misc() {
   (cd .github && "$tmp/index/bin/python" -m unittest -v test_changelog_fragments)
   "$tmp/index/bin/python" .github/neutrality_scan.py --self-test
   # neutrality.yml and leak-lint.yml scans, when their secret term lists are
-  # in the environment.
+  # in the environment. Matches stay redacted unless the caller sets
+  # NEUTRALITY_REVEAL or LEAK_LINT_REVEAL, so a failure log names no term.
   if [ -n "${NEUTRALITY_TERMS:-}" ]; then
-    NEUTRALITY_REVEAL=1 "$tmp/index/bin/python" .github/neutrality_scan.py .
+    "$tmp/index/bin/python" .github/neutrality_scan.py .
   fi
   if [ -n "${LEAK_LINT_TERMS:-}" ]; then
-    LEAK_LINT_REVEAL=1 "$tmp/index/bin/python" .github/leak_lint.py .
+    "$tmp/index/bin/python" .github/leak_lint.py .
   fi
 }
 
