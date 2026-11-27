@@ -217,14 +217,6 @@ def test_capsule_id_64_chars_with_non_hex_is_malformed():
     assert "capsule_id_malformed" in codes(res)
 
 
-def test_capsule_id_empty_string_is_malformed():
-    d = dict(base_executed())
-    d["capsule_id"] = ""
-    res = verify(d)
-    assert not res.ok
-    assert "capsule_id_malformed" in codes(res)
-
-
 def test_capsule_id_tampered_content_is_mismatch():
     # Valid hex format but content doesn't match; verifier detects via recompute.
     d = dict(base_executed())

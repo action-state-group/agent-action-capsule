@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """CLI front door + optional two-layer composition.
 
-The payload-only paths run with zero extras. The --transparent tests adapt to the
-environment: the real two-layer path runs only when scitt-cose is installed
-(importorskip); the graceful-missing-dependency path runs only when it is not.
+The payload-only paths run with zero extras. The real two-layer --transparent path
+runs only when scitt-cose is installed; the graceful-missing-dependency path runs
+everywhere, hiding scitt-cose when it is installed.
 """
 import importlib.util
 import json
@@ -56,15 +56,24 @@ def test_malformed_input_is_exit_2_not_traceback(capsys, tmp_path):
 
 
 # ------------------------------------------------------------- transparent path
-@pytest.mark.skipif(_SCITT, reason="scitt-cose installed; missing-dep path not exercised")
-def test_transparent_missing_dependency_is_graceful(capsys, tmp_path):
+def test_transparent_missing_dependency_is_graceful(capsys, tmp_path, monkeypatch):
+    # Simulate a missing [transparent] extra even where scitt-cose is installed (every
+    # CI job installs it): a None entry in sys.modules makes `import scitt_cose` raise
+    # ImportError, and dropping any cached `transparent` module forces the CLI's
+    # `from . import transparent` to re-import it and hit that error.
+    import agent_action_capsule
+
+    monkeypatch.setitem(sys.modules, "scitt_cose", None)
+    monkeypatch.delitem(sys.modules, "agent_action_capsule.transparent", raising=False)
+    monkeypatch.delattr(agent_action_capsule, "transparent", raising=False)
     stmt = tmp_path / "s.cose"
     stmt.write_bytes(b"x")
     key = tmp_path / "k.pem"
     key.write_text("x")
     rc = main(["verify", "--transparent", str(stmt), "--issuer-key", str(key)])
     assert rc == 2
-    assert "transparent" in capsys.readouterr().err.lower()
+    err = capsys.readouterr().err
+    assert "needs the optional substrate verifier" in err and "scitt_cose" in err
 
 
 @pytest.mark.skipif(not _SCITT, reason="needs the optional [transparent] extra")

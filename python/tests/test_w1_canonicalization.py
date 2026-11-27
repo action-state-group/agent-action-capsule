@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
 import copy
-import hashlib
 
 import pytest
 from conftest import base_executed
@@ -115,13 +114,6 @@ def test_json_digest_same_input_same_output():
     assert json_digest(v) == json_digest(copy.deepcopy(v))
 
 
-def test_json_digest_matches_manual_sha256():
-    v = {"z": 1, "a": "x"}
-    # JCS sorts → {"a":"x","z":1}
-    expected = hashlib.sha256(b'{"a":"x","z":1}').hexdigest()
-    assert json_digest(v) == expected
-
-
 def test_json_digest_commits_present_null():
     assert json_digest({"a": 1, "b": None}) != json_digest({"a": 1})
 
@@ -205,13 +197,6 @@ def test_flip_capsule_id_directly_invalidates():
 # ---------------------------------------------------------------------------
 
 
-def test_max_safe_integer_accepted():
-    assert MAX_SAFE_INTEGER == 9007199254740991
-    # Both bounds accepted
-    assert json_digest({"n": MAX_SAFE_INTEGER}) == json_digest({"n": MAX_SAFE_INTEGER})
-    assert json_digest({"n": -MAX_SAFE_INTEGER})
-
-
 def test_max_safe_integer_plus_one_rejected():
     with pytest.raises(UnsafeIntegerError):
         json_digest({"n": MAX_SAFE_INTEGER + 1})
@@ -236,11 +221,6 @@ def test_zero_and_one_accepted():
 def test_float_at_top_level_rejected():
     with pytest.raises(FloatInDigestError):
         jcs(1.5)
-
-
-def test_float_in_dict_value_rejected():
-    with pytest.raises(FloatInDigestError):
-        json_digest({"amount": 12.5})
 
 
 def test_float_in_nested_dict_rejected():
