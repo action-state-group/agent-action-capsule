@@ -48,11 +48,12 @@ from .media_types import CAPSULE_ID_MEDIA_TYPE
 #: the caller already trusts that key for inclusion, and a backdated receipt
 #: still reports the finding.
 #:
-#: The cutoff (2026-11-26T00:00:00Z) must not be earlier than the fixed
-#: witness's deploy, or receipts the unfixed witness issues in between fail;
-#: if that deploy slips past it, move it later before the next release
-#: (agent-action-capsule#683).
-LEGACY_RECEIPT_IAT_CUTOFF = 1795651200
+#: The cutoff must not be earlier than the fixed witness's deploy, or
+#: receipts the unfixed witness issued in between fail. It is 2026-11-26T21:30:21Z,
+#: when the deploy record reported revision capsule-witness-00015-cbd
+#: (capsule-anchor e117b23b) serving all traffic, an upper bound on the moment
+#: the unfixed witness stopped issuing receipts (agent-action-capsule#712).
+LEGACY_RECEIPT_IAT_CUTOFF = 1795728621
 
 #: COSE header labels (RFC 9052 Section 3.1, RFC 9360 Section 2).
 _HDR_KID = 4

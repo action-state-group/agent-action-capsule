@@ -435,6 +435,27 @@ def test_pre_fix_receipt_is_a_finding(tmp_path):
     assert "before the cutoff" in report.receipt_findings[0]
 
 
+def test_cutoff_is_the_fixed_witness_deploy():
+    """The cutoff is the deploy record's time for capsule-witness-00015-cbd,
+    the first revision signing iss/sub/kid (agent-action-capsule#712)."""
+    from agent_action_capsule.transparent import LEGACY_RECEIPT_IAT_CUTOFF
+
+    assert LEGACY_RECEIPT_IAT_CUTOFF == 1795728621  # 2026-11-26T21:30:21Z
+
+
+def test_receipt_from_the_unfixed_witness_on_deploy_day_is_a_finding(tmp_path):
+    """The unfixed witness kept issuing header-less receipts on 2026-11-26
+    until the deploy; one from 21:00Z verifies with a finding."""
+    ts = _InProcessTS(receipt_claims={"iat": 1795726800}).start()  # 2026-11-26T21:00:00Z
+    try:
+        _result, report = _anchor_and_verify(tmp_path, ts, b"deploy-day")
+    finally:
+        ts.stop()
+    assert report.ok and report.attestation_tier == "anchored", report.substrate_errors
+    assert len(report.receipt_findings) == 1
+    assert "before the cutoff (iat 1795726800)" in report.receipt_findings[0]
+
+
 @pytest.mark.parametrize("claims", [{}, {"iat": True}], ids=["no-iat", "bool-iat"])
 def test_headerless_receipt_without_integer_iat_fails(tmp_path, claims):
     """No signed integer iat, no exception: the receipt fails."""
