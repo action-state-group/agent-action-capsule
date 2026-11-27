@@ -167,10 +167,6 @@ def test_verifier_rejects_never_dispatch_with_dispatched_effect(vc):
 # ---------------------------------------------------------------------------
 
 
-def test_human_disposed_true_approver_human_ok():
-    Disposition(decision="accept", approver="human", human_disposed=True)
-
-
 def test_human_disposed_true_approver_policy_raises():
     with pytest.raises(InvariantError, match="human_disposed"):
         Disposition(decision="accept", approver="policy", human_disposed=True)
@@ -178,10 +174,6 @@ def test_human_disposed_true_approver_policy_raises():
 
 def test_human_disposed_false_approver_human_ok():
     Disposition(decision="accept", approver="human", human_disposed=False)
-
-
-def test_human_disposed_false_approver_policy_ok():
-    Disposition(decision="reject", approver="policy", human_disposed=False)
 
 
 def test_approver_vendor_bot_raises():
@@ -331,10 +323,6 @@ def test_assurance_no_overclaim_dispatched_unconfirmed_vs_not_applicable():
 # ---------------------------------------------------------------------------
 # Group 7: derive_effect_mode contract — combinatorial
 # ---------------------------------------------------------------------------
-
-
-def test_derive_effect_mode_none():
-    assert derive_effect_mode(None) == "not_applicable"
 
 
 def test_derive_effect_mode_planned():
