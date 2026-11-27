@@ -84,16 +84,20 @@ lanes() { # lanes <name>...: run lane_<name> functions in parallel
   local -a names=() pids=() starts=()
   set -m
   for name in "$@"; do
-    ( "lane_$name" ) > "$tmp/log.$name" 2>&1 &
+    # The EXIT trap records when this lane itself ended, pass or fail.
+    # shellcheck disable=SC2064
+    ( trap "echo \$SECONDS > '$tmp/end.$name'" EXIT; "lane_$name" ) > "$tmp/log.$name" 2>&1 &
     names+=("$name"); pids+=("$!"); starts+=("$SECONDS"); lane_pids+=("$!")
   done
   set +m
-  local i
+  local i end
   for i in "${!pids[@]}"; do
     if wait "${pids[$i]}"; then
-      echo "ok    ${names[$i]} ($((SECONDS - starts[i]))s)"
+      end="$(cat "$tmp/end.${names[$i]}")"
+      echo "ok    ${names[$i]} ($((end - starts[i]))s)"
     else
-      echo "FAIL  ${names[$i]} ($((SECONDS - starts[i]))s)"
+      end="$(cat "$tmp/end.${names[$i]}" 2>/dev/null || echo "$SECONDS")"
+      echo "FAIL  ${names[$i]} ($((end - starts[i]))s)"
       failed+=("${names[$i]}")
     fi
   done
