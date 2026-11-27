@@ -129,8 +129,20 @@ def test_clean_env_seal_without_engine(tmp_path):
     pip = venv_dir / "bin" / "pip"
     python = venv_dir / "bin" / "python"
 
-    pkg_root = str(__file__).split("tests")[0].rstrip("/")
-    _pip_install(pip, pkg_root)
+    # Install from a copy: a local setuptools build writes build/ and
+    # *.egg-info into the source tree, so two runs of this test at once (the
+    # parallel lanes of scripts/check.sh) would race there.
+    import shutil
+
+    pkg_root = tmp_path / "src"
+    shutil.copytree(
+        Path(__file__).resolve().parents[1],
+        pkg_root,
+        ignore=shutil.ignore_patterns(
+            "tests", "build", "dist", "*.egg-info", "__pycache__", ".pytest_cache", ".ruff_cache"
+        ),
+    )
+    _pip_install(pip, str(pkg_root))
 
     script_path = tmp_path / "run.py"
     script_path.write_text(_CLEAN_ENV_SCRIPT)

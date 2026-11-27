@@ -4,10 +4,12 @@
 # full whatever its paths filter: python.yml, conformance.yml, vectors.yml,
 # schemas.yml, spec.yml, vector-index.yml, adapter-erc8183.yml,
 # evidence-commitment-carriers.yml, nostr-mailbox.yml,
-# changelog-fragments.yml, publish-python.yml's build job and
-# neutrality.yml's scanner self-test. Not run: the neutrality and leak-lint
-# scans (they need repository secrets), spec.yml's idnits (non-gating in CI)
-# and dco.yml (sign-off and AI co-author trailers). Needs uv (Python 3.9 and
+# changelog-fragments.yml, publish-python.yml's build job, dco.yml (on the
+# commits not yet on origin/main) and neutrality.yml's scanner self-test.
+# The neutrality and leak-lint scans themselves read their term lists from
+# repository secrets; they run here only when NEUTRALITY_TERMS and
+# LEAK_LINT_TERMS are set in the environment. Not run: spec.yml's idnits
+# (non-gating in CI). Needs uv (Python 3.9 and
 # 3.12), Go, npm (Node 22 comes through npx), the current stable Rust with
 # rustfmt and clippy, as CI installs (`rustup update stable` if older), and
 # Ruby's gem (kramdown-rfc is installed into a temporary directory).
@@ -25,7 +27,28 @@ if [ -n "$(git status --porcelain --untracked-files=all -- "${regenerated[@]}")"
   exit 1
 fi
 tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
+# Each parallel lane runs in its own process group (set -m below), so an
+# interrupted or failed run stops every lane and its builds before the
+# temporary directory goes away.
+lane_pids=()
+cleanup() {
+  local pid
+  for pid in ${lane_pids[@]+"${lane_pids[@]}"}; do
+    kill -TERM -- "-$pid" 2>/dev/null || true
+  done
+  wait 2>/dev/null || true
+  rm -rf "$tmp"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# dco.yml, on this branch's commits that origin/main lacks.
+if git rev-parse --verify -q origin/main > /dev/null; then
+  .github/scripts/check_dco.sh "$(git merge-base origin/main HEAD)" HEAD
+else
+  echo "check.sh: no origin/main; DCO check skipped" >&2
+fi
 
 # CI runs Node 22. Use it here too, fetched through npx: Playwright's browser
 # download in browser-conformance.mjs hangs while unpacking under Node 26.
@@ -59,10 +82,12 @@ unchanged() { # unchanged <path>: a regenerated corpus matches the committed one
 lanes() { # lanes <name>...: run lane_<name> functions in parallel
   local name failed=()
   local -a names=() pids=() starts=()
+  set -m
   for name in "$@"; do
     ( "lane_$name" ) > "$tmp/log.$name" 2>&1 &
-    names+=("$name"); pids+=("$!"); starts+=("$SECONDS")
+    names+=("$name"); pids+=("$!"); starts+=("$SECONDS"); lane_pids+=("$!")
   done
+  set +m
   local i
   for i in "${!pids[@]}"; do
     if wait "${pids[$i]}"; then
@@ -72,6 +97,7 @@ lanes() { # lanes <name>...: run lane_<name> functions in parallel
       failed+=("${names[$i]}")
     fi
   done
+  lane_pids=()
   if [ "${#failed[@]}" -gt 0 ]; then
     for name in "${failed[@]}"; do
       echo "===== lane $name log ====="
@@ -241,6 +267,14 @@ lane_misc() {
   "$tmp/index/bin/python" .github/changelog_fragments.py check
   (cd .github && "$tmp/index/bin/python" -m unittest -v test_changelog_fragments)
   "$tmp/index/bin/python" .github/neutrality_scan.py --self-test
+  # neutrality.yml and leak-lint.yml scans, when their secret term lists are
+  # in the environment.
+  if [ -n "${NEUTRALITY_TERMS:-}" ]; then
+    NEUTRALITY_REVEAL=1 "$tmp/index/bin/python" .github/neutrality_scan.py .
+  fi
+  if [ -n "${LEAK_LINT_TERMS:-}" ]; then
+    LEAK_LINT_REVEAL=1 "$tmp/index/bin/python" .github/leak_lint.py .
+  fi
 }
 
 lanes py39 py312 bundle go rust ts legacy spec misc
@@ -273,4 +307,7 @@ unchanged vectors/adapters/nostr-mailbox
 
 # publish-python.yml build. Last: it writes python/build and the egg-info.
 (cd python && rm -rf "$tmp/dist" && "$tmp/build/bin/python" -m build --outdir "$tmp/dist" && "$tmp/build/bin/python" -m twine check "$tmp/dist"/*)
+for terms in NEUTRALITY_TERMS LEAK_LINT_TERMS; do
+  [ -n "${!terms:-}" ] || echo "check.sh: $terms unset, so its scan was not run here; CI runs it"
+done
 echo "check.sh: all checks passed (${SECONDS}s)"
