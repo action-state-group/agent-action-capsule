@@ -5,6 +5,7 @@ name: ERC-8183 adapter profile vectors
 # offline. No chain is read.
 on:
   push:
+    branches: [main]
     paths:
       - "python/scripts/generate_adapter_erc8183_vectors.py"
       - "python/tests/test_adapter_erc8183_vectors.py"
@@ -29,6 +30,12 @@ on:
 
 permissions:
   contents: read
+
+# A newer push to the same pull request supersedes its older run; runs on
+# main are never cancelled, since each is grouped by its own commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   drift:

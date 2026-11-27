@@ -4,12 +4,19 @@ name: Vector index
 # vector directory has no row or a count has drifted.
 on:
   push:
+    branches: [main]
     paths: ["vectors/**", "provenance-mode-vectors/**", "VECTORS.md", "scripts/check_vector_index.py", "scripts/test_check_vector_index.py", "scripts/run_vectors.py", "scripts/vector_sets.json", "scripts/test_run_vectors.py", ".github/workflows/vector-index.yml"]
   pull_request:
     paths: ["vectors/**", "provenance-mode-vectors/**", "VECTORS.md", "scripts/check_vector_index.py", "scripts/test_check_vector_index.py", "scripts/run_vectors.py", "scripts/vector_sets.json", "scripts/test_run_vectors.py", ".github/workflows/vector-index.yml"]
 
 permissions:
   contents: read
+
+# A newer push to the same pull request supersedes its older run; runs on
+# main are never cancelled, since each is grouped by its own commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   index:
