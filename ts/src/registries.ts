@@ -28,6 +28,7 @@ export const registries = Object.freeze({
     "write_order",
     "send_payment",
     "inference_completion",
+    "code_execution",
   ]),
   irreversibility_class: new Set([
     "two_way",
