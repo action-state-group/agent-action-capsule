@@ -1,0 +1,33 @@
+{
+  "spec_version": "draft-mih-scitt-agent-action-capsule-05",
+  "format_version": "4",
+  "canonicalization_id": "jcs",
+  "action_id": "clock-overreach@348054046ac706cdf7be5bc67239fce21df32e4d5cd0a9152ac4a9e4d0faecf9",
+  "action_type": "decide",
+  "operator": "org.example.operator",
+  "developer": "agent@v1",
+  "timestamp": "2026-11-04T17:20:05Z",
+  "disposition": {
+    "approver": "policy",
+    "decision": "reject",
+    "human_disposed": false,
+    "verdict_class": "blocked"
+  },
+  "constraints": [
+    {
+      "id": "org.example.operator_role_gate",
+      "check_type": "org.example.role_gate",
+      "method": "org.example.router_refusal",
+      "result": "fail",
+      "severity": "high",
+      "blocking": true,
+      "evidence_digest": "8c730b167f3b18371f35808c3f1e102378c7cd1061730ba1072282c0d1f52c29"
+    }
+  ],
+  "assurance": {
+    "attestation_mode": "self_attested",
+    "effect_mode": "not_applicable",
+    "ledger_mode": "standalone"
+  },
+  "capsule_id": "e907c35357221940710b4959bd0e93b24d18e39508277cc3daa54213a2329314"
+}

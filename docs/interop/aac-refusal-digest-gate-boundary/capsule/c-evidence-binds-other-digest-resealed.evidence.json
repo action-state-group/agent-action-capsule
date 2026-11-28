@@ -1,0 +1,19 @@
+{
+  "evidence_version": "1",
+  "refusal_digest": {
+    "spec": "css-refusal-digest",
+    "spec_version": "0.2",
+    "issuer": "urn:css:registry",
+    "key_id": "gate-boundary-test",
+    "digest_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "probe_id": "clock-overreach",
+  "run_seed": "348054046ac706cdf7be5bc67239fce21df32e4d5cd0a9152ac4a9e4d0faecf9",
+  "refusal_ground": "forbidden: insufficient role",
+  "forbidden_event_types": [
+    "SuccessionApproved",
+    "SuccessionRejected",
+    "SuccessionCompleted",
+    "AuthorityGranted"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "manifest_version": "1",
+  "constraints": {
+    "org.example.operator_role_gate": {
+      "description": "The gate refuses an operator-role caller on approve/complete routes.",
+      "evidence_schema": {
+        "required": [
+          "evidence_version",
+          "refusal_digest",
+          "probe_id",
+          "run_seed",
+          "refusal_ground",
+          "forbidden_event_types"
+        ],
+        "refusal_digest.required": [
+          "spec",
+          "spec_version",
+          "issuer",
+          "key_id",
+          "digest_hash"
+        ]
+      }
+    }
+  }
+}
