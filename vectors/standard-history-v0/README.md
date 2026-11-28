@@ -21,7 +21,7 @@ a verifier may hold beside it:
 | `card` | the card, as a JSON value | every property |
 | `policy` | the policy's two members (SH §5.1): `digest` and `window` | `window_from_policy` |
 | `as_of` | the anchor's digest and time, and the stream's first checkpoint time; in `vectors-3.json` and `vectors-4.json` also `coverage_start_time`, the time of the shelf log's coverage start (SH §11.5) | `as_of`, `counts_recompute` |
-| `deals` | every deal entry (SH §5.2; under `/3` and `/4`, §11.2, with each row's result as of the anchor's time) the stream holds at the anchor, given only when coverage is shown and no payload member the mapping reads is withheld (SH §6 "Handing the material"; a vector cannot carry the proof, so `deals` stands for a complete handover) | `counts_recompute` |
+| `deals` | every deal entry (SH §5.2; under `/3` and `/4`, §11.2, with each row's result and its `disputes` as of the anchor's time, SH §11.1) the stream holds at the anchor, given only when coverage is shown and no payload member the mapping reads is withheld (SH §6 "Handing the material"; a vector cannot carry the proof, so `deals` stands for a complete handover) | `counts_recompute` |
 | `derivation` | in `vectors-2.json`, `vectors-3.json` and `vectors-4.json` only: the token the request named, which the card is checked under (SH §6) | every property |
 
 `counts_recompute` recomputes over the card's own `window`, so it needs the anchor and the deal entries but not the policy. A case without an input expects `NOT_CHECKED` for each property that needs it. `expected` gives
