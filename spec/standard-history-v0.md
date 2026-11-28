@@ -1203,8 +1203,8 @@ of `/4` holds of `/5`, `/4`'s rules wherever they name a token, except:
   out of no count, and moves it only into `shop_preauth.count`. A holder that leaves the class off
   a deal moves it into `class_missing.count` instead, which a verifier shows too.
 - **Differencing** (§11.9): a holder key that serves Standard Histories under
-  `inference-service-history/0` MUST NOT serve a `standard_history/5` card either, for §11.9's
-  reason.
+  `inference-service-history/0` or `/1` MUST NOT serve a `standard_history/5` card either, for
+  §11.9's reason.
 - **Documents.** The counting table `spec/history-frame/standard-history-5-table.json`, digest
   `caa99362eedaf6b326540074aef49f5fb5b1772bc57f6293cdd4d08e9695f767`, and the wording pack
   `spec/history-frame/standard-history-5-pack.json`, digest
