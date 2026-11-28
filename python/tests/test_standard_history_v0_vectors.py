@@ -9,8 +9,9 @@ Every case runs from its inputs alone through ``agent_action_capsule.standard_hi
   ``derive_card`` rebuilds exactly the case's card from them.
 
 ``vectors.json`` holds the ``standard_history/1`` cases, ``vectors-2.json`` the
-``standard_history/2`` ones, ``vectors-3.json`` the ``standard_history/3`` ones (SH §11) and
-``vectors-4.json`` the ``standard_history/4`` ones (SH §12); a case's ``inputs.derivation`` names the token it is checked under,
+``standard_history/2`` ones, ``vectors-3.json`` the ``standard_history/3`` ones (SH §11),
+``vectors-4.json`` the ``standard_history/4`` ones (SH §12) and ``vectors-5.json`` the
+``standard_history/5`` ones (SH §14); a case's ``inputs.derivation`` names the token it is checked under,
 ``/1`` when absent.
 
 ``go/standardhistory`` runs the same cases. The test regenerates the corpus twice and requires
@@ -39,11 +40,13 @@ DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
 DATA_2 = json.loads((VECTORS / "vectors-2.json").read_text(encoding="utf-8"))
 DATA_3 = json.loads((VECTORS / "vectors-3.json").read_text(encoding="utf-8"))
 DATA_4 = json.loads((VECTORS / "vectors-4.json").read_text(encoding="utf-8"))
+DATA_5 = json.loads((VECTORS / "vectors-5.json").read_text(encoding="utf-8"))
 CASES = DATA["cases"]
 CASES_2 = DATA_2["cases"]
 CASES_3 = DATA_3["cases"]
 CASES_4 = DATA_4["cases"]
-ALL_CASES = CASES + CASES_2 + CASES_3 + CASES_4
+CASES_5 = DATA_5["cases"]
+ALL_CASES = CASES + CASES_2 + CASES_3 + CASES_4 + CASES_5
 
 
 def _check(c: dict) -> dict:
@@ -66,14 +69,15 @@ def _derive(c: dict) -> dict:
 
 
 def test_corpus_header() -> None:
-    for data in (DATA, DATA_2, DATA_3, DATA_4):
+    for data in (DATA, DATA_2, DATA_3, DATA_4, DATA_5):
         assert data["spec"] == "spec/standard-history-v0.md"
         assert tuple(data["properties"]) == sh.PROPERTIES
         assert data["count"] == len(data["cases"])
     assert DATA_2["derivation"] == sh.DERIVATION_2
     assert DATA_3["derivation"] == sh.DERIVATION_3
     assert DATA_4["derivation"] == sh.DERIVATION_4
-    assert all(c["inputs"]["derivation"] in sh.DERIVATIONS for c in CASES_2 + CASES_3 + CASES_4)
+    assert DATA_5["derivation"] == sh.DERIVATION_5
+    assert all(c["inputs"]["derivation"] in sh.DERIVATIONS for c in CASES_2 + CASES_3 + CASES_4 + CASES_5)
     assert not any("derivation" in c["inputs"] for c in CASES)
     spec = (ROOT / DATA["spec"]).read_text(encoding="utf-8")
     for prop in sh.PROPERTIES:
@@ -154,6 +158,45 @@ def test_every_case_named_for_v4_is_present() -> None:
 def test_malformed_v4_deal_entry_raises(change: dict) -> None:
     """SH §12: a /4 deal entry has no left_out, and no_witness_time only as true."""
     c = next(c for c in CASES_4 if c["id"] == "no-witness-time-counted")
+    deals = json.loads(json.dumps(c["inputs"]["deals"]))
+    deals[0].update(change)
+    with pytest.raises(ValueError):
+        _check({**c, "inputs": {**c["inputs"], "deals": deals}})
+
+
+def test_every_case_named_for_v5_is_present() -> None:
+    """SH §14 "Vectors": the /5 cases, each negative failing the property named."""
+    fails = {c["id"]: c["expected"]["fails"] for c in CASES_5}
+    for cid in ("shop-purchases-dropped", "shop-dispute-dropped", "shop-preauth-uncounted"):
+        assert fails[cid] == ["counts_recompute"], cid
+    for cid in ("shop-purchases-not-counted", "shop-preauth-not-the-counted", "shop-preauth-and-class-missing"):
+        assert fails[cid] == ["denominator"], cid
+    for cid in ("v4-card-for-v5-request", "v5-card-for-v4-request"):
+        assert fails[cid] == ["card_form"], cid
+    c = next(c for c in CASES_5 if c["id"] == "shop-purchases-counted")
+    assert c["expected"]["standard"] and _derivable(c)
+    # SH §14 (AAC#682 acceptance 5): a shop purchase with a dispute the holder raised, counted.
+    shops = [d for d in c["inputs"]["deals"] if d.get("counterparty_class") == "shop_preauth"]
+    assert any(x["side"] == "raised" for d in shops for x in d["disputes"])
+    assert c["inputs"]["card"]["shop_preauth"] == {"of": 16, "count": len(shops)}
+    assert c["inputs"]["card"]["in_window"]["not_counted"] == 0
+
+
+def test_v5_counts_what_v4_leaves_out() -> None:
+    """SH §14: the same shelf under /4 leaves the shop purchases and their disputes out; /5 counts them."""
+    c = next(c for c in CASES_5 if c["id"] == "shop-purchases-counted")
+    v4 = _derive({**c, "inputs": {**c["inputs"], "derivation": sh.DERIVATION_4}})
+    v5 = _derive(c)
+    assert v4["in_window"] == {"of": 16, "counted": 14, "not_counted": 2} and "shop_preauth" not in v4
+    assert v5["in_window"] == {"of": 16, "counted": 16, "not_counted": 0}
+    assert v5["disputes"]["raised"]["of"] == v4["disputes"]["raised"]["of"] + 1
+    assert v5["disputes"]["received"]["of"] == v4["disputes"]["received"]["of"] + 1
+
+
+@pytest.mark.parametrize("change", [{"left_out": "no_witness_time"}, {"no_witness_time": False}])
+def test_malformed_v5_deal_entry_raises(change: dict) -> None:
+    """SH §14: a /5 deal entry is a /4 one: no left_out, and no_witness_time only as true."""
+    c = next(c for c in CASES_5 if c["id"] == "shop-purchases-counted")
     deals = json.loads(json.dumps(c["inputs"]["deals"]))
     deals[0].update(change)
     with pytest.raises(ValueError):
@@ -302,7 +345,7 @@ def test_v2_amount_present_must_be_an_amount(amount) -> None:
 
 def test_unknown_token_raises() -> None:
     with pytest.raises(ValueError):
-        sh.check_card(CASES[0]["inputs"]["card"], derivation="standard_history/5")
+        sh.check_card(CASES[0]["inputs"]["card"], derivation="standard_history/6")
 
 
 def test_counts_integral_reads_the_value() -> None:
@@ -466,6 +509,29 @@ def _v4_local_rows_only(deals, window, anchor_time, derivation=sh.DERIVATION):
                         anchor_time, derivation)
 
 
+def _v5_leaves_shops_out(deals, window, anchor_time, derivation=sh.DERIVATION):
+    """Counts a /5 card's deals as /4 counts them, shop purchases left out (SH §14 counts them)."""
+    if derivation != sh.DERIVATION_5:
+        return _REAL_COUNTS(deals, window, anchor_time, derivation)
+    t = _REAL_COUNTS(deals, window, anchor_time, sh.DERIVATION_4)
+    t["shop_preauth"] = {"of": t["in_window"]["counted"], "count": 0}
+    return t
+
+
+def _v5_drops_shop_disputes(deals, window, anchor_time, derivation=sh.DERIVATION):
+    """Counts a shop purchase under /5 but not its disputes (SH §14 counts them)."""
+    if derivation == sh.DERIVATION_5:
+        deals = [{**d, "disputes": []} if d.get("counterparty_class") == "shop_preauth" else d for d in deals]
+    return _REAL_COUNTS(deals, window, anchor_time, derivation)
+
+
+def _v5_denominator_as_v4(card: dict, derivation: str) -> bool:
+    """A denominator check that reads a /5 card by /4's rules, without SH §14's."""
+    if derivation == sh.DERIVATION_5:
+        return _REAL_DENOMINATOR({k: v for k, v in card.items() if k != "shop_preauth"}, sh.DERIVATION_4)
+    return _REAL_DENOMINATOR(card, derivation)
+
+
 def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
     real_in_window, real_window_start, real_decade = sh._in_window, sh._window_start, sh._decade
     mutants = {
@@ -498,6 +564,10 @@ def test_defective_evaluators_disagree(monkeypatch: pytest.MonkeyPatch) -> None:
         "leaves out a /4 deal without a witness time": ("_counts", _v4_leaves_out_untimed),
         "counts local_times from the rows alone": ("_counts", _v4_local_rows_only),
         "lets a /4 card carry not_counted": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_4: sh.MEMBERS[sh.DERIVATION_3]}),
+        "leaves /5 shop purchases out as /4 does": ("_counts", _v5_leaves_shops_out),
+        "drops a /5 shop purchase's disputes": ("_counts", _v5_drops_shop_disputes),
+        "checks a /5 card's denominators as /4's": ("_denominator", _v5_denominator_as_v4),
+        "lets a /5 card leave out shop_preauth": ("MEMBERS", {**sh.MEMBERS, sh.DERIVATION_5: sh.MEMBERS[sh.DERIVATION_4]}),
     }
     agreeing = [desc for desc, (name, value) in mutants.items()
                 if not _mutant_disagrees(monkeypatch, name, value)]

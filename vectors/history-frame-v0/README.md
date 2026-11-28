@@ -22,8 +22,9 @@ the document. `instances` at the top of `vectors.json` repeats HF §6's list.
 
 ## The cases
 
-Positive: each of the seven instances' documents as pinned: `standard-history-as-pinned`,
+Positive: each of the eight instances' documents as pinned: `standard-history-as-pinned`,
 `standard-history-2-as-pinned`, `standard-history-3-as-pinned`, `standard-history-4-as-pinned`,
+`standard-history-5-as-pinned`,
 `personal-history-basic-as-pinned`, `personal-history-outcome-as-pinned` and
 `inference-service-history-as-pinned`.
 

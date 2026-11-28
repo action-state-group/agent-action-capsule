@@ -5,9 +5,10 @@
 Each case is one card with what a verifier may hold beside it: the policy's window and digest
 (SH §5.1), the anchor (SH §6 ``as_of``) and the deal entries (SH §5.2). SH §6 lists the
 negatives. ``vectors.json`` holds the ``standard_history/1`` cases; ``vectors-2.json`` holds the
-``standard_history/2`` cases, ``vectors-3.json`` the ``standard_history/3`` ones (SH §11) and
-``vectors-4.json`` the ``standard_history/4`` ones (SH §12), each naming the token it is checked
-under in ``inputs.derivation``.
+``standard_history/2`` cases, ``vectors-3.json`` the ``standard_history/3`` ones (SH §11),
+``vectors-4.json`` the ``standard_history/4`` ones (SH §12) and ``vectors-5.json`` the
+``standard_history/5`` ones (SH §14), each naming the token it is checked under in
+``inputs.derivation``.
 
 Every card and every expected property is stated here by hand from SH §4 to §6. The script
 imports no implementation: ``python/tests/test_standard_history_v0_vectors.py`` runs the Python
@@ -46,7 +47,11 @@ STATUS_3 = ("Conformance vectors for the informational Standard History Derivati
 STATUS_4 = ("Conformance vectors for the informational Standard History Derivation v0 "
             "(spec/standard-history-v0.md), standard_history/4: /3 with no deal left out for want of a "
             "witness time. Every digest is a label digest for these vectors only.")
+STATUS_5 = ("Conformance vectors for the informational Standard History Derivation v0 "
+            "(spec/standard-history-v0.md), standard_history/5: /4 counting every deal in the window, shop "
+            "purchases paid up front included. Every digest is a label digest for these vectors only.")
 SH1, SH2, SH3, SH4 = "standard_history/1", "standard_history/2", "standard_history/3", "standard_history/4"
+SH5 = "standard_history/5"
 PROPERTIES = ("card_form", "counts_integral", "denominator", "window_from_policy", "as_of",
               "counts_recompute")
 
@@ -868,6 +873,93 @@ def cases_4() -> list:
     ]
 
 
+def deals5() -> list:
+    """The /4 shelf (SH §14) and deal-317: a second shop purchase paid up front, where the holder
+    raised a dispute through the payment rail that is still open and the shop's row is in dispute.
+    deal-312, the first shop purchase, carries a dispute the shop raised."""
+    return copy.deepcopy(DEALS_4) + [
+        deal3("deal-317", "2026-10-27T10:00:00Z", "bought", amount("4999", "USD", 2),
+              [row(H, "agreed", MET), row(C, "in_dispute")], "receipt_only", "shop_preauth",
+              (("raised", "open", "rail"),))]
+
+
+DEALS_5 = deals5()
+
+
+def card5(base: dict, **members) -> dict:
+    """A /5 card: ``base``, a /4 card, under SH5 with a shop_preauth tally after local_times, with
+    ``members`` replaced, in the counting table's member order."""
+    c: dict = {}
+    for k, v in base.items():
+        c[k] = v
+        if k == "local_times":
+            c["shop_preauth"] = tally(base["in_window"]["counted"], count=0)
+    c["derivation"] = SH5
+    c.update(members)
+    return c
+
+
+# SH §14 by hand over DEALS_5: deal-313 is out of the window; every other deal is counted. As
+# PERSON_3M_4, plus deal-312 (held: its one row, the shop's, agreed as met; USD decade 1, receipt only,
+# bought, one received open rail dispute) and deal-317 (undecided: the shop's row in dispute; USD
+# decade 1, receipt only, bought, one raised open rail dispute), both in shop_preauth.count.
+PERSON_3M_5 = card5(
+    PERSON_3M_4,
+    in_window=tally(16, counted=16, not_counted=0), class_missing=tally(16, count=1),
+    outcomes=outs(16, held=4, did_not_hold=5, undecided=7), local_times=tally(16, count=5),
+    bands=PERSON_3M_4["bands"][:5] + [band("USD", 1, 6, held=2, did_not_hold=1, undecided=3)]
+    + PERSON_3M_4["bands"][6:],
+    roles=tally(16, provided=9, bought=7), happened=tally(16, stamped_by_both=5, receipt_only=7, no_record=4),
+    disputes={"raised": disputes_tally(2, {"for": 1, "open": 1}, {"rail": 2}),
+              "received": disputes_tally(3, {"open": 2, "against": 1}, {"network": 1, "external": 1, "rail": 1})},
+    shop_preauth=tally(16, count=2),
+)
+FULL_5 = {"policy": POLICY_3M, "as_of": AS_OF_3, "deals": DEALS_5, "derivation": SH5}
+
+
+def cases_5() -> list:
+    return [
+        # Positive.
+        case("shop-purchases-counted", "Two shop purchases paid up front, each counted like any other deal in "
+             "the outcomes, the bands, the roles, how it happened and the disputes, and both in shop_preauth: one "
+             "held, with a dispute the shop raised, and one undecided, with a dispute the holder raised through "
+             "the payment rail", ["§14"], PERSON_3M_5, props(), **FULL_5),
+        case("shop-purchases-without-shelf", "The same card, checked without the deal entries: the counts are "
+             "the holder's statement", ["§14"], PERSON_3M_5, props(counts_recompute=NC),
+             policy=POLICY_3M, as_of=AS_OF_3, derivation=SH5),
+        case("shop-purchases-card-only", "The same card, checked with nothing beside it", ["§14"], PERSON_3M_5,
+             props(window_from_policy=NC, as_of=NC, counts_recompute=NC), derivation=SH5),
+        # Negative.
+        case("shop-purchases-not-counted", "The two shop purchases left out as /4 would leave them out, every "
+             "other tally agreeing with the others", ["§14"],
+             card5(PERSON_3M_4, in_window=tally(16, counted=14, not_counted=2)),
+             props(denominator="FAIL", counts_recompute=NC), **FULL_5),
+        case("shop-purchases-dropped", "The two shop purchases left out of the window altogether, every tally "
+             "agreeing with the others", ["§14"],
+             card5(PERSON_3M_4, in_window=tally(14, counted=14, not_counted=0)),
+             props(counts_recompute="FAIL"), **FULL_5),
+        case("shop-dispute-dropped", "The dispute the holder raised on deal-317, a shop purchase, left out of "
+             "the raised disputes, the deal counted otherwise", ["§5.4", "§14"],
+             mutate(PERSON_3M_5, lambda c: c["disputes"].update(
+                 raised=disputes_tally(1, {"for": 1}, {"rail": 1}))),
+             props(counts_recompute="FAIL"), **FULL_5),
+        case("shop-preauth-uncounted", "The two shop purchases counted but not in shop_preauth.count", ["§14"],
+             mutate(PERSON_3M_5, lambda c: c.update(shop_preauth=tally(16, count=0))),
+             props(counts_recompute="FAIL"), **FULL_5),
+        case("shop-preauth-not-the-counted", "shop_preauth counted over another of than the counted deals",
+             ["§14"], mutate(PERSON_3M_5, lambda c: c.update(shop_preauth=tally(15, count=2))),
+             props(denominator="FAIL", counts_recompute=NC), **FULL_5),
+        case("shop-preauth-and-class-missing", "shop_preauth.count and class_missing.count together exceed the "
+             "counted deals, though a deal of the class shop_preauth carries a class", ["§14"],
+             mutate(PERSON_3M_5, lambda c: c.update(shop_preauth=tally(16, count=16))),
+             props(denominator="FAIL", counts_recompute=NC), **FULL_5),
+        case("v4-card-for-v5-request", "A /4 card answering a /5 request", ["§14"], PERSON_3M_4,
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL_5),
+        case("v5-card-for-v4-request", "A /5 card answering a /4 request", ["§14"], PERSON_3M_5,
+             props(card_form="FAIL", denominator=NC, counts_recompute=NC), **FULL_4),
+    ]
+
+
 def _dump(value: Any) -> bytes:
     return (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
@@ -910,13 +1002,16 @@ PACK_STRINGS_3 = {
 PACK_STRINGS_4 = {**{k: v for k, v in PACK_STRINGS_3.items() if k != "deals.not_counted.reasons"},  # §12
                   "deals.local_times": "counted deals with a row that rests on a record no witness timed, or with "
                                        "no witnessed time at all"}
+PACK_STRINGS_5 = {**{k: v for k, v in PACK_STRINGS_4.items() if k != "deals.not_counted"},  # §14
+                  "counts.cover": "the counts cover every deal in the stated window",
+                  "deals.shop_preauth": "counted deals that were shop purchases paid up front"}
 
 
 def check_frame(all_cases: list, instance: str = SH1) -> None:
     """HF §6.3: the instance's counting table and wording pack (``spec/history-frame/``) equal, member
     for member, what this generator's constants and cases give, and every case's ``standard`` is
     HF §4.5's acceptance rule under the table's ``may_be_not_checked``."""
-    if instance in (SH3, SH4):
+    if instance in (SH3, SH4, SH5):
         check_frame_3(all_cases, instance)
         return
     table, pack = history_frame.load(instance)
@@ -958,11 +1053,12 @@ def check_frame(all_cases: list, instance: str = SH1) -> None:
 
 
 def check_frame_3(all_cases: list, instance: str = SH3) -> None:
-    """HF §6.3 for /3 (SH §11) and /4 (SH §12): its counting table and wording pack restate the
-    section and this generator's cases."""
-    v4 = instance == SH4
+    """HF §6.3 for /3 (SH §11), /4 (SH §12) and /5 (SH §14): its counting table and wording pack
+    restate the section and this generator's cases."""
+    v5 = instance == SH5
+    v4 = instance == SH4 or v5
     table, pack = history_frame.load(instance)
-    model = PERSON_3M_4 if v4 else PERSON_3M_3
+    model = PERSON_3M_5 if v5 else PERSON_3M_4 if v4 else PERSON_3M_3
     raised = model["disputes"]["raised"]
     # Only the cases checked under this token: a card answering another token's request may carry
     # that token's deals.
@@ -971,9 +1067,11 @@ def check_frame_3(all_cases: list, instance: str = SH3) -> None:
     every_row = [r for d in every_deal for r in d["rows"]]
     assert all(set(r) <= set(ROW_RESULT) for r in every_row), "row result"
     assert {r["status"] for r in every_row} <= set(ROW_STATUSES), "row status"
-    in_window = [d for d in (DEALS_4 if v4 else DEALS_3) if d["agreed_at"] >= "2026-07-28T12:00:00Z"]
-    assert model["in_window"]["not_counted"] == sum(
-        d.get("counterparty_class") in NOT_COUNTED_3 or d.get("left_out") in NOT_COUNTED_3 for d in in_window)
+    in_window = [d for d in (DEALS_5 if v5 else DEALS_4 if v4 else DEALS_3) if d["agreed_at"] >= "2026-07-28T12:00:00Z"]
+    shops = sum(d.get("counterparty_class") == "shop_preauth" for d in in_window)
+    assert model["in_window"]["not_counted"] == (0 if v5 else sum(
+        d.get("counterparty_class") in NOT_COUNTED_3 or d.get("left_out") in NOT_COUNTED_3 for d in in_window))
+    assert not v5 or (shops == 2 and model["shop_preauth"]["count"] == shops)
     standard = [c["expected"]["properties"] for c in all_cases if c["expected"]["standard"]]
     not_counted = {} if v4 else {"not_counted": NOT_COUNTED_3}
     expected_table = {
@@ -995,6 +1093,7 @@ def check_frame_3(all_cases: list, instance: str = SH3) -> None:
                     "outcomes": list(model["outcomes"]), "remedied": list(model["remedied"]),
                     "not_honoured": list(model["not_honoured"]),
                     "local_times": list(model["local_times"]),
+                    **({"shop_preauth": list(model["shop_preauth"])} if v5 else {}),
                     "band": list(model["bands"][0]), "unpriced": list(model["unpriced"]),
                     **{name: list(model[name]) for name in ("roles", "happened", "disputes")},
                     "dispute": list(raised), "by_outcome": list(raised["by_outcome"]),
@@ -1005,7 +1104,7 @@ def check_frame_3(all_cases: list, instance: str = SH3) -> None:
     }
     assert table == expected_table, "counting table differs from this generator"
     assert pack == {**history_frame.header("wording_pack", instance), "language": "en",
-                    "strings": PACK_STRINGS_4 if v4 else PACK_STRINGS_3}, \
+                    "strings": PACK_STRINGS_5 if v5 else PACK_STRINGS_4 if v4 else PACK_STRINGS_3}, \
         "wording pack differs from this generator"
     for c in all_cases:
         assert c["expected"]["standard"] is history_frame.accepted(c["expected"]["properties"],
@@ -1014,12 +1113,14 @@ def check_frame_3(all_cases: list, instance: str = SH3) -> None:
 
 def build() -> dict:
     all_cases, all_cases_2, all_cases_3, all_cases_4 = cases(), cases_2(), cases_3(), cases_4()
-    ids = [c["id"] for c in all_cases + all_cases_2 + all_cases_3 + all_cases_4]
+    all_cases_5 = cases_5()
+    ids = [c["id"] for c in all_cases + all_cases_2 + all_cases_3 + all_cases_4 + all_cases_5]
     assert len(ids) == len(set(ids)), "duplicate case id"
     check_frame(all_cases)
     check_frame([c for c in all_cases_2 if c["inputs"]["derivation"] == SH2], SH2)
     check_frame([c for c in all_cases_3 if c["inputs"]["derivation"] == SH3], SH3)
     check_frame([c for c in all_cases_4 if c["inputs"]["derivation"] == SH4], SH4)
+    check_frame([c for c in all_cases_5 if c["inputs"]["derivation"] == SH5], SH5)
     corpus = {"set": SET, "status": STATUS, "spec": SPEC, "properties": list(PROPERTIES),
               "count": len(all_cases), "cases": all_cases}
     corpus_2 = {"set": SET, "status": STATUS_2, "spec": SPEC, "derivation": SH2, "properties": list(PROPERTIES),
@@ -1028,8 +1129,10 @@ def build() -> dict:
                 "count": len(all_cases_3), "cases": all_cases_3}
     corpus_4 = {"set": SET, "status": STATUS_4, "spec": SPEC, "derivation": SH4, "properties": list(PROPERTIES),
                 "count": len(all_cases_4), "cases": all_cases_4}
+    corpus_5 = {"set": SET, "status": STATUS_5, "spec": SPEC, "derivation": SH5, "properties": list(PROPERTIES),
+                "count": len(all_cases_5), "cases": all_cases_5}
     files = {"vectors.json": _dump(corpus), "vectors-2.json": _dump(corpus_2), "vectors-3.json": _dump(corpus_3),
-             "vectors-4.json": _dump(corpus_4)}
+             "vectors-4.json": _dump(corpus_4), "vectors-5.json": _dump(corpus_5)}
     files["manifest.json"] = _dump({
         "set": SET, "status": STATUS, "spec": SPEC, "generator": GENERATOR,
         "files": [{"path": name, "sha256": hashlib.sha256(data).hexdigest(), "count": json.loads(data).get("count")}

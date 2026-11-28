@@ -1,14 +1,15 @@
 # Standard History Derivation v0: conformance vectors
 
 These vectors exercise `spec/standard-history-v0.md` (`standard_history/1`,
-`standard_history/2`, `standard_history/3` and `standard_history/4`, cited as SH): the card (SH §4), the counting rules (SH §5) and the six card
+`standard_history/2`, `standard_history/3`, `standard_history/4` and `standard_history/5`, cited as SH): the card (SH §4), the counting rules (SH §5) and the six card
 properties (SH §6), including `counterparty_class` (SH §7) as the input that decides whether a
-deal is counted. `vectors.json` holds the `/1` cases. `vectors-2.json` holds the `/2` cases: a
+deal is counted under `/1` to `/4`. `vectors.json` holds the `/1` cases. `vectors-2.json` holds the `/2` cases: a
 deal whose agreed amount the records do not give, counted in every total and in no band.
 `vectors-3.json` holds the `/3` cases (SH §11): deals counted from their term rows in the three
 outcomes, the remedied and not-honoured counts, the deals not counted by reason, and the shelf
 log's coverage start. `vectors-4.json` holds the `/4` cases (SH §12): `/3` with no deal left out
-for want of a witness time.
+for want of a witness time. `vectors-5.json` holds the `/5` cases (SH §14): `/4` counting every
+deal in the window, shop purchases paid up front included, in a `shop_preauth` tally.
 
 ## Derivation
 
@@ -20,9 +21,9 @@ a verifier may hold beside it:
 |---|---|---|
 | `card` | the card, as a JSON value | every property |
 | `policy` | the policy's two members (SH §5.1): `digest` and `window` | `window_from_policy` |
-| `as_of` | the anchor's digest and time, and the stream's first checkpoint time; in `vectors-3.json` and `vectors-4.json` also `coverage_start_time`, the time of the shelf log's coverage start (SH §11.5) | `as_of`, `counts_recompute` |
-| `deals` | every deal entry (SH §5.2; under `/3` and `/4`, §11.2, with each row's result and its `disputes` as of the anchor's time, SH §11.1) the stream holds at the anchor, given only when coverage is shown and no payload member the mapping reads is withheld (SH §6 "Handing the material"; a vector cannot carry the proof, so `deals` stands for a complete handover) | `counts_recompute` |
-| `derivation` | in `vectors-2.json`, `vectors-3.json` and `vectors-4.json` only: the token the request named, which the card is checked under (SH §6) | every property |
+| `as_of` | the anchor's digest and time, and the stream's first checkpoint time; in `vectors-3.json` to `vectors-5.json` also `coverage_start_time`, the time of the shelf log's coverage start (SH §11.5) | `as_of`, `counts_recompute` |
+| `deals` | every deal entry (SH §5.2; under `/3` to `/5`, §11.2, with each row's result and its `disputes` as of the anchor's time, SH §11.1) the stream holds at the anchor, given only when coverage is shown and no payload member the mapping reads is withheld (SH §6 "Handing the material"; a vector cannot carry the proof, so `deals` stands for a complete handover) | `counts_recompute` |
+| `derivation` | in `vectors-2.json` to `vectors-5.json` only: the token the request named, which the card is checked under (SH §6) | every property |
 
 `counts_recompute` recomputes over the card's own `window`, so it needs the anchor and the deal entries but not the policy. A case without an input expects `NOT_CHECKED` for each property that needs it. `expected` gives
 all six properties, whether the card is a standard card (SH §6), and the properties that `FAIL`.
@@ -83,13 +84,23 @@ local; the shop purchase alone not counted), the same card without the deal entr
 Negative: `no-witness-time-left-out` and `silent-deal-not-local` (`counts_recompute`),
 `not-counted-member`, `v3-card-for-v4-request` and `v4-card-for-v3-request` (`card_form`).
 
+In `vectors-5.json`, positive: `shop-purchases-counted` (`/4`'s shelf and deal-317, so two shop
+purchases paid up front, each counted and both in `shop_preauth`: deal-312, held, with a dispute
+the shop raised, and deal-317, undecided because the shop's row is in dispute, with an open dispute
+the holder raised through the payment rail), the same card without the deal entries
+(`shop-purchases-without-shelf`) and with nothing beside it (`shop-purchases-card-only`).
+Negative: `shop-purchases-dropped`, `shop-dispute-dropped` and `shop-preauth-uncounted`
+(`counts_recompute`); `shop-purchases-not-counted`, `shop-preauth-not-the-counted` and
+`shop-preauth-and-class-missing` (`denominator`); `v4-card-for-v5-request` and
+`v5-card-for-v4-request` (`card_form`).
+
 ## Gates
 
 - `python/tests/test_standard_history_v0_vectors.py` runs every case through the Python
   reference, `agent_action_capsule.standard_history`, rebuilds each fully checked standard card
   from its inputs with `derive_card`, runs defective evaluators that must each disagree with a
   case, checks that a `/1` card cannot be built over an unpriced deal, that every pair of row
-  results falls in exactly one `/3` line, that a `/4` entry refuses `left_out` and carries `no_witness_time` only as `true`, and regenerates the directory twice, byte-identical.
+  results falls in exactly one `/3` line, that a `/4` or `/5` entry refuses `left_out` and carries `no_witness_time` only as `true`, that the `/5` shelf counted under `/4` leaves the shop purchases and their disputes out, and regenerates the directory twice, byte-identical.
 - `go/standardhistory` runs every case through the Go package and rebuilds the same cards with
   `Derive`.
 

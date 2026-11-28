@@ -192,7 +192,7 @@ same-commit files in CI.
   wrongly opened, and one mutant per property the level adds. Derived from the personal-history run
   and the x402 adapter corpus;
   `python/scripts/generate_personal_history_outcome_v0_vectors.py` regenerates them.
-- `standard-history-v0/`: the derivations `standard_history/1` to `standard_history/4` of
+- `standard-history-v0/`: the derivations `standard_history/1` to `standard_history/5` of
   `spec/standard-history-v0.md`: positive cards for a person and a node, checked with and without
   the policy, the anchor and the deal entries, the month-end window clamp and an empty window, and
   one negative per property of its §6 (a percentage, a count without its denominator, a counted
@@ -204,7 +204,10 @@ same-commit files in CI.
   not-honoured and not-counted tallies,
   five-line tallies and the coverage start; and in `vectors-4.json` `/4` cards that count the deals
   with no witnessed time and disclose them in `local_times`, with negatives that leave them out, leave them out of
-  `local_times` or carry `not_counted`; `python/scripts/generate_standard_history_v0_vectors.py` regenerates
+  `local_times` or carry `not_counted`; and in `vectors-5.json` `/5` cards that count the shop
+  purchases paid up front, a dispute the holder raised on one included, and tally them in
+  `shop_preauth`, with negatives that leave them out, drop that dispute or leave them out of
+  `shop_preauth`; `python/scripts/generate_standard_history_v0_vectors.py` regenerates
   them.
 - `inference-service-history-v0/`: the Inference-Service History Profile
   `spec/inference-service-history-profile-v0.md`: a served-only Standard History, the period

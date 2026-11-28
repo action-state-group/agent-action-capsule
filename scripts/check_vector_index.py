@@ -135,7 +135,8 @@ COUNTERS = {
     "vectors/standard-history-v0/": lambda: (cases("vectors/standard-history-v0/vectors.json")
                                              + cases("vectors/standard-history-v0/vectors-2.json")
                                              + cases("vectors/standard-history-v0/vectors-3.json")
-                                             + cases("vectors/standard-history-v0/vectors-4.json")),
+                                             + cases("vectors/standard-history-v0/vectors-4.json")
+                                             + cases("vectors/standard-history-v0/vectors-5.json")),
     "vectors/inference-service-history-v0/": lambda: cases("vectors/inference-service-history-v0/vectors.json"),
     "vectors/inference-service-history-v0-interop-v1/": lambda: cases("vectors/inference-service-history-v0-interop-v1/vectors.json"),
     "vectors/inference-service-history-verdicts-v0/": lambda: cases("vectors/inference-service-history-verdicts-v0/vectors.json"),
