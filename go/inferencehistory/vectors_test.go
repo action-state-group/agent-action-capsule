@@ -14,9 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Every case of vectors/inference-service-history-v0 and of
-// vectors/inference-service-history-v0-interop-v1 (and the period counts cases
-// of vectors/inference-service-history-v1) runs from its inputs
+// Every case of vectors/inference-service-history-v0, of
+// vectors/inference-service-history-v0-interop-v1 and of
+// vectors/inference-service-history-v2-base (and the period counts cases of
+// vectors/inference-service-history-v1 and -v2) runs from its inputs
 // alone and is compared with the case's whole expected block, as
 // python/tests/test_inference_service_history_v0_vectors.py compares the
 // Python reference verifier and its evaluator.
@@ -70,6 +71,7 @@ var sets = []struct {
 }{
 	{"inference-service-history-v0", 27, 20, 3, 4},
 	{"inference-service-history-v0-interop-v1", 28, 20, 3, 5},
+	{"inference-service-history-v2-base", 28, 20, 3, 5},
 }
 
 func load(t *testing.T, dir string) corpus {
@@ -309,6 +311,35 @@ func TestRevision1Vectors(t *testing.T) {
 		run++
 	}
 	assert.Equal(t, 11, run)
+}
+
+// vectors/inference-service-history-v2 (inference-service-history/2, ISH
+// §6.2 item 6): every period_counts case runs as the other sets' do. The four
+// verdict cases are listed, not run, as for /1.
+func TestRevision2Vectors(t *testing.T) {
+	c := load(t, "inference-service-history-v2")
+	require.Equal(t, 28, c.Count)
+	notRead := map[string]bool{"v2-verdict-total-withheld": true, "mutant-v2-verdict-total-withheld": true,
+		"v2-verdict-one-value": true, "mutant-v2-verdict-one-value": true}
+	run := 0
+	for _, vc := range c.Cases {
+		if notRead[vc.ID] {
+			continue
+		}
+		t.Run(vc.ID, func(t *testing.T) {
+			require.Equal(t, "history", vc.Kind)
+			res := evaluate(t, c, vc)
+			assert.Equal(t, normalize(t, comparable(vc.Expected)), normalize(t, renderHistory(res)))
+			want := map[string]bool{}
+			for _, p := range vc.Expected["fails"].([]any) {
+				want[p.(string)] = true
+			}
+			assert.Equal(t, want, failing(res))
+			assert.Equal(t, len(want) == 0, res.Accepted)
+		})
+		run++
+	}
+	assert.Equal(t, 24, run)
 }
 
 // A definition of any shape is evaluated without a panic, and fails

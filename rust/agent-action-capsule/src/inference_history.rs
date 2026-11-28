@@ -50,6 +50,10 @@ pub const PROFILE_0: &str = "inference-service-history/0";
 /// The revision that also withholds a total that pins two or more models
 /// withheld under the floor (ISH §6.2 item 5, SH-8).
 pub const PROFILE_1: &str = "inference-service-history/1";
+/// The revision that also withholds a total beside one model withheld under
+/// the floor and its partner where the bounds on the two leave one value
+/// (ISH §6.2 item 6, SH-8).
+pub const PROFILE_2: &str = "inference-service-history/2";
 
 /// Why a History cannot be derived at this anchor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -211,7 +215,7 @@ const MAX_PERIODS: i64 = 10_000;
 #[derive(Debug)]
 pub struct Definition {
     verdicts: bool,
-    revision1: bool,
+    profile: &'static str,
     policy: Policy,
     digest: String,
     policy_digest: String,
@@ -245,8 +249,10 @@ impl Definition {
         {
             return Err(bad("not exactly the members of a Standard definition"));
         }
-        let revision1 = d["profile"] == json!(PROFILE_1);
-        if !(revision1 || d["profile"] == json!(PROFILE_0))
+        let profile = [PROFILE_0, PROFILE_1, PROFILE_2]
+            .into_iter()
+            .find(|p| d["profile"] == json!(p));
+        if profile.is_none()
             || d["kind"] != json!("projection")
             || d["level"] != json!("standard")
             || d["embeds"] != json!(["history_card/1"])
@@ -332,7 +338,7 @@ impl Definition {
         };
         Ok(Definition {
             verdicts,
-            revision1,
+            profile: profile.unwrap_or(PROFILE_0),
             policy,
             digest: digest_of(document)?,
             policy_digest: digest_of(&document["period_policy"])?,
@@ -346,23 +352,20 @@ impl Definition {
         !self.policy.is_boundary(timestamp)
     }
 
-    /// The profile revision the definition names: [`PROFILE_0`] or
-    /// [`PROFILE_1`].
+    /// The profile revision the definition names: [`PROFILE_0`],
+    /// [`PROFILE_1`] or [`PROFILE_2`].
     pub fn profile(&self) -> &'static str {
-        if self.revision1 {
-            PROFILE_1
-        } else {
-            PROFILE_0
-        }
+        self.profile
     }
 
     /// The suppression rule of one of this definition's tables (ISH §6.2
-    /// items 3 and 5): `verdicts` for a verdict result's table.
+    /// items 3, 5 and 6): `verdicts` for a verdict result's table.
     fn rule(&self, verdicts: bool) -> Rule {
-        match (self.revision1, verdicts) {
-            (true, _) => Rule::Pinned,
-            (false, true) => Rule::Verdicts0,
-            (false, false) => Rule::Plain,
+        match (self.profile, verdicts) {
+            (PROFILE_2, _) => Rule::OnePair,
+            (PROFILE_1, _) => Rule::Pinned,
+            (_, true) => Rule::Verdicts0,
+            (_, false) => Rule::Plain,
         }
     }
 
@@ -615,6 +618,19 @@ enum Rule {
     /// withheld `complementary`, even when it is under the floor too, so
     /// that the reason does not tell which pinning sum it holds (SH-8).
     Pinned,
+    /// `inference-service-history/2`, every table: [`Rule::Pinned`], and a
+    /// published total beside one model withheld under the floor and its
+    /// `complementary` partner goes too where the bounds on the two leave
+    /// one value (ISH §6.2 item 6).
+    OnePair,
+}
+
+impl Rule {
+    /// Whether the rule lists a cell only when counted and withholds a
+    /// total that pins two or more models under the floor (ISH §6.2 item 5).
+    fn pins_totals(self) -> bool {
+        matches!(self, Rule::Pinned | Rule::OnePair)
+    }
 }
 
 /// Each model's count, then the total, with what is withheld and why
@@ -650,7 +666,7 @@ fn suppress(
     // total; `/1` tests a total under the floor as well and withholds it
     // `complementary`.
     let total_open = values[models].2.is_none();
-    if rule != Rule::Plain && (total_open || rule == Rule::Pinned) {
+    if rule != Rule::Plain && (total_open || rule.pins_totals()) {
         let hidden = values[..models].iter().filter(|c| c.2.is_some()).count();
         let all_below = values[..models]
             .iter()
@@ -662,14 +678,56 @@ fn suppress(
                 .map(|c| c.1)
                 .sum::<u64>();
         let pinned = match rule {
-            Rule::Pinned => pins(hidden, rest, floor),
+            Rule::Pinned | Rule::OnePair => pins(hidden, rest, floor),
             _ => derivable(hidden, rest, floor),
         };
         if all_below && pinned {
             values[models].2 = Some("complementary");
         }
     }
+    // `/2`: one model withheld under the floor and its partner, beside a
+    // published total, whose bounds leave one value: the total goes too, and
+    // the partner, chosen as if the total were published, stays withheld.
+    if rule == Rule::OnePair && values[models].2.is_none() {
+        let withheld: Vec<Option<&str>> = values[..models]
+            .iter()
+            .filter_map(|c| c.2.map(Some))
+            .collect();
+        if withheld.len() == 2
+            && withheld.contains(&Some("below_floor"))
+            && withheld.contains(&Some("complementary"))
+        {
+            let published = values[..models].iter().filter(|c| c.2.is_none());
+            let smallest = published.clone().map(|c| c.1).min();
+            let rest = values[models].1 - published.map(|c| c.1).sum::<u64>();
+            if pair_range(rest, smallest, floor) == PairRange::One {
+                values[models].2 = Some("complementary");
+            }
+        }
+    }
     values
+}
+
+/// How many values ISH §6.2 item 6 leaves for one model withheld under the
+/// floor: it holds 1 to `floor` - 1, its partner at least `floor` and, where
+/// a model is still published, at most the smallest of them (`smallest`),
+/// and the two hold `rest`.
+#[derive(Debug, PartialEq, Eq)]
+enum PairRange {
+    None,
+    One,
+    More,
+}
+
+fn pair_range(rest: u64, smallest: Option<u64>, floor: u64) -> PairRange {
+    let (rest, floor) = (i128::from(rest), i128::from(floor));
+    let lo = smallest.map_or(1, |m| (rest - i128::from(m)).max(1));
+    let hi = (floor - 1).min(rest - floor);
+    match hi - lo {
+        d if d < 0 => PairRange::None,
+        0 => PairRange::One,
+        _ => PairRange::More,
+    }
 }
 
 /// Whether `n` models withheld under `floor`, together holding `rest`, are
@@ -1178,7 +1236,7 @@ fn check_cells(cells: &Value, floor: u64, unit: &str, rule: Rule) -> Result<Vec<
     let models: Vec<&Cell> = out.iter().filter(|c| c.model.is_some()).collect();
     // Under `/1` a listed cell holds at least 1, which a floor of 1 never
     // withholds.
-    if rule == Rule::Pinned
+    if rule.pins_totals()
         && floor <= 1
         && models
             .iter()
@@ -1197,7 +1255,10 @@ fn check_cells(cells: &Value, floor: u64, unit: &str, rule: Rule) -> Result<Vec<
             .filter_map(|c| c.value.as_ref().ok())
             .try_fold(0u64, |sum, n| sum.checked_add(*n))
             .ok_or_else(|| bad("the models do not add up to the total"))?;
-        let all_published = models.iter().all(|c| c.value.is_ok());
+        // Under `/2` a total with no model beside it is not summed (ISH §6.2
+        // item 6).
+        let all_published =
+            models.iter().all(|c| c.value.is_ok()) && !(rule == Rule::OnePair && models.is_empty());
         if published > total || (all_published && published != total) {
             return Err(bad("the models do not add up to the total"));
         }
@@ -1207,7 +1268,7 @@ fn check_cells(cells: &Value, floor: u64, unit: &str, rule: Rule) -> Result<Vec<
         // ones hold at least one each, and those withheld below the floor
         // at most `floor` - 1 each.
         let most = (hidden as u128) * u128::from(floor.saturating_sub(1));
-        if rule == Rule::Pinned
+        if rule.pins_totals()
             && ((hidden as u128) > u128::from(rest)
                 || (hidden > 0 && all_below(&models) && u128::from(rest) > most))
         {
@@ -1216,25 +1277,56 @@ fn check_cells(cells: &Value, floor: u64, unit: &str, rule: Rule) -> Result<Vec<
         let pinned = match rule {
             Rule::Plain => false,
             Rule::Verdicts0 => derivable(hidden, rest, floor),
-            Rule::Pinned => pins(hidden, rest, floor),
+            Rule::Pinned | Rule::OnePair => pins(hidden, rest, floor),
         };
         if all_below(&models) && pinned {
             return Err(bad("a suppressed cell can be derived from the total"));
         }
-    } else if rule == Rule::Pinned
+        // `/2`: beside one model withheld under the floor and its partner,
+        // the bounds on the two (ISH §6.2 item 6) must leave two or more
+        // values; none means the counts cannot be right.
+        if rule == Rule::OnePair && one_and_partner(&models) {
+            let smallest = models.iter().filter_map(|c| c.value.as_ref().ok()).min();
+            match pair_range(rest, smallest.copied(), floor) {
+                PairRange::None => return Err(bad("the models do not add up to the total")),
+                PairRange::One => {
+                    return Err(bad("a suppressed cell can be derived from the total"))
+                }
+                PairRange::More => {}
+            }
+        }
+    } else if rule.pins_totals()
         && total.value.as_ref().err().map(String::as_str) == Some("complementary")
     {
         // `/1` withholds a total as `complementary` only for two or more
-        // models withheld under the floor; any other is a total withheld
-        // that no rule withholds.
+        // models withheld under the floor, and `/2` also beside one such
+        // model and its partner; any other is a total withheld that no rule
+        // withholds.
         let hidden = models.iter().filter(|c| c.value.is_err()).count();
-        if hidden < 2 || !all_below(&models) {
-            return Err(bad(
-                "a total is withheld as complementary beside fewer than two models withheld under the floor",
-            ));
+        let pinning = hidden >= 2 && all_below(&models);
+        if !(pinning || (rule == Rule::OnePair && one_and_partner(&models))) {
+            return Err(bad(if rule == Rule::OnePair {
+                "a total is withheld as complementary beside neither two or more models withheld under the floor nor one and its partner"
+            } else {
+                "a total is withheld as complementary beside fewer than two models withheld under the floor"
+            }));
         }
     }
     Ok(out)
+}
+
+/// Whether exactly two models of a table are withheld, one `below_floor`
+/// and one `complementary` (ISH §6.2 item 6).
+fn one_and_partner(models: &[&Cell]) -> bool {
+    let why = |w: &str| {
+        models
+            .iter()
+            .filter(|c| matches!(&c.value, Err(r) if r == w))
+            .count()
+    };
+    models.iter().filter(|c| c.value.is_err()).count() == 2
+        && why("below_floor") == 1
+        && why("complementary") == 1
 }
 
 /// Whether every withheld model of a table is withheld `below_floor`.

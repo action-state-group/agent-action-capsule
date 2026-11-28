@@ -45,7 +45,7 @@ def verdicts_ok(d: dict, env: dict) -> bool:
     if member is None:
         return True
     floor = d["period_policy"]["floor"]
-    revision1 = d["profile"] == base.PROFILES[1]
+    revision = base.PROFILES.index(d["profile"])
     for period in member["periods"]:
         for c in period["cells"]:
             if ("suppressed" in c) != (c["value"] is None) or c.get("suppressed", "below_floor") not in (
@@ -57,7 +57,7 @@ def verdicts_ok(d: dict, env: dict) -> bool:
             table = [c for c in period["cells"] if c["dimension"]["result"] == result]
             parts = [c for c in table if "model_hash" in c["dimension"]]
             totals = [c for c in table if "model_hash" not in c["dimension"]]
-            if not base.table_ok(parts, totals[0] if totals else None, floor, revision1):
+            if not base.table_ok(parts, totals[0] if totals else None, floor, revision):
                 return False
     return True
 
@@ -105,7 +105,7 @@ def test_the_rule_is_the_revisions():
 
 def test_every_case_is_listed_in_the_spec():
     spec = (ROOT / DATA["spec"]).read_text(encoding="utf-8")
-    section = spec.split("### 9.5", 1)[1].split("\n## ", 1)[0]
+    section = spec.split("### 9.5", 1)[1].split("\n## ", 1)[0].split("\n### 9.6", 1)[0]
     assert set(re.findall(r"^\| `([a-z0-9-]+)` \|", section, re.M)) == {c["id"] for c in CASES}
 
 

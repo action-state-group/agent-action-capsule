@@ -52,9 +52,15 @@ from agent_action_capsule.interop_profile import (  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = globals().get("_PROFILE_VERSION", 0)
-SET_NAME = "inference-service-history-v0" + (f"-interop-v{VERSION}" if VERSION else "")
+# ``_BASE_V2`` (with ``_PROFILE_VERSION`` 1) runs this module over the evidence-interop/1 cases rerun
+# with /2 definitions, ``vectors/inference-service-history-v2-base/`` (ISH §9.6).
+BASE_V2 = globals().get("_BASE_V2", False)
+SET_NAME = ("inference-service-history-v2-base" if BASE_V2 else
+            "inference-service-history-v0" + (f"-interop-v{VERSION}" if VERSION else ""))
 VECTORS = ROOT / "vectors" / SET_NAME
-GENERATOR = ROOT / "python" / "scripts" / "generate_inference_service_history_v0_vectors.py"
+GENERATOR = ROOT / "python" / "scripts" / ("generate_inference_service_history_v2_vectors.py" if BASE_V2 else
+                                           "generate_inference_service_history_v0_vectors.py")
+GENERATOR_ARGS = ["--base"] if BASE_V2 else ["--profile", str(VERSION)]
 HAND_WRITTEN = ("README.md",)
 DATA = json.loads((VECTORS / "vectors.json").read_text(encoding="utf-8"))
 CASES = DATA["cases"]
@@ -80,7 +86,7 @@ PEER_SHOWN = "peer-confirmed; not corroborating (independence not established)"
 ROLE_UNIT = {"served": "exchanges_served", "requested": "exchanges_requested"}
 # §8.2.
 # §4.1: the frozen revision and the one that adds §6.2 item 5's rule for two or more withheld cells.
-PROFILES = ("inference-service-history/0", "inference-service-history/1")
+PROFILES = ("inference-service-history/0", "inference-service-history/1", "inference-service-history/2")
 FIXED = {"anchor", "declared", "derivation", "evidence_stream", "history_card", "history_card_digest", "subject"}
 MUST_PASS = ("profile_version", "envelope_signature", "responder_trust", "issued_at_form", "request_binding",
              "subject_binding", "artifact_digest", "anchor_match")
@@ -326,16 +332,22 @@ def anchor_ok(d: dict, env: dict) -> bool:
     return not (anchor_time - when(p["epoch"])) % timedelta(seconds=p["length_s"])
 
 
-def table_ok(parts: list[dict], total: dict | None, floor: int, revision1: bool) -> bool:
-    """§6.2 items 3 and 5 over one table, its dimension cells and its total: a published total never stands
-    beside exactly one suppressed cell. Under ``inference-service-history/1`` also: a cell is listed
+def table_ok(parts: list[dict], total: dict | None, floor: int, revision: int) -> bool:
+    """§6.2 items 3, 5 and 6 over one table, its dimension cells and its total, under the profile
+    revision ``revision`` (0, 1 or 2): a published total never stands
+    beside exactly one suppressed cell. Under ``inference-service-history/1`` and ``/2`` also: a cell is listed
     only when counted, so the suppressed cells hold at least 1 each (and, below the floor, at most
     ``floor`` - 1) and the published ones never
     exceed the total, equalling it when none is suppressed; a published total whose rest
     (the total less the published cells) is the number of two or more suppressed cells, all
     ``below_floor``, or that number times ``floor`` - 1 fixes every one of them; and a total is
-    withheld ``complementary`` only beside two or more cells suppressed ``below_floor``."""
+    withheld ``complementary`` only beside two or more cells suppressed ``below_floor``. Under ``/2``
+    also (item 6): beside exactly one cell suppressed ``below_floor`` and one ``complementary``, a
+    published total leaves the first two or more values, and a total may be withheld
+    ``complementary`` there."""
+    revision1 = revision >= 1
     hidden = [c for c in parts if c["value"] is None]
+    one_and_partner = sorted(c["suppressed"] for c in hidden) == ["below_floor", "complementary"]
     all_below = all(c["suppressed"] == "below_floor" for c in hidden)
     if revision1 and floor <= 1 and any(c["suppressed"] == "below_floor" for c in hidden):
         return False  # a listed cell holds at least 1, which no floor of 1 withholds
@@ -347,21 +359,29 @@ def table_ok(parts: list[dict], total: dict | None, floor: int, revision1: bool)
         if not revision1:
             return True
         rest = total["value"] - sum(c["value"] for c in parts if c["value"] is not None)
-        if rest < len(hidden) or (not hidden and rest):  # the cells do not add up to the total
+        # The cells do not add up to the total. Under /2 a total with no dimension cell beside it is not
+        # summed (§6.2 item 6).
+        if rest < len(hidden) or ((parts or revision < 2) and not hidden and rest):
             return False
         if hidden and all_below and rest > len(hidden) * (floor - 1):  # more than below-floor cells hold
             return False
-        return not (len(hidden) >= 2 and all_below and rest in (len(hidden), len(hidden) * (floor - 1)))
+        if len(hidden) >= 2 and all_below and rest in (len(hidden), len(hidden) * (floor - 1)):
+            return False
+        if revision >= 2 and one_and_partner:
+            published = [c["value"] for c in parts if c["value"] is not None]
+            lo = max(1, rest - min(published)) if published else 1
+            return min(floor - 1, rest - floor) - lo >= 1  # two or more values for the cell
+        return True
     if revision1 and total["suppressed"] == "complementary":
-        return len(hidden) >= 2 and all_below
+        return (len(hidden) >= 2 and all_below) or (revision >= 2 and one_and_partner)
     return True
 
 
 def floor_ok(d: dict, env: dict) -> bool:
     """§6.2: a published cell is at least the floor; a suppressed cell has no value; and each unit's
-    table meets items 3 and 5 under the definition's revision (``table_ok``)."""
+    table meets items 3, 5 and 6 under the definition's revision (``table_ok``)."""
     floor = d["period_policy"]["floor"]
-    revision1 = d["profile"] == PROFILES[1]
+    revision = PROFILES.index(d["profile"])
     for period in env["artifact"]["period_counts"]["periods"]:
         for c in period["cells"]:
             if ("suppressed" in c) != (c["value"] is None) or c.get("suppressed", "below_floor") not in (
@@ -372,7 +392,7 @@ def floor_ok(d: dict, env: dict) -> bool:
         for unit in {c["unit"] for c in period["cells"]}:
             parts = [c for c in period["cells"] if c["unit"] == unit and c["dimension"] is not None]
             totals = [c for c in period["cells"] if c["unit"] == unit and c["dimension"] is None]
-            if not table_ok(parts, totals[0] if totals else None, floor, revision1):
+            if not table_ok(parts, totals[0] if totals else None, floor, revision):
                 return False
     return True
 
@@ -736,7 +756,8 @@ def test_period_fixed_at_one_anchor():
 def _generate(out: Path) -> None:
     for name in HAND_WRITTEN:
         shutil.copyfile(VECTORS / name, out / name)
-    subprocess.run([sys.executable, str(GENERATOR), "--profile", str(VERSION), "--out", str(out)], check=True)
+    subprocess.run([sys.executable, str(GENERATOR), *GENERATOR_ARGS, "--out", str(out)], check=True,
+                   cwd=GENERATOR.parent)
 
 
 def _files(d: Path) -> list[str]:
@@ -765,7 +786,7 @@ def test_sha256sums_and_registration():
         assert top[f"{SET_NAME}/{name}"] == sha((VECTORS / name).read_bytes()), name
     corpora = json.loads((ROOT / "vectors" / "manifest.json").read_text())["corpora"]
     assert corpora[SET_NAME.replace("-", "_")] == f"{SET_NAME}/manifest.json"
-    assert "generate_inference_service_history_v0_vectors.py" in (
+    assert GENERATOR.name in (
         ROOT / "python" / "scripts" / "generate_all_vectors.py").read_text()
 
 

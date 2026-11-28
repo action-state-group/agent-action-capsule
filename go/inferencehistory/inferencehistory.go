@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math"
 	"regexp"
 	"slices"
 	"time"
@@ -36,8 +37,25 @@ const Profile = "inference-service-history/0"
 
 // Profile1 is the revision that also withholds a total that pins two or more
 // cells withheld under the floor (ISH §6.2 item 5, SH-8). A definition names
-// Profile or Profile1, and period_floor checks the rule of the one it names.
+// Profile, Profile1 or Profile2, and period_floor checks the rule of the one
+// it names.
 const Profile1 = "inference-service-history/1"
+
+// Profile2 is the revision that also withholds a total beside one cell
+// withheld under the floor and its complementary partner where the bounds on
+// the two leave one value (ISH §6.2 item 6, SH-8).
+const Profile2 = "inference-service-history/2"
+
+// revision is the number of the profile revision a definition names: 0, 1 or 2.
+func revision(d any) int {
+	switch get(d, "profile") {
+	case Profile1:
+		return 1
+	case Profile2:
+		return 2
+	}
+	return 0
+}
 
 // The History levels (ISH §3).
 const (
@@ -343,7 +361,7 @@ func definitionForm(d any) bool {
 	default:
 		return false
 	}
-	if (m["profile"] != Profile && m["profile"] != Profile1) || m["kind"] != "projection" || !equal(m["embeds"], []any{"history_card/1"}) ||
+	if (m["profile"] != Profile && m["profile"] != Profile1 && m["profile"] != Profile2) || m["kind"] != "projection" || !equal(m["embeds"], []any{"history_card/1"}) ||
 		!equal(m["subjects"], []any{"full_history"}) {
 		return false
 	}
@@ -892,7 +910,7 @@ func floorOK(d any, env map[string]any) bool {
 					parts = append(parts, c)
 				}
 			}
-			if !tableOK(parts, total, floor, get(d, "profile") == Profile1) {
+			if !tableOK(parts, total, floor, revision(d)) {
 				return false
 			}
 		}
@@ -902,23 +920,34 @@ func floorOK(d any, env map[string]any) bool {
 
 // tableOK is ISH §6.2 items 3 and 5 over one table, its dimension cells and its
 // total: a published total never stands beside exactly one withheld cell.
-// Under Profile1 a cell is listed only when counted, so each withheld cell
+// Under Profile1 and Profile2 a cell is listed only when counted, so each withheld cell
 // holds at least 1 (and, below the floor, at most floor-1) and the published
 // ones never exceed the total, equalling it when none is withheld; a published total whose rest (the total less the
 // published cells) is the number of two or more cells withheld, all
 // below_floor, or that number times floor-1 fixes each of them; and a total
 // is withheld complementary only beside two or more cells withheld
-// below_floor.
-func tableOK(parts []map[string]any, total map[string]any, floor uint64, revision1 bool) bool {
+// below_floor. Under Profile2 also (item 6): beside exactly one cell withheld
+// below_floor and one complementary, a published total leaves the first two
+// or more values, and a total may be withheld complementary there.
+func tableOK(parts []map[string]any, total map[string]any, floor uint64, rev int) bool {
+	revision1 := rev >= 1
 	hidden, allBelow, anyBelow := uint64(0), true, false
+	below, complementary := 0, 0
 	for _, c := range parts {
 		if c["value"] == nil {
 			hidden++
 			allBelow = allBelow && c["suppressed"] == "below_floor"
 			anyBelow = anyBelow || c["suppressed"] == "below_floor"
+			switch c["suppressed"] {
+			case "below_floor":
+				below++
+			case "complementary":
+				complementary++
+			}
 		}
 	}
-	// Under Profile1 a listed cell holds at least 1, which a floor of 1
+	oneAndPartner := hidden == 2 && below == 1 && complementary == 1
+	// Under Profile1 and Profile2 a listed cell holds at least 1, which a floor of 1
 	// never withholds.
 	if revision1 && floor <= 1 && anyBelow {
 		return false
@@ -934,6 +963,7 @@ func tableOK(parts []map[string]any, total map[string]any, floor uint64, revisio
 			return true
 		}
 		var published uint64
+		smallest, anyPublished := uint64(0), false
 		for _, c := range parts {
 			if c["value"] != nil {
 				n, _ := evidencerequest.UintValue(c["value"])
@@ -941,10 +971,13 @@ func tableOK(parts []map[string]any, total map[string]any, floor uint64, revisio
 					return false
 				}
 				published += n
+				if !anyPublished || n < smallest {
+					smallest, anyPublished = n, true
+				}
 			}
 		}
 		t, _ := evidencerequest.UintValue(total["value"])
-		if published > t || t-published < hidden || (hidden == 0 && t != published) {
+		if published > t || t-published < hidden || ((len(parts) > 0 || rev < 2) && hidden == 0 && t != published) {
 			return false
 		}
 		rest := t - published
@@ -955,12 +988,44 @@ func tableOK(parts []map[string]any, total map[string]any, floor uint64, revisio
 		}
 		// rest == hidden*(floor-1), without the product overflowing.
 		pins := hidden >= 2 && (rest == hidden || (rest%hidden == 0 && rest/hidden == floor-1))
-		return !(allBelow && pins)
+		if allBelow && pins {
+			return false
+		}
+		if rev >= 2 && oneAndPartner {
+			return pairValues(rest, smallest, anyPublished, floor) >= 2
+		}
+		return true
 	}
 	if revision1 && total["suppressed"] == "complementary" {
-		return hidden >= 2 && allBelow
+		return (hidden >= 2 && allBelow) || (rev >= 2 && oneAndPartner)
 	}
 	return true
+}
+
+// pairValues is how many values ISH §6.2 item 6 leaves, at most 2, for one
+// cell withheld below the floor beside its complementary partner, the two
+// holding rest: the cell holds 1 to floor-1, the partner at least floor and,
+// where a cell is still published (anyPublished), at most the smallest of
+// them. It is computed without overflow.
+func pairValues(rest, smallest uint64, anyPublished bool, floor uint64) int {
+	if floor < 1 || floor == math.MaxUint64 || rest < floor+1 {
+		return 0
+	}
+	lo := uint64(1)
+	if anyPublished && rest > smallest && rest-smallest > lo {
+		lo = rest - smallest
+	}
+	hi := floor - 1
+	if rest-floor < hi {
+		hi = rest - floor
+	}
+	switch {
+	case hi < lo:
+		return 0
+	case hi == lo:
+		return 1
+	}
+	return 2
 }
 
 // coverageReport is ISH §4.2: the coverage declaration's checks.

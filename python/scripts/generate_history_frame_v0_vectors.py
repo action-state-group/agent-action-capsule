@@ -34,10 +34,11 @@ STATUS = ("Conformance vectors for the informational History frame v0 (spec/hist
           "counting table and wording pack each instance pins, and their digests.")
 PROPERTIES = ("table_binding", "pack_binding", "pack_form")
 
-SH, SH2, SH3, SH4, SH5, PH, PO, ISH, ISH1 = ("standard_history/1", "standard_history/2", "standard_history/3",
-                                             "standard_history/4", "standard_history/5", "personal_history_basic/1",
-                                             "personal_history_outcome/1", "inference-service-history/0",
-                                             "inference-service-history/1")
+SH, SH2, SH3, SH4, SH5, PH, PO, ISH, ISH1, ISH2 = ("standard_history/1", "standard_history/2", "standard_history/3",
+                                                   "standard_history/4", "standard_history/5",
+                                                   "personal_history_basic/1", "personal_history_outcome/1",
+                                                   "inference-service-history/0", "inference-service-history/1",
+                                                   "inference-service-history/2")
 
 
 def props(**overrides: str) -> dict:
@@ -77,7 +78,7 @@ def cases() -> list[dict]:
                           ("standard-history-4", SH4), ("standard-history-5", SH5),
                           ("personal-history-basic", PH),
                           ("personal-history-outcome", PO), ("inference-service-history", ISH),
-                          ("inference-service-history-1", ISH1))]
+                          ("inference-service-history-1", ISH1), ("inference-service-history-2", ISH2))]
     ish_table, ish_pack = docs[ISH]
     ph_table, ph_pack = docs[PH]
     sh_table, sh_pack = docs[SH]

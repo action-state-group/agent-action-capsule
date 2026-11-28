@@ -32,6 +32,7 @@ FILES = {
     "personal_history_outcome/1": ("personal-history-outcome-1-table.json", "personal-history-outcome-1-pack.json"),
     "inference-service-history/0": ("inference-service-history-0-table.json", "inference-service-history-0-pack.json"),
     "inference-service-history/1": ("inference-service-history-1-table.json", "inference-service-history-1-pack.json"),
+    "inference-service-history/2": ("inference-service-history-2-table.json", "inference-service-history-2-pack.json"),
 }
 DIGESTS = {
     "standard_history/1": {
@@ -69,6 +70,10 @@ DIGESTS = {
     "inference-service-history/1": {
         "table": "591090aab054e05bec51d823c2d36645c637cd09baf81366af9bdb02ea9f5e7f",
         "pack": "d5f5c2f807335fdc8d003ae04fecc87bcdcbaad1ed54cb30f1c496901826718b",
+    },
+    "inference-service-history/2": {
+        "table": "ed9d7e391d6b4a6118e4f6416b117bd1eb86250fb03a6ac8d0beee5503ca3ea6",
+        "pack": "3c45ea22064380e4b8e67a52375fdaa68edfe4e7722f4f6e0ba68485295a8c79",
     },
 }
 

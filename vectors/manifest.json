@@ -32,6 +32,8 @@
     "inference_service_history_v0": "inference-service-history-v0/manifest.json",
     "inference_service_history_v0_interop_v1": "inference-service-history-v0-interop-v1/manifest.json",
     "inference_service_history_v1": "inference-service-history-v1/manifest.json",
+    "inference_service_history_v2": "inference-service-history-v2/manifest.json",
+    "inference_service_history_v2_base": "inference-service-history-v2-base/manifest.json",
     "history_frame_v0": "history-frame-v0/manifest.json",
     "evidence_layer_padding": "evidence-layer/padding/manifest.json",
     "evidence_layer_retention": "evidence-layer/retention/manifest.json",

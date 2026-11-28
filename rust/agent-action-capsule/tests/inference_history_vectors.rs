@@ -1,6 +1,8 @@
 //! The Standard cases of `vectors/inference-service-history-v0`,
-//! `vectors/inference-service-history-v0-interop-v1` and
-//! `vectors/inference-service-history-v1` over
+//! `vectors/inference-service-history-v0-interop-v1`,
+//! `vectors/inference-service-history-v2-base`,
+//! `vectors/inference-service-history-v1` and
+//! `vectors/inference-service-history-v2` over
 //! `agent_action_capsule::inference_history`.
 //!
 //! Each case's `period_policy` is taken from the definition the case hands
@@ -13,9 +15,10 @@ use agent_action_capsule::inference_history::{Counts, Cut, Definition};
 use base64::Engine;
 use serde_json::{json, Map, Value};
 
-const SETS: [&str; 2] = [
+const SETS: [&str; 3] = [
     "inference-service-history-v0",
     "inference-service-history-v0-interop-v1",
+    "inference-service-history-v2-base",
 ];
 
 fn cases(set: &str) -> Vec<Value> {
@@ -176,6 +179,30 @@ fn the_revision_1_histories_check_as_the_vectors_expect() {
         }
     }
     assert_eq!(all.len(), 13);
+}
+
+/// `vectors/inference-service-history-v2` (`inference-service-history/2`,
+/// ISH §6.2 item 6, SH-8): every case, its verdict counts too where its
+/// definition carries them, fails the one property it names or none.
+#[test]
+fn the_revision_2_histories_check_as_the_vectors_expect() {
+    let all = cases("inference-service-history-v2");
+    for case in &all {
+        let def = Definition::from_document(&case["inputs"]["definition"]).unwrap();
+        assert_eq!(
+            def.profile(),
+            agent_action_capsule::inference_history::PROFILE_2
+        );
+        let got = check_history(&case["inputs"]["definition"], &case["inputs"]["reply"]);
+        match (expected_failure(&case["expected"]), got) {
+            (None, Ok(_)) => {}
+            (Some(want), Err(why)) => {
+                assert_eq!(failed_property(&why), want, "{}: {why}", id(case))
+            }
+            (want, got) => panic!("{}: expected {want:?}, got {got:?}", id(case)),
+        }
+    }
+    assert_eq!(all.len(), 28);
 }
 
 /// The time of the checkpoint a pin names, in any case's card: the pin is
