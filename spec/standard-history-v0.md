@@ -620,10 +620,27 @@ a `/3` card, `/2`'s rules wherever they name a token, except where this section 
   latest book fact up to the anchor. A journal fact [SF §3.3] is no deal, and neither is a book of
   profile `none`. A deal that has not started, whose book holds no agreement, has no deal entry and
   is in no tally.
-- **As of the anchor's time.** Each deal's row results (§11.2) are computed as of `T`, the anchor's
-  time, from the status value of its latest fact [SF §4.2]. A deal whose book has not changed since
-  its last fact is counted by its rows' dates and `T`, so its outcome can change from one anchor to
-  the next with no new fact.
+- **As of the anchor's time.** Each deal's row results (§11.2) and its `disputes` (§5.4) are
+  computed as of `T`, the anchor's time, from the status value of its latest fact [SF §4.2]. A deal
+  whose book has not changed since its last fact is counted by its rows' dates and `T`, so its
+  outcome can change from one anchor to the next with no new fact.
+- **One card, one time.** A host reads every record a deal's `disputes` rest on, each dispute
+  statement, each withdrawal of one and each record of its resolution, by the test EBL's rule
+  applies to every record it reads (SH-11): a record whose time is after `T` does not yet exist, and
+  a record with no time exists. So a dispute whose record has a time after `T` is no entry of the
+  deal's `disputes`, a withdrawal whose time is after `T` has not withdrawn it, and a resolution
+  whose record has a time after `T` is not held. §5.4 then gives each dispute its `outcome` from the
+  records held as of `T` alone: a dispute withdrawn by then is `withdrawn`, and one with no
+  resolution held by then is `open`. Where the host's mapping chooses one resolution among several,
+  such as the first final ruling of the adjudicator the agreement names, it chooses among those held
+  as of `T`. A host MUST NOT count in a deal's `disputes` a record that does not exist as of `T`, so
+  a card's `disputes` tally and its row results read the same records. A record with no time is read
+  as existing by both, so the one time holds for timed records only: an untimed record may have been
+  made after `T`. This is a rule on filling the deal entry, as §11.2 "Agreed no later than
+  witnessed" is: it changes no member, value list or counting rule, so `/3` and `/4` keep their
+  tokens, documents and vectors. A verifier that applies it may report `FAIL` for a card an earlier
+  verifier passed: such a card's `disputes` tally holds a record that did not exist as of its own
+  anchor.
 
 ### 11.2 The deal entry
 
@@ -808,10 +825,11 @@ A verifier reports §6's six properties of a `/3` card, with these changes:
   commitment [SF §4.1]; each book checkpoint hashing to its fact; and the chain of each book's facts
   unbroken. A handover that passes these checks enumerates the books the anchor commits, so §6's
   coverage (b) and SH-10 do not arise for `/3`. The verifier forms each deal entry from the latest
-  fact's status opening by the host's mapping (SH-2) and the row rule (§11.2), as of the anchor's
-  time, and reports which mapping it applied; with none, or without the handover, or when the
-  handover fails a check, `counts_recompute` is `NOT_CHECKED`. A book the card leaves out, or a
-  book counted that the handover does not hold, makes the counts differ: `FAIL`. A deal entry
+  fact's status opening by the host's mapping (SH-2) and the row rule (§11.2), its rows and its
+  `disputes` as of the anchor's time (§11.1), and reports which mapping it applied; with none, or
+  without the handover, or when the handover fails a check, `counts_recompute` is `NOT_CHECKED`. A
+  book the card leaves out, or a book counted that the handover does not hold, makes the counts
+  differ: `FAIL`. A deal entry
   whose `agreed_at` is later than the deal's first witnessed time by more than §11.2's allowance,
   where the handover gives that time, makes the result `FAIL` even when every count is equal
   (§11.2 "Agreed no later than witnessed").
