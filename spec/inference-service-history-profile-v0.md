@@ -20,14 +20,19 @@ This revision defines two History levels:
 - the **Detailed level**: a recipient-specific projection [IP §6.5] that carries the exchanges the
   node had with one recipient, each with the node's signed half and, where held, the other party's.
 
-**Revisions.** This document defines two revisions of the profile, named by a definition's
-`profile` (§4.1). `inference-service-history/0` is frozen: its rules, counting table, wording pack
-and vectors keep their bytes. `inference-service-history/1` is `/0` with §6.1 item 9 (no `/0`
+**Revisions.** This document defines three revisions of the profile, named by a definition's
+`profile` (§4.1). `inference-service-history/0` and `/1` are frozen: their rules, counting tables,
+wording packs and vectors keep their bytes. `inference-service-history/1` is `/0` with §6.1 item 9 (no `/0`
 Standard History under the same key, beside or before it) and §6.2 item 5: a cell is
 listed only for a value the period counted, and a total that pins two or more cells withheld under
 the floor is withheld `complementary`, in `period_counts` and in each verdict result's table alike,
-since verdict counts are period counts (§5.3) (SH-8); everything else is the same. A verifier checks a History under the
-revision its definition names.
+since verdict counts are period counts (§5.3) (SH-8); everything else is the same.
+`inference-service-history/2` is `/1` with §6.1 item 10 (no `/0` or `/1` Standard History under
+the same key, beside or before it) and §6.2 item 6: where a table's total stands beside one cell
+withheld `below_floor` and its `complementary` partner, and the bounds those cells must keep leave
+one value for the withheld cell, the total is withheld `complementary` too, and a total with no
+dimension cell beside it is not summed (SH-8). A verifier
+checks a History under the revision its definition names.
 
 The personal-agent History profile (`spec/personal-agent-history-profile-v0.md`) is a sibling host
 profile. The two families are separate subjects. They compose only by an explicit, evidence-backed
@@ -76,7 +81,7 @@ requires (§6.1, §8.4) are statements about policy and are `policy_declined` un
 definitions, the History and its members do not depend on the identifier, and neither do theirs:
 `inference-service-history/0`, `history_card/1` and every definition digest are the same under both.
 Only the `profile` of a request and of an envelope differs. The vectors hold one set per identifier
-(§9.4). `inference-service-history/1` is served under `evidence-interop/1` only.
+(§9.4). `inference-service-history/1` and `/2` are served under `evidence-interop/1` only.
 
 **Does not define:** any record format, any identity scheme, any trust policy, who may receive a
 History, or what a recipient should conclude. It defines no figure that combines units, labels or
@@ -88,7 +93,7 @@ History stays the node's statement, not the requester's conclusion.
 
 ## Instance of the History frame
 
-This profile, in each of its revisions `inference-service-history/0` and `/1`, is an instance of the History frame (HF), with its
+This profile, in each of its revisions `inference-service-history/0`, `/1` and `/2`, is an instance of the History frame (HF), with its
 two levels as the two ISH columns of HF §6.1. This section names its values; it changes no
 member, value, identifier, digest or vector of this profile, and neither of the example
 definitions' digests (§9).
@@ -107,7 +112,9 @@ definitions' digests (§9).
 - **Counting table:** `spec/history-frame/inference-service-history-0-table.json`, digest
   `3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057`, and for `/1`
   `spec/history-frame/inference-service-history-1-table.json`, digest
-  `591090aab054e05bec51d823c2d36645c637cd09baf81366af9bdb02ea9f5e7f`, which differs only in its
+  `591090aab054e05bec51d823c2d36645c637cd09baf81366af9bdb02ea9f5e7f`, and for `/2`
+  `spec/history-frame/inference-service-history-2-table.json`, digest
+  `ed9d7e391d6b4a6118e4f6416b117bd1eb86250fb03a6ac8d0beee5503ca3ea6`, each of which differs from `/0`'s only in its
   `instance` and fixed `profile`: the definition frame and its
   fixed values (§4.1), the member entry, the units (§5.1), the labels from weakest to strongest
   (§7.1), the verdict counts (§5.3), the period policy's members and the suppression reasons (§6),
@@ -117,13 +124,15 @@ definitions' digests (§9).
 - **Wording pack:** `spec/history-frame/inference-service-history-0-pack.json`, digest
   `693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82`, and for `/1`
   `spec/history-frame/inference-service-history-1-pack.json`, digest
-  `d5f5c2f807335fdc8d003ae04fecc87bcdcbaad1ed54cb30f1c496901826718b`: how each exchange is shown
+  `d5f5c2f807335fdc8d003ae04fecc87bcdcbaad1ed54cb30f1c496901826718b`, and for `/2`
+  `spec/history-frame/inference-service-history-2-pack.json`, digest
+  `3c45ea22064380e4b8e67a52375fdaa68edfe4e7722f4f6e0ba68485295a8c79`: how each exchange is shown
   (§7.2), "no witness named" (§5.2) and "agreement present; ordering not established" (§10). The
   labels `self_reported`, `peer_confirmed` and `corroborated` are checked by `labels` (§7.3), so
   they are counting-table strings, never pack strings (HF §5.3). A `claims.label` is a host
   definition's member, not this profile's wording.
 - **Pinning.** The definitions' `profile` pins its revision's two documents' bytes (HF §5.4):
-  `inference-service-history/0` the `-0` files and `/1` the `-1` files. Any change to either is a
+  `inference-service-history/0` the `-0` files, `/1` the `-1` files and `/2` the `-2` files. Any change to either is a
   new revision. Neither digest is a
   member of a definition, so no definition digest moves. Where a document and this text
   disagree, HF §6.3 applies.
@@ -197,7 +206,7 @@ definition conforms to this profile by its digest [SH-2]:
 
 | Member | Value |
 |---|---|
-| `profile` | `"inference-service-history/0"` or `"inference-service-history/1"` (the two revisions; **Revisions** at the top) |
+| `profile` | `"inference-service-history/0"`, `"inference-service-history/1"` or `"inference-service-history/2"` (the three revisions; **Revisions** at the top) |
 | `name` | a text string of lowercase ASCII letters, digits and `_`, then `/` and a version number |
 | `kind` | `"projection"` |
 | `level` | `"standard"` or `"detailed"` |
@@ -441,6 +450,13 @@ A record is in a period by the time the node's stream committed it.
    `inference-service-history/0` under the same node key, and MUST NOT serve `/1` ones under a
    key that has served `/0` ones: a `/0` answer publishes the totals §6.2 item 5 withholds, over
    the same periods (item 6), and a period's cells are fixed once produced (item 4).
+10. **No `/0` or `/1` beside `/2`** (`inference-service-history/2` only). A node that serves
+   Standard Histories under `inference-service-history/2` MUST NOT serve Standard Histories under
+   `inference-service-history/0` or `/1` under the same node key, and MUST NOT serve `/2` ones
+   under a key that has served `/0` or `/1` ones: those answers publish totals §6.2 item 6
+   withholds, over the same periods (§6.1 item 6), and a period's cells are fixed once produced
+   (§6.1 item 4). A node moving to `/2` therefore starts a new History under a new key (SH-1); what the
+   old key served stays as served.
 
 ### 6.2 Floor and complementary suppression
 
@@ -474,6 +490,28 @@ A record is in a period by the time the node's stream committed it.
    Floor 5: two models of 4 each withhold their total of 8, and five models of 1 each their total
    of 5; models of 3 and 4 leave their total of 7 published. A `/0` History is checked under
    item 3 alone.
+6. **A total that leaves one value** (`inference-service-history/2` only). Under `/2`, item 5
+   applies, and a total is withheld `complementary` by its rule or by this item. Item 5's sums
+   apply to a table that lists a dimension cell; a total with none beside it is not summed. Take a table
+   (item 5) with exactly two dimension cells withheld: one `below_floor`, holding `x`, and item
+   3's `complementary` partner, holding `p`, chosen as if the total were published. Let `r` be the
+   total less its published cells, and `m` the smallest published dimension cell. A reader of the
+   table knows that 1 ≤ `x` ≤ `floor` − 1 (item 5), that `floor` ≤ `p`, that `p` ≤ `m` where a
+   dimension cell is still published (item 3 takes the smallest), and that `x` + `p` = `r`. So
+
+       max(1, r − m) ≤ x ≤ min(floor − 1, r − floor)
+
+   with no `r` − `m` term where no dimension cell is published. Where this range holds one value,
+   it fixes both cells, so the total is withheld too, with the reason `complementary`, and the
+   partner stays withheld. Where it holds two or more values, the total is published. Where it
+   holds none, the counts cannot be right, and a published total in that shape fails
+   `period_floor`. A table of any other shape, such as one `below_floor` cell with two
+   `complementary` cells, is checked under item 5 alone.
+
+   Floor 5: models 1, 5 and 9 (`r` = 6) and models 4, 6 and 6 (`r` = 10, `m` = 6) fix the pair,
+   at the least and at the most the two cells can hold, and models 3, 5 and 5 (`r` = 8) fix it
+   because `m` is the floor; each withholds its total. Models 3, 6 and 6 (`r` = 9, `m` = 6) leave
+   3 or 4, and their total of 15 is published.
 
 ### 6.3 Period properties
 
@@ -483,7 +521,7 @@ Each is reported in the IP §7.1 vocabulary:
 |---|---|
 | `period_alignment` | every period of every counts member is aligned to the policy's epoch, has exactly the policy's length, is closed at the anchor, and starts at the end of the period before it; where a checkpoint of the card commits a record, the first starts before the time of the first such checkpoint, and the last ends at the latest period boundary at or before the anchor; where none does, the member lists no period (§6.1 item 3); the member names the policy's digest |
 | `period_anchor` | the anchor's checkpoint time is a period boundary (§6.1 item 2) |
-| `period_floor` | no published cell is below the floor, every suppressed cell has no value and the reason `below_floor` or `complementary`, and §6.2 item 3 holds, and under `inference-service-history/1` item 5 too, over every table of the counts members and of verdict counts |
+| `period_floor` | no published cell is below the floor, every suppressed cell has no value and the reason `below_floor` or `complementary`, and §6.2 item 3 holds, and under `inference-service-history/1` item 5 too, and under `/2` items 5 and 6, over every table of the counts members and of verdict counts |
 | `period_fixed` | over two or more Histories under one definition held by one verifier, every period of a History is carried, with the same cells, by every History at the same or a later anchor |
 
 `period_fixed` is reported only by a verifier that holds two or more such Histories. A verifier
@@ -669,7 +707,12 @@ member (§4.3, §5.3) has its own set, `vectors/inference-service-history-verdic
 `inference-service-history/1` (§6.2 item 5) has its own set, `vectors/inference-service-history-v1/`
 (`evidence-interop/1`), generated by `python/scripts/generate_inference_service_history_v1_vectors.py`
 and checked by `python/tests/test_inference_service_history_v1_vectors.py` (§9.5); the `/0` sets are
-unchanged.
+unchanged. `inference-service-history/2` (§6.2 item 6) has two sets, both under `evidence-interop/1`
+and both generated by `python/scripts/generate_inference_service_history_v2_vectors.py` (`--base`
+for the second) and checked by `python/tests/test_inference_service_history_v2_vectors.py` (§9.6):
+`vectors/inference-service-history-v2/`, and `vectors/inference-service-history-v2-base/`, the
+cases of `vectors/inference-service-history-v0-interop-v1/` with `/2` definitions; the `/0` and
+`/1` sets are unchanged.
 
 These formats are fixed for the vectors only and are not registered [SH-12]:
 
@@ -774,6 +817,50 @@ so the table need not match the card. The last two add the verdict counts member
 | `v1-verdict-total-withheld` | accepted: a verdict result's table of 4 and 4, its total withheld `complementary` |
 | `mutant-v1-verdict-total-pins` | `period_floor` `FAIL`: the same table with its total of 8 published |
 
+### 9.6 The `/2` cases
+
+The definitions `service_history_example/2`, `service_history_detail_example/2` and
+`service_history_verdicts_example/2` are the `/0` examples naming `inference-service-history/2`.
+
+`vectors/inference-service-history-v2-base/` holds every case of §9.4 under `evidence-interop/1`,
+with these definitions. No table in them has a shape that §6.2 items 5 or 6 change, so each case
+expects what it expects under `/0`.
+
+`vectors/inference-service-history-v2/` holds the cases below. Each is the Standard History of
+§9.1 with 2 October's cells replaced by the table it is about (floor 5). The last four add the
+verdict counts member.
+
+| Case | Expected |
+|---|---|
+| `v2-standard-served` | accepted: one model withheld and its partner, the bounds leaving 1 to 4, total 12 published |
+| `v2-total-withheld-two-under-floor` | accepted: models 4 and 4, total withheld `complementary` (item 5) |
+| `v2-total-withheld-five-ones` | accepted: five models of 1, total withheld `complementary` (item 5) |
+| `v2-total-under-floor-withheld-complementary` | accepted: models 1 and 1, total 2 withheld `complementary` (item 5) |
+| `v2-total-pins-nothing-published` | accepted: models 3 and 4 withheld, total 7 published |
+| `v2-one-value-least` | accepted: models 1, 5 and 9, total withheld `complementary` |
+| `v2-one-value-most` | accepted: models 4, 6 and 6, total withheld `complementary` |
+| `v2-one-value-partner-at-floor` | accepted: models 3, 5 and 5, total withheld `complementary` |
+| `v2-two-values-published` | accepted: models 3, 6 and 6, total 15 published (3 or 4) |
+| `v2-one-value-nothing-published` | accepted: models 1 and 5 with nothing published, total withheld `complementary` |
+| `v2-two-values-nothing-published` | accepted: models 3 and 7 with nothing published, total 10 published (1 to 4) |
+| `v2-total-withheld-beside-one-model` | accepted: one model withheld, its partner and the total withheld, where the bounds leave 1 to 4; a verifier sees the shape only (SH-14) |
+| `mutant-v2-total-pins-two-under-floor` | `period_floor` `FAIL`: models 4 and 4 withheld beside a published 8 |
+| `mutant-v2-total-pins-five-ones` | `period_floor` `FAIL`: five models of 1 withheld beside a published 5 |
+| `mutant-v2-total-pins-beside-published` | `period_floor` `FAIL`: 10 published, 4 and 4 withheld, total 18 published |
+| `mutant-v2-total-short-of-withheld` | `period_floor` `FAIL`: 10 published and three models withheld beside a published 12 |
+| `mutant-v2-total-over-withheld` | `period_floor` `FAIL`: 10 published and two models withheld under the floor beside a published 19 |
+| `mutant-v2-one-value-least` | `period_floor` `FAIL`: models 1, 5 and 9 with the total of 15 published |
+| `mutant-v2-one-value-most` | `period_floor` `FAIL`: models 4, 6 and 6 with the total of 16 published |
+| `mutant-v2-one-value-partner-at-floor` | `period_floor` `FAIL`: models 3, 5 and 5 with the total of 13 published |
+| `mutant-v2-one-value-nothing-published` | `period_floor` `FAIL`: models 1 and 5 with the total of 6 published |
+| `mutant-v2-no-value-low` | `period_floor` `FAIL`: models 1 and 5 withheld beside a published 9 and total 14, leaving no value |
+| `mutant-v2-no-value-high` | `period_floor` `FAIL`: models 1 and 5 withheld beside a published 9 and total 23, leaving no value |
+| `mutant-v2-total-withheld-without-partner` | `period_floor` `FAIL`: a total withheld `complementary` beside one model withheld under the floor and no partner |
+| `v2-verdict-total-withheld` | accepted: a verdict result's table of 4 and 4, its total withheld `complementary` |
+| `mutant-v2-verdict-total-withheld` | `period_floor` `FAIL`: the same table with its total of 8 published |
+| `v2-verdict-one-value` | accepted: a verdict result's table of 1 and 5, its total withheld `complementary` |
+| `mutant-v2-verdict-one-value` | `period_floor` `FAIL`: the same table with its total of 6 published |
+
 ## 10. Session agreements
 
 One accepted record MAY cover a bounded session of exchanges, so that each exchange cites the
@@ -821,13 +908,30 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
   a later answer's card carries every earlier checkpoint, including those inside a period, each
   with its exact log size. A requester who already knows all but one
   exchange of a cell can still learn the last; the floor limits, and does not remove, what such a
-  requester learns. Complementary suppression covers what §6.2 items 3 and 5 name, not every
-  derivation: under either revision, one cell withheld `below_floor` and its `complementary`
-  partner beside a published total can be fixed when the rest is the least the two can hold
-  (1 + `floor`) or the most (`floor` − 1 plus the smallest published cell). Floor 5: models 1, 5
-  and 9 publish the 9 and a total of 15, and a rest of 6 can only be 1 and 5; models 3, 5 and 5
-  publish a 5 and a total of 13, and a rest of 8 can only be 3 and 5. At a floor of 2 every listed `below_floor` cell is 1, whatever is
-  published (SH-8).
+  requester learns. Complementary suppression covers what §6.2 items 3, 5 and 6 name, not every
+  derivation. Under `/0` and `/1`, one cell withheld `below_floor` and its `complementary`
+  partner beside a published total can be fixed when the bounds of §6.2 item 6 leave one value:
+  when the rest is the least the two can hold (1 + `floor`), when it is the most (`floor` − 1
+  plus the smallest published cell), or when the smallest published cell is the floor itself.
+  Floor 5: models 1, 5 and 9 publish the 9 and a total of 15, and a rest of 6 can only be 1 and
+  5; models 3, 5 and 5 publish a 5 and a total of 13, and a rest of 8 can only be 3 and 5, since
+  the partner lies between 5 and 5. (Before `/2`, this text gave the second example as the most
+  the two can hold; that end is 4 + 5 = 9, and the rest is 8.) At a floor of 2 every listed
+  `below_floor` cell is 1, whatever is published.
+- **The floor's promise** (`inference-service-history/2`). Within one table, the floor hides the
+  exact value of a cell withheld `below_floor`; it does not hide every bound on it. Floor 5:
+  models 3, 6 and 6 publish a 6 and a total of 15, and a reader learns that the withheld model is
+  3 or 4. A `complementary` total beside one `below_floor` cell tells a reader that §6.2 item 6
+  found one value, which narrows the cell to 1 or `floor` − 1 where the smallest published cell
+  is above the floor. Two exceptions remain, where withholding the total does not hide the cell: at a
+  floor of 2 every listed `below_floor` cell is 1, and in a table where no dimension cell is left
+  published (one `below_floor` cell and its partner only), item 6 finds one value only at a rest
+  of 1 + `floor`, so withholding the total there tells a reader the cell is 1, as publishing it
+  would. The promise is per table: a cell one definition withholds can be published by another
+  definition of the same node with a lower floor, or derived from another counts member of the
+  same unit and period, under every revision (agent-action-capsule#720). A key's earlier `/0` or
+  `/1` answers keep the disclosure they had when served; moving to `/2` under a new key
+  (§6.1 item 10) withdraws nothing already served (SH-8).
 - **Verdicts held.** The ask by digest (§5.3) is answered per verdict, outside the period counts
   and with no floor. It tells a requester that knows the digest whether the node holds that verdict,
   and no verdict body; who may ask is the host's. Where one
@@ -869,13 +973,13 @@ the same octets whatever the requester, nonce or carriage [ER §5]; each envelop
 | SH-4 | `coverage_declaration_population` `NOT_CHECKED` for counts, which carry no records (§4.2). IP §7.1 could also be read to give `NOT_PRESENT`, which IP §6.7.3 item 4 maps to `INSUFFICIENT`; either way no completeness requirement is `SATISFIED`. A count checkable against records needs a disclosure of the records, or a verification-material kind for counts. Relatedly, ER §3.3 asks that a derivation result come with what the requester needs to check its binding; a count has nothing of the kind in this revision. |
 | SH-5 | The closed list of units (§5.1). The requirements' roles `conflict` and `unknown` are both counted in `exchanges_unattributed`; a later revision may split them. |
 | SH-6 | The labels and the peer-confirmation join (§7). The join's citation member is ER §3.1.1's. The citation is one-way; a two-way join (the peer's half citing the node's) would let `peer_confirmed` show receipt of the answer. `corroborated` needs evidence of distinct controllers in a form IP does not register (IP P-60). |
-| SH-7 | The period rules (§6.1): time-aligned periods, answers only at period boundaries, the refusal token, fixed cells, one policy per node, no `standard_history/1` or `/2` card under the same key. No profile minimum for `length_s` or `floor` is set. The history card's exact log sizes are outside the period rules (§12). |
-| SH-8 | Complementary suppression. `inference-service-history/0` (§6.2 item 3) checks only one suppressed cell beside a published total; `/1` (§6.2 item 5) also withholds a total that pins two or more cells withheld under the floor, and stops there, as ruled (https://github.com/action-state-group/agent-action-capsule/issues/616#issuecomment-7090061796). Still open under both: a withheld cell and its `complementary` partner fixed when the rest is the least (1 + `floor`) or the most (`floor` − 1 plus the smallest published cell) the two can hold, and a floor of 2 (§12). |
+| SH-7 | The period rules (§6.1): time-aligned periods, answers only at period boundaries, the refusal token, fixed cells, one policy per node, no `standard_history/1` or `/2` card under the same key, no earlier revision of this profile under the key of a later one (§6.1 items 9 and 10). No profile minimum for `length_s` or `floor` is set. The history card's exact log sizes are outside the period rules (§12). |
+| SH-8 | Complementary suppression. `inference-service-history/0` (§6.2 item 3) checks only one suppressed cell beside a published total; `/1` (§6.2 item 5) also withholds a total that pins two or more cells withheld under the floor, and stops there, as ruled (https://github.com/action-state-group/agent-action-capsule/issues/616#issuecomment-7090061796). Still open under `/0` and `/1`: a withheld cell and its `complementary` partner fixed when the bounds of §6.2 item 6 leave one value (the rest is 1 + `floor`, or `floor` − 1 plus the smallest published cell, or the smallest published cell is the floor) (§12). `/2` (§6.2 item 6) withholds that total too, and stops there, as ruled (https://github.com/action-state-group/agent-action-capsule/issues/672#issuecomment-7232742799): narrower bounds remain, and so do a floor of 2 and a table with no dimension cell left published (§12). Open under every revision: a cell derived across definitions or counts members (agent-action-capsule#720). |
 | SH-9 | The Detailed level declares `holder_selected`. A Detailed History complete relative to the node's exchanges with the recipient needs the records in a form whose population can be checked. |
 | SH-10 | Referee verdict eligibility (§5.3): the form of the referee's selection statement is not fixed here. |
 | SH-11 | The History properties (§8.3, §6.3) as properties in IP's vocabulary that are not IP §7.2 envelope properties and never enter the IP §8 mapping. |
 | SH-12 | The vector-only formats of §9. |
 | SH-13 | A host's definition conforms by its digest (§4.1). A host definition fixed before it carries `profile`, `coverage_declaration` and `period_policy` conforms only as a new version. |
-| SH-14 | No vectors in this revision for: session coverage (§10); `definition_form`, `definition_binding`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), or `/0` Standard Histories beside or before `/1` ones under one key (§6.1 item 9), which a verifier sees only when it holds answers of both; a pinning total under the floor withheld `below_floor` rather than `complementary` (§6.2 item 5), which no verifier can see, since a withheld total has no value: the reason is the producer's; a stream whose card commits no record. The verdict counts member has its own set, `vectors/inference-service-history-verdicts-v0/`, whose shape is fixed for it alone (§9, SH-12, SH-16); it has cases for `artifact_form` failing, and none for a published total that differs from its published cells, two or more models withheld under the floor beside a published total under `/0` (SH-8; `/1`'s are in `vectors/inference-service-history-v1/`), or the delivery of a verdict and the ask by digest (SH-15). |
+| SH-14 | No vectors in this revision for: session coverage (§10); `definition_form`, `definition_binding`, `history_card_content`, `coverage_declaration_form` or `coverage_declaration_anchor` failing; a key accepted on first contact; a count that mixes units under a registered unit, which needs the records to detect; a node that also serves `standard_history/1` or `/2` under its key (§6.1 item 8), or `/0` Standard Histories beside or before `/1` ones under one key (§6.1 item 9), or `/0` or `/1` ones beside or before `/2` ones (§6.1 item 10), which a verifier sees only when it holds answers of both; a pinning total under the floor withheld `below_floor` rather than `complementary` (§6.2 item 5), which no verifier can see, since a withheld total has no value: the reason is the producer's; under `/2`, a total withheld `complementary` beside one `below_floor` cell and its partner when §6.2 item 6 leaves two or more values, which no verifier can see either: a verifier checks only that the table has item 6's shape; a floor other than 5, so none for a floor of 2; a stream whose card commits no record. The verdict counts member has its own set, `vectors/inference-service-history-verdicts-v0/`, whose shape is fixed for it alone (§9, SH-12, SH-16); it has cases for `artifact_form` failing, and none for a published total that differs from its published cells, two or more models withheld under the floor beside a published total under `/0` (SH-8; `/1`'s are in `vectors/inference-service-history-v1/`), or the delivery of a verdict and the ask by digest (SH-15). |
 | SH-15 | Verdicts the node received without asking (§5.3): the delivery that puts such a verdict in the node's log, and the ask by digest, are the host's; this profile fixes only what counts and that the count is over the node's own log. Because the ask is the host's, one implementation cannot yet check another's omissions; interoperable omission checking is open. |
 | SH-16 | §5.3's rules that the result being counted is signed by the checker and never by the node it concerns, that a verdict count is the count of one kind of check, a referee verdict, and that the four results stay separate counts, have no History property in §8.3. The verdict counts vectors pin them through their vector-only shape (§9, SH-12), so a host that uses another shape can break them and pass every property. |

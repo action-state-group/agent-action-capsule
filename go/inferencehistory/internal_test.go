@@ -3,6 +3,7 @@
 package inferencehistory
 
 import (
+	"math"
 	"testing"
 
 	"github.com/action-state-group/agent-action-capsule/go/evidencerequest"
@@ -151,7 +152,46 @@ func TestTableOKByRevision(t *testing.T) {
 		{"/0 never sums: published cells past uint64", []map[string]any{part(uint64(1<<63), ""), part(uint64(1<<63), "")},
 			total(uint64(5), ""), 5, true, false},
 	} {
-		assert.Equal(t, tc.rev0, tableOK(tc.parts, tc.total, tc.floor, false), "/0 %s", tc.name)
-		assert.Equal(t, tc.rev1, tableOK(tc.parts, tc.total, tc.floor, true), "/1 %s", tc.name)
+		assert.Equal(t, tc.rev0, tableOK(tc.parts, tc.total, tc.floor, 0), "/0 %s", tc.name)
+		assert.Equal(t, tc.rev1, tableOK(tc.parts, tc.total, tc.floor, 1), "/1 %s", tc.name)
+	}
+}
+
+func TestTableOKUnderRevision2(t *testing.T) {
+	b, cmp := "below_floor", "complementary"
+	one := func(published ...uint64) []map[string]any {
+		out := []map[string]any{part(nil, b), part(nil, cmp)}
+		for _, n := range published {
+			out = append(out, part(n, ""))
+		}
+		return out
+	}
+	for _, tc := range []struct {
+		name       string
+		parts      []map[string]any
+		total      map[string]any
+		floor      uint64
+		rev1, rev2 bool
+	}{
+		{"1, 5 and 9 beside 15", one(9), total(uint64(15), ""), 5, true, false},
+		{"4, 6 and 6 beside 16", one(6), total(uint64(16), ""), 5, true, false},
+		{"3, 5 and 5 beside 13", one(5), total(uint64(13), ""), 5, true, false},
+		{"3, 6 and 6 beside 15", one(6), total(uint64(15), ""), 5, true, true},
+		{"1 and 5 beside 6", one(), total(uint64(6), ""), 5, true, false},
+		{"3 and 7 beside 10", one(), total(uint64(10), ""), 5, true, true},
+		{"1, 5 and 9 beside 14", one(9), total(uint64(14), ""), 5, true, false},
+		{"1, 5 and 9 beside 23", one(9), total(uint64(23), ""), 5, true, false},
+		{"one and its partner beside a withheld total", one(9), total(nil, cmp), 5, false, true},
+		{"one, no partner, beside a withheld total", []map[string]any{part(nil, b), part(uint64(9), "")}, total(nil, cmp), 5, false, false},
+		{"one and two partners beside a withheld total", []map[string]any{part(nil, b), part(nil, cmp), part(nil, cmp)}, total(nil, cmp), 5, false, false},
+		{"one and two partners beside 20", []map[string]any{part(nil, b), part(nil, cmp), part(nil, cmp), part(uint64(6), "")}, total(uint64(20), ""), 5, true, true},
+		{"floor 2: one and its partner beside 5", one(), total(uint64(5), ""), 2, true, false},
+		{"a total alone", nil, total(uint64(23), ""), 5, false, true},
+		{"the largest floor: one and its partner beside a total under it", one(), total(uint64(10), ""), math.MaxUint64, true, false},
+		{"a published cell near the top of uint64", one(1 << 62), total(uint64(1<<62)+6, ""), 5, true, false},
+		{"a rest near the top of uint64", one(1 << 62), total(uint64(1<<62)+(1<<62)+4, ""), 5, true, false},
+	} {
+		assert.Equal(t, tc.rev1, tableOK(tc.parts, tc.total, tc.floor, 1), "/1 %s", tc.name)
+		assert.Equal(t, tc.rev2, tableOK(tc.parts, tc.total, tc.floor, 2), "/2 %s", tc.name)
 	}
 }

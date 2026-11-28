@@ -155,7 +155,7 @@ fn cell(model: Option<&str>, value: Option<u64>, why: Option<&str>) -> Value {
 fn the_definition_names_its_revision() {
     assert_eq!(def(PROFILE_0, 5).profile(), PROFILE_0);
     assert_eq!(def(PROFILE_1, 5).profile(), PROFILE_1);
-    let other = document("inference-service-history/2", 5, false);
+    let other = document("inference-service-history/3", 5, false);
     assert!(Definition::from_document(&other)
         .unwrap_err()
         .starts_with("definition_form"));

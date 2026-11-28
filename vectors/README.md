@@ -223,6 +223,16 @@ same-commit files in CI.
   negatives that publish them or withhold a total beside one model, for `period_counts` and a
   verdict result's table. Constructed;
   `python/scripts/generate_inference_service_history_v1_vectors.py` regenerates them.
+- `inference-service-history-v2/`: `inference-service-history/2` (ISH §6.2 items 5 and 6, §9.6):
+  `/1`'s cases under `/2`, and totals beside one model withheld under the floor and its partner,
+  withheld where the bounds leave one value and published where they leave two or more, with
+  the negatives that publish a withheld one, publish one no counts can match, or withhold one
+  without its partner, for `period_counts` and a verdict result's table. Constructed;
+  `python/scripts/generate_inference_service_history_v2_vectors.py` regenerates them.
+- `inference-service-history-v2-base/`: every case of `inference-service-history-v0-interop-v1/`
+  with definitions naming `inference-service-history/2`, each expecting what it expects under
+  `/0` (ISH §9.6); `python/scripts/generate_inference_service_history_v2_vectors.py --base`
+  regenerates them.
 - `history-frame-v0/`: the History frame `spec/history-frame-v0.md`: each instance's counting
   table and wording pack with the digests the frame lists, and negatives for a mismatched pack
   digest, a translated pack, a changed table, a pack carrying a checked string and a pack naming
