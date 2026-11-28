@@ -1268,6 +1268,51 @@ neg_applies_from_disagrees_in_row["aggregate"]["coverage"].update(
 )
 neg_applies_from_disagrees_in_row["aggregate"]["buckets"]["not_met"] = ["reconcile-1"]
 
+# --- spec section 4.3: the as-of date, applicability_as_of ---------------
+#     generated_at is 2026-09-22; the activity evaluated is as of 2026-03-01.
+#     claim-1 applies from 2026-01-01 and is in force; claim-2 (not_met)
+#     applies from 2026-06-01: in force on 2026-09-22, but later as of
+#     2026-03-01, so it is in no bucket. Population 2, not_yet_in_force 1.
+AS_OF = "2026-03-01"
+pos_example_org_applicability_as_of_result = _mutated(pos_example_org_claims_result)
+pos_example_org_applicability_as_of_result["applicability_as_of"] = AS_OF
+_claims = pos_example_org_applicability_as_of_result["claims"]
+_claims[0]["applies_from"] = "2026-01-01"
+_claims[1]["applies_from"] = "2026-06-01"
+pos_example_org_applicability_as_of_result["aggregate"]["coverage"].update(
+    {"evaluated_population": 2, "not_yet_in_force": 1}
+)
+pos_example_org_applicability_as_of_result["aggregate"]["buckets"]["not_met"] = []
+
+#     The bound is the UTC date: generated_at 2026-09-22T23:30:00-05:00 is
+#     2026-09-23 in UTC, so an as-of date of 2026-09-23 is allowed, and the
+#     boundary positive's claims split as they do without it.
+pos_example_org_applicability_as_of_boundary_result = _mutated(pos_example_org_applicability_boundary_result)
+pos_example_org_applicability_as_of_boundary_result["applicability_as_of"] = "2026-09-23"
+
+#     No claim is dated: the member is still allowed, every claim is in
+#     force, and the aggregate is the claims positive's.
+pos_example_org_applicability_as_of_undated_result = _mutated(pos_example_org_claims_result)
+pos_example_org_applicability_as_of_undated_result["applicability_as_of"] = AS_OF
+
+# checker negatives
+#     the aggregate judged as of generated_at, as if the member were absent
+neg_as_of_ignored = _mutated(pos_example_org_applicability_as_of_result)
+neg_as_of_ignored["aggregate"] = json.loads(json.dumps(pos_example_org_claims_result["aggregate"]))
+
+#     an as-of date after the UTC date of generated_at (2026-09-22); no claim
+#     changes side, so the bound is the only rule broken
+neg_as_of_after_generated_at = _mutated(pos_example_org_applicability_in_force_result)
+neg_as_of_after_generated_at["applicability_as_of"] = "2026-09-23"
+
+neg_as_of_not_a_date = _mutated(pos_example_org_applicability_as_of_result)
+neg_as_of_not_a_date["applicability_as_of"] = "2026-02-30"
+
+#     no claim is dated, but the member is compared with generated_at, so
+#     generated_at must parse
+neg_as_of_generated_at_unparseable = _mutated(pos_example_org_applicability_as_of_undated_result)
+neg_as_of_generated_at_unparseable["generated_at"] = "2026-09-22"
+
 # ---------------------------------------------------------------------------
 # Section 3: requirements_covered. The claims positive names the three
 # requirements its claims cite and req-claim-4, the one evaluation it
@@ -1434,6 +1479,9 @@ neg_digest_trailing_newline["claims"][0]["evidence"][0]["digest"] += "\n"
 neg_applies_from_trailing_newline = _mutated(pos_example_org_applicability_result)
 neg_applies_from_trailing_newline["claims"][1]["applies_from"] += "\n"
 
+neg_as_of_trailing_newline = _mutated(pos_example_org_applicability_as_of_result)
+neg_as_of_trailing_newline["applicability_as_of"] += "\n"
+
 neg_contract_ref_ecma_whitespace = _mutated(pos_example_org_claims_result)
 neg_contract_ref_ecma_whitespace["claims"][0]["contract_ref"] += "\ufeff"
 
@@ -1591,6 +1639,13 @@ def main() -> int:
     write("neg-generated-at-without-seconds", neg_generated_at_without_seconds)
     write("neg-not-yet-in-force-without-later", neg_not_yet_in_force_without_later)
     write("neg-applies-from-disagrees-in-row", neg_applies_from_disagrees_in_row)
+    write("pos-example-org-applicability-as-of-result", pos_example_org_applicability_as_of_result)
+    write("pos-example-org-applicability-as-of-boundary-result", pos_example_org_applicability_as_of_boundary_result)
+    write("pos-example-org-applicability-as-of-undated-result", pos_example_org_applicability_as_of_undated_result)
+    write("neg-as-of-ignored", neg_as_of_ignored)
+    write("neg-as-of-after-generated-at", neg_as_of_after_generated_at)
+    write("neg-as-of-not-a-date", neg_as_of_not_a_date)
+    write("neg-as-of-generated-at-unparseable", neg_as_of_generated_at_unparseable)
     write("neg-claim-evidence-empty", neg_claim_evidence_empty)
     write("pos-example-org-requirements-covered-result", pos_example_org_requirements_covered_result)
     write("neg-requirements-covered-omits-claimed", neg_requirements_covered_omits_claimed)
@@ -1598,6 +1653,7 @@ def main() -> int:
     write("neg-requirements-covered-duplicate", neg_requirements_covered_duplicate)
     write("neg-digest-trailing-newline", neg_digest_trailing_newline)
     write("neg-applies-from-trailing-newline", neg_applies_from_trailing_newline)
+    write("neg-as-of-trailing-newline", neg_as_of_trailing_newline)
     write("neg-contract-ref-ecma-whitespace", neg_contract_ref_ecma_whitespace)
     write("pos-example-org-dataset-result", pos_example_org_dataset_result)
     write("neg-dataset-ref-without-plan-ref", neg_dataset_ref_without_plan_ref)

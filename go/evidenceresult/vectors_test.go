@@ -44,6 +44,10 @@ var crossElementNegatives = map[string]string{
 	"neg-generated-at-impossible":             `generated_at "2026-02-30T00:00:00Z" is not an RFC 3339 date-time`,
 	"neg-generated-at-without-seconds":        `generated_at "2026-09-22T10:00+00:00" is not an RFC 3339 date-time`,
 	"neg-not-yet-in-force-without-later":      "not_yet_in_force is present, but no claim is later",
+	"neg-as-of-ignored":                       "claim-2 is not yet in force but is in buckets [not_met]",
+	"neg-as-of-after-generated-at":            "applicability_as_of 2026-09-23 is after the UTC date of generated_at 2026-09-22T00:00:00Z",
+	"neg-as-of-not-a-date":                    `applicability_as_of "2026-02-30" is not a calendar date`,
+	"neg-as-of-generated-at-unparseable":      `generated_at "2026-09-22" is not an RFC 3339 date-time`,
 	"neg-requirements-covered-omits-claimed":  "req-claim-2: a claim cites it, but requirements_covered does not list it",
 	"neg-requirements-covered-unaccounted":    "requirements_covered lists 1 requirement(s) no claim cites, but excluded_not_applicable is 0",
 	"neg-calibration-without-summary":         "claims[2] cites 0 calibration-summary/v1 record(s); a calibration claim cites exactly one",
@@ -114,8 +118,8 @@ func TestVectorsParity(t *testing.T) {
 			t.Errorf("%s is neither pos- nor neg-", name)
 		}
 	}
-	assert.Equal(t, 24, positives)
-	assert.Equal(t, 70, negatives)
+	assert.Equal(t, 27, positives)
+	assert.Equal(t, 75, negatives)
 	assert.Equal(t, 19, sidecars)
 	for name := range crossElementNegatives {
 		_, err := os.Stat(filepath.Join(vectorsDir, name+".json"))
@@ -357,4 +361,22 @@ func TestPatternsReadAsECMA262(t *testing.T) {
 	assert.False(t, re.MatchString("a@b\ufeff"))
 	_, err = ecmaRegexp(`[\S]`)
 	assert.Error(t, err)
+}
+
+// The as-of date (section 4.3): claim-2 applies from 2026-06-01, in force on
+// generated_at's date but later as of applicability_as_of, 2026-03-01.
+func TestApplicabilityAsOfDecidesLater(t *testing.T) {
+	doc, records := load(t, "pos-example-org-applicability-as-of-result")
+	claims, err := Check(doc, records)
+	require.NoError(t, err)
+	inForce := map[string]bool{}
+	for _, claim := range claims {
+		inForce[claim.ID] = claim.InForce
+	}
+	assert.Equal(t, map[string]bool{"claim-1": true, "claim-2": false, "claim-3": true}, inForce)
+
+	delete(doc, "applicability_as_of")
+	_, err = Check(doc, records)
+	require.Error(t, err, "without the as-of date, claim-2 is in force and its absence from not_met is refused")
+	assert.Contains(t, err.Error(), "claim-2 (not_met) is in buckets []")
 }

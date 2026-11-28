@@ -260,7 +260,7 @@ on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evide
 | `neg-out-of-scope-listed-in-met.json` | schema-valid; the checker refuses the `out_of_scope` claim listed under `met` (bucket partition) |
 | `neg-switch-disagrees-in-row.json` | schema-valid; two claims of one requirement disagree on the switch (one value per requirement) |
 
-## Applicability, `applies_from` (spec section 4.3)
+## Applicability, `applies_from` and `applicability_as_of` (spec section 4.3)
 
 | File | What it shows |
 |---|---|
@@ -277,6 +277,13 @@ on, so no fixture here can show it. Its vector is `aggregate-stronger-than-evide
 | `neg-not-yet-in-force-without-later.json` | checker: `not_yet_in_force` 0 present though no claim is later |
 | `neg-applies-from-not-a-date.json` | checker: `applies_from` 2027-02-30 |
 | `neg-applies-from-disagrees-in-row.json` | checker: two claims of one requirement disagree on the date |
+| `pos-example-org-applicability-as-of-result.json` | the as-of date: `generated_at` 2026-09-22, `applicability_as_of` 2026-03-01. `claim-1` in force since 2026-01-01; `claim-2` (`not_met`) applies from 2026-06-01, in force on 2026-09-22 but later as of 2026-03-01, so it is in no bucket. Population 2, `not_yet_in_force` 1 |
+| `pos-example-org-applicability-as-of-boundary-result.json` | the boundary positive with `applicability_as_of` 2026-09-23, the UTC date of its `generated_at` (2026-09-22T23:30:00-05:00): allowed, and the claims split as they do without it |
+| `pos-example-org-applicability-as-of-undated-result.json` | the claims positive with `applicability_as_of` 2026-03-01 and no dated claim: allowed, every claim in force |
+| `neg-as-of-ignored.json` | checker: the as-of positive with the claims positive's aggregate, judged as of `generated_at`. Mutant `as_of_generated_at` (the member ignored) accepts it |
+| `neg-as-of-after-generated-at.json` | checker: `applicability_as_of` 2026-09-23 after the UTC date of `generated_at`, 2026-09-22. Mutant `skip_as_of_bound` |
+| `neg-as-of-not-a-date.json` | checker: `applicability_as_of` 2026-02-30. Mutant `skip_date_parse` |
+| `neg-as-of-generated-at-unparseable.json` | checker: no claim is dated, but `applicability_as_of` is stated and `generated_at` is a bare date. Mutant `skip_date_parse` |
 
 Every checker negative validates against the schema and fails `revision_findings`, and its mutant
 (the rule switched off) accepts it.
@@ -332,6 +339,7 @@ positive, and its mutant, `pattern` read by plain Python `re`, accepts it:
 |---|---|---|
 | `neg-digest-trailing-newline.json` | `claims[0].evidence[0].digest` of the claims positive followed by `\n` | `HexDigest`, `^[0-9a-f]{64}$` |
 | `neg-applies-from-trailing-newline.json` | `claims[1].applies_from` of the applicability positive followed by `\n` | `applies_from`, `^[0-9]{4}-[0-9]{2}-[0-9]{2}$` |
+| `neg-as-of-trailing-newline.json` | `applicability_as_of` of the as-of positive followed by `\n` | `applicability_as_of`, `^[0-9]{4}-[0-9]{2}-[0-9]{2}$` |
 | `neg-contract-ref-ecma-whitespace.json` | `claims[0].contract_ref` of the claims positive followed by U+FEFF | `ContractRef`, `^[^@\s]+@[^@\s]+$` |
 
 The checker also confirms the converse: a `contract_ref` holding U+001C, which is not ECMA-262

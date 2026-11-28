@@ -92,6 +92,22 @@ asserting `not_evaluable`. The companion schema enforces this structurally (§4,
 switches it on, shown with its own count, never folded into met"); the 2026-09-22 ruling quoted
 above lists the three judgments that existed then, and its rule holds for all four.
 
+**How the ruled text and this rule read together (agent-action-capsule#358).** This note is
+non-normative. It changes neither the ruled text above nor the rule, and the 2026-09-22 ruling
+stays the source of both. The ruling says `not evaluable` "is never used to represent missing or
+insufficient evidence". Read with the rule, that means the verdict never stands in for a
+sufficiency value. When evidence is missing or insufficient, the claim's `sufficiency` says so
+(`GAP`, `INSUFFICIENT` or `UNKNOWN`). That value is the reason the rules act on; §4.4's `reason`
+may add the producer's display-only statement of why, and never replaces it. The verdict on
+that claim is `not_evaluable` because the ruling makes a judgment "only when sufficiency is
+`SATISFIED`", so none was made. `not_evaluable` records that no judgment was made. The ruling calls
+it "a judgment outcome defined by the contract" because the Evidence Contract's closed verdict
+vocabulary defines it, and the contract's own rule (above) fixes when it applies. A reader that
+explains a `not_evaluable` claim takes the reason from that claim's `sufficiency` (and, when
+present, its `reason`, §4.4) and never from the verdict. No contract in this revision defines a `not_evaluable` outcome reached with
+`SATISFIED` sufficiency, so the rule above refuses that pair. Allowing it would change the ruled
+reading and the wire, and needs a new ruling.
+
 Every claim also carries:
 
 - `tier` (`recomputed | judged`) — how the claim's evidence was resolved and its verdict
@@ -246,7 +262,9 @@ switches it on (§4.2) — never rolled up into one pass/fail figure or a percen
 in force is in no bucket (§4.3). A single number hides which requirements were actually judged
 versus which were skipped for lack of evidence; the buckets keep that distinction visible at
 the point a sponsor first looks at the Result. `not_evaluable` is not a failure and not a success
-— it is its own bucket, exactly as large as `sufficiency != SATISFIED` makes it (§1), and a Result
+— it is its own bucket, exactly as large as `sufficiency != SATISFIED` makes it (§1), and each
+entry's reason is that claim's `sufficiency` (with any §4.4 `reason` as the producer's
+statement), never the verdict (§1, the note on #358). A Result
 that folds it into either of the other two has silently converted "we could not tell" into an
 answer. `out_of_scope` is likewise its own bucket: never in `met`, and never in a pass figure.
 
@@ -519,7 +537,7 @@ the contract's switch (`spec/interop-profile-v0.md` §8.3); checking another par
 its contract is not defined by this revision. A relying party that needs the copy to hold
 re-evaluates the contract.
 
-### 4.3 Applicability — `applies_from`
+### 4.3 Applicability — `applies_from` and `applicability_as_of`
 
 **Status: RULED (2026-10-22).** A claim MAY carry `applies_from`, the date (`YYYY-MM-DD`) its
 requirement applies from, copied from the Evidence Contract requirement's `clause.effective_from`.
@@ -527,9 +545,19 @@ Absent means in force. Presence follows the requirement, not its profile: a nati
 dated `clause` is dated too. Any producer that emits a claim for a dated requirement, typed or not,
 copies the date.
 
-A claim is **later** when `applies_from` is after the UTC calendar date of the Result's
-`generated_at`; on that date or before it, the claim is in force. The status is derived, never
-carried. When any claim carries `applies_from`, `generated_at` MUST be an RFC 3339 `date-time`
+**The as-of date — `applicability_as_of`.** Added under the 2026-10-25 ruling on
+agent-action-capsule#369. The Result document MAY carry `applicability_as_of`, a calendar date
+(`YYYY-MM-DD`): the date "in force" is judged against. A producer that evaluates past activity sets
+it to the date of that activity, so a requirement that took effect after the activity is not
+counted as in force for it. The **as-of date** is `applicability_as_of` when present, and otherwise
+the UTC calendar date of the Result's `generated_at`. A Result without the member reads exactly as
+it did before the member existed. When present, `applicability_as_of` MUST be a calendar date from
+year 0001 on, and MUST NOT be after the UTC calendar date of `generated_at`: a Result cannot judge
+applicability as of a date after it was generated (checker).
+
+A claim is **later** when `applies_from` is after the as-of date; on that date or before it, the
+claim is in force. The status is derived, never carried. When any claim carries `applies_from`, or
+the document carries `applicability_as_of`, `generated_at` MUST be an RFC 3339 `date-time`
 (section 5.6) with an offset (`Z` or `+hh:mm`/`-hh:mm`; `T` and `Z` in either case), naming a real
 date and time whose UTC date falls in years 0001 to 9999: no leap second, hour at most 23,
 offset hours at most 23, ASCII digits only. Every `applies_from` MUST
@@ -544,11 +572,15 @@ the schema's `pattern` checks only the shape.
   later and absent otherwise (checker: the schema cannot compare dates).
 - Every claim of one requirement carries the same `applies_from` (checker).
 
-A reader that shows the split prints the as-of date, the UTC date of `generated_at`, whenever any
-claim carries `applies_from`, including when every dated requirement is already in force, so a
-reader of an evaluation of past activity sees what "in force" is relative to. The date and the
+A reader that shows the split prints the as-of date whenever any claim carries `applies_from`,
+including when every dated requirement is already in force, so a reader of an evaluation of past
+activity sees what "in force" is relative to. When the document carries `applicability_as_of`, a
+reader shows both dates, each labeled: the as-of date and the UTC date of `generated_at`. It shows
+them whether or not any claim is dated, and never shows one in place of the other. The date and the
 switch are copied facts (§4.2's last paragraph applies to both): a reader labels them as copied from
-the contract, never as verified.
+the contract, never as verified. `applicability_as_of` is the producer's statement of which date it
+judged against. The Result alone cannot check it against the activity evaluated, so a reader labels
+it as stated by the producer, never as verified.
 
 ### 4.4 Reason — `reason`
 
@@ -910,6 +942,7 @@ the one exception to it.
 result:
   result_version: "evidence-result-v0"
   generated_at: date-time
+  applicability_as_of: date           # OPTIONAL — §4.3
   claims: [claim, ...]                # §4
   aggregate: aggregate                # §7
   view: view                          # OPTIONAL — §8

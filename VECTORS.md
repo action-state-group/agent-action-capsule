@@ -145,7 +145,7 @@ its 11 `record_signatures`.
 
 | Set | Owning specification | Verbs | Cases |
 |---|---|---|---|
-| `vectors/evidence-result/` | `spec/evidence-result-v0.md` (including `plan_ref`, `dataset_ref` and `reason`) | evaluate, report | 94 |
+| `vectors/evidence-result/` | `spec/evidence-result-v0.md` (including `plan_ref`, `dataset_ref`, `reason` and `applicability_as_of`) | evaluate, report | 102 |
 | `vectors/evidence-dataset/` | `spec/evidence-plan-ir-v0.md` §5.1, §6.2 (dataset plans and datasets) | evaluate | 32 |
 | `vectors/deal-reconcile-v0/` | `spec/deal-reconcile-contract-v0.md` (`ec:deal-reconcile@1`) | evaluate | 14 |
 | `vectors/judge/` | `spec/judge-record-family-v1.md` | record, evaluate | 20 |

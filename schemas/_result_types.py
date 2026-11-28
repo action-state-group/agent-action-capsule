@@ -236,6 +236,7 @@ class CoverageReportDoc(TypedDict):
 class EvidenceResultDoc(TypedDict, total=False):
     result_version: Literal["evidence-result-v0"]
     generated_at: str
+    applicability_as_of: str  # spec section 4.3: the stated as-of date; absent means generated_at's UTC date
     claims: List[ClaimDoc]
     aggregate: AggregateDoc
     view: ViewDoc

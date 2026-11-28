@@ -25,11 +25,24 @@ func revisionFindings(doc map[string]interface{}, claims []Claim) []string {
 	for _, claim := range claims {
 		dated = dated || claim.AppliesFrom != ""
 	}
-	if dated {
+	statedAsOf, hasAsOf := doc["applicability_as_of"].(string)
+	if dated || hasAsOf {
 		generatedAt, _ := doc["generated_at"].(string)
 		asOf, ok := utcDate(generatedAt)
 		if !ok {
 			return []string{fmt.Sprintf("generated_at %q is not an RFC 3339 date-time with an offset", generatedAt)}
+		}
+		// The as-of date (section 4.3): applicability_as_of when present, no
+		// later than the UTC date of generated_at.
+		if hasAsOf {
+			date, ok := calendarDate(statedAsOf)
+			if !ok {
+				return []string{fmt.Sprintf("applicability_as_of %q is not a calendar date", statedAsOf)}
+			}
+			if date > asOf {
+				out = append(out, fmt.Sprintf("applicability_as_of %s is after the UTC date of generated_at %s", statedAsOf, generatedAt))
+			}
+			asOf = date
 		}
 		for i := range claims {
 			if claims[i].AppliesFrom == "" {
