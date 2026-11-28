@@ -629,8 +629,9 @@ a `/3` card, `/2`'s rules wherever they name a token, except where this section 
   applies to every record it reads (SH-11): a record whose time is after `T` does not yet exist, and
   a record with no time exists. So a dispute whose record has a time after `T` is no entry of the
   deal's `disputes`, a withdrawal whose time is after `T` has not withdrawn it, and a resolution
-  whose record has a time after `T` is not held, so §5.4 reads the dispute as `open` unless a
-  resolution held as of `T` decides it. Where the host's mapping chooses one resolution among
+  whose record has a time after `T` is not held. §5.4 then gives each dispute its `outcome` from
+  the records held as of `T` alone: a dispute withdrawn by then is `withdrawn`, and one with no
+  resolution held by then is `open`. Where the host's mapping chooses one resolution among
   several, such as the first final ruling of the adjudicator the agreement names, it chooses among
   those held as of `T`. A host MUST NOT read into a deal's `disputes` a record that does not exist
   as of `T`, so a card's `disputes` tally and its row results read the same records. This is a rule
