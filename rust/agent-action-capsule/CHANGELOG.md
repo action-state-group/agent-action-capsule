@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.15.0 — 2026-11-27
+
+Tag `crates/agent-action-capsule-v0.15.0`. Consumer: Mesh-LLM/capsules-plugin#335 (`inference-service-history/1`).
+
 - `bundle::composed`: Evidence Bundle -03 member keys under `controller_binding` and `same_key` (agent-action-capsule#663), at parity with Python, Go and TypeScript on `vectors/bundle/composed-key-source/`.
 
 - Check 8 reports a well-formed `references` entry whose `type` is not `agent-action-capsule` as
@@ -20,6 +24,12 @@
   `supersedes_effect_type_mismatch`, `supersedes_request_digest_mismatch` (check 6, error) and
   `deferral_binding_not_evaluated` (check 6, info); a violating closure is never the authoritative
   supersedes. Passes the new `vectors/capsule/` store cases.
+
+- `bundle`: the Evidence Bundle -03 `composed/v1` carried signature profiles (agent-action-capsule#676): `verify_carried_refusal` and `verify_carried_response` for `ComposedOptions`, plus one function per profile, at parity with Python, Go and TypeScript on `vectors/bundle/composed-signature-profiles/`.
+
+- `inference_history`: `inference-service-history/1` (agent-action-capsule#616). `Definition` accepts a definition naming `PROFILE_0` or `PROFILE_1` and reports it with `profile()`. Under `/1` the derived `period_counts` and verdict tables withhold a total that pins two or more models withheld under the floor as `complementary`, even when it is under the floor too, and `check_artifact` refuses a published one, a published total short of one per withheld model or past `floor` − 1 per model where every withheld one is under the floor, a model withheld under a floor of 1, and a total withheld `complementary` beside fewer than two models under the floor. `/0` derivation and checks are unchanged.
+
+- The embedded `data/REGISTRY.md` gains §16 "Deprecated derivations" (agent-action-capsule#706): `history_card/1` as an asked form and `standard_history/2`. No code change.
 
 ## 0.14.0 — 2026-11-22
 
