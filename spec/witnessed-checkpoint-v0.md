@@ -106,8 +106,11 @@ A follow-up is one JSON object with these members and no other:
 | Member | Presence | Value |
 |---|---|---|
 | `stamp_proof` | REQUIRED | the octets of one stamp proof's JSON text (SF §5.2), in base64url without padding [B64U], non-empty |
-| `receipts` | REQUIRED | an array, possibly empty, of witness receipts for the stamp proof's shelf checkpoint, each a CLL `WitnessRecord` JSON object as WIT reads it |
+| `receipts` | one of `receipts` and `host_chain` | an array, possibly empty, of witness receipts for the stamp proof's shelf checkpoint, each a CLL `WitnessRecord` JSON object as WIT reads it |
+| `host_chain` | one of `receipts` and `host_chain` | for a holder that is a member of a host, a host chain whose covered checkpoint is the stamp proof's shelf checkpoint ([`host-log-witness-v0.md`](host-log-witness-v0.md), cited as HLW, §3) |
 | `consistency` | OPTIONAL | a consistency proof from a held shelf checkpoint of the receiver's to the stamp proof's shelf checkpoint (below) |
+
+A follow-up carries exactly one of `receipts` and `host_chain`; one with both or neither is malformed (§6.1). A holder that stamps its own shelf log carries `receipts`; a member of a host carries `host_chain`, whose receipts are over the host's checkpoint (HLW §2.3).
 
 `consistency` is a JSON object with these members and no other:
 
@@ -143,7 +146,8 @@ the holder's finished stamps at or after the stamp that wrote the book's first f
    per witness and key, sorted by `ts_url` in the byte order of its UTF-8 and then by the
    directory `key_id` it passed under (EBL keeps only receipts that pass, `shelf_record_time.go`,
    and orders them so, `shelf_handover_tie.go` `receiptsLocked`). An empty array says the holder
-   holds no such receipt for the target.
+   holds no such receipt for the target. A member of a host puts instead `host_chain`: the chain
+   it keeps for the target (HLW §5); its `parent.witnesses` are the receipts, in the same order.
 3. **`consistency`:** absent when the ask's `kept` names the target itself. Otherwise present
    from the **base**, a shelf checkpoint of the holder's whose size is below the target's: the
    one `kept` names, when it names one of the holder's shelf checkpoints and its size is below
@@ -153,7 +157,7 @@ the holder's finished stamps at or after the stamp that wrote the book's first f
 The **eligible** shelf checkpoints for a book are those cut by the holder's finished stamps at or
 after the stamp that wrote the book's first fact. After an ask, the target is the shelf checkpoint
 named by `at` when the ask has it and it is eligible; otherwise the newest eligible one for which
-the holder holds a receipt; otherwise, when it holds no receipt for any, the newest eligible one.
+the holder holds a receipt (for a member of a host, a host chain with a receipt that passed its own check); otherwise, when it holds no receipt for any, the newest eligible one.
 An ask whose `at` names a shelf checkpoint that is not eligible for the book gets no follow-up
 (§3).
 
@@ -202,7 +206,13 @@ A receiver handles a follow-up in this order. The outcomes of steps 1, 3 and 4 g
       checkpoint's root to the target's root (CLL Go `mmr.VerifyConsistency`, v0.4.0); and
       `invalid` otherwise. A proof that fails to verify is not evidence against the sender: the
       receiver keeps nothing of it. An `accepted` outcome links `from` to the target (§5.4).
-4. **The receipts.** For each entry of `receipts`, in order, the receiver applies WIT's check of
+4. **The receipts.** When the follow-up carries `host_chain`, the receiver first checks the chain
+   by HLW §4.1 and takes its outcome, `valid` or `invalid`. When it is `invalid`, the receiver
+   checks no receipt, reports each entry of `parent.witnesses` `withheld` and keeps nothing of the
+   chain. When it is `valid`, the entries are those of `parent.witnesses`, each checked against
+   the host checkpoint's COSE statement instead of the target's, and the receiver keeps the chain
+   whole beside the target, with what it keeps of each receipt below. Otherwise:
+   for each entry of `receipts`, in order, the receiver applies WIT's check of
    one receipt to the target's COSE statement under its own witness directory, and takes its
    status: `pass`, `withheld` or `fail`. An entry WIT finds malformed is `fail`. A receiver that
    does not check an entry, because it cannot run a receipt check or because the entry is past a
@@ -218,13 +228,14 @@ proof is answered `duplicate` (SF §6.3 step 5), and the other steps give the sa
 
 ### 5.2 The answer
 
-The answer to a follow-up is one JSON object with exactly these three members:
+The answer to a follow-up is one JSON object with exactly these four members:
 
 | Member | Type | Value |
 |---|---|---|
 | `stamp_proof` | object | the proof answer of RP §2.2: `accepted`, `duplicate` and `refused`, from step 1 |
 | `consistency` | string | `""` when the follow-up had no `consistency` or the stamp proof was refused; otherwise the outcome of step 3: `accepted`, `invalid` or `unknown_from` |
-| `receipts` | array of strings | one status per entry of `receipts`, in order, from step 4: `pass`, `withheld` or `fail`; empty when the stamp proof was refused |
+| `host_chain` | string | `""` when the follow-up had no `host_chain` or the stamp proof was refused; otherwise the chain's outcome from step 4: `valid` or `invalid` |
+| `receipts` | array of strings | one status per entry of `receipts`, or of `host_chain`'s `parent.witnesses`, in order, from step 4: `pass`, `withheld` or `fail`; empty when the stamp proof was refused |
 
 On `unknown_from`, the receiver can ask (§3) with its own `kept`. Like a record push's answer,
 this answer is an acknowledgment: it is not signed, and it is not evidence of what the receiver
@@ -247,6 +258,8 @@ A follow-up whose stamp proof passes step 1 and with a receipt that passes in st
 receiver that the holder's shelf log carried the book's fact under a shelf checkpoint that a
 witness registered, and, when that receipt's `registration_time` is not `null`, when the witness
 registered it. A receipt that passes with a `null` time shows registration and gives no time.
+Through a `valid` host chain, a receipt shows what HLW §4.3 says, and never that a witness checked
+the holder's shelf log for forks.
 
 The target **extends** a shelf checkpoint the receiver relies on only when step 3 accepted a
 consistency proof from that checkpoint to the target, or from a checkpoint that, through a chain
@@ -312,6 +325,7 @@ A party that serves the ask and the follow-up over MCP MUST list one tool, as RP
    "properties": {
     "stamp_proof": {"type": "string", "pattern": "^[A-Za-z0-9_-]+$"},
     "receipts": {"type": "array", "items": {"type": "object"}},
+    "host_chain": {"type": "object"},
     "consistency": {
      "type": "object",
      "properties": {
@@ -323,7 +337,8 @@ A party that serves the ask and the follow-up over MCP MUST list one tool, as RP
      "additionalProperties": false
     }
    },
-   "required": ["stamp_proof", "receipts"],
+   "required": ["stamp_proof"],
+   "oneOf": [{"required": ["receipts"]}, {"required": ["host_chain"]}],
    "additionalProperties": false
   }
  },
@@ -333,7 +348,8 @@ A party that serves the ask and the follow-up over MCP MUST list one tool, as RP
 }
 ```
 
-The schema leaves a receipt's members to WIT, which finds a malformed receipt `fail` rather than
+The schema leaves a host chain's members to HLW §4.1, which finds a malformed chain `invalid`
+rather than refusing the message, and leaves a receipt's members to WIT, which finds a malformed receipt `fail` rather than
 refusing the message (§5.1 step 4), and leaves `proof`'s members to §5.1 step 3.3, which makes a
 malformed proof `invalid`.
 
@@ -358,9 +374,10 @@ Its `outputSchema`:
      "additionalProperties": false
     },
     "consistency": {"enum": ["", "accepted", "invalid", "unknown_from"]},
+    "host_chain": {"enum": ["", "valid", "invalid"]},
     "receipts": {"type": "array", "items": {"enum": ["pass", "withheld", "fail"]}}
    },
-   "required": ["stamp_proof", "consistency", "receipts"],
+   "required": ["stamp_proof", "consistency", "host_chain", "receipts"],
    "additionalProperties": false
   }
  },
@@ -445,6 +462,10 @@ placeholders, not a proof that verifies.
   directory (WIT); one from a witness the receiver has no row for is `withheld`, never `pass`.
   The answer's per-receipt statuses (§5.2) tell the holder which of its witnesses the receiver's
   directory lists.
+- **A host chain is not the holder's own witness.** Through `host_chain`, a witness registered
+  the host's checkpoint, not the holder's shelf checkpoint. No witness then checks the holder's
+  shelf log for forks, and the time means something only when the witness is run separately from
+  the host (HLW §7).
 - **The answer is unsigned** (RP §6): an intermediary can alter it, and it is evidence of
   nothing.
 
