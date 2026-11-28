@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/action-state-group/agent-action-capsule/go/bundle"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -114,8 +115,8 @@ func TestVectorsParity(t *testing.T) {
 			t.Errorf("%s is neither pos- nor neg-", name)
 		}
 	}
-	assert.Equal(t, 24, positives)
-	assert.Equal(t, 70, negatives)
+	assert.Equal(t, 25, positives)
+	assert.Equal(t, 75, negatives)
 	assert.Equal(t, 19, sidecars)
 	for name := range crossElementNegatives {
 		_, err := os.Stat(filepath.Join(vectorsDir, name+".json"))
@@ -357,4 +358,88 @@ func TestPatternsReadAsECMA262(t *testing.T) {
 	assert.False(t, re.MatchString("a@b\ufeff"))
 	_, err = ecmaRegexp(`[\S]`)
 	assert.Error(t, err)
+}
+
+// Section 4.5: subject_bundle is carried through and read by no rule. The
+// subject_bundle positive without it is the claims positive and checks to
+// the same claims, less SubjectBundle.
+func TestSubjectBundleIsDisplayOnly(t *testing.T) {
+	doc, records := load(t, "pos-example-org-subject-bundle-result")
+	claims, err := Check(doc, records)
+	require.NoError(t, err)
+	named := map[string]string{}
+	for _, claim := range claims {
+		named[claim.ID] = claim.SubjectBundle
+	}
+	binding := readBinding(t)
+	assert.Equal(t, map[string]string{
+		"claim-1": binding.Cases[0].BundleDigest,
+		"claim-2": binding.Cases[0].BundleDigest,
+		"claim-3": "",
+	}, named)
+
+	bare, _ := load(t, "pos-example-org-subject-bundle-result")
+	for _, item := range bare["claims"].([]interface{}) {
+		delete(item.(map[string]interface{}), "subject_bundle")
+	}
+	plain, _ := load(t, "pos-example-org-claims-result")
+	assert.Equal(t, plain, bare, "the subject_bundle positive is the claims positive plus subject_bundle")
+	without, err := Check(bare, records)
+	require.NoError(t, err)
+	for i := range claims {
+		claims[i].SubjectBundle = ""
+	}
+	assert.Equal(t, without, claims)
+}
+
+type subjectBundleBinding struct {
+	Count int `json:"count"`
+	Cases []struct {
+		Name          string `json:"name"`
+		SubjectBundle *struct {
+			DigestAlg string `json:"digest_alg"`
+			Digest    string `json:"digest"`
+		} `json:"subject_bundle"`
+		BundleText   *string `json:"bundle_text"`
+		BundleDigest string  `json:"bundle_digest"`
+		Expect       string  `json:"expect"`
+	} `json:"cases"`
+}
+
+func readBinding(t *testing.T) subjectBundleBinding {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(vectorsDir, "binding", "subject-bundle.json"))
+	require.NoError(t, err)
+	var binding subjectBundleBinding
+	require.NoError(t, json.Unmarshal(raw, &binding))
+	require.Equal(t, binding.Count, len(binding.Cases))
+	require.Equal(t, "matched", binding.Cases[0].Expect)
+	return binding
+}
+
+// Section 4.5's comparison over the shared binding vectors: Go's bundle
+// digest of each carried Bundle equals the one Python computed, and the
+// outcome follows from the digests alone.
+func TestSubjectBundleBinding(t *testing.T) {
+	for _, c := range readBinding(t).Cases {
+		outcome := "unbound"
+		if c.SubjectBundle != nil {
+			assert.Equal(t, "SHA-256", c.SubjectBundle.DigestAlg, c.Name)
+			outcome = "not_carried"
+		}
+		if c.BundleText != nil {
+			value, err := bundle.Decode([]byte(*c.BundleText))
+			require.NoError(t, err, c.Name)
+			digest, err := bundle.BundleDigest(value)
+			require.NoError(t, err, c.Name)
+			assert.Equal(t, c.BundleDigest, digest, c.Name)
+			if c.SubjectBundle != nil {
+				outcome = "different"
+				if digest == c.SubjectBundle.Digest {
+					outcome = "matched"
+				}
+			}
+		}
+		assert.Equal(t, c.Expect, outcome, c.Name)
+	}
 }

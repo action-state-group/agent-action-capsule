@@ -320,6 +320,38 @@ Each negative fails the schema for one rule, with a mutant that strips it:
 The checker also adds a permitted `reason` to every eligible claim of every fixture here and
 confirms that no schema error and no cross-element finding changes.
 
+## Subject bundle, `subject_bundle` (spec section 4.5)
+
+One optional digest-ref on any claim: the bundle digest of the Evidence Bundle the producer
+names as showing the claim's subject. Display-only. The positive is a copy of
+`pos-example-org-claims-result.json`; with `subject_bundle` removed it is byte-identical to it.
+
+| File | Claims carrying `subject_bundle` |
+|---|---|
+| `pos-example-org-subject-bundle-result.json` | `claim-1` and `claim-2` name the same Bundle (`vectors/bundle/report-single-record.json`, case `pos-single-record-report`); `claim-3` names none |
+
+Each negative fails the schema on `claim-1`'s member, with a mutant that opens the member:
+
+| File | Mutation | Rule violated |
+|---|---|---|
+| `neg-subject-bundle-string.json` | the bare digest instead of a digest-ref | the digest-ref shape |
+| `neg-subject-bundle-uppercase.json` | the digest in uppercase hex | `^[0-9a-f]{64}$` |
+| `neg-subject-bundle-other-alg.json` | `digest_alg` `SHA-512` | `digest_alg` is `SHA-256` |
+| `neg-subject-bundle-extra-member.json` | an added `bundle_kind` | the digest-ref is closed |
+| `neg-subject-bundle-list.json` | two digest-refs in a list | one per claim |
+
+The checker also adds a valid `subject_bundle` to every claim of every fixture here and confirms
+that no schema error and no cross-element finding changes.
+
+`binding/subject-bundle.json` holds the comparison a reader makes. Each case gives a claim's
+`subject_bundle` (or none), the Bundle carried beside the Result exactly as text (`bundle_text`,
+or null when none is carried), that Bundle's bundle digest as Python computes it, and the
+outcome: `matched`, `different`, `not_carried` or `unbound`. The cases cover a re-serialized
+Bundle and an added countersignature (both still `matched`, since the digest is over the JCS
+form without `countersignatures`), a changed disclosure, an added extension and another Bundle
+(each `different`), and a named Bundle that fails its own checks (`matched`: a match is not a
+pass). The Go and TypeScript tests recompute each digest and outcome.
+
 ## Patterns are ECMA-262's
 
 JSON Schema 2020-12 reads `pattern` as an ECMA-262 regular expression. Python's `re` reads two
