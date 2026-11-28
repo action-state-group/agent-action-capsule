@@ -29,7 +29,7 @@ Tag `crates/agent-action-capsule-v0.15.0`. Consumer: Mesh-LLM/capsules-plugin#33
 
 - `inference_history`: `inference-service-history/1` (agent-action-capsule#616). `Definition` accepts a definition naming `PROFILE_0` or `PROFILE_1` and reports it with `profile()`. Under `/1` the derived `period_counts` and verdict tables withhold a total that pins two or more models withheld under the floor as `complementary`, even when it is under the floor too, and `check_artifact` refuses a published one, a published total short of one per withheld model or past `floor` − 1 per model where every withheld one is under the floor, a model withheld under a floor of 1, and a total withheld `complementary` beside fewer than two models under the floor. `/0` derivation and checks are unchanged.
 
-- The embedded `data/REGISTRY.md` gains §16 "Deprecated derivations" (agent-action-capsule#706): `history_card/1` as an asked form and `standard_history/2`. No code change.
+- The embedded `data/REGISTRY.md` follows the spec registry. It gains the Evidence Bundle -03 `controller_binding` and `same_key` join bases (#663, #666) and the composed/v1 carried signature profiles (#676, #678). It gains the Evidence Layer -01 link types `amends`, `disputes` and `resolves` and §20 "Evidence Layer retention state" (#661). Its §16 gains "Deprecated derivations" (agent-action-capsule#706, #710): `history_card/1` as an asked form, and `standard_history/2`.
 
 ## 0.14.0 — 2026-11-22
 
