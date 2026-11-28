@@ -59,6 +59,13 @@
       "pack": "spec/history-frame/inference-service-history-0-pack.json",
       "table_digest": "3307e6f1e58759aea656b3e84afa8e21b00a14a260e5cc11513c379eb92c7057",
       "pack_digest": "693ae7f8f259ec37bf9b177f6373c295d6a851abf359859e8e5a3e627d08ed82"
+    },
+    {
+      "instance": "inference-service-history/1",
+      "table": "spec/history-frame/inference-service-history-1-table.json",
+      "pack": "spec/history-frame/inference-service-history-1-pack.json",
+      "table_digest": "591090aab054e05bec51d823c2d36645c637cd09baf81366af9bdb02ea9f5e7f",
+      "pack_digest": "d5f5c2f807335fdc8d003ae04fecc87bcdcbaad1ed54cb30f1c496901826718b"
     }
   ],
   "properties": [
@@ -66,7 +73,7 @@
     "pack_binding",
     "pack_form"
   ],
-  "count": 13,
+  "count": 14,
   "cases": [
     {
       "id": "standard-history-as-pinned",
@@ -1538,6 +1545,165 @@
           "document": "wording_pack",
           "frame": "history-frame/0",
           "instance": "inference-service-history/0",
+          "language": "en",
+          "strings": {
+            "card.no_witness": "no witness named",
+            "exchange.not_joinable": "not joinable",
+            "exchange.one_sided": "one-sided",
+            "exchange.peer_confirmed": "peer-confirmed; not corroborating (independence not established)",
+            "exchange.peer_untrusted": "peer half not verified under a trusted key",
+            "exchange.redundant": "redundant, not corroborating",
+            "session.ordering_not_established": "agreement present; ordering not established"
+          }
+        }
+      },
+      "expected": {
+        "properties": {
+          "table_binding": "PASS",
+          "pack_binding": "PASS",
+          "pack_form": "PASS"
+        },
+        "accepted": true,
+        "fails": []
+      }
+    },
+    {
+      "id": "inference-service-history-1-as-pinned",
+      "description": "The counting table and wording pack of inference-service-history/1, as spec/history-frame/ holds them",
+      "sections": [
+        "§5",
+        "§6"
+      ],
+      "inputs": {
+        "instance": "inference-service-history/1",
+        "listed": {
+          "table": "591090aab054e05bec51d823c2d36645c637cd09baf81366af9bdb02ea9f5e7f",
+          "pack": "d5f5c2f807335fdc8d003ae04fecc87bcdcbaad1ed54cb30f1c496901826718b"
+        },
+        "table": {
+          "document": "counting_table",
+          "frame": "history-frame/0",
+          "instance": "inference-service-history/1",
+          "definition_members": [
+            "profile",
+            "name",
+            "kind",
+            "level",
+            "embeds",
+            "subjects",
+            "members",
+            "reads",
+            "excludes",
+            "coverage_declaration",
+            "period_policy",
+            "recipient",
+            "spec"
+          ],
+          "definition_fixed": {
+            "profile": "inference-service-history/1",
+            "kind": "projection",
+            "embeds": [
+              "history_card/1"
+            ],
+            "subjects": [
+              "full_history"
+            ]
+          },
+          "levels": [
+            "standard",
+            "detailed"
+          ],
+          "member_entry": [
+            "name",
+            "required",
+            "derivation",
+            "reads",
+            "units",
+            "claims"
+          ],
+          "member_claims": [
+            "asserted_by",
+            "label",
+            "where"
+          ],
+          "units": [
+            "exchanges_served",
+            "exchanges_requested",
+            "exchanges_unattributed",
+            "checkpoints",
+            "witness_receipts",
+            "referee_verdicts",
+            "records"
+          ],
+          "labels": [
+            "self_reported",
+            "peer_confirmed",
+            "corroborated"
+          ],
+          "verdict_counts": [
+            "corroborated",
+            "contradicted",
+            "inconclusive",
+            "not_comparable"
+          ],
+          "period_policy": [
+            "epoch",
+            "length_s",
+            "min_length_s",
+            "floor",
+            "suppression"
+          ],
+          "suppression": [
+            "complementary"
+          ],
+          "suppressed_reasons": [
+            "below_floor",
+            "complementary"
+          ],
+          "artifact_members": [
+            "anchor",
+            "derivation",
+            "subject",
+            "evidence_stream",
+            "declared",
+            "history_card",
+            "history_card_digest",
+            "coverage_declaration"
+          ],
+          "exchange_entry": [
+            "client_nonce",
+            "half",
+            "peer_half",
+            "unit",
+            "label"
+          ],
+          "properties": {
+            "standard": [
+              "definition_form",
+              "definition_binding",
+              "artifact_form",
+              "history_card_content",
+              "units",
+              "labels",
+              "period_alignment",
+              "period_anchor",
+              "period_floor"
+            ],
+            "detailed": [
+              "definition_form",
+              "definition_binding",
+              "artifact_form",
+              "history_card_content",
+              "units",
+              "labels"
+            ]
+          },
+          "may_be_not_checked": []
+        },
+        "pack": {
+          "document": "wording_pack",
+          "frame": "history-frame/0",
+          "instance": "inference-service-history/1",
           "language": "en",
           "strings": {
             "card.no_witness": "no witness named",

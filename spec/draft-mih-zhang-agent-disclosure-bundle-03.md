@@ -2,7 +2,7 @@
 title: "AAC Evidence Bundle"
 abbrev: "AAC Evidence Bundle"
 docname: draft-mih-zhang-agent-disclosure-bundle-03
-date: 2026-11-02
+date: 2026-11-25
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -43,11 +43,12 @@ normative:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-05
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-06
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
+    date: 2026-11-24
   I-D.mih-agent-disclosure-envelope:
     title: "Disclosure Envelope Profile for Agent Action Capsules"
     seriesinfo:
@@ -59,12 +60,12 @@ normative:
   I-D.mih-agent-evidence-request:
     title: "An Interaction Model for Requesting Verifiable Evidence"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-evidence-request-01
+      Internet-Draft: draft-mih-agent-evidence-request-03
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-10-29
+    date: 2026-11-21
   I-D.mih-scitt-checkpointed-local-log:
     title: "The Checkpointed Local Log (CLL)"
     seriesinfo:
@@ -76,6 +77,7 @@ normative:
     date: 2026-10-14
 
 informative:
+  RFC7942:
   EVIDENCE-INTEROP:
     title: "Minimum Evidence Interoperability Profile"
     target: https://github.com/action-state-group/agent-action-capsule/blob/105231a8560fd0ff8a8b3dc0597efcff5c67c176/spec/interop-profile-v2.md
@@ -86,12 +88,12 @@ informative:
   I-D.mih-agent-evidence-layer:
     title: "Evidence Layer"
     seriesinfo:
-      Internet-Draft: draft-mih-agent-evidence-layer-00
+      Internet-Draft: draft-mih-agent-evidence-layer-01
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
-    date: 2026-10-03
+    date: 2026-11-24
   I-D.mih-sokolov-scitt-payload-binding:
     title: "Canonicalization Declaration for SCITT Signed Statements"
     seriesinfo:
@@ -188,6 +190,15 @@ Transparency Service function.
 WITHHELD:
 : The disclosure state of an eligible member absent from the Bundle-level
   disclosure overlay. It is neither an empty value nor a verification failure.
+
+Strict Ed25519:
+: Ed25519 {{RFC8032}} verification under the strict conditions of the
+  Conventions section of {{I-D.mih-scitt-agent-action-capsule}}: the public
+  key A and the signature's point R are each a canonical encoding and neither
+  is of small order, the scalar S is below the group order L, and the
+  cofactorless verification equation of {{RFC8032}}, Section 5.1.7, holds. A
+  verifier rejects the signature if any condition fails; a rejected signature
+  is a failed signature, whatever trust a deployment places in the key.
 
 The terms "Capsule", "capsule_id", `chain.parent_capsule_id`, `references`,
 `seq`, `leaf_index`, and `log_coordinates` are as defined in
@@ -478,7 +489,7 @@ about citations, not log positions, is unaffected by the mode.
 A log can hold leaves that are not records. The Evidence Layer
 {{I-D.mih-agent-evidence-layer}} reserves the `record_type` value `padding`
 for records a store appends so that a checkpoint's size falls on a bucket
-boundary (its Section 12.1). A store that pads before every checkpoint usually
+boundary (its Section 13.1). A store that pads before every checkpoint usually
 has a padding leaf at the checkpoint's last leaf, so a range ending there
 always covers one. A range certificate covers such leaves in its member
 `non_record_leaves`, which carries each one in full:
@@ -500,7 +511,7 @@ Members of an element other than `seq` and `content` are ignored.
 
 **The padding leaf.** This document defines one non-record leaf type,
 padding. The members of a padding record are those of
-{{I-D.mih-agent-evidence-layer}} Section 12.1: `record_type` `padding`,
+{{I-D.mih-agent-evidence-layer}} Section 13.1: `record_type` `padding`,
 `epistemic_type` `producer_claim`, and `store_nonce`, 32 bytes as 64 lowercase
 hexadecimal characters. That document fixes the members but not their
 serialization or the record's identifier, so this document states both for a
@@ -555,7 +566,7 @@ established: the verifier MUST NOT report it as established, and MUST NOT
 report it as failed. Otherwise the rules of {{completeness}} apply. A
 verifier that implements this member therefore no longer rejects a range
 because it contains padding records, as {{I-D.mih-agent-evidence-layer}}
-Section 12.1 requires. A verifier that does not implement the member ignores
+Section 13.1 requires. A verifier that does not implement the member ignores
 it, as it ignores any member it does not know, and then reports every padding
 position as missing, which fails per-record membership. A producer therefore
 SHOULD NOT emit `non_record_leaves` to readers that do not implement this
@@ -1022,9 +1033,10 @@ are never converted into one another:
 When the body (`bundle`, `history`, `refusal` or `absence`) is carried, a
 verifier MUST recompute `digest` from it. For a refusal or absence, it MUST also require the
 body's `request_digest` to equal the member's. A refusal's signature is
-verified under the deployment's signature profile. A verifier that does not
-implement that profile reports the refusal as signature-unverified. It does
-not report it as failed, and it does not report it as absent.
+verified under the deployment's signature profile, such as one of those in
+{{composed-signature-profiles}}. A verifier that does not implement that
+profile reports the refusal as signature-unverified. It does not report it as
+failed, and it does not report it as absent.
 
 An artifact member MAY carry `response`: the responder's signed response
 to the request, as received, with the artifact bytes removed. A response
@@ -1034,10 +1046,11 @@ the response's `request_digest` to equal the member's, and its
 `artifact_digest` to equal the member's `digest`. Either mismatch is a failed
 `composed/v1` check. This binds the artifact to the request it answered, as a
 refusal's or absence's own `request_digest` does. The response's signature is
-verified under the deployment's signature profile, exactly as a refusal's is.
-A verifier that does not implement that profile reports the response as
-signature-unverified, which is neither failed nor absent. `response` is not
-part of the composed digest ({{composed-digest}}).
+verified under the deployment's signature profile, exactly as a refusal's is
+({{composed-signature-profiles}}). A verifier that does not implement that
+profile reports the response as signature-unverified, which is neither failed
+nor absent. `response` is not part of the composed digest
+({{composed-digest}}).
 
 An artifact that fails verification is still an `artifact` member. The
 verifier reports the failure on that member. It is not a fourth outcome, and
@@ -1056,6 +1069,94 @@ The verifier MUST NOT merge one member's claims with another member's, or with
 the containing Bundle's. The containing Bundle's claims are about its own
 `records` only. A refusal or absence member is not a failed claim: a verifier
 reports it as what it is.
+
+### Carried Signature Profiles {#composed-signature-profiles}
+
+{{I-D.mih-agent-evidence-request}} leaves the signature format of a refusal
+and of an artifact response to the deployment. This section defines three
+signature profiles in which a verifier MAY check a carried `refusal` or
+`response`. A verifier is not required to implement any of them. One that
+implements a profile follows this section for it, and one that reports which
+profile it checked a signature under names that profile by its identifier:
+
+| Identifier | Name | Checks |
+|---|---|---|
+| `three-member-refusal/v1` | three-member refusal signature | a carried `refusal` |
+| `whole-refusal/v1` | whole-refusal signature | a carried `refusal` |
+| `digest-bound-artifact-response/v1` | digest-bound artifact response signature | a carried `response` |
+
+A carried refusal or response does not name its profile. Which profile
+applies is read from the members the object carries. Presence decides, so a
+member whose value is JSON `null` is present:
+
+- A refusal that carries `sig` and does not carry `signature` is in
+  `three-member-refusal/v1`, unless it also carries `policy_digest`. Such a
+  refusal can be an {{EVIDENCE-INTEROP}} `evidence-interop/2` refusal, whose
+  signing input includes `policy_digest`, so it is in none of these profiles,
+  and a verifier that implements only these profiles reports it as
+  signature-unverified. Every other refusal is in `whole-refusal/v1`.
+- A response that does not carry `responder` is in
+  `digest-bound-artifact-response/v1`. A response that carries `responder` is
+  in none of these profiles, for example an envelope of {{EVIDENCE-INTEROP}}.
+  A verifier that implements only these profiles reports it as
+  signature-unverified.
+
+In each profile, `key_id` is a 32-byte Ed25519 {{RFC8032}} public key as 64
+lowercase hexadecimal characters, and the signature is 64 bytes as 128
+lowercase hexadecimal characters. A signature verifies only under strict
+Ed25519 ({{conventions}}), so a small-order key never verifies.
+
+**`three-member-refusal/v1`.** The signature is `sig`, under `key_id`. The
+signing input is that of an {{EVIDENCE-INTEROP}} signed refusal answering a
+request for `evidence-interop/0` or `evidence-interop/1` (its Section 6.3): the
+UTF-8 of the JCS {{RFC8785}} serialization of the object made of the carried
+`issued_at`, `reason` and `request_digest`, whatever else the refusal
+carries. `key_id` is not signed.
+
+**`whole-refusal/v1`.** The signature is `signature`, under `key_id`. The
+signing input is the UTF-8 of the JCS serialization of the carried refusal
+object without its `signature` member, so `key_id` and every other member are
+signed.
+
+**`digest-bound-artifact-response/v1`.** The signature is `sig`, under
+`key_id`. The signing input is the UTF-8 of the JCS serialization of the
+object made of the carried `request_digest`, `anchor`, `artifact_kind`,
+`artifact_digest` and `issued_at`, plus the member `type` with the value
+`evidence-artifact-response/v1`. The verifier supplies `type` itself and never
+reads it from the carried object. The artifact is named by
+`artifact_digest` only, so the signature verifies without the artifact bytes.
+
+A verifier reports exactly one of three states for each signature:
+
+- **Signature-unverified** (`signature_unverified`) when the object carries
+  no signature to check under these profiles: a refusal in `whole-refusal/v1`
+  that carries neither `key_id` nor `signature`, a refusal that carries `sig`,
+  no `signature` and `policy_digest`, a response that carries neither `key_id`
+  nor `sig`, or a response that carries `responder`. A refusal in
+  `three-member-refusal/v1` carries `sig`, so it is never in this state.
+- **Verified** (`verified`) when `key_id` and the signature are both present
+  and well formed, the signing input can be formed, and the signature
+  verifies under `key_id` over it. In `three-member-refusal/v1` and
+  `digest-bound-artifact-response/v1`, the signing input can be formed only
+  when each member it names is present and is a string. In
+  `whole-refusal/v1`, the signing input is the object as carried, whatever
+  members it has; a member other than `key_id` and `signature` may hold any
+  JSON value.
+- **Invalid** (`invalid`) in every other case, for example a key carried
+  without a signature, a signature without a key, a `key_id` or signature
+  that is not a string of the stated form, a member of a three-member or
+  digest-bound signing input that is absent or not a string, a signing input
+  that has no JCS serialization (for example, a number JCS cannot represent,
+  as for `category_coverage_signature` in {{category-properties}}, or a
+  string with an unpaired surrogate), or a signature that does not verify.
+
+An empty string is a string. The signature state covers the signature
+alone. A verifier MUST NOT add checks of the signed values, such as a
+timestamp's format, a digest's form or whether `reason` is a registered
+token, to the signature state. `verified` therefore does not make a refusal
+conforming to {{I-D.mih-agent-evidence-request}}, and it does not show that
+the key belongs to the member's responder: comparing the key with the
+responder's is a separate check, as for any carried signature.
 
 ### History Members {#composed-history}
 
@@ -1588,7 +1689,10 @@ separately:
    and, for a carried member bundle, its own three completeness claims, no
    history for an empty-history Bundle ({{empty-history}}), and, when it
    carries `response`, whether the response's digests match and its
-   signature state; for a carried History member, the result of each check
+   signature state; for a carried refusal, its signature state; for a
+   signature checked under a profile of {{composed-signature-profiles}}, that
+   profile's identifier when the verifier reports which profile it used; for
+   a carried History member, the result of each check
    of {{composed-history}}, its derivation, and its join view's key and
    time;
 3. composition closure;
@@ -1863,9 +1967,9 @@ A verifier MUST, for each `countersign/v1` entry:
 1. recompute the bundle digest and compare it to `over`. An entry whose `over`
    differs is not a countersignature of this Bundle and MUST be reported as
    `invalid`;
-2. verify `signature` over the signing input under `signer.key_id`. An entry
-   whose signature fails is invalid, and its checks MUST NOT be displayed as
-   results;
+2. verify `signature` over the signing input under `signer.key_id` with
+   strict Ed25519 ({{conventions}}). An entry whose signature fails is
+   invalid, and its checks MUST NOT be displayed as results;
 3. determine independence as in {{self-countersignature}}.
 
 A verifier MAY resolve `signer.key_id` against a directory of countersigners
@@ -1923,6 +2027,124 @@ REVEALED-mismatch, declared incomplete, and absent or invalid membership
 proofs. It MUST apply {{certificate-modes}} to every Bundle, so that a
 certificate mode it does not implement is reported as not established, never
 as failed.
+
+# Implementation Status {#impl-status}
+
+Note to RFC Editor: Please remove this section and the reference to
+{{RFC7942}} before publication.
+
+This section records the status of known implementations of the protocol
+defined by this specification at the time of posting of this
+Internet-Draft, and is based on a proposal described in {{RFC7942}}. The
+description of implementations in this section is intended to assist the
+IETF in its decision processes in progressing drafts to RFCs. Please note
+that the listing of any individual implementation here does not imply
+endorsement by the IETF. Furthermore, no effort has been spent to verify the
+information presented here that was supplied by IETF contributors. This is
+not intended as, and must not be construed to be, a catalog of available
+implementations or their features. Readers are advised to note that other
+implementations may exist.
+
+According to {{RFC7942}}, "this will allow reviewers and working groups to
+assign due consideration to documents that have the benefit of running
+code, which may serve as evidence of valuable experimentation and feedback
+that have made the implemented protocols more mature. It is up to the
+individual working groups to use this information as they see fit".
+
+## Agent Action Capsule reference implementations
+
+Organization:
+: Action State Group, Inc.
+
+Implementations:
+: Verifiers of this document in the agent-action-capsule source
+  repository, [](https://github.com/action-state-group/agent-action-capsule): Python, the reference
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/python)); and ports in Go ([](https://github.com/action-state-group/agent-action-capsule/tree/main/go)),
+  TypeScript ([](https://github.com/action-state-group/agent-action-capsule/tree/main/ts)) and Rust
+  ([](https://github.com/action-state-group/agent-action-capsule/tree/main/rust/agent-action-capsule)). The Python and Rust
+  implementations also build Bundles. The latest releases are Python
+  0.19.0, Go 0.24.0, TypeScript 0.16.0 and Rust 0.14.0; additions made in
+  this revision are on the main branch and not yet in a release.
+
+Level of maturity:
+: Pre-1.0 releases.
+
+Coverage:
+: In all four: the Bundle object, citation closure, completeness claims,
+  the strict checks, `composed/v1` (including History members, the
+  `controller_binding` and `same_key` joins and the carried signature
+  profiles) and `parent-log-witness/v1`.
+  In Python only: category coverage, certificate mode and non-record
+  leaves. The fragment codec is implemented in Go and TypeScript.
+
+Licensing:
+: BSD-3-Clause, except the paths that the repository's LICENSING.md lists
+  under Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/agent-action-capsule/issues)
+
+Conformance vectors:
+: [](https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/bundle), one directory per feature, each with
+  its own README.
+
+## checkpointed-local-log
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/checkpointed-local-log), implementations of
+  {{I-D.mih-scitt-checkpointed-local-log}} in Python (release 0.9.0), Go
+  (release 0.4.0), TypeScript (release 0.4.0) and Rust (release 0.6.0): an
+  append-only local log, its Merkle Mountain Range, and signed checkpoints
+  that can be registered with a Transparency Service.
+
+Level of maturity:
+: Pre-1.0 releases.
+
+Coverage:
+: The log and checkpoints whose membership and consistency a Bundle's
+  completeness claims rest on ({{completeness}}).
+
+Licensing:
+: BSD-3-Clause.
+
+Contact:
+: [](https://github.com/action-state-group/checkpointed-local-log/issues)
+
+Test vectors:
+: [](https://github.com/action-state-group/checkpointed-local-log/tree/main/mmr-conformance-vectors),
+  [](https://github.com/action-state-group/checkpointed-local-log/tree/main/checkpoint-conformance-vectors)
+  and [](https://github.com/action-state-group/checkpointed-local-log/tree/main/commitment-conformance-vectors).
+
+## scitt-cose
+
+Organization:
+: Action State Group, Inc.
+
+Implementation:
+: [](https://github.com/action-state-group/scitt-cose), a Python library (release 0.5.0) that verifies SCITT
+  Signed Statements and COSE Receipts ({{RFC9942}}) under the
+  `RFC9162_SHA256` and CCF tree algorithms, and verifies a Checkpointed
+  Local Log's inclusion and consistency proofs against a checkpoint. It
+  carries no application profile: a statement's payload is opaque to it.
+
+Level of maturity:
+: Pre-1.0 releases.
+
+Coverage:
+: Verification of a Bundle's checkpoint proofs and of the Receipts over
+  its checkpoint ({{completeness}}).
+
+Licensing:
+: Apache-2.0.
+
+Contact:
+: [](https://github.com/action-state-group/scitt-cose/issues)
+
+Test vectors:
+: [](https://github.com/action-state-group/scitt-cose/tree/main/test-vectors)
 
 # Security Considerations {#security}
 
@@ -2008,6 +2230,21 @@ are listed per check and never combined, because an aggregate would hide a
   evidence that no action took place. Because it is an `artifact`, never an
   `absence`, a cleared or unstarted history cannot be read as a responder
   that did not answer.
+- **Carried signatures.** A carried refusal or response does not name its
+  signature profile, so a party can carry one object in a form other than
+  the one its signer used. Each profile's signing input covers different
+  members ({{composed-signature-profiles}}). A signature made for one
+  profile therefore does not verify as another's, except where the signed
+  bytes coincide. A verified signature attributes the object to the holder
+  of `key_id`, and nothing more: whether that key is the member's responder
+  is a separate check. In `three-member-refusal/v1`, `key_id` is not signed,
+  so binding the refusal to a responder rests on that check. Ed25519 is
+  verified strictly ({{conventions}}), because a small-order key verifies a
+  forged signature over any message under a lenient verifier.
+- **Countersignatures.** A countersign/v1 signature is verified with strict
+  Ed25519 for the same reason: a countersigner directory can put a name to a
+  small-order key, and under a lenient verifier a forged entry would then
+  read as that countersigner's statement.
 - **Outcomes.** Keeping refusal and absence distinct is evidentiary:
   synthesizing either one from the other forges the stronger record from the
   weaker.
@@ -2067,7 +2304,7 @@ A Bundle reveals a preimage only through its disclosure overlay
 A range that carries padding leaves ({{non-record-leaves}}) shows where padding
 runs begin and end, and padding is appended before a checkpoint is cut. Such a
 range therefore reveals some of the log's earlier checkpoint sizes, which
-padding exists to blur (Section 12.1 of {{I-D.mih-agent-evidence-layer}}).
+padding exists to blur (Section 13.1 of {{I-D.mih-agent-evidence-layer}}).
 A producer that does not want to show them uses a producer-selected
 certificate ({{producer-selected}}), which carries no positions other than
 those of the records it carries.
@@ -2132,6 +2369,22 @@ the same values and policy.
 
 Since -02:
 
+- `composed/v1` carried signature profiles
+  ({{composed-signature-profiles}}): `three-member-refusal/v1`,
+  `whole-refusal/v1` and `digest-bound-artifact-response/v1`, the opt-in
+  profiles in which a verifier checks a carried refusal's or response's
+  signature. The members an object carries decide which profile applies.
+  Each signature is verified, invalid or signature-unverified under strict
+  Ed25519, and the verifier report names the profile used. Added Security
+  Considerations for them.
+- Defined strict Ed25519 ({{conventions}}), the capsule draft's rule, and
+  required it for the carried signature profiles and for a countersign/v1
+  signature ({{countersign-verify}}), whose verification rule was
+  previously unstated.
+- Implementation Status: added ({{impl-status}}), following RFC 7942.
+- References: the Evidence Request is cited at -03, the Agent Action Capsule
+  profile at -06 and the Evidence Layer at -01. Strict Ed25519 now cites the
+  capsule draft's definition, which -06 states, in place of restating it.
 - Defined and registered the `parent-log-witness/v1` extension kind
   ({{parent-log-witness}}): a chain from the Bundle's checkpoint, or an
   earlier checkpoint of the same log with a consistency proof, through a

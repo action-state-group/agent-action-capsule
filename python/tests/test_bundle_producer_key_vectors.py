@@ -22,8 +22,7 @@ from agent_action_capsule.bundle import bundle_digest, verify_bundle
 from agent_action_capsule.canonical import jcs
 
 pytest.importorskip("cryptography")
-from cryptography.exceptions import InvalidSignature  # noqa: E402
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey  # noqa: E402
+from agent_action_capsule._ed25519_strict import verify_strict  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 VECTORS = ROOT / "vectors" / "bundle" / "producer-key"
@@ -56,11 +55,8 @@ def stamp(entry: dict, digest: str, producer_keys: list[str]) -> str:
     signed = jcs(
         {"over": entry["over"], "signer": entry["signer"], "statement": entry["statement"], "type": "countersign/v1"}
     )
-    try:
-        Ed25519PublicKey.from_public_bytes(bytes.fromhex(entry["signer"]["key_id"])).verify(
-            bytes.fromhex(entry["signature"]), signed
-        )
-    except InvalidSignature:
+    # Strict Ed25519 (draft -03 Conventions, countersign/v1 step 2): a small-order key or R fails.
+    if not verify_strict(bytes.fromhex(entry["signer"]["key_id"]), signed, bytes.fromhex(entry["signature"])):
         return "invalid"
     return "not independent" if entry["signer"]["key_id"] in producer_keys else "unresolved signer"
 

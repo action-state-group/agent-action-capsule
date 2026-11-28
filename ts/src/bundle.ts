@@ -48,6 +48,7 @@ import {
   COMPOSED_KIND,
   verifyComposed,
   type ComposedResult,
+  type SignatureVerifier,
 } from "./composed.js";
 import {
   verifyProducerEnvelope,
@@ -208,6 +209,14 @@ export interface VerifyBundleOptions extends CategoryCoverageInputs {
    */
   readonly controllerBindings?: readonly Record<string, unknown>[];
   readonly bindingRevocations?: readonly Record<string, unknown>[];
+  /**
+   * The deployment's signature profile checks for a `composed/v1` member's
+   * carried refusal and response (draft -03, "Carried Signature Profiles"),
+   * such as `verifyCarriedRefusal` and `verifyCarriedResponse`. Without them
+   * every carried signature is signature-unverified.
+   */
+  readonly refusalSignature?: SignatureVerifier;
+  readonly responseSignature?: SignatureVerifier;
   /**
    * Add the checks a verifier handing a verdict to a person needs
    * (vectors/bundle/strict/README.md): each record's producer signature, the
@@ -1692,6 +1701,12 @@ async function extensions(
               {
                 controllerBindings: options.controllerBindings ?? [],
                 bindingRevocations: options.bindingRevocations ?? [],
+                ...(options.refusalSignature === undefined
+                  ? {}
+                  : { refusalSignature: options.refusalSignature }),
+                ...(options.responseSignature === undefined
+                  ? {}
+                  : { responseSignature: options.responseSignature }),
               },
             ),
           }

@@ -109,6 +109,8 @@ The other properties never change it.
 | `neg-signature-other-root` | signed over another root | INVALID |
 | `neg-signature-edited` | a status changed after signing | INVALID |
 | `neg-signature-s-not-reduced` | the valid signature with S + L (strict Ed25519 requires S < L) | INVALID |
+| `neg-signature-small-order-key` | signed under the identity point with R = [r]B and S = r, which a lenient verifier accepts over any message; strict Ed25519 refuses a small-order key (-04) | INVALID |
+| `neg-signature-identity-r` | signed by the producer key with R the identity point, which a lenient verifier accepts; strict Ed25519 refuses a small-order R (-04) | INVALID |
 | `neg-undisclosed-without-policy-uri` | `UNDISCLOSED` without `policy_uri` | INVALID |
 | `neg-policy-uri-relative` | a relative `policy_uri` | INVALID |
 | `neg-policy-uri-fragment` | a `policy_uri` with a fragment | INVALID |

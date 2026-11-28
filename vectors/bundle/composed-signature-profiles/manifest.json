@@ -1,0 +1,12 @@
+{
+  "draft": "draft-mih-zhang-agent-disclosure-bundle-03 (composed/v1: Carried Signature Profiles)",
+  "provenance": "spec-derived",
+  "generator": "python/scripts/generate_bundle_composed_signature_profile_vectors.py",
+  "files": [
+    {
+      "path": "vectors.json",
+      "sha256": "479b975cb45492d220045add7165dacf19afefda659ab4f5c412bfbbb0a6aff1",
+      "count": 50
+    }
+  ]
+}

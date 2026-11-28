@@ -77,6 +77,7 @@ GENERATORS = (
     "generate_bundle_composed_cb_vectors.py",
     "generate_bundle_composed_history_vectors.py",
     "generate_bundle_composed_key_source_vectors.py",
+    "generate_bundle_composed_signature_profile_vectors.py",
     "generate_bundle_strict_vectors.py",
     # Reuses the strict generator's records, keys and checkpoint signer.
     "generate_bundle_02_vectors.py",
@@ -102,6 +103,7 @@ GENERATORS = (
     ("generate_inference_service_history_v0_vectors.py", "--profile", "1"),
     # Built on the base inference-service history generator's stream and definitions.
     "generate_inference_service_history_verdicts_v0_vectors.py",
+    "generate_inference_service_history_v1_vectors.py",
     "generate_history_frame_v0_vectors.py",
     "generate_registry_conformance_vectors.py",
     "generate_adapter_x402_vectors.py",

@@ -66,6 +66,10 @@ name = "bundle_vectors"
 required-features = ["bundle"]
 
 [[test]]
+name = "bundle_composed_signature_profiles"
+required-features = ["bundle"]
+
+[[test]]
 name = "bundle_strict_vectors"
 required-features = ["strict"]
 
@@ -115,4 +119,8 @@ required-features = ["inference-history"]
 
 [[test]]
 name = "inference_history_verdicts_vectors"
+required-features = ["inference-history"]
+
+[[test]]
+name = "inference_history_v1"
 required-features = ["inference-history"]

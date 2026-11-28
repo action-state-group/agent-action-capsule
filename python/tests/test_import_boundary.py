@@ -121,12 +121,28 @@ def test_clean_env_seal_without_engine(tmp_path):
     import venv
 
     venv_dir = tmp_path / "venv"
-    venv.create(str(venv_dir), with_pip=True, clear=True)
+    # Symlink the interpreter: a copied binary of a build that loads
+    # @executable_path/../lib/libpython3.X.dylib (uv's macOS CPython) finds no
+    # dylib beside the venv and dyld kills it at launch (issue #704). Windows
+    # keeps copies, since symlinks there need extra privileges.
+    venv.create(str(venv_dir), with_pip=True, clear=True, symlinks=sys.platform != "win32")
     pip = venv_dir / "bin" / "pip"
     python = venv_dir / "bin" / "python"
 
-    pkg_root = str(__file__).split("tests")[0].rstrip("/")
-    _pip_install(pip, pkg_root)
+    # Install from a copy: a local setuptools build writes build/ and
+    # *.egg-info into the source tree, so two runs of this test at once (the
+    # parallel lanes of scripts/check.sh) would race there.
+    import shutil
+
+    pkg_root = tmp_path / "src"
+    shutil.copytree(
+        Path(__file__).resolve().parents[1],
+        pkg_root,
+        ignore=shutil.ignore_patterns(
+            "tests", "build", "dist", "*.egg-info", "__pycache__", ".pytest_cache", ".ruff_cache"
+        ),
+    )
+    _pip_install(pip, str(pkg_root))
 
     script_path = tmp_path / "run.py"
     script_path.write_text(_CLEAN_ENV_SCRIPT)

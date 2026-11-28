@@ -101,3 +101,57 @@ func TestUnencodableValueHasNoDigest(t *testing.T) {
 	}
 	assert.True(t, digestIs(dig(policy()), policy()))
 }
+
+func part(value any, why string) map[string]any {
+	c := map[string]any{"dimension": map[string]any{"model": "m"}, "value": value}
+	if why != "" {
+		c["suppressed"] = why
+	}
+	return c
+}
+
+func total(value any, why string) map[string]any {
+	c := part(value, why)
+	c["dimension"] = nil
+	return c
+}
+
+// ISH §6.2 items 3 and 5 under each revision, one table at a time.
+func TestTableOKByRevision(t *testing.T) {
+	b, cmp := "below_floor", "complementary"
+	for _, tc := range []struct {
+		name       string
+		parts      []map[string]any
+		total      map[string]any
+		floor      uint64
+		rev0, rev1 bool
+	}{
+		{"4+4 beside a published 8", []map[string]any{part(nil, b), part(nil, b)}, total(uint64(8), ""), 5, true, false},
+		{"five 1s beside a published 5", []map[string]any{part(nil, b), part(nil, b), part(nil, b), part(nil, b), part(nil, b)},
+			total(uint64(5), ""), 5, true, false},
+		{"3+4 beside a published 7", []map[string]any{part(nil, b), part(nil, b)}, total(uint64(7), ""), 5, true, true},
+		{"10 and 4+4 beside a published 18", []map[string]any{part(uint64(10), ""), part(nil, b), part(nil, b)},
+			total(uint64(18), ""), 5, true, false},
+		{"one withheld beside a published total", []map[string]any{part(uint64(9), ""), part(nil, b)}, total(uint64(12), ""), 5, false, false},
+		{"one withheld and its partner", []map[string]any{part(nil, cmp), part(nil, b)}, total(uint64(12), ""), 5, true, true},
+		{"total withheld beside two under the floor", []map[string]any{part(nil, b), part(nil, b)}, total(nil, cmp), 5, true, true},
+		{"total withheld complementary beside one", []map[string]any{part(nil, cmp), part(nil, b)}, total(nil, cmp), 5, true, false},
+		{"total withheld below the floor", []map[string]any{part(nil, b)}, total(nil, b), 5, true, true},
+		{"three withheld, a rest of 2", []map[string]any{part(uint64(10), ""), part(nil, b), part(nil, b), part(nil, b)},
+			total(uint64(12), ""), 5, true, false},
+		{"published cells over the total", []map[string]any{part(uint64(10), ""), part(uint64(9), "")}, total(uint64(12), ""), 5, true, false},
+		{"floor 1: nothing withheld", []map[string]any{part(uint64(1), ""), part(uint64(1), "")}, total(uint64(2), ""), 1, true, true},
+		{"floor 2: two 1s beside 7 and 9", []map[string]any{part(nil, b), part(nil, b), part(uint64(7), "")}, total(uint64(9), ""), 2, true, false},
+		{"no total", []map[string]any{part(nil, b), part(nil, b)}, nil, 5, true, true},
+		{"floor 1: two withheld beside a withheld total", []map[string]any{part(nil, b), part(nil, b)}, total(nil, cmp), 1, true, false},
+		{"floor 1: two withheld beside a total withheld below it", []map[string]any{part(nil, b), part(nil, b)}, total(nil, b), 1, true, false},
+		{"floor 2: two under the floor, total 3", []map[string]any{part(nil, b), part(nil, b)}, total(uint64(3), ""), 2, true, false},
+		{"10 and two under the floor beside 19", []map[string]any{part(uint64(10), ""), part(nil, b), part(nil, b)},
+			total(uint64(19), ""), 5, true, false},
+		{"/0 never sums: published cells past uint64", []map[string]any{part(uint64(1<<63), ""), part(uint64(1<<63), "")},
+			total(uint64(5), ""), 5, true, false},
+	} {
+		assert.Equal(t, tc.rev0, tableOK(tc.parts, tc.total, tc.floor, false), "/0 %s", tc.name)
+		assert.Equal(t, tc.rev1, tableOK(tc.parts, tc.total, tc.floor, true), "/1 %s", tc.name)
+	}
+}

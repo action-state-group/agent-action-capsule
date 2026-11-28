@@ -1,9 +1,16 @@
 name: Python CI
 on:
   push:
+    branches: [main]
     paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**", "vectors/evidence-request/**", "vectors/cll-material/**", "vectors/anchor-witness-v1/**", "vectors/card-registration-v0/**", "vectors/minimum-necessary/**", ".github/**"]
   pull_request:
     paths: ["python/**", "spec/REGISTRY.md", "vectors/interop/ran_under/**", "vectors/bundle/**", "vectors/evidence-request/**", "vectors/cll-material/**", "vectors/anchor-witness-v1/**", "vectors/card-registration-v0/**", "vectors/minimum-necessary/**", ".github/**"]
+
+# A newer push to the same pull request supersedes its older run; runs on
+# main are never cancelled, since each is grouped by its own commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:

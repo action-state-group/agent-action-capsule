@@ -9,6 +9,8 @@ Scope rules and review gates are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Commands
 
+Before every push, run `scripts/check.sh` (about 5 minutes on an Apple-silicon Mac; it runs its checks in parallel lanes). It runs what CI runs on pull requests and main, every workflow whatever its paths filter, dco.yml included, except spec.yml's non-gating idnits; the neutrality and leak-lint scans run only when their secret term lists are set as `NEUTRALITY_TERMS` and `LEAK_LINT_TERMS`. It regenerates `vectors/`, `provenance-mode-vectors/` and `go/go.mod`/`go.sum`, so it refuses to start while those have uncommitted changes. CI uses the current stable Rust, so run `rustup update stable` first if yours is older.
+
 ```bash
 # python/  (Python 3.9 compatible)
 pip install -e ".[dev]"

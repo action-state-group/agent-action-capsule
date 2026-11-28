@@ -1,30 +1,22 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<reference anchor="I-D.ietf-scitt-receipts-ccf-profile" target="https://datatracker.ietf.org/doc/html/draft-ietf-scitt-receipts-ccf-profile-05">
-   <front>
-      <title>CCF Profile for COSE Receipts</title>
-      <author initials="H." surname="Birkholz" fullname="Henk Birkholz">
-         <organization>Fraunhofer SIT</organization>
-      </author>
-      <author initials="A." surname="Delignat-Lavaud" fullname="Antoine Delignat-Lavaud">
-         <organization>Microsoft Research</organization>
-      </author>
-      <author initials="C." surname="Fournet" fullname="Cedric Fournet">
-         <organization>Microsoft Research</organization>
-      </author>
-      <author initials="A." surname="Chamayou" fullname="Amaury Chamayou">
-         <organization>Microsoft Research</organization>
-      </author>
-      <date month="September" day="23" year="2026" />
-      <abstract>
-	 <t>   This document defines a new verifiable data structure (VDS) type for
-   COSE Receipts and the associated inclusion and consistency proofs,
-   specifically designed for append-only logs produced by the
-   Confidential Consortium Framework (CCF) to provide stronger tamper-
-   evidence guarantees.
-
-	 </t>
-      </abstract>
-   </front>
-   <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-receipts-ccf-profile-05" />
-   
+<reference anchor="I-D.ietf-scitt-receipts-ccf-profile" target="https://datatracker.ietf.org/doc/html/draft-ietf-scitt-receipts-ccf-profile-06">
+  <front>
+    <title>CCF Profile for COSE Receipts</title>
+    <author fullname="Henk Birkholz" initials="H." surname="Birkholz">
+      <organization>Fraunhofer SIT</organization>
+    </author>
+    <author fullname="Antoine Delignat-Lavaud" initials="A." surname="Delignat-Lavaud">
+      <organization>Microsoft Research</organization>
+    </author>
+    <author fullname="Cedric Fournet" initials="C." surname="Fournet">
+      <organization>Microsoft Research</organization>
+    </author>
+    <author fullname="Amaury Chamayou" initials="A." surname="Chamayou">
+      <organization>Microsoft Research</organization>
+    </author>
+    <date day="22" month="October" year="2026"/>
+    <abstract>
+      <t>This document defines a new verifiable data structure (VDS) type for COSE Receipts and the associated inclusion and consistency proofs, specifically designed for append-only logs produced by the Confidential Consortium Framework (CCF) to provide stronger tamper- evidence guarantees.</t>
+    </abstract>
+  </front>
+  <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-receipts-ccf-profile-06"/>
 </reference>

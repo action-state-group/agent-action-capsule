@@ -89,11 +89,12 @@ of any positive vector's `input.json`, run the language's command, then
 | `vectors/bundle/composed-controller-binding/` | `draft-mih-zhang-agent-disclosure-bundle-02` (`composed/v1` `controller_binding`, empty-history members) | verify | 14 |
 | `vectors/bundle/composed-history/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`composed/v1` History members, `same_key`) | verify | 30 |
 | `vectors/bundle/composed-key-source/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`composed/v1` member keys, #663) | verify | 18 |
+| `vectors/bundle/composed-signature-profiles/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`composed/v1` carried signature profiles, #676) | verify | 50 |
 | `vectors/bundle/non-record-leaves/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Non-Record Leaves) | verify | 26 |
 | `vectors/bundle/certificate-mode/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Certificate Modes) | verify | 9 |
-| `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage) | verify | 34 |
+| `vectors/bundle/category-coverage/` | `draft-mih-zhang-agent-disclosure-bundle-02` (Category Coverage); -04 strict Ed25519 (#680) | verify | 36 |
 | `vectors/bundle/parent-log-witness/` | `draft-mih-zhang-agent-disclosure-bundle-03` (`parent-log-witness/v1`) | verify | 36 |
-| `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`) | pack, verify | 8 |
+| `vectors/bundle/producer-key/` | `draft-mih-zhang-agent-disclosure-bundle-01` (`producer-key/v1`); -03 strict `countersign/v1` (#677) | pack, verify | 10 |
 | `vectors/bundle/report-single-record.json` | `draft-mih-zhang-agent-disclosure-bundle-00` (report of one record) | report | 3 |
 | `vectors/bundle/strict/` | Evidence Bundle strict verification | verify | 110 |
 | `vectors/bundle/fragment/` | `draft-mih-zhang-agent-disclosure-bundle` (Fragment Codec) | pack, report | 7 |
@@ -138,7 +139,8 @@ its 11 `record_signatures`.
 | `vectors/inference-service-history-v0/` | `spec/inference-service-history-profile-v0.md` | respond, verify | 27 |
 | `vectors/inference-service-history-v0-interop-v1/` | `spec/inference-service-history-profile-v0.md` over `evidence-interop/1` | respond, verify | 28 |
 | `vectors/inference-service-history-verdicts-v0/` | `spec/inference-service-history-profile-v0.md` §5.3 (the `verdict_counts` member) | respond, verify | 15 |
-| `vectors/history-frame-v0/` | `spec/history-frame-v0.md` (the instances' counting tables and wording packs) | evaluate | 13 |
+| `vectors/inference-service-history-v1/` | `spec/inference-service-history-profile-v0.md` §6.2 item 5 (`inference-service-history/1`) | respond, verify | 13 |
+| `vectors/history-frame-v0/` | `spec/history-frame-v0.md` (the instances' counting tables and wording packs) | evaluate | 14 |
 
 ## Evaluate, judge and report
 
@@ -154,7 +156,7 @@ its 11 `record_signatures`.
 | `vectors/adapters/ucp/` | `spec/adapters/ucp-v0.md` §3 | verify | 2 |
 | `vectors/adapters/erc-8183/` | `spec/adapters/erc-8183-v0.md` §10 | verify | 25 |
 | `vectors/adapters/nostr-mailbox/` | `spec/bindings/nostr-mailbox-v0.md` §9 (experimental) | verify | 15 |
-| `vectors/adapters/evidence-commitment-carriers/` | `spec/bindings/evidence-commitment-carriers-v0.md` §10 (experimental) | verify | 34 |
+| `vectors/adapters/evidence-commitment-carriers/` | `spec/bindings/evidence-commitment-carriers-v0.md` §10 (experimental) | verify | 36 |
 
 ## Verbs with no corpus
 

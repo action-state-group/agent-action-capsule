@@ -573,7 +573,7 @@ its correlation identifier is the deal reference. Its payload has exactly these 
   a recipient that holds both learns about the deals that entered or left the window between
   them, even though each card alone shows deals only in aggregate. This document sets no floor
   and no period rule (HF-1). A holder key that also serves Standard Histories under
-  `inference-service-history/0` serves no `standard_history/1` or `/2` card: a holder that serves both
+  `inference-service-history/0` or `/1` serves no `standard_history/1` or `/2` card: a holder that serves both
   under the same key is out of conformance by ISH's text already
   (`spec/inference-service-history-profile-v0.md` §6.1 item 8; HF §4.8).
 - **Same bytes for every requester.** A card is recipient-free (§3): two requesters who compare
@@ -638,10 +638,27 @@ a `/3` card, `/2`'s rules wherever they name a token, except where this section 
   latest book fact up to the anchor. A journal fact [SF §3.3] is no deal, and neither is a book of
   profile `none`. A deal that has not started, whose book holds no agreement, has no deal entry and
   is in no tally.
-- **As of the anchor's time.** Each deal's row results (§11.2) are computed as of `T`, the anchor's
-  time, from the status value of its latest fact [SF §4.2]. A deal whose book has not changed since
-  its last fact is counted by its rows' dates and `T`, so its outcome can change from one anchor to
-  the next with no new fact.
+- **As of the anchor's time.** Each deal's row results (§11.2) and its `disputes` (§5.4) are
+  computed as of `T`, the anchor's time, from the status value of its latest fact [SF §4.2]. A deal
+  whose book has not changed since its last fact is counted by its rows' dates and `T`, so its
+  outcome can change from one anchor to the next with no new fact.
+- **One card, one time.** A host reads every record a deal's `disputes` rest on, each dispute
+  statement, each withdrawal of one and each record of its resolution, by the test EBL's rule
+  applies to every record it reads (SH-11): a record whose time is after `T` does not yet exist, and
+  a record with no time exists. So a dispute whose record has a time after `T` is no entry of the
+  deal's `disputes`, a withdrawal whose time is after `T` has not withdrawn it, and a resolution
+  whose record has a time after `T` is not held. §5.4 then gives each dispute its `outcome` from the
+  records held as of `T` alone: a dispute withdrawn by then is `withdrawn`, and one with no
+  resolution held by then is `open`. Where the host's mapping chooses one resolution among several,
+  such as the first final ruling of the adjudicator the agreement names, it chooses among those held
+  as of `T`. A host MUST NOT count in a deal's `disputes` a record that does not exist as of `T`, so
+  a card's `disputes` tally and its row results read the same records. A record with no time is read
+  as existing by both, so the one time holds for timed records only: an untimed record may have been
+  made after `T`. This is a rule on filling the deal entry, as §11.2 "Agreed no later than
+  witnessed" is: it changes no member, value list or counting rule, so `/3` and `/4` keep their
+  tokens, documents and vectors. A verifier that applies it may report `FAIL` for a card an earlier
+  verifier passed: such a card's `disputes` tally holds a record that did not exist as of its own
+  anchor.
 
 ### 11.2 The deal entry
 
@@ -826,10 +843,11 @@ A verifier reports §6's six properties of a `/3` card, with these changes:
   commitment [SF §4.1]; each book checkpoint hashing to its fact; and the chain of each book's facts
   unbroken. A handover that passes these checks enumerates the books the anchor commits, so §6's
   coverage (b) and SH-10 do not arise for `/3`. The verifier forms each deal entry from the latest
-  fact's status opening by the host's mapping (SH-2) and the row rule (§11.2), as of the anchor's
-  time, and reports which mapping it applied; with none, or without the handover, or when the
-  handover fails a check, `counts_recompute` is `NOT_CHECKED`. A book the card leaves out, or a
-  book counted that the handover does not hold, makes the counts differ: `FAIL`. A deal entry
+  fact's status opening by the host's mapping (SH-2) and the row rule (§11.2), its rows and its
+  `disputes` as of the anchor's time (§11.1), and reports which mapping it applied; with none, or
+  without the handover, or when the handover fails a check, `counts_recompute` is `NOT_CHECKED`. A
+  book the card leaves out, or a book counted that the handover does not hold, makes the counts
+  differ: `FAIL`. A deal entry
   whose `agreed_at` is later than the deal's first witnessed time by more than §11.2's allowance,
   where the handover gives that time, makes the result `FAIL` even when every count is equal
   (§11.2 "Agreed no later than witnessed").
@@ -879,7 +897,7 @@ For a standard `/3` card, §6 "What a verifier shows" holds, with these addition
   about by naming only a witness that never registers its checkpoints (SH-12). Never stating on a row
   leaves it `no_statement` after its due date, so `undecided`, never `held`.
 - **Differencing.** As §9. A holder key that serves Standard Histories under
-  `inference-service-history/0` MUST NOT serve a `standard_history/3` card. This is this document's
+  `inference-service-history/0` or `/1` MUST NOT serve a `standard_history/3` card. This is this document's
   own rule, since ISH §6.1 item 8 names only `/1` and `/2`; its reason is ISH's: two cards at
   consecutive anchors could be subtracted to isolate one exchange the periods protect (HF §4.8).
 - **No grading.** As §9: the outcomes are counts, never a rate, and a verifier ranks no holder by them.
@@ -950,7 +968,7 @@ wherever they name a token, except:
   never registers its checkpoints, or names none, takes no deal out of the counts: the deal is
   counted, and shown in `local_times`.
 - **Differencing** (§11.9): a holder key that serves Standard Histories under
-  `inference-service-history/0` MUST NOT serve a `standard_history/4` card either, for §11.9's
+  `inference-service-history/0` or `/1` MUST NOT serve a `standard_history/4` card either, for §11.9's
   reason.
 - **Documents.** The counting table `spec/history-frame/standard-history-4-table.json`, digest
   `38406ce224eaff3088759f07c0ec06fe63577bad742a60fdc86f6b5b7dec6bea`, and the wording pack
@@ -1149,7 +1167,10 @@ of `/4` holds of `/5`, `/4`'s rules wherever they name a token, except:
   deal without it is in `class_missing.count` as before. The deal entry is `/4`'s (§12), so it has
   no `left_out` member and may carry `no_witness_time`, and its `agreed_at` is bounded by §11.2
   "Agreed no later than witnessed", a shop purchase's included, with §11.7's `counts_recompute`
-  `FAIL` for an entry that breaks it.
+  `FAIL` for an entry that breaks it. Its row results and its `disputes` are read as of `T` by
+  §11.1 "One card, one time", a shop purchase's included: a dispute, withdrawal or resolution
+  whose record has a time after `T` does not yet exist, and `counts_recompute` forms the disputes
+  the same way.
 - **The outcome** of a counted deal, a shop purchase included, is §11.3's, from its rows, by the
   same rules as any other deal; the rules are unchanged (SH-20).
 - **The card** has the members of a `/4` card and one more, all REQUIRED:

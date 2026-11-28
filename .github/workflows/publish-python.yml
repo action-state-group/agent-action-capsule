@@ -16,6 +16,7 @@ on:
   # twine check the release will run — catches packaging regressions before
   # a tag exists. `publish` below needs a python/v tag, so this never uploads.
   push:
+    branches: [main]
     paths: ["python/**"]
   pull_request:
     paths: ["python/**"]

@@ -1,5 +1,6 @@
-//! The Standard cases of `vectors/inference-service-history-v0` and
-//! `vectors/inference-service-history-v0-interop-v1` over
+//! The Standard cases of `vectors/inference-service-history-v0`,
+//! `vectors/inference-service-history-v0-interop-v1` and
+//! `vectors/inference-service-history-v1` over
 //! `agent_action_capsule::inference_history`.
 //!
 //! Each case's `period_policy` is taken from the definition the case hands
@@ -151,6 +152,30 @@ fn the_periods_of_a_pair_are_fixed_as_the_vectors_expect() {
         }
         assert_eq!(run, 3, "{set}");
     }
+}
+
+/// `vectors/inference-service-history-v1` (`inference-service-history/1`,
+/// ISH §6.2 item 5, SH-8): every case, its verdict counts too where its
+/// definition carries them, fails the one property it names or none.
+#[test]
+fn the_revision_1_histories_check_as_the_vectors_expect() {
+    let all = cases("inference-service-history-v1");
+    for case in &all {
+        let def = Definition::from_document(&case["inputs"]["definition"]).unwrap();
+        assert_eq!(
+            def.profile(),
+            agent_action_capsule::inference_history::PROFILE_1
+        );
+        let got = check_history(&case["inputs"]["definition"], &case["inputs"]["reply"]);
+        match (expected_failure(&case["expected"]), got) {
+            (None, Ok(_)) => {}
+            (Some(want), Err(why)) => {
+                assert_eq!(failed_property(&why), want, "{}: {why}", id(case))
+            }
+            (want, got) => panic!("{}: expected {want:?}, got {got:?}", id(case)),
+        }
+    }
+    assert_eq!(all.len(), 13);
 }
 
 /// The time of the checkpoint a pin names, in any case's card: the pin is

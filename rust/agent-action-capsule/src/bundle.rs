@@ -33,6 +33,13 @@ pub use category_coverage::{
     category_coverage_signing_input, check_category_coverage, CategoryCoverage, CategoryInputs,
     CATEGORY_COVERAGE_GATING, CATEGORY_COVERAGE_PROPERTIES, CATEGORY_STATUSES,
 };
+mod carried_signatures;
+pub use carried_signatures::{
+    artifact_response_signing_input, carried_refusal_profile, carried_response_profile,
+    three_member_refusal_signing_input, verify_carried_refusal, verify_carried_response,
+    verify_digest_bound_artifact_response, verify_three_member_refusal, verify_whole_refusal,
+    ARTIFACT_RESPONSE_TYPE, DIGEST_BOUND_ARTIFACT_RESPONSE, THREE_MEMBER_REFUSAL, WHOLE_REFUSAL,
+};
 mod composed;
 pub use composed::{
     composed_digest, composed_digest_preimage, verify_composed, ComposedDigestResult,

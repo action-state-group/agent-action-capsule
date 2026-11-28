@@ -1,37 +1,13 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<reference anchor="I-D.kamimura-vap-framework" target="https://datatracker.ietf.org/doc/html/draft-kamimura-vap-framework-01">
-   <front>
-      <title>Verifiable AI Provenance Framework (VAP): An Architectural Framework for Evidentiary-Grade AI Decision Trails</title>
-      <author initials="K." surname="Tokachi" fullname="TOKACHI KAMIMURA">
-         <organization>VeritasChain Standards Organization</organization>
-      </author>
-      <date month="July" day="21" year="2026" />
-      <abstract>
-	 <t>   Automated decision-making systems, including AI and algorithmic
-   systems in critical infrastructure, currently lack standardized
-   mechanisms for producing evidentiary-grade provenance records that
-   can withstand independent verification.  Traditional logging
-   approaches fail to provide the cryptographic guarantees required for
-   regulatory compliance, forensic investigation, and cross-
-   organizational accountability.
-
-   This document describes the Verifiable AI Provenance Framework (VAP),
-   an architectural framework that defines requirements for producing
-   verifiable decision trails using existing IETF security technologies.
-   VAP does not define new protocols or cryptographic primitives;
-   rather, it provides an architectural coordination layer that enables
-   domain-specific profiles to leverage Supply Chain Integrity,
-   Transparency and Trust (SCITT), Remote Attestation Procedures (RATS),
-   CBOR Object Signing and Encryption (COSE), and related IETF work in a
-   consistent manner.
-
-   This document is intended to frame the problem space and facilitate
-   discussion about whether architectural coordination work is needed in
-   this area.
-
-	 </t>
-      </abstract>
-   </front>
-   <seriesInfo name="Internet-Draft" value="draft-kamimura-vap-framework-01" />
-   
+<reference anchor="I-D.kamimura-vap-framework" target="https://datatracker.ietf.org/doc/html/draft-kamimura-vap-framework-03">
+  <front>
+    <title>Verifiable AI Provenance Framework (VAP): An Architectural Framework for Auditable AI Decision Trails</title>
+    <author fullname="TOKACHI KAMIMURA" initials="K." surname="Tokachi">
+      <organization>VeritasChain Standards Organization</organization>
+    </author>
+    <date day="15" month="November" year="2026"/>
+    <abstract>
+      <t>Automated decision-making systems, including AI and algorithmic systems in critical infrastructure, currently lack standardized mechanisms for producing provenance records that third parties can verify independently. Traditional logging approaches do not provide the cryptographic properties that regulatory examination, forensic investigation, and cross-organizational accountability depend on: detectability of alteration, detectability of omission after commitment, and attribution. This document describes the Verifiable AI Provenance Framework (VAP), an architectural framework that defines requirements for producing verifiable decision trails using existing IETF security technologies. VAP does not define new protocols or cryptographic primitives; rather, it provides an architectural coordination layer that enables domain-specific profiles to leverage Supply Chain Integrity, Transparency and Trust (SCITT), Remote Attestation Procedures (RATS), CBOR Object Signing and Encryption (COSE), and related IETF work in a consistent manner. VAP makes records auditable and attributable after the fact. It does not prevent, block, or intercept any system behaviour, and it does not warrant that any recorded decision was correct, fair, or safe. The detailed requirement set is maintained by the VeritasChain Standards Organization (VSO) as a separate specification; this document describes the architecture and its mapping to IETF work. This document is intended to frame the problem space and facilitate discussion about whether architectural coordination work is needed in this area.</t>
+    </abstract>
+  </front>
+  <seriesInfo name="Internet-Draft" value="draft-kamimura-vap-framework-03"/>
 </reference>

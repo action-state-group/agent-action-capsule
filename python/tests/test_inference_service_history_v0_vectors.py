@@ -79,6 +79,8 @@ RANK = {"self_reported": 0, "peer_confirmed": 1, "corroborated": 2}
 PEER_SHOWN = "peer-confirmed; not corroborating (independence not established)"
 ROLE_UNIT = {"served": "exchanges_served", "requested": "exchanges_requested"}
 # §8.2.
+# §4.1: the frozen revision and the one that adds §6.2 item 5's rule for two or more withheld cells.
+PROFILES = ("inference-service-history/0", "inference-service-history/1")
 FIXED = {"anchor", "declared", "derivation", "evidence_stream", "history_card", "history_card_digest", "subject"}
 MUST_PASS = ("profile_version", "envelope_signature", "responder_trust", "issued_at_form", "request_binding",
              "subject_binding", "artifact_digest", "anchor_match")
@@ -147,8 +149,8 @@ def run_reply(case: dict, h: dict) -> tuple[dict, Any]:
 def definition_form(d: Any) -> bool:
     if not isinstance(d, dict) or d.get("level") not in LEVEL_MEMBERS or set(d) != LEVEL_MEMBERS[d["level"]]:
         return False
-    if (d["profile"], d["kind"], d["embeds"], d["subjects"]) != ("inference-service-history/0", "projection",
-                                                                  ["history_card/1"], ["full_history"]):
+    if d["profile"] not in PROFILES or (d["kind"], d["embeds"], d["subjects"]) != (
+            "projection", ["history_card/1"], ["full_history"]):
         return False
     if not re.fullmatch(r"[a-z0-9_]+/[0-9]+", d["name"]) or d["coverage_declaration"] != LEVEL_KIND[d["level"]]:
         return False
@@ -324,10 +326,42 @@ def anchor_ok(d: dict, env: dict) -> bool:
     return not (anchor_time - when(p["epoch"])) % timedelta(seconds=p["length_s"])
 
 
+def table_ok(parts: list[dict], total: dict | None, floor: int, revision1: bool) -> bool:
+    """§6.2 items 3 and 5 over one table, its dimension cells and its total: a published total never stands
+    beside exactly one suppressed cell. Under ``inference-service-history/1`` also: a cell is listed
+    only when counted, so the suppressed cells hold at least 1 each (and, below the floor, at most
+    ``floor`` - 1) and the published ones never
+    exceed the total, equalling it when none is suppressed; a published total whose rest
+    (the total less the published cells) is the number of two or more suppressed cells, all
+    ``below_floor``, or that number times ``floor`` - 1 fixes every one of them; and a total is
+    withheld ``complementary`` only beside two or more cells suppressed ``below_floor``."""
+    hidden = [c for c in parts if c["value"] is None]
+    all_below = all(c["suppressed"] == "below_floor" for c in hidden)
+    if revision1 and floor <= 1 and any(c["suppressed"] == "below_floor" for c in hidden):
+        return False  # a listed cell holds at least 1, which no floor of 1 withholds
+    if total is None:
+        return True
+    if total["value"] is not None:
+        if len(hidden) == 1:
+            return False
+        if not revision1:
+            return True
+        rest = total["value"] - sum(c["value"] for c in parts if c["value"] is not None)
+        if rest < len(hidden) or (not hidden and rest):  # the cells do not add up to the total
+            return False
+        if hidden and all_below and rest > len(hidden) * (floor - 1):  # more than below-floor cells hold
+            return False
+        return not (len(hidden) >= 2 and all_below and rest in (len(hidden), len(hidden) * (floor - 1)))
+    if revision1 and total["suppressed"] == "complementary":
+        return len(hidden) >= 2 and all_below
+    return True
+
+
 def floor_ok(d: dict, env: dict) -> bool:
-    """§6.2: a published cell is at least the floor; a suppressed cell has no value; a unit's total and
-    all but one of its cells never stand published beside one suppressed cell."""
+    """§6.2: a published cell is at least the floor; a suppressed cell has no value; and each unit's
+    table meets items 3 and 5 under the definition's revision (``table_ok``)."""
     floor = d["period_policy"]["floor"]
+    revision1 = d["profile"] == PROFILES[1]
     for period in env["artifact"]["period_counts"]["periods"]:
         for c in period["cells"]:
             if ("suppressed" in c) != (c["value"] is None) or c.get("suppressed", "below_floor") not in (
@@ -338,8 +372,7 @@ def floor_ok(d: dict, env: dict) -> bool:
         for unit in {c["unit"] for c in period["cells"]}:
             parts = [c for c in period["cells"] if c["unit"] == unit and c["dimension"] is not None]
             totals = [c for c in period["cells"] if c["unit"] == unit and c["dimension"] is None]
-            hidden = [c for c in parts if c["value"] is None]
-            if totals and totals[0]["value"] is not None and len(hidden) == 1:
+            if not table_ok(parts, totals[0] if totals else None, floor, revision1):
                 return False
     return True
 
@@ -542,7 +575,7 @@ def test_served_only_counts_no_requested_exchange():
 
 
 def test_spec_lists_every_case():
-    section = SPEC_TEXT.split("### 9.4", 1)[1].split("\n## ", 1)[0]
+    section = SPEC_TEXT.split("### 9.4", 1)[1].split("\n## ", 1)[0].split("\n### 9.5", 1)[0]
     listed = set(re.findall(r"^\| `([a-z0-9-]+)` \|", section, re.M))
     v1_only = {"refused-capacity-exceeded"}  # §9.4 marks it evidence-interop/1 only
     assert (listed if VERSION else listed - v1_only) == {c["id"] for c in CASES}

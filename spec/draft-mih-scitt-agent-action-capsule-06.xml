@@ -27,7 +27,7 @@
     <keyword>audit</keyword>
     <keyword>verdict</keyword>
     <abstract>
-      <?line 112?>
+      <?line 134?>
 
 <t>This document defines a SCITT statement profile for recording what an AI
 agent did: the Agent Action Capsule. A Capsule is a digest-committed record
@@ -38,20 +38,20 @@ confirmed-effect binding that distinguishes a dispatched attempt from an
 observed result, and an honest human-in-the-loop flag. Capsules are
 identified independently of signing and MAY be authenticated by one or more
 COSE_Sign1 Producer Envelopes. Its Capsule ID can separately be made
-transparent by registration in a SCITT Transparency Service <xref target="I-D.ietf-scitt-scrapi"/>. A Capsule is recorded on
+transparent by registration in a SCITT Transparency Service. A Capsule is recorded on
 every verdict, including refusals: a blocked or denied Capsule is the
 auditor-grade evidence that a gate worked.</t>
     </abstract>
     <note>
       <name>Note to Readers</name>
-      <?line 127?>
+      <?line 149?>
 
 <t>This document is an individual submission. The intended venue for
 discussion is the SCITT Working Group (scitt@ietf.org).</t>
     </note>
   </front>
   <middle>
-    <?line 132?>
+    <?line 154?>
 
 <section anchor="introduction">
       <name>Introduction</name>
@@ -1881,10 +1881,11 @@ claim set for AI content-refusal audit trails carried in SCITT Signed
 Statements; the same author's <xref target="I-D.kamimura-scitt-vcp"/> (VeritasChain
 Protocol) is a SCITT profile for verifiable audit trails in algorithmic
 trading — a vertical-specific application of the same transparency
-substrate. <xref target="I-D.kamimura-vap-framework"/>, by the same author, is a
-conformance-tiered Verifiable AI Provenance framework (hash-chaining,
-signatures, SCITT anchoring, and a completeness invariant) under which the
-trading profile sits; it shares this profile's SCITT-anchored,
+substrate. <xref target="I-D.kamimura-vap-framework"/>, by the same author, is an
+architectural framework for Verifiable AI Provenance (detectability of
+alteration and of omission after commitment, attribution, and external
+anchoring, built on SCITT and COSE) of which the trading profile is a
+domain profile; it shares this profile's SCITT-anchored,
 third-party-verifiable substrate, framed as a provenance architecture
 rather than a per-action verdict record. <xref target="I-D.dawkins-scitt-ai-article50"/>
 profiles SCITT receipts
@@ -1931,6 +1932,21 @@ untouched, recording that an action was taken under a stated authorization
 without asserting the authority. This specification is complementary; the
 profile is deliberately agnostic to the delegation mechanism, and such
 bindings compose by shared action digest.</t>
+      <t><strong>Logs and checkpoints.</strong> Several drafts commit their records to a log
+of their own. <xref target="I-D.malhotra-scitt-oar"/> maps its statements onto a
+record format in which a sealing service seals them and issues signed
+checkpoints; <xref target="I-D.noa-scitt-ai-agent-receipt"/> defines a separately
+signed checkpoint (<tt>noa.checkpoint/0.1</tt>) asserting a receipt chain's
+head; and <xref target="I-D.kamimura-scitt-vcp"/> binds each anchored batch's Merkle
+root in an AnchorRecord. The Checkpointed Local Log
+<xref target="I-D.mih-scitt-checkpointed-local-log"/> is a producer-operated log of the
+same kind that defines no payload semantics, so one log can carry
+Capsules and records of any other type side by side. Its signed
+checkpoints are SCITT Signed Statements that can be registered with one
+or more Transparency Services, and inclusion and consistency proofs
+against a registered checkpoint give a relying party order,
+contemporaneity and completeness for every record in the log, whatever
+its type. This profile does not require it.</t>
     </section>
     <section anchor="future">
       <name>Future Work</name>
@@ -2240,6 +2256,228 @@ publication.</t>
         </ul>
       </section>
     </section>
+    <section anchor="impl-status">
+      <name>Implementation Status</name>
+      <t>Note to RFC Editor: Please remove this section and the reference to
+<xref target="RFC7942"/> before publication.</t>
+      <t>This section records the status of known implementations of the protocol
+defined by this specification at the time of posting of this
+Internet-Draft, and is based on a proposal described in <xref target="RFC7942"/>. The
+description of implementations in this section is intended to assist the
+IETF in its decision processes in progressing drafts to RFCs. Please note
+that the listing of any individual implementation here does not imply
+endorsement by the IETF. Furthermore, no effort has been spent to verify the
+information presented here that was supplied by IETF contributors. This is
+not intended as, and must not be construed to be, a catalog of available
+implementations or their features. Readers are advised to note that other
+implementations may exist.</t>
+      <t>According to <xref target="RFC7942"/>, "this will allow reviewers and working groups to
+assign due consideration to documents that have the benefit of running
+code, which may serve as evidence of valuable experimentation and feedback
+that have made the implemented protocols more mature. It is up to the
+individual working groups to use this information as they see fit".</t>
+      <section anchor="agent-action-capsule-reference-implementations">
+        <name>Agent Action Capsule reference implementations</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementations:</dt>
+          <dd>
+            <t>Four implementations in the agent-action-capsule source repository,
+<eref target="https://github.com/action-state-group/agent-action-capsule"/>: Python, the reference
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/python"/>, release 0.19.0); and ports in Go
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/go"/>, release 0.24.0), TypeScript
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/ts"/>, release 0.16.0) and Rust
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/rust/agent-action-capsule"/>, release 0.14.0).</t>
+          </dd>
+          <dt>Description:</dt>
+          <dd>
+            <t>All four are Class 1 verifiers (<xref target="conformance"/>) and verify Producer
+Envelopes (<xref target="projection"/>). The Python implementation also records
+(seals) Capsules. None implements Class 2 verification.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Pre-1.0 releases. The test suite of each implementation runs the
+conformance vectors below, and a cross-language check runs the same
+inputs through every implementation.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>The Class 1 check set (<xref target="verification"/>) and the Producer Envelope wire
+profile. The store-level chain checks run only when a store is supplied.</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>BSD-3-Clause, except the paths that the repository's LICENSING.md lists
+under Apache-2.0.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/agent-action-capsule/issues"/></t>
+          </dd>
+          <dt>Conformance vectors:</dt>
+          <dd>
+            <t>Capsules (<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/capsule"/>), provenance mode
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/provenance-mode-vectors"/>), Producer Envelopes
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/producer-envelope"/>), JSON nesting
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/json-nesting"/>) and cross-language checks
+(<eref target="https://github.com/action-state-group/agent-action-capsule/tree/main/vectors/cross-language"/>).</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="scitt-cose">
+        <name>scitt-cose</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/scitt-cose"/>, a Python library (release 0.5.0) that verifies SCITT
+Signed Statements and COSE Receipts (<xref target="RFC9942"/>) under the
+<tt>RFC9162_SHA256</tt> and CCF tree algorithms, and verifies a Checkpointed
+Local Log's inclusion and consistency proofs against a checkpoint. It
+carries no application profile: a statement's payload is opaque to it.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Pre-1.0 releases.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>Verification of the Receipt over a registered Capsule ID
+(<xref target="projection"/>), which this profile leaves to the transparency
+substrate.</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>Apache-2.0.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/scitt-cose/issues"/></t>
+          </dd>
+          <dt>Test vectors:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/scitt-cose/tree/main/test-vectors"/></t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="capsule-anchor">
+        <name>capsule-anchor</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/capsule-anchor"/> (release 0.1.4), a SCITT Transparency Service
+(<xref target="RFC9943"/>) that registers a SHA-256 digest, a Signed Statement or a
+checkpoint and returns a COSE Receipt carrying an RFC 9162 inclusion
+proof. A public instance runs at <eref target="https://witness.agentactioncapsule.org"/>.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Pre-1.0 releases; the public instance is operated by the organization
+above.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>Registration of a Capsule ID (<xref target="projection"/>).</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>Apache-2.0.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/capsule-anchor/issues"/></t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="checkpointed-local-log">
+        <name>checkpointed-local-log</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/checkpointed-local-log"/>, implementations of
+<xref target="I-D.mih-scitt-checkpointed-local-log"/> in Python (release 0.9.0), Go
+(release 0.4.0), TypeScript (release 0.4.0) and Rust (release 0.6.0): an
+append-only local log, its Merkle Mountain Range, and signed checkpoints
+that can be registered with a Transparency Service.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Pre-1.0 releases.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>A log that can carry Capsules alongside records of other types
+under one checkpoint (<xref target="related"/>).</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>BSD-3-Clause.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/checkpointed-local-log/issues"/></t>
+          </dd>
+          <dt>Test vectors:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/checkpointed-local-log/tree/main/mmr-conformance-vectors"/>,
+<eref target="https://github.com/action-state-group/checkpointed-local-log/tree/main/checkpoint-conformance-vectors"/>
+and <eref target="https://github.com/action-state-group/checkpointed-local-log/tree/main/commitment-conformance-vectors"/>.</t>
+          </dd>
+        </dl>
+      </section>
+      <section anchor="cose-deterministic-encodings">
+        <name>cose-deterministic-encodings</name>
+        <dl>
+          <dt>Organization:</dt>
+          <dd>
+            <t>Action State Group, Inc.</t>
+          </dd>
+          <dt>Implementation:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/cose-deterministic-encodings"/>, the source of
+draft-mih-sokolov-cose-deterministic-encodings with a minimal emitter and
+verifier, in Python and in Go, for the COSE Hash Envelope parameter that
+names the deterministic encoding applied before hashing. This profile
+does not require it.</t>
+          </dd>
+          <dt>Level of maturity:</dt>
+          <dd>
+            <t>Reference code; no release.</t>
+          </dd>
+          <dt>Coverage:</dt>
+          <dd>
+            <t>That draft's <tt>deterministic-encodings</tt> header parameter.</t>
+          </dd>
+          <dt>Licensing:</dt>
+          <dd>
+            <t>BSD-3-Clause for the code; the draft text is under BCP 78.</t>
+          </dd>
+          <dt>Contact:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/cose-deterministic-encodings/issues"/></t>
+          </dd>
+          <dt>Test vectors:</dt>
+          <dd>
+            <t><eref target="https://github.com/action-state-group/cose-deterministic-encodings/blob/main/vectors/vectors.json"/></t>
+          </dd>
+        </dl>
+      </section>
+    </section>
     <section anchor="security">
       <name>Security Considerations</name>
       <t>The tamper-evidence-versus-runtime-honesty boundary — that the envelope
@@ -2538,20 +2776,35 @@ documentation so deployers can audit admission without reading implementation co
         </reference>
         <reference anchor="I-D.mih-sokolov-scitt-payload-binding">
           <front>
-            <title>Canonical Payload Binding: A Signed Statement Construction Profile</title>
+            <title>Canonicalization Declaration for SCITT Signed Statements</title>
             <author initials="S." surname="Mih" fullname="Steven Mih">
               <organization>Action State Group, Inc.</organization>
             </author>
             <author initials="A." surname="Sokolov" fullname="Anton Sokolov">
               <organization>Tyche Institute</organization>
             </author>
-            <date>n.d.</date>
+            <date year="2026" month="October" day="25"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-sokolov-scitt-payload-binding-05"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-sokolov-scitt-payload-binding-06"/>
         </reference>
       </references>
       <references anchor="sec-informative-references">
         <name>Informative References</name>
+        <reference anchor="RFC7942">
+          <front>
+            <title>Improving Awareness of Running Code: The Implementation Status Section</title>
+            <author fullname="Y. Sheffer" initials="Y." surname="Sheffer"/>
+            <author fullname="A. Farrel" initials="A." surname="Farrel"/>
+            <date month="July" year="2016"/>
+            <abstract>
+              <t>This document describes a simple process that allows authors of Internet-Drafts to record the status of known implementations by including an Implementation Status section. This will allow reviewers and working groups to assign due consideration to documents that have the benefit of running code, which may serve as evidence of valuable experimentation and feedback that have made the implemented protocols more mature.</t>
+              <t>This process is not mandatory. Authors of Internet-Drafts are encouraged to consider using the process for their documents, and working groups are invited to think about applying the process to all of their protocol specifications. This document obsoletes RFC 6982, advancing it to a Best Current Practice.</t>
+            </abstract>
+          </front>
+          <seriesInfo name="BCP" value="205"/>
+          <seriesInfo name="RFC" value="7942"/>
+          <seriesInfo name="DOI" value="10.17487/RFC7942"/>
+        </reference>
         <reference anchor="RFC9942">
           <front>
             <title>CBOR Object Signing and Encryption (COSE) Receipts</title>
@@ -2606,18 +2859,12 @@ documentation so deployers can audit admission without reading implementation co
             <author fullname="Amaury Chamayou" initials="A." surname="Chamayou">
               <organization>Microsoft Research</organization>
             </author>
-            <date day="23" month="September" year="2026"/>
+            <date day="22" month="October" year="2026"/>
             <abstract>
-              <t>   This document defines a new verifiable data structure (VDS) type for
-   COSE Receipts and the associated inclusion and consistency proofs,
-   specifically designed for append-only logs produced by the
-   Confidential Consortium Framework (CCF) to provide stronger tamper-
-   evidence guarantees.
-
-              </t>
+              <t>This document defines a new verifiable data structure (VDS) type for COSE Receipts and the associated inclusion and consistency proofs, specifically designed for append-only logs produced by the Confidential Consortium Framework (CCF) to provide stronger tamper- evidence guarantees.</t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-receipts-ccf-profile-05"/>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-receipts-ccf-profile-06"/>
         </reference>
         <reference anchor="I-D.ietf-spice-sd-cwt">
           <front>
@@ -2631,19 +2878,13 @@ documentation so deployers can audit admission without reading implementation co
             <author fullname="Henk Birkholz" initials="H." surname="Birkholz">
               <organization>Fraunhofer SIT</organization>
             </author>
-            <author fullname="Rohan Mahy" initials="R." surname="Mahy">
-         </author>
-            <date day="1" month="June" year="2026"/>
+            <author fullname="Rohan Mahy" initials="R." surname="Mahy"/>
+            <date day="30" month="October" year="2026"/>
             <abstract>
-              <t>   This specification describes a data minimization technique for use
-   with CBOR Web Tokens (CWTs).  The approach is inspired by the
-   Selective Disclosure JSON Web Token (SD-JWT), with changes to align
-   with CBOR Object Signing and Encryption (COSE) and CWTs.
-
-              </t>
+              <t>This specification describes a data minimization technique for use with CBOR Web Tokens (CWTs). The approach is inspired by the Selective Disclosure JSON Web Token (SD-JWT), with changes to align with CBOR Object Signing and Encryption (COSE) and CWTs.</t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-ietf-spice-sd-cwt-08"/>
+          <seriesInfo name="Internet-Draft" value="draft-ietf-spice-sd-cwt-09"/>
         </reference>
         <reference anchor="RFC8949">
           <front>
@@ -2696,66 +2937,28 @@ disclosure of JSON Web Token (JWT) claims.</t>
             <author fullname="Christian Munoz" initials="C." surname="Munoz">
               <organization>Keel API, Inc.</organization>
             </author>
-            <date day="19" month="July" year="2026"/>
+            <date day="20" month="November" year="2026"/>
             <abstract>
-              <t>   This document specifies a SCITT (Supply Chain Integrity,
-   Transparency, and Trust) profile for pre-execution authorization
-   records of AI agent actions.  The profile defines a Signed Statement
-   type, the "Pre-Execution Authorization Record" (also called a
-   Permit), that records a policy-evaluated decision to allow, deny, or
-   challenge an AI agent action before that action is dispatched to a
-   model provider, tool, or service.  The profile cryptographically
-   binds the authorization decision to the canonical bytes of the
-   request that is authorized.  When the paired Closure Record carries a
-   dispatch digest, a Verifier can compare the authorized-request digest
-   against the recorded dispatched-request digest; on the managed
-   dispatch path the reference implementation additionally enforces this
-   equality before the request is sent.
-
-   This revision also introduces authorization-lineage vocabulary.  It
-   defines how a Verifier can determine whether the authority conveyed
-   by a child Permit is equal to or narrower than the authority conveyed
-   by its parent (attenuation), given a signed or chain-committed
-   Authority Representation and a declared Comparator Profile.  The
-   Permit remains an evidence artifact; this profile specifies the
-   evidence a Verifier needs to make that determination, not a
-   delegation or policy protocol.
-
-   The profile composes with adjacent profiles for human-authority
-   binding, post-execution material-action evidence, and content-refusal
-   events, referenced rather than replicated.
-
-              </t>
+              <t>This document specifies a SCITT (Supply Chain Integrity, Transparency, and Trust) profile for pre-execution authorization records of AI agent actions. The profile defines a Signed Statement type, the "Pre-Execution Authorization Record" (also called a Permit), that records a policy-evaluated decision to allow, deny or challenge a proposed AI agent action. A Permit can commit to the canonical request body. For a dispatched allow with a body commitment, the profile pairs the Permit with a Closure Record. The Verifier compares the recorded digests. The reference Issuer checks the body binding before managed dispatch. This document distinguishes RFC 9942 COSE Receipts from the reference implementation's provisional linked-chain inclusion proof. This profile also defines authorization-lineage vocabulary. It defines how a Verifier can determine whether the authority conveyed by a child Permit is equal to or narrower than the authority conveyed by its parent (attenuation), given a signed or chain-committed Authority Representation and a declared Comparator Profile. The Permit remains an evidence artifact; this profile specifies the evidence a Verifier needs to make that determination, not a delegation or policy protocol. The profile composes with adjacent profiles for human-authority binding, post-execution material-action evidence, and content-refusal events, referenced rather than replicated.</t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-munoz-scitt-permit-profile-01"/>
+          <seriesInfo name="Internet-Draft" value="draft-munoz-scitt-permit-profile-02"/>
         </reference>
         <reference anchor="I-D.emirdag-scitt-ai-agent-execution">
           <front>
             <title>AI Agent Execution Profile of SCITT</title>
             <author fullname="Pinar Emirdag" initials="P." surname="Emirdag">
-              <organization>VERIDIC Inc.</organization>
+              <organization>Veridic Inc.</organization>
             </author>
-            <date day="11" month="April" year="2026"/>
+            <author fullname="Daniel Feichtinger" initials="D." surname="Feichtinger">
+              <organization>Veridic Inc.</organization>
+            </author>
+            <date day="12" month="October" year="2026"/>
             <abstract>
-              <t>   This document defines a SCITT (Supply Chain Integrity, Transparency,
-   and Trust) profile for creating independently verifiable, tamper-
-   evident records of autonomous AI agent actions.  The profile defines
-   the AgentInteractionRecord (AIR) as the COSE_Sign1 signed statement
-   payload for material agent actions; maps SCITT roles to the agent
-   execution context, with the Agent Operator as Issuer and an
-   independent Evidence Custodian as Transparency Service; specifies
-   Registration Policy requirements including hash chain integrity,
-   temporal ordering, and sequence completeness; defines a redaction
-   receipt mechanism for privacy-preserving evidence custody; and
-   provides compliance mappings to EU AI Act Articles 12 and 19, DORA,
-   NIST AI RMF, MAS AI Risk Management Guidelines, PCI DSS v4.0, and
-   MiFID II.
-
-              </t>
+              <t>This document defines a SCITT (Supply Chain Integrity, Transparency, and Trust) profile for creating independently verifiable, tamper- evident records of autonomous AI agent actions. The profile defines the AgentInteractionRecord (AIR) as the COSE_Sign1 signed statement payload for material agent actions; maps SCITT roles to the agent execution context, with the Agent Operator as Issuer and an independent Evidence Custodian as Transparency Service; specifies Registration Policy requirements including hash chain integrity, temporal ordering, and sequence completeness; defines a redaction receipt mechanism for privacy-preserving evidence custody; and provides compliance mappings to EU AI Act Articles 12 and 19, DORA, NIST AI RMF, MAS AI Risk Management Guidelines, PCI DSS, and MiFID II.</t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-emirdag-scitt-ai-agent-execution-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-emirdag-scitt-ai-agent-execution-01"/>
         </reference>
         <reference anchor="I-D.kamimura-scitt-refusal-events">
           <front>
@@ -2763,27 +2966,12 @@ disclosure of JSON Web Token (JWT) claims.</t>
             <author fullname="TOKACHI KAMIMURA" initials="K." surname="Tokachi">
               <organization>VeritasChain Standards Organization</organization>
             </author>
-            <date day="2" month="August" year="2026"/>
+            <date day="24" month="October" year="2026"/>
             <abstract>
-              <t>   This document defines a claim set for recording AI content refusal
-   events.  The claim set specifies the semantic content and correlation
-   rules for refusal audit trails, independent of any particular
-   serialization format.  The claims are designed to be carried within
-   SCITT Signed Statements and verified using SCITT Receipts.
-
-   This specification addresses claim semantics and verification
-   requirements; it does not mandate a specific encoding.  A CDDL
-   definition is provided for CBOR-based implementations, and equivalent
-   JSON representations are shown in an appendix for illustration.
-
-   This specification provides auditability of logged refusal decisions.
-   It does not define content moderation policies, classification
-   criteria, or what AI systems should refuse.
-
-              </t>
+              <t>This document defines a claim set for recording AI content refusal events. The claim set specifies the semantic content and correlation rules for refusal audit trails, independent of any particular serialization format. The claims are designed to be carried within SCITT Signed Statements and verified using SCITT Receipts. This specification addresses claim semantics and verification requirements; it does not mandate a specific encoding. A CDDL definition is provided for CBOR-based implementations, and equivalent JSON representations are shown in an appendix for illustration. This specification provides auditability of logged refusal decisions. It does not define content moderation policies, classification criteria, or what AI systems should refuse.</t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-kamimura-scitt-refusal-events-03"/>
+          <seriesInfo name="Internet-Draft" value="draft-kamimura-scitt-refusal-events-04"/>
         </reference>
         <reference anchor="I-D.kamimura-scitt-vcp">
           <front>
@@ -2791,88 +2979,25 @@ disclosure of JSON Web Token (JWT) claims.</t>
             <author fullname="TOKACHI KAMIMURA" initials="K." surname="Tokachi">
               <organization>VeritasChain Standards Organization</organization>
             </author>
-            <date day="21" month="July" year="2026"/>
+            <date day="23" month="November" year="2026"/>
             <abstract>
-              <t>   This document defines a profile of the SCITT (Supply Chain Integrity,
-   Transparency, and Trust) architecture for creating tamper-evident
-   audit trails of AI-driven algorithmic trading decisions and
-   executions.  The VeritasChain Protocol (VCP) applies the SCITT
-   framework to address the specific requirements of financial markets,
-   including high-precision timestamps, regulatory compliance
-   considerations (EU AI Act, MiFID II), and privacy-preserving
-   mechanisms (crypto-shredding) compatible with GDPR.  This profile
-   specifies how VCP events are encoded as SCITT Signed Statements,
-   registered with Transparency Services, and verified using COSE
-   Receipts.  It further defines SCITT conformance profiles for
-   interoperability and an ERASURE event type that records crypto-
-   shredding operations as immutable audit events.
-
-About This Document
-
-   This note is to be removed before publishing as an RFC.
-
-   The latest version of this document, along with implementation
-   resources and test vectors, can be found at
-   https://github.com/veritaschain/vcp-spec.
-
-   Discussion of this document takes place on the SCITT Working Group
-   mailing list (scitt@ietf.org).
-
-   Changes from -02:
-
-   *  Updated to align with VCP Specification v1.2
-
-   *  Added SCITT Alignment Object and conformance profiles
-      (Section 4.4)
-
-   *  Added ERASURE event type recording crypto-shredding operations
-      (Section 6.3)
-
-   *  Corrected the post-quantum SignAlgo registry value from DILITHIUM3
-      to DILITHIUM2 (ML-DSA, FIPS 204)
-
-   *  PolicyID examples migrated to the Issuer Domain + Local ID naming
-      convention defined in VCP v1.2
-
-              </t>
+              <t>This document defines a profile of the SCITT (Supply Chain Integrity, Transparency, and Trust) architecture for creating tamper-evident audit trails of AI-driven algorithmic trading decisions and executions. The VeritasChain Protocol (VCP) applies the SCITT framework to address the specific requirements of financial markets, including high-precision timestamps, considerations arising from recordkeeping regimes such as the EU AI Act and MiFID II, and a crypto-shredding mechanism intended to support erasure obligations such as those under the GDPR. This profile specifies how VCP events are encoded as SCITT Signed Statements, registered with Transparency Services, and verified using COSE Receipts. It further defines SCITT conformance profiles for interoperability and an ERASURE event type that records crypto-shredding operations as append-only audit events. The profile makes trading records auditable and attributable after the fact; it does not prevent or block any trading activity, and it does not warrant the correctness of any recorded decision.</t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-kamimura-scitt-vcp-03"/>
+          <seriesInfo name="Internet-Draft" value="draft-kamimura-scitt-vcp-07"/>
         </reference>
         <reference anchor="I-D.kamimura-vap-framework">
           <front>
-            <title>Verifiable AI Provenance Framework (VAP): An Architectural Framework for Evidentiary-Grade AI Decision Trails</title>
+            <title>Verifiable AI Provenance Framework (VAP): An Architectural Framework for Auditable AI Decision Trails</title>
             <author fullname="TOKACHI KAMIMURA" initials="K." surname="Tokachi">
               <organization>VeritasChain Standards Organization</organization>
             </author>
-            <date day="21" month="July" year="2026"/>
+            <date day="15" month="November" year="2026"/>
             <abstract>
-              <t>   Automated decision-making systems, including AI and algorithmic
-   systems in critical infrastructure, currently lack standardized
-   mechanisms for producing evidentiary-grade provenance records that
-   can withstand independent verification.  Traditional logging
-   approaches fail to provide the cryptographic guarantees required for
-   regulatory compliance, forensic investigation, and cross-
-   organizational accountability.
-
-   This document describes the Verifiable AI Provenance Framework (VAP),
-   an architectural framework that defines requirements for producing
-   verifiable decision trails using existing IETF security technologies.
-   VAP does not define new protocols or cryptographic primitives;
-   rather, it provides an architectural coordination layer that enables
-   domain-specific profiles to leverage Supply Chain Integrity,
-   Transparency and Trust (SCITT), Remote Attestation Procedures (RATS),
-   CBOR Object Signing and Encryption (COSE), and related IETF work in a
-   consistent manner.
-
-   This document is intended to frame the problem space and facilitate
-   discussion about whether architectural coordination work is needed in
-   this area.
-
-              </t>
+              <t>Automated decision-making systems, including AI and algorithmic systems in critical infrastructure, currently lack standardized mechanisms for producing provenance records that third parties can verify independently. Traditional logging approaches do not provide the cryptographic properties that regulatory examination, forensic investigation, and cross-organizational accountability depend on: detectability of alteration, detectability of omission after commitment, and attribution. This document describes the Verifiable AI Provenance Framework (VAP), an architectural framework that defines requirements for producing verifiable decision trails using existing IETF security technologies. VAP does not define new protocols or cryptographic primitives; rather, it provides an architectural coordination layer that enables domain-specific profiles to leverage Supply Chain Integrity, Transparency and Trust (SCITT), Remote Attestation Procedures (RATS), CBOR Object Signing and Encryption (COSE), and related IETF work in a consistent manner. VAP makes records auditable and attributable after the fact. It does not prevent, block, or intercept any system behaviour, and it does not warrant that any recorded decision was correct, fair, or safe. The detailed requirement set is maintained by the VeritasChain Standards Organization (VSO) as a separate specification; this document describes the architecture and its mapping to IETF work. This document is intended to frame the problem space and facilitate discussion about whether architectural coordination work is needed in this area.</t>
             </abstract>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-kamimura-vap-framework-01"/>
+          <seriesInfo name="Internet-Draft" value="draft-kamimura-vap-framework-03"/>
         </reference>
         <reference anchor="I-D.dawkins-scitt-ai-article50">
           <front>
@@ -3067,19 +3192,114 @@ About This Document
             <author initials="T." surname="Sato" fullname="Tom Sato">
               <organization/>
             </author>
-            <date>n.d.</date>
+            <author initials="I." surname="Schrock" fullname="Iman Schrock">
+              <organization/>
+            </author>
+            <author initials="S." surname="Bu" fullname="Songbo Bu">
+              <organization/>
+            </author>
+            <author initials="A." surname="Sokolov" fullname="Anton Sokolov">
+              <organization/>
+            </author>
+            <date year="2026" month="November" day="02"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-sato-agent-accountability-composition-01"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-sato-agent-accountability-composition-02"/>
         </reference>
-        <reference anchor="I-D.mih-agent-bilateral-attestation">
+        <reference anchor="I-D.mih-scitt-checkpointed-local-log">
           <front>
-            <title>Bilateral Agent Action Attestation</title>
+            <title>The Checkpointed Local Log (CLL)</title>
             <author initials="S." surname="Mih" fullname="Steven Mih">
               <organization>Action State Group, Inc.</organization>
             </author>
-            <date>n.d.</date>
+            <date year="2026" month="October" day="14"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-agent-bilateral-attestation-02"/>
+          <seriesInfo name="Internet-Draft" value="draft-mih-scitt-checkpointed-local-log-02"/>
+        </reference>
+        <reference anchor="I-D.malhotra-scitt-oar">
+          <front>
+            <title>Open Action Record (OAR): Authority, Approval and Outcome Evidence for AI Agent Actions</title>
+            <author fullname="Ravish Malhotra" initials="R." surname="Malhotra">
+         </author>
+            <date day="18" month="November" year="2026"/>
+            <abstract>
+              <t>   Several profiles record what an AI agent was asked to do, and the
+   decision taken, as signed statements registered with a transparency
+   service.  Protocols for agent identity and delegated authorization
+   say whether an agent may ask.  After an incident or in a dispute,
+   three further questions decide the case: were the authorizations the
+   action relied on still valid when it committed, did a named person
+   approve this exact action, and did the action change the system of
+   record as recorded?
+
+   This document defines evidence that any agent action profile can add
+   to answer them: an authority set that binds the digests of the
+   outside authorizations an action relied on to that one action, with a
+   re-check recorded at the moment it commits; an approval binding that
+   ties a person's confirmation, by a passkey or an outside approval
+   service, to the exact action and to what the person was shown; salted
+   commitments to the affected state before and after execution; an
+   outcome confirmation made by reading the system of record; and three
+   outcome classes a relying party can act on.  Values are hidden behind
+   salted commitments and can be disclosed field by field.  The
+   constructions are implemented in the Open Action Record (OAR) format,
+   with three verifiers that agree on published test vectors.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-malhotra-scitt-oar-00"/>
+        </reference>
+        <reference anchor="I-D.noa-scitt-ai-agent-receipt">
+          <front>
+            <title>A SCITT Profile for AI-Agent Action Receipts</title>
+            <author fullname="Tora Toraman" initials="T." surname="Toraman">
+              <organization>NordenSoft</organization>
+            </author>
+            <date day="14" month="August" year="2026"/>
+            <abstract>
+              <t>   This document profiles the IETF SCITT (Supply Chain Integrity,
+   Transparency, and Trust) architecture for AI-agent action receipts:
+   tamper-evident, signed, offline-verifiable records of what an
+   autonomous agent was recorded as doing at the governed boundary,
+   under which recorded principal class, with what recorded verdict, and
+   -- where the issuer records one -- under which policy identity.  Each
+   receipt is a signed record over a canonical JSON payload, hash-
+   chained so that each record commits to its predecessor, and presented
+   either bare -- the payload with its own native signature -- or
+   enveloped in a COSE_Sign1.  This revision specifies how such a
+   receipt is carried as a SCITT Signed Statement, with the protected
+   claims a Transparency Service requires, so that a receipt can be
+   registered.  Registration obtains a Transparency Service's signed
+   proof that the statement was registered in its log -- a property a
+   self-signed chain cannot provide alone.  It does not, by itself, give
+   an offline holder non-equivocation: that requires consistency proofs
+   and monitoring of the log, which this profile does not specify.  The
+   profile makes a deliberately narrow, checkable claim: this is an
+   issuer-authenticated, signature-verifiable, tamper-evident record of
+   the action, the recorded principal class, the recorded verdict, and
+   any policy identity the receipt carries.  It explicitly does not
+   claim that the agent was correct, safe, or wise, that the recorded
+   inputs were true or complete, that a named approver authorized this
+   exact action before it ran, that a downstream controller succeeded,
+   or that any physical effect occurred.  This revision separates those
+   last three as distinct claims with independent failure behaviour,
+   states the boundary of a shared action digest, and keeps a
+   deterministic offline policy-replay capability out of scope.
+
+              </t>
+            </abstract>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-noa-scitt-ai-agent-receipt-01"/>
+        </reference>
+        <reference anchor="I-D.mih-agent-bilateral-attestation">
+          <front>
+            <title>Bilateral Attestation of Cross-Organization Agent Actions</title>
+            <author initials="S." surname="Mih" fullname="Steven Mih">
+              <organization>Action State Group, Inc.</organization>
+            </author>
+            <date year="2026" month="October" day="28"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-mih-agent-bilateral-attestation-03"/>
         </reference>
         <reference anchor="NotarizedAgents" target="https://arxiv.org/abs/2606.04193">
           <front>
@@ -3120,13 +3340,28 @@ About This Document
         </reference>
       </references>
     </references>
-    <?line 2040?>
+    <?line 2253?>
 
 <section anchor="changes-from-05">
       <name>Changes from draft-mih-scitt-agent-action-capsule-05</name>
       <t>This appendix is non-normative. RFC Editor: please remove this appendix
 before publication.</t>
       <ul spacing="normal">
+        <li>
+          <t>Implementation Status: added (<xref target="impl-status"/>), following RFC 7942.</t>
+        </li>
+        <li>
+          <t>Related Work: a paragraph on logs and checkpoints, and what the
+Checkpointed Local Log adds for every record type (<xref target="related"/>).</t>
+        </li>
+        <li>
+          <t>References: draft-mih-sokolov-scitt-payload-binding-06,
+draft-mih-agent-bilateral-attestation-03 and
+draft-mih-sato-agent-accountability-composition-02; third-party drafts at
+their current revisions. The description of
+<xref target="I-D.kamimura-vap-framework"/> follows its current revision. The
+Abstract cites no other document.</t>
+        </li>
         <li>
           <t>JSON nesting: a JSON text or value under this profile nests at most 128
 levels; a producer emits or digests nothing deeper, and a verifier
