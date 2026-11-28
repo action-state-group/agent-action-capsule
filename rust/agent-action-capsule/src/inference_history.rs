@@ -44,6 +44,13 @@ use sha2::{Digest, Sha256};
 /// The token of the embedded card's derivation.
 const DERIVATION_HISTORY_CARD: &str = "history_card/1";
 
+/// The frozen profile revision (ISH §4.1): complementary suppression covers
+/// one withheld model beside a published total.
+pub const PROFILE_0: &str = "inference-service-history/0";
+/// The revision that also withholds a total that pins two or more models
+/// withheld under the floor (ISH §6.2 item 5, SH-8).
+pub const PROFILE_1: &str = "inference-service-history/1";
+
 /// Why a History cannot be derived at this anchor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Refusal {
@@ -204,6 +211,7 @@ const MAX_PERIODS: i64 = 10_000;
 #[derive(Debug)]
 pub struct Definition {
     verdicts: bool,
+    revision1: bool,
     policy: Policy,
     digest: String,
     policy_digest: String,
@@ -237,7 +245,8 @@ impl Definition {
         {
             return Err(bad("not exactly the members of a Standard definition"));
         }
-        if d["profile"] != json!("inference-service-history/0")
+        let revision1 = d["profile"] == json!(PROFILE_1);
+        if !(revision1 || d["profile"] == json!(PROFILE_0))
             || d["kind"] != json!("projection")
             || d["level"] != json!("standard")
             || d["embeds"] != json!(["history_card/1"])
@@ -323,6 +332,7 @@ impl Definition {
         };
         Ok(Definition {
             verdicts,
+            revision1,
             policy,
             digest: digest_of(document)?,
             policy_digest: digest_of(&document["period_policy"])?,
@@ -334,6 +344,26 @@ impl Definition {
     /// item 2).
     pub fn declines_anchor(&self, timestamp: &str) -> bool {
         !self.policy.is_boundary(timestamp)
+    }
+
+    /// The profile revision the definition names: [`PROFILE_0`] or
+    /// [`PROFILE_1`].
+    pub fn profile(&self) -> &'static str {
+        if self.revision1 {
+            PROFILE_1
+        } else {
+            PROFILE_0
+        }
+    }
+
+    /// The suppression rule of one of this definition's tables (ISH §6.2
+    /// items 3 and 5): `verdicts` for a verdict result's table.
+    fn rule(&self, verdicts: bool) -> Rule {
+        match (self.revision1, verdicts) {
+            (true, _) => Rule::Pinned,
+            (false, true) => Rule::Verdicts0,
+            (false, false) => Rule::Plain,
+        }
     }
 
     /// The digest that names the definition on the wire.
@@ -432,7 +462,7 @@ pub fn period_counts(
     let (first_period, counted) = count_periods(def, chain, model)?;
     let rows = counted
         .iter()
-        .map(|by_model| cells(by_model, def.policy.floor))
+        .map(|by_model| cells(by_model, def.policy.floor, def.rule(false)))
         .collect();
     period_list(def, first_period, rows)
 }
@@ -463,7 +493,7 @@ pub fn verdict_counts(
                         .filter(|((_, r), _)| r == result)
                         .map(|((m, _), &n)| (m.clone(), n))
                         .collect();
-                    verdict_cells(&models, def.policy.floor, result)
+                    verdict_cells(&models, def.policy.floor, result, def.rule(true))
                 })
                 .collect()
         })
@@ -569,13 +599,31 @@ fn first_record_period(chain: &[Cut<'_>], commits: &[i64]) -> Option<i64> {
         .map(|(_, &k)| k)
 }
 
+/// Which complementary rule of ISH §6.2 items 3 and 5 a table is suppressed and
+/// checked under.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Rule {
+    /// `inference-service-history/0`'s period counts: a published total
+    /// beside exactly one withheld model takes the smallest other model too.
+    Plain,
+    /// `/0`'s verdict tables, as first built: also a published total whose
+    /// rest pins two or more models withheld under the floor goes, unless it
+    /// is under the floor itself.
+    Verdicts0,
+    /// `inference-service-history/1`, every table: [`Rule::Plain`], and a
+    /// total whose rest pins two or more models withheld under the floor is
+    /// withheld `complementary`, even when it is under the floor too, so
+    /// that the reason does not tell which pinning sum it holds (SH-8).
+    Pinned,
+}
+
 /// Each model's count, then the total, with what is withheld and why
 /// (ISH §6.2): below the floor, and complementary where a published total
-/// beside exactly one suppressed model would give that model away.
+/// would give a withheld model away, as `rule` says.
 fn suppress(
     by_model: &std::collections::BTreeMap<String, u64>,
     floor: u64,
-    strict: bool,
+    rule: Rule,
 ) -> Vec<(Option<&str>, u64, Option<&'static str>)> {
     let total: u64 = by_model.values().sum();
     let mut values: Vec<(Option<&str>, u64, Option<&'static str>)> = by_model
@@ -596,16 +644,14 @@ fn suppress(
             smallest.2 = Some("complementary");
         }
     }
-    // Strict (the verdict tables): two or more models withheld under the
-    // floor beside a published total, whose rest is nothing or every one at
-    // the largest count a withheld cell can hold, are each given away by the
-    // total, so the total goes too.
-    if strict && values[models].2.is_none() {
-        let hidden: Vec<u64> = values[..models]
-            .iter()
-            .filter(|c| c.2.is_some())
-            .map(|c| c.1)
-            .collect();
+    // Two or more models withheld under the floor, every withheld one
+    // `below_floor`, whose rest of the total is a sum that fixes each of
+    // them: the total goes too. `/0`'s verdict tables test only a published
+    // total; `/1` tests a total under the floor as well and withholds it
+    // `complementary`.
+    let total_open = values[models].2.is_none();
+    if rule != Rule::Plain && (total_open || rule == Rule::Pinned) {
+        let hidden = values[..models].iter().filter(|c| c.2.is_some()).count();
         let all_below = values[..models]
             .iter()
             .all(|c| c.2.is_none() || c.2 == Some("below_floor"));
@@ -615,7 +661,11 @@ fn suppress(
                 .filter(|c| c.2.is_none())
                 .map(|c| c.1)
                 .sum::<u64>();
-        if all_below && derivable(hidden.len(), rest, floor) {
+        let pinned = match rule {
+            Rule::Pinned => pins(hidden, rest, floor),
+            _ => derivable(hidden, rest, floor),
+        };
+        if all_below && pinned {
             values[models].2 = Some("complementary");
         }
     }
@@ -625,7 +675,7 @@ fn suppress(
 /// Whether `n` models withheld under `floor`, together holding `rest`, are
 /// each given away by it: every one holds at least 1 (a model is listed only
 /// when it has a verdict) and under `floor`, so `rest` of nothing, of 1 each
-/// or of the most each can hold fixes them all.
+/// or of the most each can hold fixes them all. `/0`'s verdict tables.
 fn derivable(n: usize, rest: u64, floor: u64) -> bool {
     let (n, rest, most) = (
         n as u128,
@@ -633,6 +683,18 @@ fn derivable(n: usize, rest: u64, floor: u64) -> bool {
         u128::from(floor.saturating_sub(1)),
     );
     n >= 2 && (rest == 0 || rest == n || rest == n * most)
+}
+
+/// `/1`'s test (ISH §6.2 item 5): `n` cells each from 1 to `floor` - 1 (a
+/// value is listed only when counted, so none holds 0) are each fixed by
+/// their sum exactly when it is `n` (all 1) or `n` times `floor` - 1.
+fn pins(n: usize, rest: u64, floor: u64) -> bool {
+    let (n, rest, most) = (
+        n as u128,
+        u128::from(rest),
+        u128::from(floor.saturating_sub(1)),
+    );
+    n >= 2 && (rest == n || rest == n * most)
 }
 
 fn cell_json(dimension: Value, unit: &str, n: u64, why: Option<&str>) -> Value {
@@ -650,8 +712,8 @@ fn cell_json(dimension: Value, unit: &str, n: u64, why: Option<&str>) -> Value {
 
 /// One period's cells: one per model, by name, then the total, each
 /// suppressed under ISH §6.2.
-fn cells(by_model: &std::collections::BTreeMap<String, u64>, floor: u64) -> Vec<Value> {
-    suppress(by_model, floor, false)
+fn cells(by_model: &std::collections::BTreeMap<String, u64>, floor: u64, rule: Rule) -> Vec<Value> {
+    suppress(by_model, floor, rule)
         .into_iter()
         .map(|(model, n, why)| {
             cell_json(
@@ -670,8 +732,9 @@ fn verdict_cells(
     by_model: &std::collections::BTreeMap<String, u64>,
     floor: u64,
     result: &str,
+    rule: Rule,
 ) -> Vec<Value> {
-    suppress(by_model, floor, true)
+    suppress(by_model, floor, rule)
         .into_iter()
         .map(|(model, n, why)| {
             let dimension = match model {
@@ -955,7 +1018,7 @@ fn check_counts(def: &Definition, counts: &Value, chain: &[Cut<'_>]) -> Result<C
         out.push(Period {
             from,
             to,
-            cells: check_cells(cells, def.policy.floor, UNIT, false)?,
+            cells: check_cells(cells, def.policy.floor, UNIT, def.rule(false))?,
         });
     }
     Ok(Counts {
@@ -1032,8 +1095,13 @@ fn check_verdicts(
             if hashes.iter().filter(|h| h.is_none()).count() != 1 {
                 return Err(bad(&format!("the {result} table has no single total")));
             }
-            let cells = check_cells(&Value::Array(plain), def.policy.floor, VERDICT_UNIT, true)
-                .map_err(|e| format!("{e} (in the {result} verdicts)"))?;
+            let cells = check_cells(
+                &Value::Array(plain),
+                def.policy.floor,
+                VERDICT_UNIT,
+                def.rule(true),
+            )
+            .map_err(|e| format!("{e} (in the {result} verdicts)"))?;
             for (cell, hash) in cells.into_iter().zip(hashes) {
                 checked.push(VerdictCell {
                     result: result.to_string(),
@@ -1065,8 +1133,8 @@ fn check_verdicts(
 /// `period_floor` over one period's cells: each in the counts unit and
 /// label, a model at most once and exactly one total, every value at least
 /// the floor, every suppressed cell without a value and with a reason, and
-/// complementary suppression where it is due.
-fn check_cells(cells: &Value, floor: u64, unit: &str, strict: bool) -> Result<Vec<Cell>, String> {
+/// complementary suppression where it is due under `rule`.
+fn check_cells(cells: &Value, floor: u64, unit: &str, rule: Rule) -> Result<Vec<Cell>, String> {
     let bad = |why: &str| format!("period_floor: {why}");
     let cells = cells.as_array().ok_or_else(|| bad("cells is not a list"))?;
     let mut out: Vec<Cell> = Vec::with_capacity(cells.len());
@@ -1108,6 +1176,16 @@ fn check_cells(cells: &Value, floor: u64, unit: &str, strict: bool) -> Result<Ve
         return Err(bad("a period has no single total"));
     };
     let models: Vec<&Cell> = out.iter().filter(|c| c.model.is_some()).collect();
+    // Under `/1` a listed cell holds at least 1, which a floor of 1 never
+    // withholds.
+    if rule == Rule::Pinned
+        && floor <= 1
+        && models
+            .iter()
+            .any(|c| matches!(&c.value, Err(why) if why == "below_floor"))
+    {
+        return Err(bad("a model is withheld under a floor of 1"));
+    }
     if let Ok(total) = total.value {
         if models.iter().filter(|c| c.value.is_err()).count() == 1 {
             return Err(bad("a suppressed cell can be derived from the total"));
@@ -1124,12 +1202,44 @@ fn check_cells(cells: &Value, floor: u64, unit: &str, strict: bool) -> Result<Ve
             return Err(bad("the models do not add up to the total"));
         }
         let hidden = models.iter().filter(|c| c.value.is_err()).count();
-        let all_below = models
-            .iter()
-            .all(|c| !matches!(&c.value, Err(why) if why != "below_floor"));
-        if strict && all_below && derivable(hidden, total - published, floor) {
+        let rest = total - published;
+        // Under `/1` every listed cell holds at least 1, so the withheld
+        // ones hold at least one each, and those withheld below the floor
+        // at most `floor` - 1 each.
+        let most = (hidden as u128) * u128::from(floor.saturating_sub(1));
+        if rule == Rule::Pinned
+            && ((hidden as u128) > u128::from(rest)
+                || (hidden > 0 && all_below(&models) && u128::from(rest) > most))
+        {
+            return Err(bad("the models do not add up to the total"));
+        }
+        let pinned = match rule {
+            Rule::Plain => false,
+            Rule::Verdicts0 => derivable(hidden, rest, floor),
+            Rule::Pinned => pins(hidden, rest, floor),
+        };
+        if all_below(&models) && pinned {
             return Err(bad("a suppressed cell can be derived from the total"));
+        }
+    } else if rule == Rule::Pinned
+        && total.value.as_ref().err().map(String::as_str) == Some("complementary")
+    {
+        // `/1` withholds a total as `complementary` only for two or more
+        // models withheld under the floor; any other is a total withheld
+        // that no rule withholds.
+        let hidden = models.iter().filter(|c| c.value.is_err()).count();
+        if hidden < 2 || !all_below(&models) {
+            return Err(bad(
+                "a total is withheld as complementary beside fewer than two models withheld under the floor",
+            ));
         }
     }
     Ok(out)
+}
+
+/// Whether every withheld model of a table is withheld `below_floor`.
+fn all_below(models: &[&Cell]) -> bool {
+    models
+        .iter()
+        .all(|c| !matches!(&c.value, Err(why) if why != "below_floor"))
 }

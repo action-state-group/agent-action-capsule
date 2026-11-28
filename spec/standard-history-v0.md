@@ -556,7 +556,7 @@ its correlation identifier is the deal reference. Its payload has exactly these 
   a recipient that holds both learns about the deals that entered or left the window between
   them, even though each card alone shows deals only in aggregate. This document sets no floor
   and no period rule (HF-1). A holder key that also serves Standard Histories under
-  `inference-service-history/0` serves no `standard_history/1` or `/2` card: a holder that serves both
+  `inference-service-history/0` or `/1` serves no `standard_history/1` or `/2` card: a holder that serves both
   under the same key is out of conformance by ISH's text already
   (`spec/inference-service-history-profile-v0.md` §6.1 item 8; HF §4.8).
 - **Same bytes for every requester.** A card is recipient-free (§3): two requesters who compare
@@ -879,7 +879,7 @@ For a standard `/3` card, §6 "What a verifier shows" holds, with these addition
   about by naming only a witness that never registers its checkpoints (SH-12). Never stating on a row
   leaves it `no_statement` after its due date, so `undecided`, never `held`.
 - **Differencing.** As §9. A holder key that serves Standard Histories under
-  `inference-service-history/0` MUST NOT serve a `standard_history/3` card. This is this document's
+  `inference-service-history/0` or `/1` MUST NOT serve a `standard_history/3` card. This is this document's
   own rule, since ISH §6.1 item 8 names only `/1` and `/2`; its reason is ISH's: two cards at
   consecutive anchors could be subtracted to isolate one exchange the periods protect (HF §4.8).
 - **No grading.** As §9: the outcomes are counts, never a rate, and a verifier ranks no holder by them.
@@ -950,7 +950,7 @@ wherever they name a token, except:
   never registers its checkpoints, or names none, takes no deal out of the counts: the deal is
   counted, and shown in `local_times`.
 - **Differencing** (§11.9): a holder key that serves Standard Histories under
-  `inference-service-history/0` MUST NOT serve a `standard_history/4` card either, for §11.9's
+  `inference-service-history/0` or `/1` MUST NOT serve a `standard_history/4` card either, for §11.9's
   reason.
 - **Documents.** The counting table `spec/history-frame/standard-history-4-table.json`, digest
   `38406ce224eaff3088759f07c0ec06fe63577bad742a60fdc86f6b5b7dec6bea`, and the wording pack
