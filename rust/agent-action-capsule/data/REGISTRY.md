@@ -588,7 +588,9 @@ names one, except for a use the row says still asks for the deprecated derivatio
 | Token | Deprecated | Ask instead | What still holds |
 |---|---|---|---|
 | `history_card/1` | 2026-11, as an asked form | `history_card/2` [ER "The History Card"] | A responder may still answer it. It stays the history card an Inference-Service History answer embeds (`spec/inference-service-history-profile-v0.md` §5.2, `embeds` `history_card/1`), byte-identical to the `history_card/1` artifact, and a requester comparing that embedded card with the standalone artifact still asks for `history_card/1` at the same anchor (§5.2). |
-| `standard_history/2` | 2026-11 | None registered yet; this row will name the replacement revision once it is registered. | A responder may still answer it, and a `/2` card still verifies under `spec/standard-history-v0.md` §4. ISH §6.1 item 8 still forbids a `/2` card beside an ISH Standard History. |
+| `standard_history/2` | 2026-11 | `standard_history/5` | A responder may still answer it, and a `/2` card still verifies under `spec/standard-history-v0.md` §4. ISH §6.1 item 8 still forbids a `/2` card beside an ISH Standard History. |
+| `standard_history/3` | 2026-11 | `standard_history/5` | A responder may still answer it, and a `/3` card still verifies under `spec/standard-history-v0.md` §11. |
+| `standard_history/4` | 2026-11 | `standard_history/5` | A `/4` card still verifies under `spec/standard-history-v0.md` §12. |
 
 ### Provisional: minimum-necessary report
 
