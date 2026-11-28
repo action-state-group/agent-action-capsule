@@ -1169,8 +1169,8 @@ of `/4` holds of `/5`, `/4`'s rules wherever they name a token, except:
   "Agreed no later than witnessed", a shop purchase's included, with §11.7's `counts_recompute`
   `FAIL` for an entry that breaks it. Its row results and its `disputes` are read as of `T` by
   §11.1 "One card, one time", a shop purchase's included: a dispute, withdrawal or resolution
-  whose record has a time after `T` does not yet exist, and `counts_recompute` forms the disputes
-  the same way.
+  whose record has a time after `T` does not yet exist, a record with no time exists (§11.1), and
+  `counts_recompute` forms the disputes the same way.
 - **The outcome** of a counted deal, a shop purchase included, is §11.3's, from its rows, by the
   same rules as any other deal; the rules are unchanged (SH-20).
 - **The card** has the members of a `/4` card and one more, all REQUIRED:
