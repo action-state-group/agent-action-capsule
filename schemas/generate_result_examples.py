@@ -80,6 +80,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "python"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from agent_action_capsule.bundle import bundle_digest  # noqa: E402
 from agent_action_capsule.canonical import json_digest  # noqa: E402
 from generate_dataset_examples import DATASET, PLAN  # noqa: E402
 from _result_types import (  # noqa: E402
@@ -1522,6 +1523,135 @@ REASON_FIXTURES = {
 }
 
 
+# --- spec section 4.5: subject_bundle ----------------------------------------
+#     One optional digest-ref per claim naming the Evidence Bundle that shows
+#     the claim's subject, by its bundle digest (the Evidence Bundle draft). Display-only.
+#     The Bundles are two cases of vectors/bundle/report-single-record.json,
+#     so their digests are computed here by Python's bundle module and checked
+#     by Go and TypeScript against the same vectors.
+BUNDLE_SOURCE = REPO_ROOT / "vectors" / "bundle" / "report-single-record.json"
+
+
+def _source_bundle(name: str) -> dict:
+    cases = json.loads(BUNDLE_SOURCE.read_text(encoding="utf-8"))["cases"]
+    return json.loads(json.dumps(next(c["bundle"] for c in cases if c["name"] == name)))
+
+
+SUBJECT_BUNDLE = _source_bundle("pos-single-record-report")
+FAILING_BUNDLE = _source_bundle("neg-checkpoint-root-mismatch")
+
+
+def subject_ref(bundle: dict) -> DigestRefDoc:
+    return {"digest_alg": "SHA-256", "digest": bundle_digest(bundle)}
+
+
+#     pos-example-org-subject-bundle-result: claim-1 and claim-2 share one
+#     subject, so they name the same Bundle; claim-3 carries none.
+pos_example_org_subject_bundle_result = _untyped(pos_example_org_claims_result)
+pos_example_org_subject_bundle_result["claims"][0]["subject_bundle"] = subject_ref(SUBJECT_BUNDLE)
+pos_example_org_subject_bundle_result["claims"][1]["subject_bundle"] = subject_ref(SUBJECT_BUNDLE)
+
+#     Schema negatives, each a copy of the positive failing one rule of the
+#     digest-ref shape on claim-1.
+#     neg-subject-bundle-string: the bare digest, not a digest-ref.
+neg_subject_bundle_string = _untyped(pos_example_org_subject_bundle_result)
+neg_subject_bundle_string["claims"][0]["subject_bundle"] = bundle_digest(SUBJECT_BUNDLE)
+
+#     neg-subject-bundle-uppercase: the digest in uppercase hex.
+neg_subject_bundle_uppercase = _untyped(pos_example_org_subject_bundle_result)
+neg_subject_bundle_uppercase["claims"][0]["subject_bundle"]["digest"] = bundle_digest(SUBJECT_BUNDLE).upper()
+
+#     neg-subject-bundle-other-alg: a digest_alg other than SHA-256.
+neg_subject_bundle_other_alg = _untyped(pos_example_org_subject_bundle_result)
+neg_subject_bundle_other_alg["claims"][0]["subject_bundle"]["digest_alg"] = "SHA-512"
+
+#     neg-subject-bundle-extra-member: a member the digest-ref does not define.
+neg_subject_bundle_extra_member = _untyped(pos_example_org_subject_bundle_result)
+neg_subject_bundle_extra_member["claims"][0]["subject_bundle"]["bundle_kind"] = "evidence-bundle/v2"
+
+#     neg-subject-bundle-list: two Bundles; a claim names at most one.
+neg_subject_bundle_list = _untyped(pos_example_org_subject_bundle_result)
+neg_subject_bundle_list["claims"][0]["subject_bundle"] = [subject_ref(SUBJECT_BUNDLE), subject_ref(FAILING_BUNDLE)]
+
+SUBJECT_BUNDLE_FIXTURES = {
+    "pos-example-org-subject-bundle-result": pos_example_org_subject_bundle_result,
+    "neg-subject-bundle-string": neg_subject_bundle_string,
+    "neg-subject-bundle-uppercase": neg_subject_bundle_uppercase,
+    "neg-subject-bundle-other-alg": neg_subject_bundle_other_alg,
+    "neg-subject-bundle-extra-member": neg_subject_bundle_extra_member,
+    "neg-subject-bundle-list": neg_subject_bundle_list,
+}
+
+
+def _reversed_keys(value: object) -> object:
+    if isinstance(value, dict):
+        return {k: _reversed_keys(value[k]) for k in reversed(list(value))}
+    if isinstance(value, list):
+        return [_reversed_keys(v) for v in value]
+    return value
+
+
+def _binding_case(name: str, description: str, ref: object, bundle_text: str | None, expect: str) -> dict:
+    case: dict = {"name": name, "description": description, "expect": expect}
+    if ref is not None:
+        case["subject_bundle"] = ref
+    case["bundle_text"] = bundle_text
+    if bundle_text is not None:
+        case["bundle_digest"] = bundle_digest(json.loads(bundle_text))
+    return case
+
+
+_countersigned = _untyped(SUBJECT_BUNDLE)
+_countersigned["countersignatures"] = [{"type": "cose-sign1", "signature": "AA"}]
+_disclosure_changed = _untyped(SUBJECT_BUNDLE)
+next(iter(_disclosure_changed["disclosures"].values()))["agent_input"]["rows"][1]["result"] = "pass"
+_extension_added = _untyped(SUBJECT_BUNDLE)
+_extension_added["extensions"] = {"x-example-org-note": {"note": "added after the digest was taken"}}
+
+SUBJECT_BUNDLE_BINDING = {
+    "format_version": 1,
+    "spec": "spec/evidence-result-v0.md section 4.5",
+    "description": (
+        "How a reader compares a claim's subject_bundle with a Bundle carried beside the Result. "
+        "`bundle_text` is the Bundle exactly as carried (null: none is carried); `bundle_digest` is its "
+        "bundle digest (draft-mih-zhang-agent-disclosure-bundle, Bundle Digest), computed by Python's "
+        "agent_action_capsule.bundle. `expect` is the binding outcome only: matched, different, "
+        "not_carried or unbound. A matched Bundle is still verified on its own; a match is not a pass. "
+        "Whether a view held a Bundle back by disclosure policy is the view's statement, not the Result's, "
+        "so it is not a case here."
+    ),
+    "bundle_source": "vectors/bundle/report-single-record.json",
+    "cases": [
+        _binding_case("matched", "the carried Bundle is the one named",
+                      subject_ref(SUBJECT_BUNDLE), json.dumps(SUBJECT_BUNDLE, sort_keys=True), "matched"),
+        _binding_case("matched-reserialized",
+                      "the same Bundle with other whitespace and member order: the bundle digest is over JCS",
+                      subject_ref(SUBJECT_BUNDLE), json.dumps(_reversed_keys(SUBJECT_BUNDLE), indent=4), "matched"),
+        _binding_case("matched-countersignature-added",
+                      "a countersignature added after the digest was taken: countersignatures are outside it",
+                      subject_ref(SUBJECT_BUNDLE), json.dumps(_countersigned, sort_keys=True), "matched"),
+        _binding_case("matched-bundle-fails-checks",
+                      "the named Bundle is carried, and it fails its own checks (report-single-record.json "
+                      "neg-checkpoint-root-mismatch): the binding matches, and the reader shows the failure",
+                      subject_ref(FAILING_BUNDLE), json.dumps(FAILING_BUNDLE, sort_keys=True), "matched"),
+        _binding_case("different-disclosure-changed", "one disclosed value changed after the digest was taken",
+                      subject_ref(SUBJECT_BUNDLE), json.dumps(_disclosure_changed, sort_keys=True), "different"),
+        _binding_case("different-extension-added", "an extension added after the digest was taken",
+                      subject_ref(SUBJECT_BUNDLE), json.dumps(_extension_added, sort_keys=True), "different"),
+        _binding_case("different-bundle",
+                      "another Bundle (a different case of report-single-record.json): not the one named",
+                      subject_ref(SUBJECT_BUNDLE), json.dumps(FAILING_BUNDLE, sort_keys=True), "different"),
+        _binding_case("not-carried", "the claim names a Bundle and none is carried with this view",
+                      subject_ref(SUBJECT_BUNDLE), None, "not_carried"),
+        _binding_case("unbound", "the claim names no Bundle: the member binds nothing, whatever is carried",
+                      None, json.dumps(SUBJECT_BUNDLE, sort_keys=True), "unbound"),
+        _binding_case("unbound-nothing-carried", "the claim names no Bundle and none is carried",
+                      None, None, "unbound"),
+    ],
+}
+SUBJECT_BUNDLE_BINDING["count"] = len(SUBJECT_BUNDLE_BINDING["cases"])
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     write("pos-example-org-claims-result", pos_example_org_claims_result)
@@ -1610,6 +1740,10 @@ def main() -> int:
     write("neg-out-of-scope-on-calibration-claim", neg_out_of_scope_on_calibration_claim)
     for name, doc in REASON_FIXTURES.items():
         write(name, doc)
+    for name, doc in SUBJECT_BUNDLE_FIXTURES.items():
+        write(name, doc)
+    (OUT_DIR / "binding").mkdir(exist_ok=True)
+    write("binding/subject-bundle", SUBJECT_BUNDLE_BINDING)
     for name, records in {**CLOSE_RECORDS, **CALIBRATION_RECORDS}.items():
         write(f"{name}.records", records)
     return 0

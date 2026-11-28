@@ -1,3 +1,4 @@
+import { bundleDigest } from "./bundle.js";
 import { isHex64, jsonDigest, probeEd25519, sha256Hex } from "./json.js";
 import {
   AGENT_INPUT_ORIGINALS_EXTENSION,
@@ -378,6 +379,38 @@ export const REASON_KINDS: Readonly<Record<string, "finding" | "setting">> =
  */
 export type ReasonKind = "finding" | "setting" | "unregistered";
 
+/**
+ * How a Bundle carried beside a Result stands to a claim's `subject_bundle`
+ * (spec section 4.5): `matched` (its bundle digest is the one named),
+ * `different` (another Bundle: never show it as this claim's),
+ * `not_carried` (the claim names a Bundle and none is carried) or
+ * `unbound` (the claim names none: the member binds nothing). A `matched`
+ * Bundle is still verified on its own; a match is not a pass. That a view
+ * held a Bundle back by disclosure policy is the view's statement, which the
+ * caller words; the Result does not carry it.
+ */
+export type SubjectBundleBinding =
+  | "matched"
+  | "different"
+  | "not_carried"
+  | "unbound";
+
+/**
+ * Compare a carried Bundle (or none) with a claim's `subject_bundle` digest
+ * (`ResultClaim.subjectBundle`), by the Bundle's bundle digest
+ * (`bundleDigest`: SHA-256 of its JCS form without `countersignatures`).
+ */
+export async function subjectBundleBinding(
+  subjectBundle: string | undefined,
+  carried: Record<string, unknown> | undefined,
+): Promise<SubjectBundleBinding> {
+  if (subjectBundle === undefined) return "unbound";
+  if (carried === undefined) return "not_carried";
+  return (await bundleDigest(carried)) === subjectBundle
+    ? "matched"
+    : "different";
+}
+
 export interface ResultClaim {
   readonly id: string;
   /**
@@ -413,6 +446,13 @@ export interface ResultClaim {
    */
   readonly reason?: string;
   readonly reasonKind?: ReasonKind;
+  /**
+   * `subject_bundle.digest` (spec section 4.5): the bundle digest of the
+   * Evidence Bundle the producer names as showing this claim's subject.
+   * Display-only: nothing in this module reads it. Compare a carried Bundle
+   * with `subjectBundleBinding`.
+   */
+  readonly subjectBundle?: string;
   readonly support: ClaimSupport;
   readonly evidence: readonly ClaimEvidenceRef[];
   /** The cited digests no supplied record carries, in citation order. */
@@ -835,6 +875,11 @@ function claimFindings(path: string, value: unknown): string[] {
     value.evidence.forEach((item, index) =>
       findings.push(...digestRefFindings(`${path}.evidence[${index}]`, item)),
     );
+  // Spec section 4.5: at most one digest-ref.
+  if (Object.hasOwn(value, "subject_bundle"))
+    findings.push(
+      ...digestRefFindings(`${path}.subject_bundle`, value.subject_bundle),
+    );
   if (!Array.isArray(value.proofs)) findings.push(`${path}.proofs`);
   else
     value.proofs.forEach((item, index) => {
@@ -864,7 +909,8 @@ function claimFindings(path: string, value: unknown): string[] {
  * no claim cites at most `excluded_not_applicable`; and section 7.3's
  * `plan_ref` and `dataset_ref`, digest refs present together. Below the
  * top level it is open-world on additional keys. `view` and the PROPOSED
- * `coverage_report` (spec section 7.1) are not checked, and
+ * `coverage_report` (spec section 7.1) are not checked, and a claim's
+ * `subject_bundle` (section 4.5), when present, is checked as one digest ref;
  * `generated_at` is checked as a string, not as a date-time. Empty findings
  * mean the document passed this mirror -- nothing more.
  */
@@ -2052,6 +2098,10 @@ export async function buildResultRoot(input: unknown): Promise<ResultRoot> {
               ? REASON_KINDS[raw.reason]
               : ("unregistered" as const),
           }
+        : {}),
+      ...(isObject(raw.subject_bundle) &&
+      typeof raw.subject_bundle.digest === "string"
+        ? { subjectBundle: raw.subject_bundle.digest }
         : {}),
       support:
         evidence.length > 0 && missing.length === 0

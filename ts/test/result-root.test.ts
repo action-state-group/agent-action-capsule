@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { verifyBundle } from "../src/bundle.js";
+import { bundleDigest, verifyBundle } from "../src/bundle.js";
 import { EvidenceGraphError } from "../src/evidence-graph.js";
 import {
   buildResultRoot,
   REASON_KINDS,
+  subjectBundleBinding,
+  type SubjectBundleBinding,
   carriedCapsuleCommitment,
   type CitedRecord,
   CLAIM_REQUIRED,
@@ -601,6 +603,97 @@ describe("buildResultRoot", () => {
       "finding",
     );
     expect(Object.hasOwn(REASON_KINDS, "toString")).toBe(false);
+  });
+
+  it("carries subject_bundle and reads it for nothing else (spec section 4.5)", async () => {
+    const plainSource = fixture("result-root-bundle.json");
+    const namedSource = fixture("result-root-bundle.json");
+    const digest = "0".repeat(63) + "1";
+    for (const claim of resultOf(namedSource).claims as Obj[])
+      claim.subject_bundle = { digest_alg: "SHA-256", digest };
+    const plain = await buildResultRoot(
+      (await sealEvidenceBundle(plainSource)).bundle,
+    );
+    const named = await buildResultRoot(
+      (await sealEvidenceBundle(namedSource)).bundle,
+    );
+    expect(named.claims.map((claim) => claim.subjectBundle)).toEqual(
+      named.claims.map(() => digest),
+    );
+    expect(
+      plain.claims.every((claim) => claim.subjectBundle === undefined),
+    ).toBe(true);
+    expect(named.claims.map(({ subjectBundle, ...rest }) => rest)).toEqual(
+      plain.claims,
+    );
+    expect(named.coverage).toEqual(plain.coverage);
+    expect(named.buckets).toEqual(plain.buckets);
+    expect(named.bucketCounts).toEqual(plain.bucketCounts);
+    expect(named.countMismatches).toEqual(plain.countMismatches);
+    expect(named.statedCoverage).toEqual(plain.statedCoverage);
+  });
+
+  it("mirrors subject_bundle's digest_alg and digest (spec section 4.5)", () => {
+    const dir = new URL("../../vectors/evidence-result/", import.meta.url);
+    const read = (name: string): unknown =>
+      JSON.parse(readFileSync(new URL(name, dir), "utf8"));
+    expect(
+      validateEvidenceResult(
+        read("pos-example-org-subject-bundle-result.json"),
+      ),
+    ).toEqual([]);
+    // neg-subject-bundle-extra-member is left out: like every digest ref
+    // here, the mirror does not reject an extra member; the schema does.
+    for (const [name, finding] of [
+      ["neg-subject-bundle-string", "claims[0].subject_bundle"],
+      ["neg-subject-bundle-uppercase", "claims[0].subject_bundle.digest"],
+      ["neg-subject-bundle-other-alg", "claims[0].subject_bundle.digest_alg"],
+      ["neg-subject-bundle-list", "claims[0].subject_bundle"],
+    ] as const)
+      expect(validateEvidenceResult(read(`${name}.json`)), name).toContainEqual(
+        expect.stringContaining(finding),
+      );
+  });
+
+  it("compares a carried Bundle with subject_bundle as the shared binding vectors say (spec section 4.5)", async () => {
+    const binding = JSON.parse(
+      readFileSync(
+        new URL(
+          "../../vectors/evidence-result/binding/subject-bundle.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as {
+      count: number;
+      cases: {
+        name: string;
+        subject_bundle?: { digest_alg: string; digest: string };
+        bundle_text: string | null;
+        bundle_digest?: string;
+        expect: SubjectBundleBinding;
+      }[];
+    };
+    expect(binding.cases).toHaveLength(binding.count);
+    for (const c of binding.cases) {
+      const carried =
+        c.bundle_text === null ? undefined : (JSON.parse(c.bundle_text) as Obj);
+      if (carried !== undefined)
+        expect(await bundleDigest(carried), c.name).toBe(c.bundle_digest);
+      // A match is not a pass: this named Bundle matches and fails its own
+      // interval check.
+      if (c.name === "matched-bundle-fails-checks")
+        expect((await verifyBundle(carried)).intervalCoverage.status).toBe(
+          "fail",
+        );
+      expect(
+        await subjectBundleBinding(c.subject_bundle?.digest, carried),
+        c.name,
+      ).toBe(c.expect);
+    }
+    expect(new Set(binding.cases.map((c) => c.expect))).toEqual(
+      new Set(["matched", "different", "not_carried", "unbound"]),
+    );
   });
 
   it("rejects a key the schema does not define at the top level, and tolerates one below it", () => {
