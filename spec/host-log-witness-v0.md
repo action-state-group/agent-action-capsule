@@ -16,7 +16,8 @@ Extension") one level up, with three differences:
 - Each holder has a fixed position in each tick's tree.
 - The tree's parameters are committed in the parent log's entry.
 
-A host chain is not a Bundle extension. It travels beside a holder's stamp proof, as WC's
+The kind string `host-log-witness/v1` names the object's version, as `parent-log-witness/v1`
+does, while this document is `-v0`, a pre-Internet-Draft. A host chain is not a Bundle extension. It travels beside a holder's stamp proof, as WC's
 receipts do, and never inside a Bundle.
 
 ## Dependency boundary
@@ -77,10 +78,18 @@ At each tick, the host:
    JCS({`checkpoint_sha256`, `log_id`, `salt`, `size`}). `checkpoint_sha256` is the SHA-256 of
    the head's COSE octets, `size` is its MMR size, and `salt` is a fresh random string of at least
    256 bits for each leaf.
-4. Computes the root of a binary tree of depth 32 by PLW's interior node. A position that holds
-   no leaf takes a value only the host can derive, from a secret seed of the tick. It SHOULD be
-   indistinguishable from a hash to anyone without the seed. Such a value is never a leaf: it can
-   sit only where no member's slot is.
+4. Computes the root of a binary tree of depth 32 by PLW's interior node. Every subtree that
+   holds no member's leaf takes, as its root, a value only the host can derive from a secret seed
+   of the tick and the subtree's level and index, for example HMAC-SHA-256(seed, uint8(level) ‖
+   uint32be(index)). Such a value SHOULD be indistinguishable from a hash to anyone without the
+   seed. The host computes only the nodes above the members' leaves, about 32 hashes per member
+   per tick, and never the empty positions one by one. A seeded value is never a leaf: it stands
+   only for a subtree where no member's slot is.
+
+   The depth is 32, not the 16 of EBL's cadence tree, so that slot collisions are rare at any
+   number of members (§2.2 step 2 redraws the salt on one): with N members, a draw has no
+   collision with probability about exp(-N²/2^33), above one half at the maximum of 2^16 members.
+   At depth 16 the same holds only for a few hundred members.
 5. Appends one entry to the host log, whose 32-octet value is the **tick value**: SHA-256 of
    0x04 ‖ uint8(32) ‖ tick salt ‖ root. The 0x04 octet separates it from PLW's leaf (0x00) and
    node (0x01). uint8(32) is the tree depth.
@@ -101,9 +110,13 @@ its choice. A host checkpoint covers every tick before it, so a holder's head in
 checkpoint was never witnessed is covered by the next witnessed one. Each on-demand stamp opens
 a new tick.
 
-The host's operator chooses its witness. The time a host chain gives (§4.3) means something only
-when that witness is run separately from the host. A witness run by the host's operator attests
-nothing the host could not make up.
+The host's operator chooses the host's witness, and MAY choose any. A host MUST name its witness
+to a holder before the holder joins, and joining is the holder's acceptance of that witness; a
+holder that wants another witness joins another host or stays unjoined (§2.1). A host whose
+members include holders that do not run the host MUST use a witness run separately from the
+host's operator. The time a host chain gives (§4.3) means something only when the witness is run
+separately from the host: a witness run by the host's operator attests nothing the host could
+not make up.
 
 ## 3. The host chain
 
@@ -178,8 +191,8 @@ with that finding:
 
 When every check passes, the chain's outcome is `valid`. Each entry of `parent.witnesses` is then
 checked as WIT checks a receipt, against the host checkpoint's COSE statement, giving `pass`,
-`withheld` or `fail`. When the chain is `invalid`, no receipt is checked, and each one is
-reported `withheld`.
+`withheld` or `fail`. When the chain is `invalid`, no receipt is checked: when `parent.witnesses`
+is an array, each of its entries is reported `withheld`; otherwise no receipt is reported.
 
 ### 4.2 What the checks show
 
@@ -233,9 +246,13 @@ the answer's `host_chain` outcome. This document only defines the chain and its 
   witness registered the host checkpoint. That bounds the covered checkpoint only if the witness
   is run separately from the host (§2.3). A receiver's witness directory decides which witnesses
   count.
-- **What the witness learns.** One host checkpoint per tick: not how many members the host has,
-  which member changed, or when a member's deals happen. The host log grows by one entry per
-  tick, whatever its members do.
+- **What the witness learns.** One host checkpoint per tick, never how many members the host has
+  or which member changed. The host log grows by one entry per tick, whatever its members do. On
+  the host's scheduled ticks, the witness learns nothing of when a member's deals happen. An
+  on-demand stamp opens a tick off the schedule (§2.3): its checkpoint's arrival, or the extra
+  entry a later checkpoint covers, shows the witness that some member of the host stamped on
+  demand at about that time, as a holder's own on-demand stamp shows its own witness today. It
+  does not show which member.
 - **What a receiver learns.** From a member's chain, the host log's id, the host checkpoint and
   its size (and so how many ticks the host has made), and 32 sibling hashes. The siblings are
   members' leaves or seeded values (§2.2 step 4), which look the same, so they do not show how
