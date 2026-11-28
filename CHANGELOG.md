@@ -12,7 +12,7 @@ each says which tags it matches.
 
 ## Unreleased
 
-Not in a `python` tag yet: the entries below come after `python/v0.19.0`, and the ones that touched Go or TypeScript also shipped in `go/v0.25.0` or `ts/v0.17.0`, under those headings. The Rust crates keep their own Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or has not yet.
+Not in a `python` tag yet: the entries below come after `python/v0.19.0`, and the ones that touched Go or TypeScript also shipped in `go/v0.26.0`, `go/v0.25.0` or `ts/v0.17.0`, under those headings. The Rust crates keep their own Unreleased sections. An entry that touches several packages is listed under each package that shipped it, or has not yet.
 
 - Spec: Person Signature v0 (`spec/person-signature-v0.md`, informational). A person's signature,
   made with the person's own key, over the digest of a record that another party signed, carried
@@ -133,6 +133,50 @@ Not in a `python` tag yet: the entries below come after `python/v0.19.0`, and th
 - Evidence Bundle -04 (new working revision; -03 is posted): the `category_coverage` signature is verified with strict Ed25519, so `category_coverage_signature` is `FAIL` for a signature that fails only a strict condition (#680). The four implementations already verified it this way, so verifier output does not change. `vectors/bundle/category-coverage/` gains `neg-signature-small-order-key` (R = [r]B, failing only the small-order key condition) and `neg-signature-identity-r` (36 cases). A lenient verifier accepts each of them.
 
 - Strict Ed25519 for `evidence-commitment/1` and `countersign/v1` (#677). Evidence Bundle -03 defines strict Ed25519 once, in its Conventions section, in the capsule draft's working-revision words: the key and R canonical and not of small order, S below the group order, and the cofactorless equation. The carried signature profiles and `countersign/v1` verification step 2 cite it. The evidence-commitment carrier binding verifies a commitment's `sig` with that rule, so a failing one is `commitment_signature`. New vectors cover a small-order key (R = [r]B, failing only the key condition) and an identity R, in `vectors/adapters/evidence-commitment-carriers/` (36 cases) and `vectors/bundle/producer-key/` (10 cases). A lenient verifier accepts each of them. The Python checks of both sets now verify strictly; TypeScript's `countersign/v1` check already did.
+
+- Spec: a new derivation token `standard_history/5` (`spec/standard-history-v0.md` §14, #682),
+  beside `standard_history/1` to `/4`, which are unchanged in every member, rule, document and
+  vector. A `/5` card is a `/4` card that counts every deal in the window, whatever its
+  `counterparty_class`: a shop purchase paid up front (`shop_preauth`) is counted like any other
+  deal, in the outcomes, bands, roles, how it happened and its disputes, raised and received. The
+  card's new `shop_preauth` tally says how many counted deals were such purchases, and
+  `in_window.not_counted` is 0. Like `/3` and `/4`, a `/5` deal's row results and disputes are
+  read as of the anchor's time (§11.1 "One card, one time"), a shop purchase's included. SH-20
+  records an open point: a shop that never states on its rows leaves its purchases `undecided`.
+  Its counting table and wording pack are in `spec/history-frame/` (History frame §6.1), its row
+  in `spec/REGISTRY.md` §16, and its 11 vectors in `vectors/standard-history-v0/vectors-5.json`,
+  among them a shop purchase with a dispute the holder raised.
+- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
+  `standard_history/5` cards (`DERIVATION_5`; `Derivation5`).
+
+- Registry: the "Deprecated derivations" table in `spec/REGISTRY.md` §16 gains rows for `standard_history/3` and `standard_history/4` (action-state-group/agent-action-capsule#708), and the `standard_history/2` row's "Ask instead", which said no replacement was registered yet, now names `standard_history/5`. All three rows name `standard_history/5` as the derivation to ask instead. Each token stays registered and every card under them still verifies; no definition, vector or code changes.
+
+## go 0.26.0 — 2026-11-28
+
+Tag `go/v0.26.0`. The pull requests that changed `go/` since `go/v0.25.0`:
+
+- feat(spec): standard_history/5 counts every purchase, shop_preauth included (#682) (#691)
+
+- feat(registry): deprecate standard_history/3 and /4 in favour of /5 (#708) (#727)
+
+The changes, from the changelog fragments folded in this release:
+
+- Spec: a new derivation token `standard_history/5` (`spec/standard-history-v0.md` §14, #682),
+  beside `standard_history/1` to `/4`, which are unchanged in every member, rule, document and
+  vector. A `/5` card is a `/4` card that counts every deal in the window, whatever its
+  `counterparty_class`: a shop purchase paid up front (`shop_preauth`) is counted like any other
+  deal, in the outcomes, bands, roles, how it happened and its disputes, raised and received. The
+  card's new `shop_preauth` tally says how many counted deals were such purchases, and
+  `in_window.not_counted` is 0. Like `/3` and `/4`, a `/5` deal's row results and disputes are
+  read as of the anchor's time (§11.1 "One card, one time"), a shop purchase's included. SH-20
+  records an open point: a shop that never states on its rows leaves its purchases `undecided`.
+  Its counting table and wording pack are in `spec/history-frame/` (History frame §6.1), its row
+  in `spec/REGISTRY.md` §16, and its 11 vectors in `vectors/standard-history-v0/vectors-5.json`,
+  among them a shop purchase with a dispute the holder raised.
+- Python and Go: `agent_action_capsule.standard_history` and `go/standardhistory` derive and check
+  `standard_history/5` cards (`DERIVATION_5`; `Derivation5`).
+
+- Registry: the "Deprecated derivations" table in `spec/REGISTRY.md` §16 gains rows for `standard_history/3` and `standard_history/4` (action-state-group/agent-action-capsule#708), and the `standard_history/2` row's "Ask instead", which said no replacement was registered yet, now names `standard_history/5`. All three rows name `standard_history/5` as the derivation to ask instead. Each token stays registered and every card under them still verifies; no definition, vector or code changes.
 
 ## ts 0.17.0 — 2026-11-27
 
